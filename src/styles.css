@@ -2139,6 +2139,61 @@ details > summary { overflow-wrap: anywhere; }
 .planning-range { margin: 8px 0 12px; }
 .planning-warning { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0; font-size: 12px; }
 .planning-note { margin-top: 12px; color: var(--muted); font-size: 11px; }
+.planning-issues,
+.planning-edit-panel,
+.planning-review {
+  margin: 12px 0 18px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+.planning-issues summary { cursor: pointer; font-weight: 600; }
+.planning-issues ul,
+.planning-review ul { margin: 10px 0; padding-left: 18px; }
+.planning-issues li { margin: 5px 0; }
+.planning-edit-panel h2,
+.planning-review h2 { margin: 0; font-size: 20px; }
+.planning-edit-panel h3,
+.planning-review h3 { margin: 12px 0 8px; font-size: 15px; }
+.planning-calendar-days,
+.planning-calendar-fields,
+.planning-review-actions,
+.planning-milestone-form { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; margin: 12px 0; }
+.planning-calendar-days label { display: inline-flex; align-items: center; gap: 4px; }
+.planning-calendar-fields label,
+.planning-milestone-form label,
+.planning-review-actions label,
+.planning-reason { display: grid; gap: 4px; font-size: 11px; font-weight: 600; }
+.planning-calendar-fields input,
+.planning-milestone-form input,
+.planning-review-actions input,
+.planning-reason input { min-height: 38px; }
+.planning-reason { width: min(100%, 480px); margin: 12px 0; }
+.planning-review { scroll-margin-top: 60px; }
+.planning-review-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+.planning-review-head small { color: var(--rust); font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.planning-milestone-form { border-top: 1px solid var(--line); padding-top: 12px; }
+.planning-milestone-form h3 { width: 100%; }
+.planning-proposal { border-top: 1px solid var(--line); padding-top: 12px; }
+.planning-review-table-wrap { max-width: 100%; overflow-x: auto; }
+.planning-review-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.planning-review-table th,
+.planning-review-table td { padding: 8px; border-bottom: 1px solid var(--line); text-align: left; font-variant-numeric: tabular-nums; }
+.planning-review-table thead { background: #f7f3f0; }
+.planning-conflicts { color: #93000a; }
+.planning-review-actions .planning-lead-check { display: flex; align-items: center; gap: 8px; flex-basis: 100%; color: #7b2510; }
+.task-schedule-controls { border-top: 1px solid var(--line); margin: 18px 0; padding-top: 12px; }
+.task-schedule-controls h3 { margin: 0 0 6px; }
+.task-dependency-row { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(130px, 1fr) 100px auto; gap: 8px; align-items: end; margin: 10px 0; }
+.task-dependency-row label { display: grid; gap: 4px; font-size: 11px; font-weight: 600; }
+.task-dependency-row select,
+.task-dependency-row input { min-width: 0; width: 100%; }
+.task-dependency-row small { grid-column: 1 / -1; color: var(--muted); }
+.task-constraints { margin: 12px 0; }
+.task-constraints summary { cursor: pointer; font-weight: 600; }
+.task-earlier-option { display: flex; align-items: start; gap: 7px; margin: 12px 0; font-size: 12px; }
+.planning-lead-note { color: #7b2510; background: #fbf6ee; border: 1px solid #e3c197; padding: 8px; border-radius: 6px; font-size: 12px; }
 .planning-mobile-switch { display: none; }
 .gantt {
   --gantt-pane: 420px;
@@ -2260,6 +2315,16 @@ details > summary { overflow-wrap: anywhere; }
 .gantt-bar span { position: relative; display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: left; padding: 4px 6px; font-size: 10px; }
 .gantt-bar.milestone { top: 13px; height: 38px; border: 0; background: transparent; color: #9a3c25; }
 .gantt-bar.milestone span { font-size: 22px; text-align: center; padding: 2px; }
+.gantt-bar.critical { border: 2px solid #9a3c25; }
+.gantt-overlay {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+  box-sizing: border-box;
+}
+.gantt-overlay.baseline { top: 13px; height: 38px; border: 1px solid #745a37; background: transparent; }
+.gantt-overlay.proposed { top: 8px; height: 48px; border: 2px dashed #9a3c25; background: transparent; }
+.gantt-status-text { position: absolute; top: 46px; z-index: 3; white-space: nowrap; font-size: 9px; font-weight: 700; color: #7b2510; pointer-events: none; }
 .dependency-lines { position: absolute; top: 0; pointer-events: none; z-index: 2; }
 .mobile-dates { display: none; }
 @media (max-width: 1200px) {
@@ -2282,7 +2347,7 @@ details > summary { overflow-wrap: anywhere; }
   .planning-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 767px) {
-  .planning-mobile-switch { display: flex; gap: 8px; margin-bottom: 8px; }
+  .planning-mobile-switch { display: flex; gap: 8px; margin: 0 0 8px; position: sticky; top: 60px; z-index: 11; padding: 6px 0; background: #fdf8f6; }
   .planning-mobile-switch button[aria-pressed="true"] { background: #9a3c25; color: #fff; }
   .gantt { --gantt-pane: 220px; max-height: min(60vh, 560px); }
   .gantt:not(.show-mobile-timeline) { overflow-x: hidden; }
@@ -2302,4 +2367,7 @@ details > summary { overflow-wrap: anywhere; }
   .mobile-dates { display: block; font-size: 10px; color: var(--muted); margin-top: 3px; }
   .planning-toolbar select:first-child { max-width: 100%; }
   .planning-summary strong { font-size: 12px; }
+  .planning-review { margin-bottom: 96px; }
+  .task-dependency-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .task-dependency-row label:first-child { grid-column: 1 / -1; }
 }

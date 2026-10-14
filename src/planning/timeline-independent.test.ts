@@ -5,12 +5,87 @@ import {
   draftScheduleProposal,
   getPlanningView,
   getProjectPlanning,
+  inclusiveWorkingDuration,
+  linkFirstPermittedDate,
   submitScheduleProposal,
   type DependencyLink,
 } from "./index";
-import { weekdayCalendar } from "./timeline-independent-fixtures";
+import {
+  parallelNetwork,
+  relationshipCases,
+  weekdayCalendar,
+} from "./timeline-independent-fixtures";
 
 describe("independent schedule integration", () => {
+  it("honors four typed relationship bounds at working-day precision", () => {
+    for (const scenario of relationshipCases) {
+      const link: DependencyLink = {
+        id: `independent-${scenario.type}`,
+        projectId: "fixture-project",
+        predecessor: { kind: "task", id: "predecessor" },
+        successor: { kind: "task", id: "successor" },
+        type: scenario.type,
+        lagWorkingDays: scenario.lagWorkingDays,
+        createdAt: "2026-11-01T00:00:00.000Z",
+      };
+      const predecessor = {
+        ...scenario.predecessor,
+        durationWorkingDays: inclusiveWorkingDuration(
+          weekdayCalendar,
+          scenario.predecessor.start,
+          scenario.predecessor.finish,
+        )!,
+      };
+      expect(linkFirstPermittedDate(
+        weekdayCalendar,
+        link,
+        predecessor,
+        scenario.successorDuration,
+      )).toBe(scenario.earliestSuccessorStart);
+    }
+  });
+
+  it("finds both the parallel critical branch and the alternate branch float", () => {
+    const db = seed();
+    const project = db.projects[0];
+    const phase = db.phases.find((row) => row.projectId === project.id)!;
+    project.start = "2026-11-02";
+    project.due = "2026-11-30";
+    db.tasks = db.tasks.filter((row) => row.projectId !== project.id);
+    db.milestones = db.milestones.filter((row) => row.projectId !== project.id);
+    for (const row of parallelNetwork.activities)
+      db.tasks.push({
+        ...blankTask(project.id, phase.id, ""),
+        id: row.id,
+        name: `Network ${row.id}`,
+        start: row.start,
+        due: row.finish,
+      });
+    const planning = structuredClone(getProjectPlanning(db, project.id));
+    planning.enabled = true;
+    planning.calendar = structuredClone(weekdayCalendar);
+    planning.links = parallelNetwork.links.map((row, index) => ({
+      id: `parallel-link-${index}`,
+      projectId: project.id,
+      predecessor: { kind: "task", id: row.predecessor },
+      successor: { kind: "task", id: row.successor },
+      type: "FS",
+      lagWorkingDays: row.lagWorkingDays,
+      createdAt: "2026-11-01T00:00:00.000Z",
+    }));
+    db.planningVersion = 1;
+    db.planning = [planning];
+
+    const view = getPlanningView(db, project.id);
+    expect(view.criticalPathFeasible).toBe(true);
+    expect(view.approvedFinish).toBe(parallelNetwork.expected.finish);
+    expect(view.nodes.filter((row) => row.critical).map((row) => row.node.id).sort())
+      .toEqual(parallelNetwork.expected.criticalIds);
+    for (const [id, expectedFloat] of Object.entries(parallelNetwork.expected.floatWorkingDays))
+      expect(view.nodes.find((row) => row.node.id === id)?.totalFloatWorkingDays)
+        .toBe(expectedFloat);
+  });
+
   it("keeps an unchanged later terminal branch in proposed project finish", () => {
     const db = seed();
     const project = db.projects[0];

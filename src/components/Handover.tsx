@@ -43,7 +43,7 @@ export function Handover({ projectId }: { projectId?: string }) {
         <Badge>
           {p.status === "Completed"
             ? "Completed"
-            : state.ready
+            : state.ready && !financialBlock
               ? "Ready for Handover"
               : "Not ready for handover"}
         </Badge>

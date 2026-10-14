@@ -1,6 +1,6 @@
 # AZZORA MASTER STATUS
 
-14 October 2026 · Asia/Dubai. **Ready for owner acceptance within the tested browser-local CRM scope.**
+14 October 2026 · Asia/Dubai. **Quotation UX/client-demo cycle in progress; the prior browser-local technical baseline remains verified.**
 
 Full tested integration SHA: **`f72e6c1dd7c5914e97c509a635b64de8c6aa9750`**, branch codex/azzora-integration. Source `913fb64df6bde41a8c4c1b6d689760aee65099e5`/tests `8fcc10d8b13e612c43d3095ca59a27e1ba79deeb`. Final documentation changes preserve the tested application/test/configuration. Main remains `c1914984021a20a9e83f5e60ee4f93ef035659dc`.
 
@@ -22,3 +22,7 @@ All recorded blockers fixed and reverified, including one-fils discounts, cumula
 Remaining limits:browser-local demo identity/quota and 750KB attachments;no server auth/concurrency/cloud backup;no statutory ledger/retention release;Chromium emulation rather than physical-device/printer/cross-browser/screen-reader-speech certification. Main618.46kB/172.44gzip warning remains. The supplied reference quotation preserves its documented historical words/manual rounding overrides;new generated calculations reconcile. Owner visual acceptance is still required.
 
 No backend, push, deployment, main merge, automatic owner-data reset or agent-worktree reset/delete occurred. No continuous monitor is configured. Only an explicit owner approval can authorize the next main merge;this report does not deploy or merge anything.
+
+## Current cycle — quotation usability and client demo
+
+Owner authorized guided quotation UX in new isolated codex/azzora-quotation-ux worktree from exactf72e6c1. Original integration remains unchanged. Rollback tag azzora-browser-demo-baseline-2026-10-14;before cold build5210 recorded. Agent1 workflow source,Agent2 newguide/CSS,Agent3 independent tests/before-after evidence;all dispatched,All three agents acknowledged;Agent1 capacity retry recovered and is active. Only Coordinator stages/commits sharednewworktree files. No UI/engine/PDF unrelated changes,no ownerdata reset,no backend/auth/push/deploy/main. QUOTATION-UX-DELIVERY.md andCLIENT-DEMO-WALKTHROUGH.md track this cycle;previous technical certificate stayshistorical baseline,notnewacceptance.

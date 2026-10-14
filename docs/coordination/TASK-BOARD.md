@@ -79,3 +79,14 @@ Original A3-003/004/012 were isolated QA fixes documented in the issue register 
 Full tested SHA `f72e6c1dd7c5914e97c509a635b64de8c6aa9750`:304ordinary unit passes,0failed/pending,13files;TypeScript/ESLint/cold build pass;20/20browser suites on each target pass without retries;24policy/supervision checks, four-width visual/keyboard review,66PDFs/158pages parsed and42rendered pages reviewed. Zero source/build hash mismatches. All recorded blocking audit issues resolved. Agent3 completed/stopped its runners and preview. Agent1 final report-only capacity failure is transparently covered by Coordinator-collected actual source/output evidence;no agent completion/report commit is invented.
 
 REL-01 is Ready for owner acceptance. No main merge, push, deployment, backend or worktree reset/delete occurred. Existing browser-local/physical-device/PDF-reference/bundle limitations are in FINAL-INTEGRATION-REPORT.md.
+
+## Quotation UX cycle
+
+| ID | Scope / owner | Status | Dependencies / evidence |
+| --- | --- | --- | --- |
+| QUOT-UX-01 |Guidedworkflow/simpleadvancedBOQ/helpercopy — Agent1|In Progress|NewUXworktree,Quotationstsx only;acknowledged,capacityretryrecovered|
+| QUOT-UX-02 |Accessible responsive guide/scopedstyles/usability — Agent2|In Progress|NewQuotationGuide.tsx/quotation-ux.css;acknowledged|
+| QUOT-UX-03 |Actualbefore/after,independentquotUX/retainedregressions — Agent3|In Progress|Pinnedbefore5210;acknowledged;finalwaitsconsolidatedSHA|
+| QUOT-UX-04 |Integration/demo walkthrough/report — Coordinator|In Progress|Baseline/tag/worktree/filecontractscomplete|
+| QUOT-UX-FINAL |Freshfullqualitygate — Agent3|Blocked|Dependsreviewedfinishedsource/tests andfrozenfullSHA;old304/20notnewproof|
+| QUOT-UX-ACCEPT |Owner/clientacceptance — Owner|Blocked|No main/push/deploy untilownerapprovalafterverifieddelivery|

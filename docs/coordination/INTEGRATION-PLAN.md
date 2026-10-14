@@ -61,3 +61,7 @@ Integration is local and disposable relative to source branches. No push, deploy
 - A1 corrective a4620eb and A3 prep b88191b discovered; final source handoffs/review required before merging them.
 
 Agent2 independently reviewed coordinator source/probes. Unknown optional legacy states, requester self-review and orphan approval targets were confirmed; all three now have guards and ordinary regression cases. Application source currently passes 198 unit cases, TypeScript and lint. This is a checkpoint, not final QA; the integration branch is not frozen.
+
+### Newly confirmed financial gate
+
+INT-REVIEW-A1 reproduced silent legacy item-credit reallocation and cumulative amount-credit VAT overrun (six0.11 credits on1.05gross/0.05VAT produce0.06VAT, then final0.39 fails). FIX-A1-02 assigned to Agent1 on its own branch. Freeze/finalQA waits for reviewed corrective commit. Original issued snapshots must remain unchanged; invalid historical bases require explicit review rather than silent repair.

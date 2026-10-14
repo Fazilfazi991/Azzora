@@ -15,3 +15,7 @@ Next proposed work, not dispatched for implementation: bounded invoice discount 
 ## FIX-A1-01 — complete and integrated
 
 Owner-authorized financial/shell correction: implementation a4620eb, report647762d. Reviewed and merged. 160 source-branch unit passes,35 corrective browser checks plus retained suites. Agent1 now acknowledged active on INT-REVIEW-A1, a read-only targeted legacy financial/closure compatibility review; findings only, no source ownership change.
+
+## FIX-A1-02 — assigned financial follow-up
+
+P0. After completing current read-only review, implement two confirmed financial defects on own operational branch from647762d: preserve legacy issued item-credit allocation/limits (or explicit review block for inconsistent original postings) and cumulative amount-credit VAT conservation/capacity. Ordinary tests cover exact six0.11 + final0.39 on1.05gross/0.05VAT, mixed item/amount sequences, historic snapshots, refunds and balances. Owned files: financial calculations/repositories/models/tests and docs/AGENT-1-FINANCIAL-FOLLOWUP.md only. No schema/document/closure/modal/shell edits. Deliver full correctiveSHA and exact targeted results; coordinator reviews/merges before finalfreeze. Supported task dispatch succeeded; acknowledgement tracked separately.

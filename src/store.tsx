@@ -91,6 +91,7 @@ export function Provider({ children }: { children: ReactNode }) {
     [original, setOriginal] = useState(initial.raw);
   const [db, setDb] = useState(initial.db),
     [toast, setToast] = useState("");
+  const [renderEpoch, setRenderEpoch] = useState(0);
   const current = useRef(db);
   function exportOriginal() {
     try {
@@ -185,6 +186,7 @@ export function Provider({ children }: { children: ReactNode }) {
                   current.current = next.db;
                   setDb(next.db);
                   setReadOnly(false);
+                  setRenderEpoch((value) => value + 1);
                   setToast("Saved data loaded without replacing records");
                 }
               }}
@@ -204,6 +206,7 @@ export function Provider({ children }: { children: ReactNode }) {
         </section>
       )}
       <RenderRecovery
+        key={renderEpoch}
         exportOriginal={exportOriginal}
         onFailure={(e) => {
           try {

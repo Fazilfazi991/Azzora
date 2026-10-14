@@ -1234,18 +1234,16 @@ export function Quotations({
                   <details className="panel quotation-advanced">
                     <summary>Document snapshot details</summary>
                     <div className="form-grid">
-                      {!q.customerId && (
-                        <Field label="Customer name on document">
-                          <input
-                            value={q.customer.name}
-                            onChange={(e) =>
-                              update((n) => {
-                                n.customer.name = e.target.value;
-                              })
-                            }
-                          />
-                        </Field>
-                      )}
+                      <Field label="Customer name on document">
+                        <input
+                          value={q.customer.name}
+                          onChange={(e) =>
+                            update((n) => {
+                              n.customer.name = e.target.value;
+                            })
+                          }
+                        />
+                      </Field>
                       <Field label="Job / Project Name on document">
                         <input
                           value={q.project.name}

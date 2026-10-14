@@ -135,6 +135,7 @@ try {
     await page.screenshot({ path: `${out}/dashboard-${width}.png` });
     await go("tasks");
     await button("+ Create Task").click();
+    await dlabel("Schedule proposal reason").fill("Validate required task name before drafting");
     await dbutton("Save Changes").click();
     await expect(dlabel("Task name")).toBeFocused();
     const geometry = () =>

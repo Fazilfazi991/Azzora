@@ -37,6 +37,7 @@ try {
       ).toBe(true);
     }
     await dialog.getByLabel("Task name", { exact: true }).fill("");
+    await dialog.getByLabel("Schedule proposal reason").fill("Validate empty task name in drawer");
     await dialog
       .getByRole("button", { name: "Save Changes", exact: true })
       .click();

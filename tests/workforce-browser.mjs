@@ -463,6 +463,7 @@ try {
   await expect(dialog().getByLabel("Assigned to", { exact: true })).toHaveValue(
     person.id,
   );
+  await dialog().getByLabel("Progress report note").fill("Completed for workforce handover check");
   await dialog()
     .getByRole("button", { name: "Mark Complete", exact: true })
     .click();

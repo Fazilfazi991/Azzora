@@ -106,29 +106,55 @@ await page
   .click();
 dialog = page.getByRole("dialog");
 await dialog.getByLabel("Progress %", { exact: true }).fill("50");
+await dialog.getByLabel("Progress report note").fill("Site survey work reviewed at halfway point");
 await dialog
   .getByLabel("Assigned to", { exact: true })
   .selectOption("person-3");
-await dialog
-  .getByLabel("Finish-to-start predecessors")
-  .selectOption({ label: "Project Kickoff" });
+await dialog.getByRole("button", { name: "+ Add predecessor" }).click();
+await dialog.getByLabel("Predecessor task").selectOption({ label: "Project Kickoff" });
+const kickoffDue = await page.evaluate(() => {
+  const data = JSON.parse(localStorage.getItem("azzora-demo-v1"));
+  return data.tasks.find((task) => task.projectId === location.hash.split("/")[2] && task.name === "Project Kickoff").due;
+});
+const surveyStart = new Date(`${kickoffDue}T12:00:00Z`);
+do surveyStart.setUTCDate(surveyStart.getUTCDate() + 1);
+while ([0, 6].includes(surveyStart.getUTCDay()));
+const surveyDate = surveyStart.toISOString().slice(0, 10);
+await dialog.getByLabel("Start", { exact: true }).fill(surveyDate);
+await dialog.getByLabel("Due", { exact: true }).fill(surveyDate);
+await dialog.getByLabel("Schedule proposal reason").fill("Link site survey to kickoff approval");
 await dialog.getByRole("button", { name: "Save Changes" }).click();
 await page.getByRole("dialog").waitFor({ state: "hidden" });
+await page.goto(base + "/#/planning");
+await page.getByLabel("Planning project").selectOption(projectId);
+if (!(await page.locator(".planning-proposal").getByRole("button", { name: "Submit for PM review" }).isDisabled()))
+  throw Error("Legacy scheduling conflicts should block this draft until resolved");
+if (!(await page.locator(".planning-proposal").getByText(/Conflict:/).count()))
+  throw Error("Blocked proposal must explain its conflicts");
 const computed = await page.evaluate(() => {
   const d = JSON.parse(localStorage.getItem("azzora-demo-v1"));
   const p = d.projects.find((p) => p.name === "QA Dubai Office");
+  const survey = d.tasks.find((t) => t.projectId === p.id && t.name === "Site Survey");
+  const kickoff = d.tasks.find((t) => t.projectId === p.id && t.name === "Project Kickoff");
+  const plan = d.planning.find((row) => row.projectId === p.id);
   return {
     tasks: d.tasks.filter((t) => t.projectId === p.id).length,
     assignments: d.assignments.filter((a) => a.projectId === p.id).length,
-    task: d.tasks.find((t) => t.projectId === p.id && t.name === "Site Survey"),
+    task: survey,
+    proposal: plan.proposals.at(-1),
+    approvedLink: plan.links.find((link) => link.successor.id === survey.id && link.predecessor.id === kickoff.id),
+    draftedLink: plan.proposals.at(-1).proposedLinks.find((link) => link.successor.id === survey.id && link.predecessor.id === kickoff.id),
   };
 });
 if (
   computed.tasks !== 37 ||
   computed.task.progress !== 50 ||
-  computed.task.dependencies.length !== 1
+  computed.task.start === surveyDate ||
+  computed.draftedLink?.type !== "FS" ||
+  computed.approvedLink ||
+  !computed.proposal.conflicts.length
 )
-  throw Error("Planning changes did not persist");
+  throw Error("Progress or blocked schedule proposal was not preserved correctly");
 await page.goto(base + "/#/projects/" + projectId + "/overview");
 await page.getByText("1%", { exact: true }).first().waitFor();
 await page.goto(base + "/#/projects/" + projectId + "/team");
@@ -167,7 +193,13 @@ await dialog
 await dialog
   .getByLabel("Assigned to", { exact: true })
   .selectOption("person-3");
+await dialog.getByLabel("Schedule proposal reason").fill("Add supplemental site inspection task");
 await dialog.getByRole("button", { name: "Save Changes" }).click();
+await page.goto(base + "/#/planning");
+await page.getByLabel("Planning project").selectOption(projectId);
+await page.locator(".planning-proposal").getByRole("button", { name: "Submit for PM review" }).click();
+await page.locator(".planning-proposal").getByRole("button", { name: "Approve proposal" }).click();
+await page.goto(base + "/#/projects/" + projectId + "/tasks");
 await page
   .getByRole("button")
   .filter({ hasText: "QA supplemental inspection" })
@@ -272,6 +304,7 @@ if (
 await page.goto(base + "/#/projects/" + projectId + "/tasks");
 for (let i = 0; i < 38; i++) {
   await page.locator(".task-row").nth(i).click();
+  await page.getByRole("dialog").getByLabel("Progress report note").fill("Completed for handover verification");
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Mark Complete", exact: true })

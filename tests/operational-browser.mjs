@@ -311,7 +311,17 @@ try {
     await button("+ Create Task").click();
     await dlabel("Task name").fill("Employee ownership check");
     await dlabel("Assigned to").selectOption(employeeId);
+    await dlabel("Schedule proposal reason").fill("Assign site engineer to the new delivery task");
     await dbutton("Save Changes").click();
+    data = await saved();
+    expect(data.tasks.find((t) => t.name === "Employee ownership check")).toBeUndefined();
+    await go("planning");
+    await label("Planning project").selectOption(projectId);
+    const taskProposal = page.locator(".planning-proposal");
+    await taskProposal.getByRole("button", { name: "Submit for PM review" }).click();
+    await taskProposal.getByRole("button", { name: "Approve proposal" }).click();
+    data = await saved();
+    expect(data.tasks.find((t) => t.name === "Employee ownership check").assigneeId).toBe(employeeId);
     await go("team");
     await page.locator(".team-card").filter({ hasText: employeeName }).click();
     await dbutton("Deactivate Employee").click();
@@ -428,6 +438,7 @@ try {
     const taskCount = await page.locator(".task-row").count();
     for (let i = 0; i < taskCount; i++) {
       await page.locator(".task-row").nth(i).click();
+      await dlabel("Progress report note").fill("Completed after site inspection");
       await dbutton("Mark Complete").click();
       await expect(dialog()).toHaveCount(0);
     }

@@ -189,6 +189,7 @@ try {
         for (let index = 0; index < 24; index++)
           await page.keyboard.press("Tab");
         await dialog.getByLabel("Task name", { exact: true }).fill("");
+        await dialog.getByLabel("Schedule proposal reason").fill("Validate required task name in drawer");
         await dialog
           .getByRole("button", { name: "Save Changes", exact: true })
           .click();

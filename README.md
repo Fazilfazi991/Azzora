@@ -22,6 +22,8 @@ npm run test:browser
 npm run test:quotations:browser
 npm run test:commercial:browser
 npm run test:commercial:boundaries
+npm run test:operational:browser
+npm run test:operational:boundaries
 npm run test:boq:visual
 ```
 
@@ -39,6 +41,8 @@ Browser verification uses an isolated headless Chrome/Edge context and does not 
 - `tests/browser.mjs`: route/viewport and full delivery journey checks.
 - `src/commercial/`: Customer Master, contracts, invoices, receipts/reversals, incurred expenses, financial calculations, reports, PDF and additive migrations. All use the existing repository and storage key.
 - `tests/commercial-browser.mjs` and `tests/commercial-boundaries.mjs`: connected commercial journeys, responsive layouts, storage failures and conversion boundaries.
+- `src/operations/`: variations, supplier master, procurement, shared demo approvals, credits/refunds, budgets, company settings, document revisions and commercial closure. Its additive `operations` namespace lives in the same database and storage key.
+- `tests/operational-browser.mjs`: complete operational and financial journeys at 1440/1024/768/390px. Run it before `tests/operational-boundaries.mjs`, which uses its isolated UI-created fixture for search, quick actions, reversals, reassignment and settings checks. Both accept `AZZORA_URL`.
 
 ## Demo boundaries
 
@@ -51,3 +55,5 @@ Inter and Space Grotesk are referenced by Stitch but no font binaries were suppl
 See [initial audit](docs/INITIAL-AUDIT.md), [implementation report](docs/IMPLEMENTATION-REPORT.md) and [backend readiness](docs/BACKEND-READINESS.md).
 
 See the [commercial foundation audit](docs/COMMERCIAL-AUDIT.md) and [commercial delivery report](docs/COMMERCIAL-DELIVERY.md) for feature coverage, formulas, test results, screenshots and production blockers.
+
+See the [Phase 3 audit](docs/OPERATIONAL-AUDIT.md) and [operational completion report](docs/OPERATIONAL-COMPLETION-REPORT.md) for the connected operational modules, accounting rules, verification results and retained screenshots. Approvals use recorded demo identities, without secure role enforcement. Operational handover is independent of commercial closure unless the explicit Settings policy is enabled.

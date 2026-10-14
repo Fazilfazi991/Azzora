@@ -81,4 +81,36 @@ The latest workflow composition already reduces top-level competition by keeping
 
 ## Handoff boundary
 
-Only these three Agent 2 files are delivered: `src/quotation/QuotationGuide.tsx`, `src/quotation/quotation-ux.css`, and this report. Root alone reviews/stages/commits them. The shared worktree also contains the workflow owner's separate edits; Agent 2 has neither changed nor staged those. No merge, deployment or old-worktree modification occurred. Agent 3 owns independent QA after freeze.
+The initial presentation delivery contains `src/quotation/QuotationGuide.tsx`, `src/quotation/quotation-ux.css`, and this report. The later explicitly authorized harness adaptation adds the two test files described below. Root alone reviews/stages/commits them. The shared worktree also contains the workflow owner's separate edits; Agent 2 has neither changed nor staged those. No merge, deployment or old-worktree modification occurred. Agent 3 owns independent QA after freeze.
+
+## Authorized existing-harness adaptation
+
+The coordinator subsequently assigned only `tests/boq-visual.mjs` and `tests/quotation-print-browser.mjs` to Agent 2. Both now use Agent 3's public `quotation-ux-helpers.mjs` contract to navigate the five steps and open native category/item disclosures. Labels follow the current Work Category / Subcategory / Heading / Priced Item UI. The print script uses `auditUrl` so all URL aliases must agree. No application, CSS, helper, fixture, calculation or PDF-generation code was changed for this assignment.
+
+Every original geometry, nesting, total, keyboard, sheet-count, PDF-content, A4-size and saved-data assertion is retained. BOQ additionally asserts the exact two-row/two-category fixture counts and the restored subsection class. No skip, expected failure or assertion weakening was introduced.
+
+### Preparatory executed results, 14 October 2026
+
+Both scripts used `AZZORA_URL`, `AZZORA_TEST_URL` and `QUOTATION_URL` set to `http://127.0.0.1:5216`, with bundled Node at `C:/Users/USER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe`.
+
+| Executed script | Evidence settings | Result |
+| --- | --- | --- |
+| `node tests/boq-visual.mjs` | `BOQ_PHASE=ux-agent2-preparatory` | Exit 0. All 1440/1024/768/390px cases passed: heading plus priced item, parent assignment, detach/reattach, AED 236.25, keyboard menu Escape/focus return and exact document width. Repeated once to confirm the complete console result; both runs produced all eight screenshots. |
+| `node tests/quotation-print-browser.mjs` | `AZZORA_PRINT_EVIDENCE=tmp/quotation-ux-review/harness-print` | Completed, zero errors/failures; all four records passed. Report timestamp `2026-10-14T10:17:29.728Z`. |
+
+| Quotation / width | Preview sheets | Actual print-popup sheets | Chromium native PDF pages | Downloaded PDF pages | Saved data unchanged |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Reference / 1440 | 7 | 7 | 7 | 7 | Yes |
+| Accepted workflow / 1440 | 3 | 3 | 3 | 3 | Yes |
+| Reference / 390 | 7 | 7 | 7 | 7 | Yes |
+| Accepted workflow / 390 | 3 | 3 | 3 | 3 | Yes |
+
+The workflow fixture still creates a project-linked quote, quantity 2.5 at rate 90, finalizes and accepts it, and asserts the issued status is locked. Independent Python/pypdf checks retained all page-text/footer/A4 and exact reference/workflow amount checks on both actual native-print PDFs and downloads. The application Print action opens its real popup; no print stub or prototype CSS is used. Detailed PDF extraction, hashes and results are in `tmp/quotation-ux-review/harness-print/pdf-results.json` with eight PDF artifacts alongside it. These and the screenshots are ignored local evidence, not newly committed artifacts.
+
+BOQ evidence: `docs/boq/ux-agent2-preparatory-{1440,1024,768,390}.png` and `docs/boq/ux-agent2-preparatory-boq-{1440,1024,768,390}.png`.
+
+The workflow owner has now addressed both earlier content suggestions: source contains the closed Advanced scope explained disclosure and the amount-in-words advanced disclosure. This is a source-confirmed resolution; the earlier measurements remain a historical record of the reviewed checkpoint.
+
+### Integration boundary for this follow-up
+
+Root must include Agent 3's helper before running the adapted scripts and keep all URL aliases identical. No staging or commits by Agent 2. HEAD observed after these preparatory runs: `c53f08e62c86f46e64bd4cfce7c7162aab6362a8`; application source SHA-256 at handoff inspection: `04d73493cd6b8f3f06fa579d19c1056384f9a72178ea96523a7c7991cc184a46`. This shared development server was not a frozen final release, so these runs are preparatory evidence only. Full TypeScript, ESLint, unit, production-build and independent frozen-source certification remain with the coordinator/Agent 3; Agent 2 did not rerun or claim them in this harness-only follow-up.

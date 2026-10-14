@@ -3,12 +3,14 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { browserOptions } from "./browser-runtime.mjs";
+import { browserOptions, auditUrl } from "./browser-runtime.mjs";
+import {
+  quotationStep,
+  openQuotationCategory,
+  openQuotationItem,
+} from "./quotation-ux-helpers.mjs";
 
-const url =
-  process.env.AZZORA_URL ||
-  process.env.AZZORA_TEST_URL ||
-  "http://127.0.0.1:5189";
+const url = auditUrl;
 const output =
   process.env.AZZORA_PRINT_EVIDENCE || "docs/agent-2-print-evidence/verified";
 const bundledPython =
@@ -80,6 +82,7 @@ try {
         await page
           .getByRole("button", { name: "New quotation", exact: true })
           .click();
+        await quotationStep(page, 0);
         await page
           .getByLabel("Linked Project", { exact: true })
           .selectOption("project-0");
@@ -89,23 +92,28 @@ try {
         await page
           .getByLabel("Project Location", { exact: true })
           .fill("Dubai QA site");
+        await quotationStep(page, 1);
         await page
-          .getByRole("button", { name: "Add section", exact: true })
+          .getByRole("button", { name: "Add Work Category", exact: true })
           .click();
         const section = page.getByTestId("quote-section").first();
+        await openQuotationCategory(section);
         await section
-          .getByLabel("Section description", { exact: true })
+          .getByLabel("Work category name", { exact: true })
           .fill("Coordinated ceiling works");
         await section
-          .getByRole("button", { name: "Add line", exact: true })
+          .getByRole("button", { name: "Add Priced Item", exact: true })
           .click();
         const row = section.getByTestId("quote-line").first();
+        await openQuotationItem(row);
         await row
           .getByLabel("Description", { exact: true })
           .fill("Native print regression line");
         await row.getByLabel("Quantity", { exact: true }).fill("2.5");
         await row.getByLabel("Rate / Unit", { exact: true }).fill("90");
+        await quotationStep(page, 2);
         await expect(page.getByTestId("grand-total")).toHaveText("AED 236.25");
+        await quotationStep(page, 4);
         await page
           .getByRole("button", { name: "Finalize", exact: true })
           .click();
@@ -119,9 +127,7 @@ try {
         await expect(
           page.getByLabel("Issued quotation status", { exact: true }),
         ).toBeDisabled();
-        await page
-          .getByRole("button", { name: "Preview", exact: true })
-          .click();
+        await quotationStep(page, 4);
         await expect(page.locator(".quote-sheet")).toHaveCount(3);
         cases.push({
           kind: "workflow-accepted",
@@ -144,15 +150,13 @@ try {
       await popup.evaluate(() => document.fonts.ready);
       await popup.waitForLoadState("networkidle");
       await expect(popup.locator(".sheet")).toHaveCount(current.expectedPages);
-      const geometry = await popup
-        .locator(".sheet")
-        .evaluateAll((elements) =>
-          elements.map((el) => ({
-            height: el.getBoundingClientRect().height,
-            scrollHeight: el.scrollHeight,
-            svgDisplay: getComputedStyle(el.querySelector("svg")).display,
-          })),
-        );
+      const geometry = await popup.locator(".sheet").evaluateAll((elements) =>
+        elements.map((el) => ({
+          height: el.getBoundingClientRect().height,
+          scrollHeight: el.scrollHeight,
+          svgDisplay: getComputedStyle(el.querySelector("svg")).display,
+        })),
+      );
       const nativePath = `${output}/${current.kind}-native-${width}.pdf`;
       await popup.pdf({
         path: nativePath,

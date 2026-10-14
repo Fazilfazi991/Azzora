@@ -3,15 +3,19 @@ import { useStore } from "../store";
 import type { Milestone, Phase, Task } from "../domain/model";
 import { addDays, days, today, dateLabel, phaseProgress, taskProgress, overdue } from "../domain/logic";
 import { blankTask } from "../domain/seed";
-import { Header, Badge, Progress, personName, Empty } from "./ui";
+import { Header, Badge, Progress, personName, Empty, Modal } from "./ui";
 import {
   approveScheduleProposal,
   captureScheduleBaseline,
   draftMilestoneCreation,
   draftScheduleProposal,
   getPlanningView,
+  getProjectPlanning,
+  instantiateFitOutTemplate,
+  previewFitOutTemplate,
   rejectScheduleProposal,
   submitScheduleProposal,
+  type FitOutTemplatePreview,
   type PlanningNodeView,
   type ProjectCalendar,
 } from "../planning";
@@ -47,6 +51,8 @@ export function Planning({ projectId, onTask, filteredIds }: {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [calendarHoliday, setCalendarHoliday] = useState("");
   const [calendarDraft, setCalendarDraft] = useState<ProjectCalendar | null>(null);
+  const [templatePreview, setTemplatePreview] = useState<FitOutTemplatePreview | null>(null);
+  const [selectedMilestoneId, setSelectedMilestoneId] = useState("");
   const [paths, setPaths] = useState<{ id: string; d: string }[]>([]);
   const chartRef = useRef<HTMLDivElement>(null);
   const barRefs = useRef(new Map<string, HTMLButtonElement>());
@@ -54,7 +60,13 @@ export function Planning({ projectId, onTask, filteredIds }: {
   const width = Math.round(config.dayWidth * zoom);
   const chartWidth = config.span * width;
   const project = db.projects.find((item) => item.id === selected);
+  const canApplyTemplate = !!project &&
+    !db.phases.some((item) => item.projectId === selected) &&
+    !db.tasks.some((item) => item.projectId === selected) &&
+    !db.milestones.some((item) => item.projectId === selected) &&
+    !db.planning?.some((item) => item.projectId === selected);
   const planning = selected && project ? getPlanningView(db, selected, today()) : undefined;
+  const projectPlanning = selected && project ? getProjectPlanning(db, selected) : undefined;
   const nodeView = new Map(planning?.nodes.map((item) => [item.node.kind + ":" + item.node.id, item]) ?? []);
   const actorId = project?.managerId || "";
   const phases = db.phases.filter((item) => item.projectId === selected).sort((a, b) => a.order - b.order);
@@ -121,8 +133,8 @@ export function Planning({ projectId, onTask, filteredIds }: {
     const barWidth = isMilestone ? Math.max(18, width) : Math.max(width / 2, (Math.min(config.span - 1, last) - Math.max(0, first) + 1) * width);
     const label = `${isMilestone ? "Milestone" : "Task"} ${node.name}. Approved ${dateLabel(start)} to ${dateLabel(finish)}.${isMilestone ? "" : ` Reported progress ${(node as Task).progress}%.`}`;
     const projection = nodeView.get((isMilestone ? "milestone:" : "task:") + node.id);
+    const taskMetadata = !isMilestone ? projectPlanning?.taskPlanning.find((item) => item.taskId === node.id) : undefined;
     const blocking = planning?.blockers.filter((item) => item.node?.id === node.id && item.node.kind === (isMilestone ? "milestone" : "task")) ?? [];
-    const linkedTask = isMilestone ? db.tasks.find((task) => task.id === (node as Milestone).taskId) : undefined;
     const overlay = (dates: PlanningNodeView["baseline"] | PlanningNodeView["proposed"], kind: "baseline" | "proposed") => {
       if (!dates || days(anchor, dates.finish) < 0 || days(anchor, dates.start) >= config.span) return null;
       return <span className={`gantt-overlay ${kind}`} title={`${kind === "baseline" ? "Baseline" : "Proposed"} ${dateLabel(dates.start)} to ${dateLabel(dates.finish)}`}
@@ -132,10 +144,12 @@ export function Planning({ projectId, onTask, filteredIds }: {
     return <>
       {overlay(projection?.baseline, "baseline")}
       {overlay(projection?.proposed, "proposed")}
+      {taskMetadata?.actualStart && days(anchor, taskMetadata.actualStart) >= 0 && days(anchor, taskMetadata.actualStart) < config.span && <span className="gantt-actual-tick" style={{ left: days(anchor, taskMetadata.actualStart) * width }} title={`Actual start ${dateLabel(taskMetadata.actualStart)}`}>A</span>}
+      {taskMetadata?.actualFinish && days(anchor, taskMetadata.actualFinish) >= 0 && days(anchor, taskMetadata.actualFinish) < config.span && <span className="gantt-actual-tick finish" style={{ left: days(anchor, taskMetadata.actualFinish) * width }} title={`Actual finish ${dateLabel(taskMetadata.actualFinish)}`}>F</span>}
       <button key={node.id} ref={(element) => { if (element) barRefs.current.set(node.id, element); else barRefs.current.delete(node.id); }}
       type="button" className={`gantt-bar ${isMilestone ? "milestone" : ""} ${projection?.critical && planning?.criticalPathFeasible ? "critical" : ""} ${!isMilestone && (overdue(node as Task) || (node as Task).status === "Blocked") ? "risk" : ""}`}
-      style={{ left: Math.max(0, first) * width, width: barWidth }} aria-label={label} title={label}
-      onClick={() => { if (linkedTask) onTask(linkedTask); else if (!isMilestone) onTask(node as Task); }}>
+      style={{ left: Math.max(0, first) * width, width: barWidth }} aria-label={label + (taskMetadata?.actualStart ? ` Actual start ${dateLabel(taskMetadata.actualStart)}.` : "") + (taskMetadata?.actualFinish ? ` Actual finish ${dateLabel(taskMetadata.actualFinish)}.` : "") + (projection?.critical && planning?.criticalPathFeasible ? " Critical path." : "") + (blocking.length ? ` ${blocking.length} operational blockers.` : "")} title={label}
+      onClick={() => { if (isMilestone) setSelectedMilestoneId(node.id); else onTask(node as Task); }}>
       {!isMilestone && <i style={{ width: taskProgress(db, node as Task) + "%" }} />}
       <span aria-hidden="true">{isMilestone ? "◆" : barWidth >= 70 ? node.name : ""}</span>
       </button>
@@ -171,8 +185,32 @@ export function Planning({ projectId, onTask, filteredIds }: {
       <select aria-label="Planning assignee filter" value={assignee} onChange={(event) => setAssignee(event.target.value)}><option value="">All assignees</option>{db.people.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select>
       <label className="inline"><input type="checkbox" checked={showLinks} onChange={(event) => setShowLinks(event.target.checked)} /> Dependencies</label>
       <button type="button" onClick={() => { setCalendarDraft(planning ? structuredClone(planning.calendar) : null); setCalendarOpen(!calendarOpen); }} aria-expanded={calendarOpen}>Calendar</button>
+      <button type="button" onClick={() => setTemplatePreview(previewFitOutTemplate())}>Fit-out template</button>
       <button type="button" onClick={() => document.getElementById("planning-review")?.scrollIntoView({ block: "start" })}>Review proposals{planning?.activeProposal ? " · 1 active" : ""}</button>
     </div>
+    {templatePreview && <section className="planning-edit-panel planning-template" aria-label="Editable fit-out template preview">
+      <div className="planning-review-head"><div><small>Review before instantiation</small><h2>Twelve-phase fit-out template</h2></div><button type="button" onClick={() => setTemplatePreview(null)}>Close preview</button></div>
+      <p className="muted">Review activity names, durations and parallel predecessor branches. Preview edits do not create task records.</p>
+      {!canApplyTemplate && <p role="status" className="planning-lead-note">This project already has a plan. Applying this template would duplicate task records, so it is available for review only. Create an empty project to instantiate it.</p>}
+      {templatePreview.map((phase, phaseIndex) => <details key={phase.key} className="planning-template-phase" open={phaseIndex === 0}>
+        <summary>{String(phaseIndex + 1).padStart(2, "0")} {phase.name} · {phase.activities.length} activities</summary>
+        <label>Phase name<input value={phase.name} onChange={(event) => setTemplatePreview(templatePreview.map((item, index) => index === phaseIndex ? { ...item, name: event.target.value } : item))} /></label>
+        {phase.activities.map((activity, activityIndex) => <div className="planning-template-activity" key={activity.key}>
+          <label>Activity name<input value={activity.name} onChange={(event) => setTemplatePreview(templatePreview.map((item, index) => index === phaseIndex ? { ...item, activities: item.activities.map((entry, position) => position === activityIndex ? { ...entry, name: event.target.value } : entry) } : item))} /></label>
+          <label>Type<input value={activity.kind === "milestone" ? "Milestone" : "Task"} readOnly /></label>
+          {activity.kind === "task" && <label>Working days<input type="number" min={1} step={1} value={activity.durationWorkingDays} onChange={(event) => setTemplatePreview(templatePreview.map((item, index) => index === phaseIndex ? { ...item, activities: item.activities.map((entry, position) => position === activityIndex ? { ...entry, durationWorkingDays: Number(event.target.value) } : entry) } : item))} /></label>}
+          <label>Predecessors<select multiple aria-label={`Predecessors for ${activity.name}`} value={activity.predecessors} onChange={(event) => setTemplatePreview(templatePreview.map((item, index) => index === phaseIndex ? { ...item, activities: item.activities.map((entry, position) => position === activityIndex ? { ...entry, predecessors: Array.from(event.target.selectedOptions, (option) => option.value) } : entry) } : item))}>
+            {templatePreview.flatMap((item) => item.activities).filter((entry) => entry.key !== activity.key).map((entry) => <option key={entry.key} value={entry.key}>{entry.name}</option>)}
+          </select></label>
+          <button type="button" aria-label={`Remove ${activity.name}`} onClick={() => setTemplatePreview(templatePreview.map((item) => ({ ...item, activities: item.activities.filter((entry) => entry.key !== activity.key).map((entry) => ({ ...entry, predecessors: entry.predecessors.filter((key) => key !== activity.key) })) })))}>Remove</button>
+        </div>)}
+        <button type="button" onClick={() => setTemplatePreview(templatePreview.map((item, index) => index === phaseIndex ? { ...item, activities: [...item.activities, { key: "draft-" + uid(), name: "New activity", kind: "task", durationWorkingDays: 1, trade: "Other", predecessors: [] }] } : item))}>+ Add activity</button>
+      </details>)}
+      <button type="button" className="primary" disabled={!canApplyTemplate} onClick={() => {
+        const saved = mutate((next) => { instantiateFitOutTemplate(next, selected, templatePreview, actorId); }, "Fit-out template instantiated");
+        if (saved) setTemplatePreview(null);
+      }}>Confirm template for this empty project</button>
+    </section>}
     {calendarOpen && calendarDraft && <section className="planning-edit-panel" aria-label="Project working calendar">
       <h2>Working calendar</h2>
       <p className="muted">Calendar changes create a proposal. Existing approved dates stay in place until a Project Manager approves it.</p>
@@ -217,8 +255,8 @@ export function Planning({ projectId, onTask, filteredIds }: {
             return <div className={`gantt-row ${"phase" in row ? "phase-row" : ""}`} key={key} data-row-id={key}>
               <div className="gantt-info">
                 {"phase" in row ? <button className="gantt-phase" type="button" aria-expanded={!collapsed.includes(row.phase.id)} onClick={() => setCollapsed(collapsed.includes(row.phase.id) ? collapsed.filter((id) => id !== row.phase.id) : [...collapsed, row.phase.id])}><span>{collapsed.includes(row.phase.id) ? "▸" : "▾"} {String(row.phase.order + 1).padStart(2, "0")} {row.phase.name}</span><Progress value={phaseProgress(db, row.phase.id)} /></button> :
-                  "task" in row ? <button className="gantt-task" type="button" onClick={() => onTask(row.task)} aria-label={`Open task ${row.task.name}. Approved ${dateLabel(row.task.start)} to ${dateLabel(row.task.due)}. ${row.task.dependencies.length} predecessors.`}><span className="gantt-name"><strong>{row.task.parentId ? "↳ " : ""}{row.task.name}</strong><small className="mobile-dates">{dateLabel(row.task.start)} → {dateLabel(row.task.due)} · {personName(db, row.task.assigneeId)}</small></span><span>{personName(db, row.task.assigneeId).split(" ")[0]}</span><span>{row.task.start.slice(5)} → {row.task.due.slice(5)}</span><Progress value={taskProgress(db, row.task)} /></button> :
-                  <div className="gantt-milestone-info"><span className="gantt-name"><strong>◆ {row.milestone.name}</strong><small>Milestone{row.milestone.taskId ? ` · linked to ${db.tasks.find((task) => task.id === row.milestone.taskId)?.name || "task"}` : ""}</small></span><span>—</span><span>{row.milestone.due.slice(5)}</span><span>Event</span></div>}
+                  "task" in row ? <button className="gantt-task" type="button" onClick={() => onTask(row.task)} aria-label={`Open task ${row.task.name}. Approved ${dateLabel(row.task.start)} to ${dateLabel(row.task.due)}. ${planning?.links.filter((link) => link.successor.kind === "task" && link.successor.id === row.task.id).length || 0} predecessors.`}><span className="gantt-name"><strong>{row.task.parentId ? "↳ " : ""}{row.task.name}</strong>{nodeView.get("task:" + row.task.id)?.critical && planning?.criticalPathFeasible && <small className="gantt-inline-status">Critical path</small>}<small className="mobile-dates">{dateLabel(row.task.start)} → {dateLabel(row.task.due)} · {personName(db, row.task.assigneeId)}</small></span><span>{personName(db, row.task.assigneeId).split(" ")[0]}</span><span>{row.task.start.slice(5)} → {row.task.due.slice(5)}</span><Progress value={taskProgress(db, row.task)} /></button> :
+                  <button className="gantt-milestone-info" type="button" onClick={() => setSelectedMilestoneId(row.milestone.id)}><span className="gantt-name"><strong>◆ {row.milestone.name}</strong><small>Milestone{row.milestone.taskId ? ` · linked to ${db.tasks.find((task) => task.id === row.milestone.taskId)?.name || "task"}` : ""}</small></span><span>—</span><span>{row.milestone.due.slice(5)}</span><span>Event</span></button>}
               </div>
               <div className="gantt-track" style={{ width: chartWidth, backgroundSize: width + "px 100%" }}>
                 {todayOffset >= 0 && todayOffset < config.span && <span className="gantt-today" style={{ left: todayOffset * width }} title="Today" />}
@@ -231,6 +269,21 @@ export function Planning({ projectId, onTask, filteredIds }: {
       </div>
     </div>
     {!tasks.length && <Empty>No tasks in this programme. Add a task to begin.</Empty>}
+    {selectedMilestoneId && (() => {
+      const milestone = db.milestones.find((item) => item.id === selectedMilestoneId);
+      if (!milestone) return null;
+      const projection = nodeView.get("milestone:" + milestone.id);
+      const condition = projectPlanning?.milestonePlanning.find((item) => item.milestoneId === milestone.id)?.completionCondition;
+      const linkedTask = db.tasks.find((item) => item.id === milestone.taskId);
+      return <Modal title={`Milestone: ${milestone.name}`} onClose={() => setSelectedMilestoneId("")}>
+        <p><strong>Approved event:</strong> {dateLabel(milestone.due)}</p>
+        <p><strong>Baseline:</strong> {projection?.baseline ? dateLabel(projection.baseline.start) : "Not captured"}</p>
+        <p><strong>Proposed:</strong> {projection?.proposed ? dateLabel(projection.proposed.start) : "None"}</p>
+        <p><strong>Completion condition:</strong> {condition?.kind || "Manual"}</p>
+        {planning?.blockers.filter((item) => item.node?.kind === "milestone" && item.node.id === milestone.id).map((item, index) => <p key={index} role="status">{item.detail}</p>)}
+        {linkedTask && <button type="button" onClick={() => { setSelectedMilestoneId(""); onTask(linkedTask); }}>Open linked task</button>}
+      </Modal>;
+    })()}
     <section className="planning-review" id="planning-review" aria-label="Schedule proposal review">
       <div className="planning-review-head">
         <div><small>Project Manager decision desk</small><h2>Schedule review</h2></div>

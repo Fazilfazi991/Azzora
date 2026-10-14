@@ -2183,6 +2183,25 @@ details > summary { overflow-wrap: anywhere; }
 .planning-review-table thead { background: #f7f3f0; }
 .planning-conflicts { color: #93000a; }
 .planning-review-actions .planning-lead-check { display: flex; align-items: center; gap: 8px; flex-basis: 100%; color: #7b2510; }
+.planning-template-phase { border-top: 1px solid var(--line); padding: 8px 0; }
+.planning-template-phase summary { cursor: pointer; font-weight: 600; }
+.planning-template-phase > label,
+.planning-template-activity label { display: grid; gap: 4px; font-size: 11px; font-weight: 600; }
+.planning-template-phase > label { max-width: 360px; margin: 10px 0; }
+.planning-template-activity {
+  display: grid;
+  grid-template-columns: minmax(160px, 2fr) 100px 100px minmax(160px, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.planning-template-activity label { min-width: 0; }
+.planning-template-activity input,
+.planning-template-activity select { min-width: 0; width: 100%; }
+.planning-template-activity select { height: 68px; }
 .task-schedule-controls { border-top: 1px solid var(--line); margin: 18px 0; padding-top: 12px; }
 .task-schedule-controls h3 { margin: 0 0 6px; }
 .task-dependency-row { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(130px, 1fr) 100px auto; gap: 8px; align-items: end; margin: 10px 0; }
@@ -2257,7 +2276,10 @@ details > summary { overflow-wrap: anywhere; }
 .gantt-task .progress-wrap { min-width: 0; }
 .gantt-task .progress-wrap .track { min-width: 0; }
 .gantt-milestone-info { font-size: 10px; background: #faf8f5; }
+.gantt-milestone-info:hover,
+.gantt-milestone-info:focus-visible { background: #f2edeb; }
 .gantt-milestone-info small { display: block; margin-top: 3px; color: var(--muted); }
+.gantt-inline-status { display: block; color: #7b2510; font-size: 9px; font-weight: 700; }
 .gantt-phase {
   display: flex;
   align-items: center;
@@ -2324,6 +2346,8 @@ details > summary { overflow-wrap: anywhere; }
 }
 .gantt-overlay.baseline { top: 13px; height: 38px; border: 1px solid #745a37; background: transparent; }
 .gantt-overlay.proposed { top: 8px; height: 48px; border: 2px dashed #9a3c25; background: transparent; }
+.gantt-actual-tick { position: absolute; top: 1px; height: 16px; padding-left: 2px; border-left: 3px solid #294a34; color: #294a34; background: #fff; font-size: 9px; font-weight: 700; z-index: 4; pointer-events: none; }
+.gantt-actual-tick.finish { top: auto; bottom: 1px; }
 .gantt-status-text { position: absolute; top: 46px; z-index: 3; white-space: nowrap; font-size: 9px; font-weight: 700; color: #7b2510; pointer-events: none; }
 .dependency-lines { position: absolute; top: 0; pointer-events: none; z-index: 2; }
 .mobile-dates { display: none; }
@@ -2370,4 +2394,7 @@ details > summary { overflow-wrap: anywhere; }
   .planning-review { margin-bottom: 96px; }
   .task-dependency-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .task-dependency-row label:first-child { grid-column: 1 / -1; }
+  .planning-template-activity { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .planning-template-activity label:first-child,
+  .planning-template-activity label:nth-child(4) { grid-column: 1 / -1; }
 }

@@ -351,6 +351,12 @@ export function TaskDrawer({
             onChange={(e) => setComment(e.target.value)}
           />
         </Field>
+        <h3>Planning progress history</h3>
+        {(initialTaskPlanning?.progressHistory || []).map((report) => <p key={report.id}>
+          <b>{report.percent}%</b> · {report.date} · {personName(db, report.actorId)}
+          {report.notes && <> · {report.notes}</>}
+        </p>)}
+        {!initialTaskPlanning?.progressHistory?.length && <p className="muted">No dated planning progress reports yet. Existing task percentages remain unchanged.</p>}
         <h3>Activity</h3>
         {db.activities
           .filter((a) => a.entityId === task.id)

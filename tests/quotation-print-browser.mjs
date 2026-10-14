@@ -128,10 +128,11 @@ try {
           page.getByLabel("Issued quotation status", { exact: true }),
         ).toBeDisabled();
         await quotationStep(page, 4);
-        await expect(page.locator(".quote-sheet")).toHaveCount(3);
+        // The compact workflow prints a cover and one complete BOQ/summary page.
+        await expect(page.locator(".quote-sheet")).toHaveCount(2);
         cases.push({
           kind: "workflow-accepted",
-          expectedPages: 3,
+          expectedPages: 2,
           amounts: ["225.00", "11.25", "236.25"],
         });
       }

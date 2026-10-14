@@ -65,6 +65,9 @@ try {
   await page.evaluate(() => { Storage.prototype.setItem = window.__originalTimelineSetItem; });
   await page.reload();
   await page.getByRole("heading", { name: "Planning & Timeline" }).waitFor();
+  const recoveryAfterQuota = page.getByRole("region", { name: "Saved data recovery" });
+  if (await recoveryAfterQuota.isVisible())
+    throw Error(`Saved submitted proposal could not reload: ${await recoveryAfterQuota.innerText()}`);
   await page.getByLabel("Planning project").selectOption("timeline-independent-browser-project");
   const afterReload = JSON.parse(await page.evaluate(() => localStorage.getItem("azzora-demo-v1")));
   assert.equal(afterReload.tasks.find((row) => row.id === "timeline-independent-a").due, "2026-11-03");

@@ -523,7 +523,12 @@ try {
         await page
           .getByRole("button", { name: "Open navigation", exact: true })
           .click();
-      await page.locator('.sidebar a[href="#/reports"]').click();
+      const management = page
+        .getByRole("complementary", { name: "Main navigation", exact: true })
+        .getByRole("button", { name: "Management", exact: true });
+      if ((await management.getAttribute("aria-expanded")) === "false")
+        await management.click();
+      await page.locator('.sidebar nav a[href="#/reports"]').click();
       await expect(page).toHaveURL(url + "/#/reports");
       await expect(main.locator("h1").first()).toContainText("Reports");
       await expect(input).toHaveValue("");

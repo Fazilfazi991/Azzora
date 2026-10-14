@@ -25,7 +25,7 @@ for (const width of [1440, 1024, 768, 390]) {
     .getByLabel("Work category name", { exact: true })
     .fill("Civil works");
   await section
-    .getByRole("button", { name: "Add Heading (No Price)", exact: true })
+    .getByRole("button", { name: "Add Parent Work Description", exact: true })
     .click();
   await section
     .getByRole("button", { name: "Add Priced Item", exact: true })

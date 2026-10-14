@@ -74,7 +74,7 @@ try {
     await openQuotationCategory(section);
     await section.getByLabel("Work category name", exact()).fill("Civil works");
     await section
-      .getByRole("button", { name: "Add Heading (No Price)", exact: true })
+      .getByRole("button", { name: "Add Parent Work Description", exact: true })
       .click();
     let rows = section.getByTestId("quote-line");
     await openQuotationItem(rows.nth(0));
@@ -82,8 +82,10 @@ try {
       .nth(0)
       .getByLabel("Description", exact())
       .fill("Renovation scope");
-    await section
-      .getByRole("button", { name: "Add Priced Item", exact: true })
+    await rows
+      .nth(0)
+      .locator("xpath=..")
+      .getByRole("button", { name: "Add Child Item", exact: true })
       .click();
     await openQuotationItem(rows.nth(1));
     await rows
@@ -99,10 +101,11 @@ try {
     await quotationStep(page, 2);
     await expect(page.getByTestId("grand-total")).toHaveText("AED 236.25");
     await quotationAdvanced(page);
-    await openQuotationItem(rows.nth(1));
+    await openQuotationItem(rows.nth(0));
     await rows
-      .nth(1)
-      .getByRole("button", { name: "Add Item Breakdown", exact: true })
+      .nth(0)
+      .locator("xpath=..")
+      .getByRole("button", { name: "Add Child Item", exact: true })
       .click();
     await openQuotationItem(rows.nth(2));
     await rows
@@ -178,6 +181,10 @@ try {
       .nth(1)
       .getByRole("button", { name: "Delete section", exact: true })
       .click();
+    await page
+      .getByRole("dialog", { name: /^Delete category .* and all items\?$/ })
+      .getByRole("button", { name: "Confirm", exact: true })
+      .click();
     await openQuotationCategory(section);
     await section
       .getByRole("button", { name: "Add Subcategory", exact: true })
@@ -192,6 +199,10 @@ try {
       .getByTestId("quote-section")
       .nth(1)
       .getByRole("button", { name: "Delete section", exact: true })
+      .click();
+    await page
+      .getByRole("dialog", { name: /^Delete category .* and all items\?$/ })
+      .getByRole("button", { name: "Confirm", exact: true })
       .click();
     await quotationStep(page, 2);
     await page.getByLabel("VAT percentage", exact()).fill("10");

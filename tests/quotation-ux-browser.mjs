@@ -182,7 +182,7 @@ async function crossAndInline(width) {
   await shot(p, width, "matched-reference-scope");
   await field(p, "Find a category or item").fill("Painting");
   await expect(p.getByTestId("quote-section")).not.toHaveCount(0);
-  await button(p, "View worked example").click();
+  await button(p, "View Example").click();
   await expect(dialog(p)).toHaveCount(1);
   await p.goBack();
   await p.goBack();
@@ -266,7 +266,7 @@ async function crossAndInline(width) {
     "all five steps support keyboard activation and changed-panel heading focus without data writes",
   );
   await quotationStep(p, 1);
-  await button(p, "View worked example").click();
+  await button(p, "View Example").click();
   await dbutton(p, "Add example as a new work category").click();
   await expect(p.getByTestId("quote-section")).toHaveCount(1);
   const example = (await db(p)).quotations.find((q) => q.id === id).sections[0];
@@ -277,7 +277,7 @@ async function crossAndInline(width) {
   const cat = p.getByTestId("quote-section");
   await openQuotationCategory(cat);
   await cat
-    .getByRole("button", { name: "Add Heading (No Price)", exact: true })
+    .getByRole("button", { name: "Add Parent Work Description", exact: true })
     .click();
   let rows = cat.getByTestId("quote-line");
   await openQuotationItem(rows.nth(1));
@@ -288,24 +288,25 @@ async function crossAndInline(width) {
   await expect(
     rows.nth(1).getByLabel("Quantity", { exact: true }),
   ).toBeDisabled();
-  await openQuotationItem(rows.nth(0));
-  await rows
-    .nth(0)
-    .getByRole("button", { name: "Add Item Breakdown", exact: true })
-    .click();
   await openQuotationItem(rows.nth(1));
   await rows
     .nth(1)
+    .locator("xpath=..")
+    .getByRole("button", { name: "Add Child Item", exact: true })
+    .click();
+  await openQuotationItem(rows.nth(2));
+  await rows
+    .nth(2)
     .getByLabel("Description", { exact: true })
     .fill("Fictional complimentary protection");
   await rows
-    .nth(1)
+    .nth(2)
     .getByLabel("Pricing Type", { exact: true })
     .selectOption("FOC");
   let record = (await db(p)).quotations.find((q) => q.id === id);
   expect(record.sections[0].rows).toHaveLength(3);
-  expect(record.sections[0].rows[1].parentId).toBe(example.rows[0].id);
-  expect(record.sections[0].rows[2].pricingType).toBe("Heading");
+  expect(record.sections[0].rows[2].parentId).toBe(record.sections[0].rows[1].id);
+  expect(record.sections[0].rows[1].pricingType).toBe("Heading");
   await cat
     .getByRole("button", { name: "Add Subcategory", exact: true })
     .click();
@@ -367,10 +368,10 @@ async function oliveJourney(width) {
   await expect(
     p.getByRole("checkbox", { name: "Advanced scope controls", exact: true }),
   ).not.toBeChecked();
-  await expect(button(p, "Add Heading (No Price)")).toHaveCount(0);
+  await expect(button(p, "Add Parent Work Description")).toHaveCount(0);
   await expect(button(p, "Add Subcategory")).toHaveCount(0);
   const empty = await raw(p);
-  await button(p, "View worked example").click();
+  await button(p, "View Example").click();
   await expect(dialog(p)).toContainText("fictional");
   expect(await raw(p)).toBe(empty);
   await p.keyboard.press("Escape");

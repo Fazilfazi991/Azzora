@@ -177,9 +177,6 @@ describe("quotation financial and lifecycle rules", () => {
     expect(JSON.stringify(source)).toBe(original);
   });
   it("rejects changes to every issued status", () => {
-    const db = seed(),
-      q = db.quotations[0];
-    changeQuotationStatus(db, q.id, "Finalized");
     for (const status of [
       "Finalized",
       "Sent",
@@ -188,6 +185,8 @@ describe("quotation financial and lifecycle rules", () => {
       "Expired",
       "Revised",
     ] as const) {
+      const db = seed(), q = db.quotations[0];
+      changeQuotationStatus(db, q.id, "Finalized");
       changeQuotationStatus(db, q.id, status);
       expect(() =>
         saveQuotation(db, { ...q, status: "Draft", number: "Tampered" }),

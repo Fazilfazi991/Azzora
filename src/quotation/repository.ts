@@ -175,6 +175,11 @@ export function saveQuotation(db: Database, q: Quotation, validate = false) {
     throw Error("Linked customer does not exist.");
   if (q.projectId && !db.projects.some((p) => p.id === q.projectId))
     throw Error("Linked project does not exist.");
+  if (
+    q.projectId &&
+    db.projects.find((p) => p.id === q.projectId)?.clientId !== q.customerId
+  )
+    throw Error("Linked project must belong to the selected customer.");
   if (validate) {
     const errors = validationErrors(q);
     if (errors.length) throw Error(errors.join(" "));
@@ -195,6 +200,17 @@ export function changeQuotationStatus(
   if (!q) throw Error("Quotation not found.");
   if (!quotationStatuses.includes(status)) throw Error("Invalid status.");
   if (status === q.status) return;
+  if (q.status === "Accepted")
+    throw Error(
+      "Accepted quotations are immutable commercial records. Create a revision for proposed changes.",
+    );
+  if (
+    ["Rejected", "Expired", "Revised"].includes(q.status) &&
+    status !== "Draft"
+  )
+    throw Error(
+      "Create a revision or reopen with a reason before changing this terminal status.",
+    );
   if (status === "Draft" && !notes.trim())
     throw Error("Enter a reason to return this quotation to draft.");
   if (status !== "Draft") {
@@ -203,16 +219,34 @@ export function changeQuotationStatus(
   }
   if (q.status === "Draft" && status !== "Finalized")
     throw Error("Finalize the draft before recording delivery status.");
+  if (status === "Finalized" && q.status !== "Draft")
+    throw Error("Only drafts can be finalized.");
+  if (status !== "Draft") {
+    if (
+      !db.clients.some((c) => c.id === q.customerId && c.status !== "Archived")
+    )
+      throw Error("Select an active Customer Master record before issuing.");
+    if (
+      q.projectId &&
+      !db.projects.some(
+        (p) => p.id === q.projectId && p.clientId === q.customerId,
+      )
+    )
+      throw Error("Quotation project must belong to its customer.");
+  }
   q.history.push({
     date: new Date().toISOString(),
     action: q.status + " → " + status,
     notes,
     snapshot:
-      status === "Draft" ? JSON.stringify({ ...q, history: [] }) : undefined,
+      status === "Draft" || status === "Finalized" || status === "Accepted"
+        ? JSON.stringify({ ...q, history: [] })
+        : undefined,
   });
   q.status = status;
   q.updatedAt = new Date().toISOString();
   if (status === "Finalized") q.finalizedAt = q.updatedAt;
+  if (status === "Accepted") q.acceptedAt = q.updatedAt;
 }
 export function copyQuotation(
   db: Database,
@@ -226,6 +260,7 @@ export function copyQuotation(
   q.id = uid();
   q.status = "Draft";
   delete q.finalizedAt;
+  delete q.acceptedAt;
   q.createdAt = q.updatedAt = new Date().toISOString();
   q.date = today();
   if (revision) {

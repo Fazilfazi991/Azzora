@@ -1,4 +1,11 @@
 import type { Quotation } from "../quotation/model";
+import type {
+  Contract,
+  Expense,
+  Invoice,
+  Payment,
+  CustomerContact,
+} from "../commercial/model";
 export type TaskStatus =
   "Not Started" | "In Progress" | "Waiting" | "Blocked" | "Completed";
 export type Priority = "Low" | "Normal" | "High" | "Critical";
@@ -17,6 +24,21 @@ export interface Client {
   id: string;
   name: string;
   contact: string;
+  code?: string;
+  type?: "Individual" | "Company";
+  phone?: string;
+  whatsapp?: string;
+  email?: string;
+  address?: string;
+  siteAddress?: string;
+  city?: string;
+  emirate?: string;
+  country?: string;
+  trn?: string;
+  notes?: string;
+  createdAt?: string;
+  status?: "Active" | "Archived";
+  contacts?: CustomerContact[];
 }
 export interface Project {
   id: string;
@@ -164,6 +186,17 @@ export interface Activity {
 }
 export interface Database {
   version: 1;
+  commercialVersion?: 1;
+  invoices: Invoice[];
+  payments: Payment[];
+  expenses: Expense[];
+  contracts: Contract[];
+  commercialNumbering: {
+    customer: number;
+    invoice: number;
+    receipt: number;
+    expense: number;
+  };
   quotations: Quotation[];
   quotationNumbering: { prefix: string; next: number };
   people: Person[];

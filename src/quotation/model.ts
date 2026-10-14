@@ -96,6 +96,8 @@ export interface Quotation {
   validity: string;
   vatEnabled: boolean;
   vatPercentage: string;
+  discount?: string;
+  acceptedAt?: string;
   introduction: {
     attention: string;
     opening: string;

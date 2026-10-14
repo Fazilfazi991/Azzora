@@ -26,14 +26,18 @@ export function lineAmount(row: QuotationLineItem): bigint {
 }
 export const sectionAmount = (section: QuotationSection) =>
   section.rows.reduce((sum, row) => sum + lineAmount(row), 0n);
+export const discountAmount = (q: Quotation) => cents(q.discount || "0");
 export function totals(q: Quotation) {
   const subtotal = q.sections.reduce(
     (sum, section) => sum + sectionAmount(section),
     0n,
   );
   const v = decimal(q.vatPercentage || "0");
-  const vat = q.vatEnabled ? round(subtotal * v.n, v.d * 100n) : 0n;
-  return { subtotal, vat, grand: subtotal + vat };
+  const discount = discountAmount(q);
+  if (discount > subtotal) throw Error("Discount cannot exceed subtotal.");
+  const net = subtotal - discount;
+  const vat = q.vatEnabled ? round(net * v.n, v.d * 100n) : 0n;
+  return { subtotal, vat, grand: net + vat };
 }
 export function paymentAmount(term: QuotationPaymentTerm, grand: bigint) {
   if (term.amountOverride !== undefined && term.amountOverride !== "")
@@ -48,6 +52,7 @@ export function paymentPercentage(q: Quotation) {
   }, 0n);
 }
 export function formatMoney(value: bigint, prefix = false): string {
+  if (value < 0n) return (prefix ? "AED " : "") + "−" + formatMoney(-value);
   const s = value.toString().padStart(3, "0");
   return (
     (prefix ? "AED " : "") +

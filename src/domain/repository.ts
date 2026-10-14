@@ -1,4 +1,5 @@
 import { initializeQuotations } from "../quotation/repository";
+import { initializeCommercial } from "../commercial/migration";
 import { z } from "zod";
 import type { Database, Task, Project, SnagStatus, Activity } from "./model";
 import { seed, generatePlan } from "./seed";
@@ -17,17 +18,28 @@ export interface Repository {
 export const localRepository: Repository = {
   load() {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return seed();
+    if (!raw) {
+      const db = seed();
+      initializeCommercial(db);
+      return db;
+    }
     const value = JSON.parse(raw) as Database;
     if (
       value.version !== 1 ||
       !Array.isArray(value.projects) ||
-      !Array.isArray(value.tasks)
+      !Array.isArray(value.tasks) ||
+      !Array.isArray(value.clients) ||
+      (value.commercialVersion !== undefined &&
+        value.commercialVersion !== 1) ||
+      [value.invoices, value.payments, value.expenses, value.contracts].some(
+        (collection) => collection !== undefined && !Array.isArray(collection),
+      )
     )
       throw Error(
         "Saved demo data is incompatible. Export it or reset from Settings.",
       );
     initializeQuotations(value);
+    initializeCommercial(value);
     return value;
   },
   save(db) {
@@ -158,7 +170,27 @@ export function createProject(
   if (db.projects.some((x) => x.code.toLowerCase() === p.code.toLowerCase()))
     throw Error("Project code must be unique.");
   if (!clientName.trim()) throw Error("Client name is required.");
-  db.clients.push({ id: p.clientId, name: clientName, contact });
+  const client = db.clients.find((c) => c.id === p.clientId);
+  if (client?.status === "Archived") throw Error("Choose an active customer.");
+  if (!client) {
+    const normalized = (s: string) =>
+      s
+        .normalize("NFKC")
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}]/gu, "");
+    if (db.clients.some((c) => normalized(c.name) === normalized(clientName)))
+      throw Error(
+        "Possible duplicate customer. Select the existing customer or add one through Customer Master.",
+      );
+    db.clients.push({
+      id: p.clientId,
+      name: clientName.trim(),
+      contact,
+      status: "Active",
+      createdAt: new Date().toISOString(),
+    });
+    initializeCommercial(db);
+  }
   db.projects.push(p);
   generatePlan(db, p, standard);
   const selected = { ...team, "Project Manager": p.managerId };

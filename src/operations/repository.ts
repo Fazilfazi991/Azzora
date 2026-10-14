@@ -33,6 +33,7 @@ import { uid, today } from "../domain/logic";
 import { record } from "../domain/repository";
 import { cents, amountString, invoiceTotals } from "../commercial/calculations";
 import { blankInvoice, saveInvoice, validDate } from "../commercial/repository";
+import { creditAllocation, remainingCreditLines } from "./credit-allocation";
 import {
   variationTotals,
   variationNet,
@@ -43,10 +44,7 @@ import {
   quantityString,
   supplierBalance,
   supplierPaid,
-  credited,
   invoicePosition,
-  proportionalVat,
-  invoiceItemTotals,
 } from "./calculations";
 export function demoActor(db: Database, id: string) {
   const actor = db.people.find((p) => p.id === id && p.status !== "Inactive");
@@ -1067,6 +1065,7 @@ function validateCredit(db: Database, c: CreditNote) {
     throw Error(
       "Invoice snapshot has negative net/VAT; review the original posting before issuing adjustments.",
     );
+  const remaining = remainingCreditLines(db, i);
   required(c.reason, "Credit reason");
   validDate(c.date);
   if (c.date < i.date || c.date > today())
@@ -1081,13 +1080,14 @@ function validateCredit(db: Database, c: CreditNote) {
   if (c.itemId) {
     const line = i.lines.find((l) => l.id === c.itemId);
     if (!line) throw Error("Credit invoice item not found.");
-    const lineTotal = invoiceItemTotals(i, c.itemId).grand;
+    const lineTotal = remaining.find((line) => line.itemId === c.itemId)!.gross;
     const itemReserved = op.credits
       .filter(
         (x) =>
           x.id !== c.id &&
           x.invoiceId === i.id &&
           x.itemId === c.itemId &&
+          x.status !== "Issued" &&
           x.status !== "Rejected",
       )
       .reduce((s, x) => s + cents(x.gross), 0n);
@@ -1128,6 +1128,12 @@ export function saveCredit(db: Database, c: CreditNote, actor: string) {
     number: old?.number || allocate(db, "credit"),
     status: "Draft" as const,
   };
+  delete next.net;
+  delete next.vat;
+  delete next.issuedAt;
+  delete next.snapshot;
+  delete next.allocationVersion;
+  delete next.lineAllocations;
   audit(
     db,
     c.projectId,
@@ -1147,42 +1153,11 @@ export function issueCredit(db: Database, id: string, actor: string) {
     c = op.credits.find((c) => c.id === id && c.status === "Approved");
   if (!c) throw Error("Approve credit note before issuing.");
   const i = validateCredit(db, c),
-    t = invoiceTotals(i),
-    creditedSoFar = op.credits
-      .filter((x) => x.invoiceId === i.id && x.status === "Issued")
-      .reduce((s, x) => s + BigInt(x.vat!), 0n);
-  const total = credited(db, i.id) + cents(c.gross);
-  let value =
-    total === t.grand
-      ? {
-          vat: t.vat - creditedSoFar,
-          net: cents(c.gross) - (t.vat - creditedSoFar),
-        }
-      : proportionalVat(t.net, t.vat, t.grand, cents(c.gross));
-  if (c.itemId && total !== t.grand) {
-    const item = invoiceItemTotals(i, c.itemId),
-      previous = op.credits.filter(
-        (x) =>
-          x.invoiceId === i.id &&
-          x.itemId === c.itemId &&
-          x.status === "Issued",
-      );
-    const previousGross = previous.reduce((sum, x) => sum + cents(x.gross), 0n),
-      previousVat = previous.reduce((sum, x) => sum + BigInt(x.vat!), 0n);
-    const proposed =
-      previousGross + cents(c.gross) === item.grand
-        ? item.vat - previousVat
-        : proportionalVat(item.net, item.vat, item.grand, cents(c.gross)).vat;
-    const vat =
-      proposed > t.vat - creditedSoFar ? t.vat - creditedSoFar : proposed;
-    value = { vat, net: cents(c.gross) - vat };
-  }
-  if (value.vat < 0n || value.net < 0n)
-    throw Error(
-      "Credit allocation cannot reconcile VAT; review the item/amount adjustment basis.",
-    );
+    value = creditAllocation(db, i, cents(c.gross), c.itemId);
   c.net = value.net.toString();
   c.vat = value.vat.toString();
+  c.allocationVersion = 1;
+  c.lineAllocations = value.allocations;
   c.issuedAt = new Date().toISOString();
   c.snapshot = JSON.stringify({
     invoice: i,
@@ -1190,6 +1165,8 @@ export function issueCredit(db: Database, id: string, actor: string) {
     gross: c.gross,
     net: c.net,
     vat: c.vat,
+    allocationVersion: c.allocationVersion,
+    lineAllocations: c.lineAllocations,
   });
   c.status = "Issued";
   audit(

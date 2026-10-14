@@ -212,6 +212,13 @@ export interface CreditNote {
   status: "Draft" | "Submitted" | "Approved" | "Issued" | "Rejected";
   issuedAt?: string;
   snapshot?: string;
+  allocationVersion?: 1;
+  lineAllocations?: {
+    itemId: string;
+    net: string;
+    vat: string;
+    gross: string;
+  }[];
 }
 export interface Refund {
   id: string;

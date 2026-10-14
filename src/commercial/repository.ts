@@ -13,6 +13,7 @@ import {
   amountString,
   cents,
   invoiceTotals,
+  invoiceLineTotals,
   balanceDue,
   effectiveProject,
 } from "./calculations";
@@ -256,6 +257,7 @@ function validateInvoice(db: Database, i: Invoice) {
   if (i.due < i.date) throw Error("Due date cannot precede invoice date.");
   if (
     !i.lines.length ||
+    new Set(i.lines.map((line) => line.id)).size !== i.lines.length ||
     i.lines.some(
       (l) =>
         !l.description.trim() ||
@@ -388,6 +390,15 @@ export function issueInvoice(db: Database, id: string) {
   const t = validateInvoice(db, i);
   const c = db.clients.find((c) => c.id === i.customerId)!;
   const q = db.quotations.find((q) => q.id === i.quotationId);
+  const lineAllocations = invoiceLineTotals(i).map((line, index) => ({
+    itemId: i.lines[index].id,
+    tax: i.lines[index].tax,
+    subtotal: line.subtotal.toString(),
+    discount: line.discount.toString(),
+    net: line.net.toString(),
+    vat: line.vat.toString(),
+    grand: line.grand.toString(),
+  }));
   i.snapshot = {
     customer: customerSnapshot(c),
     company: structuredClone(
@@ -400,6 +411,8 @@ export function issueInvoice(db: Database, id: string) {
     net: t.net.toString(),
     vat: t.vat.toString(),
     grand: t.grand.toString(),
+    allocationVersion: 1,
+    lineAllocations,
   };
   i.status = "Issued";
   i.issuedAt = new Date().toISOString();

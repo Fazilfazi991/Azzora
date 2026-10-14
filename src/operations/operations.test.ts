@@ -35,6 +35,7 @@ import {
   invoicePosition,
   quantityUnits,
   credited,
+  invoiceItemTotals,
 } from "./calculations";
 import { closureSummary, closeCommercial } from "./closure-domain";
 import { operationalReports } from "./reports";
@@ -417,6 +418,88 @@ describe("operations migration and approval records", () => {
   });
 });
 describe("signed approved variations", () => {
+  it("preserves discounted mixed-tax BOQ values when billing a variation", () => {
+    const db = ready(),
+      v = variation(db);
+    v.items = [
+      { ...v.items[0], rate: "100", tax: "Exclusive" },
+      { ...v.items[0], id: uid(), rate: "100", tax: "Exempt" },
+    ];
+    v.discount = "0.01";
+    commands.saveVariation(db, v, actor);
+    approveVariation(db, v);
+    expect(variationTotals(v)).toMatchObject({
+      net: 19999n,
+      vat: 500n,
+      grand: 20499n,
+    });
+    const invoice = commands.generateVariationInvoice(db, v.id);
+    expect(invoiceTotals(invoice)).toMatchObject({
+      net: 19999n,
+      vat: 500n,
+      grand: 20499n,
+    });
+    expect(() =>
+      saveInvoice(db, {
+        ...invoice,
+        discount: "0",
+        lines: [
+          {
+            ...invoice.lines[0],
+            quantity: "1",
+            rate: "204.99",
+            tax: "Inclusive",
+          },
+        ],
+      }),
+    ).toThrow("approved value");
+    issueInvoice(db, invoice.id);
+    expect(db.invoices[0].snapshot).toMatchObject({
+      net: "19999",
+      vat: "500",
+      grand: "20499",
+    });
+  });
+  it("bills a capacity-discounted one-fils variation on the same net/VAT basis", () => {
+    const db = ready(),
+      v = variation(db);
+    const quotation = JSON.stringify(db.quotations[0]),
+      original = BigInt(db.contracts[0].net);
+    v.items = Array.from({ length: 3 }, () => ({
+      ...v.items[0],
+      id: uid(),
+      rate: "0.01",
+      tax: "Inclusive",
+    }));
+    v.discount = "0.02";
+    commands.saveVariation(db, v, actor);
+    approveVariation(db, v);
+    expect(variationTotals(v)).toMatchObject({ net: 1n, vat: 0n, grand: 1n });
+    const draft = commands.generateVariationInvoice(db, v.id);
+    issueInvoice(db, draft.id);
+    expect(
+      invoiceTotals(db.invoices.find((i) => i.id === draft.id)!),
+    ).toMatchObject({ net: 1n, vat: 0n, grand: 1n });
+    expect(projectCosts(db, v.projectId).revisedContract).toBe(original + 1n);
+    expect(JSON.stringify(db.quotations[0])).toBe(quotation);
+  });
+  it("revalidates taxable input before approving a submitted variation", () => {
+    const db = ready(),
+      v = variation(db);
+    const a = commands.submitApproval(
+      db,
+      "Variation",
+      v.id,
+      "Internal",
+      actor,
+      actor,
+    );
+    db.operations!.variations[0].items[0].rate = "-1";
+    expect(() =>
+      commands.decideApproval(db, a.id, true, "Review corrupted input", actor),
+    ).toThrow();
+    expect(a.status).toBe("Pending Approval");
+  });
   it("updates only approved net variation values", () => {
     const db = ready(),
       base = financials(db, emptyFilter).contract,
@@ -761,6 +844,58 @@ describe("supplier and procurement flow", () => {
   });
 });
 describe("customer credits, VAT and refunds", () => {
+  it("reconciles a one-fils discounted item credit, receipt and refund", () => {
+    const db = ready(),
+      draft = blankInvoice(db.clients[0].id, db.projects[0].id);
+    draft.lines = Array.from({ length: 3 }, () => ({
+      ...draft.lines[0],
+      id: uid(),
+      description: "Small item",
+      rate: "0.01",
+      tax: "Inclusive",
+    }));
+    draft.discount = "0.02";
+    saveInvoice(db, draft);
+    issueInvoice(db, draft.id);
+    const i = db.invoices[0];
+    expect(invoiceItemTotals(i, i.lines[2].id).grand).toBe(0n);
+    receipt(db, i, "0.01");
+    const c = credit(db, i, "0.01");
+    commands.saveCredit(db, { ...c, itemId: i.lines[0].id }, actor);
+    issuedCredit(db, c);
+    expect(db.operations!.credits[0]).toMatchObject({ net: "1", vat: "0" });
+    expect(invoicePosition(db, i)).toBe(-1n);
+    commands.postRefund(db, refund(i, "0.01"), actor);
+    expect(invoicePosition(db, i)).toBe(0n);
+    expect(financials(db, emptyFilter)).toMatchObject({
+      collected: 1n,
+      credits: 1n,
+      refunds: 1n,
+    });
+  });
+  it("rejects adjustments to a historical negative-VAT snapshot without rewriting it", () => {
+    const db = ready(),
+      i = invoice(db);
+    const original = i.snapshot!.vat;
+    i.snapshot!.vat = "-1";
+    expect(() => credit(db, i, "1")).toThrow("negative net/VAT");
+    i.snapshot!.vat = original;
+    const c = credit(db, i, "1"),
+      a = commands.submitApproval(
+        db,
+        "Credit Note",
+        c.id,
+        "Internal",
+        actor,
+        actor,
+      );
+    i.snapshot!.vat = "-1";
+    expect(() =>
+      commands.decideApproval(db, a.id, true, "Check original posting", actor),
+    ).toThrow("negative net/VAT");
+    expect(a.status).toBe("Pending Approval");
+    expect(i.snapshot!.vat).toBe("-1");
+  });
   it("preserves exempt item VAT treatment on an item-level credit", () => {
     const db = ready(),
       draft = blankInvoice(db.clients[0].id, db.projects[0].id);

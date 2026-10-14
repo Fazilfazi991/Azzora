@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Client } from "../domain/model";
+import type { Client, Database } from "../domain/model";
 import { emirates } from "../domain/model";
 import { useStore } from "../store";
 import { Header, Field, Modal, Badge, Empty, Confirm } from "../components/ui";
@@ -19,10 +19,12 @@ export function CustomerForm({
   customer,
   onClose,
   onSaved,
+  afterSave,
 }: {
   customer?: Client;
   onClose: () => void;
   onSaved: (id: string, customer: Client) => void;
+  afterSave?: (db: Database, customer: Client) => void;
 }) {
   const { db, mutate } = useStore();
   const [c, setC] = useState<Client>(() =>
@@ -43,6 +45,7 @@ export function CustomerForm({
           if (
             mutate((d) => {
               saved = saveCustomer(d, c, ack, reason);
+              afterSave?.(d, saved);
             }, "Customer saved")
           )
             onSaved(c.id, saved);

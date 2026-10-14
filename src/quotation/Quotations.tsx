@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ChevronDown } from "lucide-react";
 import { useStore } from "../store";
 import { Header, Field, Badge, Confirm, Modal, Empty } from "../components/ui";
@@ -17,6 +17,7 @@ import { defaultTerms } from "./seed";
 import {
   amountInWords,
   displayAmount,
+  displayRate,
   formatMoney,
   totals,
   sectionAmount,
@@ -51,6 +52,8 @@ import {
   numberingMode,
   boqTree,
   boqGroupAmount,
+  displayBoqCategoryNumber,
+  isBoqParentDescription,
 } from "./hierarchy";
 import "./quotation-hierarchy.css";
 const open = (id: string, mode = "edit") => {
@@ -81,6 +84,138 @@ function visibleBoqRows(
     },
     ...visibleBoqRows(node.children, [...ancestors, node.row.id]),
   ]);
+}
+function RecordPicker({
+  label,
+  value,
+  options,
+  emptyLabel,
+  addLabel,
+  disabled = false,
+  onClear,
+  onSelect,
+  onAdd,
+}: {
+  label: string;
+  value: string;
+  options: { id: string; name: string; detail?: string }[];
+  emptyLabel: string;
+  addLabel: string;
+  disabled?: boolean;
+  onClear?: () => void;
+  onSelect: (id: string) => void;
+  onAdd: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const details = useRef<HTMLDetailsElement>(null);
+  const search = useRef<HTMLInputElement>(null);
+  const selected = options.find((option) => option.id === value);
+  const filtered = options.filter((option) =>
+    `${option.name} ${option.detail || ""}`
+      .toLocaleLowerCase()
+      .includes(query.trim().toLocaleLowerCase()),
+  );
+  const close = () => {
+    if (details.current) {
+      details.current.open = false;
+      details.current.querySelector("summary")?.focus();
+    }
+    setQuery("");
+  };
+  useEffect(() => {
+    const dismiss = (event: PointerEvent) => {
+      if (details.current && !details.current.contains(event.target as Node)) {
+        details.current.open = false;
+        setQuery("");
+      }
+    };
+    document.addEventListener("pointerdown", dismiss);
+    return () => document.removeEventListener("pointerdown", dismiss);
+  }, []);
+  return (
+    <div className="field quotation-record-field">
+      <span className="quotation-record-label">{label}</span>
+      <details
+        ref={details}
+        className="quotation-record-picker"
+        onToggle={(event) => {
+          if (event.currentTarget.open)
+            requestAnimationFrame(() => search.current?.focus());
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.stopPropagation();
+            close();
+          }
+        }}
+      >
+        <summary
+          aria-label={`${label}: ${selected?.name || emptyLabel}`}
+          aria-disabled={disabled}
+          tabIndex={disabled ? -1 : 0}
+          onClick={(event) => disabled && event.preventDefault()}
+        >
+          <span>{selected?.name || emptyLabel}</span>
+          <ChevronDown size={16} aria-hidden="true" />
+        </summary>
+        <div className="quotation-record-options">
+          <input
+            ref={search}
+            type="search"
+            aria-label={`Search ${label.toLowerCase()}`}
+            placeholder={`Search ${label.toLowerCase()}…`}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <div className="quotation-record-list">
+            {onClear && value && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClear();
+                  close();
+                }}
+              >
+                Use document snapshot (no linked project)
+              </button>
+            )}
+            {filtered.length ? (
+              filtered.map((option) => (
+                <button
+                  type="button"
+                  key={option.id}
+                  data-record-id={option.id}
+                  className={option.id === value ? "is-selected" : ""}
+                  aria-current={option.id === value ? "true" : undefined}
+                  onClick={() => {
+                    onSelect(option.id);
+                    close();
+                  }}
+                >
+                  <span>{option.name}</span>
+                  {option.detail && <small>{option.detail}</small>}
+                </button>
+              ))
+            ) : (
+              <p className="muted">
+                No matches. You can add a new {label.toLowerCase()}.
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            className="quotation-record-add"
+            onClick={() => {
+              close();
+              onAdd();
+            }}
+          >
+            + {addLabel}
+          </button>
+        </div>
+      </details>
+    </div>
+  );
 }
 function Order({
   index,
@@ -348,39 +483,58 @@ export function Quotations({
       {addCustomer && q && (
         <CustomerForm
           onClose={() => setAddCustomer(false)}
-          onSaved={(_id, c) => {
-            selectCustomer(c);
-            setAddCustomer(false);
+          afterSave={(d, customer) => {
+            const saved = d.quotations.find((item) => item.id === q.id);
+            if (!saved)
+              throw Error(
+                "Quotation draft was not found; customer was not created.",
+              );
+            const next = structuredClone(saved);
+            next.customerId = customer.id;
+            next.customer = {
+              name: customer.name,
+              contact: customer.contact,
+              address: customer.address || "",
+              email: customer.email || "",
+              phone: customer.phone || "",
+            };
+            next.introduction.attention = "Dear: " + customer.name;
+            if (
+              next.projectId &&
+              d.projects.find((project) => project.id === next.projectId)
+                ?.clientId !== customer.id
+            ) {
+              next.projectId = "";
+              next.project = { name: "", location: "" };
+            }
+            saveQuotation(d, next);
           }}
+          onSaved={() => setAddCustomer(false)}
         />
       )}
       {addProject && q && (
         <Wizard
           initialCustomerId={q.customerId}
-          initialName={q.project.name}
-          initialLocation={q.project.location}
+          initialName={q.projectId ? "" : q.project.name}
+          initialLocation={q.projectId ? "" : q.project.location}
+          lockedCustomer
           onClose={() => setAddProject(false)}
-          onCreated={(projectId) => {
-            mutate((d) => {
-              const next = structuredClone(
-                d.quotations.find((x) => x.id === q.id)!,
+          afterCreate={(d, project) => {
+            const saved = d.quotations.find((item) => item.id === q.id);
+            if (!saved)
+              throw Error(
+                "Quotation draft was not found; project was not created.",
               );
-              const p = d.projects.find((p) => p.id === projectId)!;
-              const c = d.clients.find((c) => c.id === p.clientId)!;
-              next.projectId = p.id;
-              next.project = { name: p.name, location: p.location };
-              next.customerId = c.id;
-              next.customer = {
-                name: c.name,
-                contact: c.contact,
-                address: c.address || "",
-                email: c.email || "",
-                phone: c.phone || "",
-              };
-              saveQuotation(d, next);
-            }, "Project linked to quotation");
-            setAddProject(false);
+            if (saved.customerId !== project.clientId)
+              throw Error(
+                "The selected customer changed; project was not created.",
+              );
+            const next = structuredClone(saved);
+            next.projectId = project.id;
+            next.project = { name: project.name, location: project.location };
+            saveQuotation(d, next);
           }}
+          onCreated={() => setAddProject(false)}
         />
       )}
       {convert && q && (
@@ -967,11 +1121,9 @@ export function Quotations({
                   <section className="panel">
                     <h2>Customer & Project Details</h2>
                     <p className="muted">
-                      Choose a customer and project, or enter their details
-                      below for this quotation. The details here are the
-                      snapshot that appears on the document. Link an active
-                      customer before issuing; an unlinked snapshot can be saved
-                      as a draft.
+                      Select an existing customer and project, or add either one
+                      here. The quotation keeps its document snapshot and BOQ
+                      while you create a new record.
                     </p>
                     <div className="form-grid">
                       <Field label="Quotation Number">
@@ -995,142 +1147,68 @@ export function Quotations({
                           }
                         />
                       </Field>
-                      <Field label="Linked Customer">
-                        <select
-                          value={q.customerId}
-                          onChange={(e) => {
-                            const c = db.clients.find(
-                              (c) => c.id === e.target.value,
+                      <RecordPicker
+                        label="Customer"
+                        value={q.customerId}
+                        emptyLabel={q.customer.name || "Select customer"}
+                        addLabel="Add New Customer"
+                        options={db.clients
+                          .filter(
+                            (c) =>
+                              c.status !== "Archived" || c.id === q.customerId,
+                          )
+                          .map((c) => ({
+                            id: c.id,
+                            name: c.name,
+                            detail: c.code,
+                          }))}
+                        onSelect={(id) => {
+                          const customer = db.clients.find((c) => c.id === id);
+                          if (customer) selectCustomer(customer);
+                        }}
+                        onAdd={() => setAddCustomer(true)}
+                      />
+                      <RecordPicker
+                        label="Project"
+                        value={q.projectId}
+                        emptyLabel={
+                          q.project.name ||
+                          (q.customerId
+                            ? "Select project"
+                            : "Select customer first")
+                        }
+                        addLabel="Add New Project"
+                        disabled={!q.customerId}
+                        options={db.projects
+                          .filter((p) => p.clientId === q.customerId)
+                          .map((p) => ({
+                            id: p.id,
+                            name: p.name,
+                            detail: p.code,
+                          }))}
+                        onSelect={(id) =>
+                          update((n) => {
+                            const selected = db.projects.find(
+                              (p) => p.id === id && p.clientId === n.customerId,
                             );
-                            if (c) selectCustomer(c);
-                            else
-                              update((n) => {
-                                n.customerId = "";
-                                n.projectId = "";
-                              });
-                          }}
-                        >
-                          <option value="">Unlinked customer snapshot</option>
-                          {db.clients
-                            .filter(
-                              (c) =>
-                                c.status !== "Archived" ||
-                                c.id === q.customerId,
-                            )
-                            .map((c) => (
-                              <option key={c.id} value={c.id}>
-                                {c.name}
-                              </option>
-                            ))}
-                        </select>
-                      </Field>
-                      <Field label="Linked Project">
-                        <select
-                          value={q.projectId}
-                          onChange={(e) =>
-                            update((n) => {
-                              n.projectId = e.target.value;
-                              const p = db.projects.find(
-                                (p) => p.id === e.target.value,
+                            if (!selected)
+                              throw Error(
+                                "Choose a project belonging to the selected customer.",
                               );
-                              if (p) {
-                                n.project = {
-                                  name: p.name,
-                                  location: p.location,
-                                };
-                                n.customerId = p.clientId;
-                                const c = db.clients.find(
-                                  (c) => c.id === p.clientId,
-                                );
-                                if (c) {
-                                  n.customer = {
-                                    name: c.name,
-                                    contact: c.contact,
-                                    address: c.address || "",
-                                    email: c.email || "",
-                                    phone: c.phone || "",
-                                  };
-                                  n.introduction.attention = "Dear: " + c.name;
-                                }
-                              }
-                            })
-                          }
-                        >
-                          <option value="">Unlinked project snapshot</option>
-                          {db.projects
-                            .filter(
-                              (p) =>
-                                !q.customerId || p.clientId === q.customerId,
-                            )
-                            .map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.name}
-                              </option>
-                            ))}
-                        </select>
-                      </Field>
-                      <div className="actions">
-                        <button
-                          type="button"
-                          onClick={() => setAddCustomer(true)}
-                        >
-                          + Add Customer
-                        </button>
-                        <button
-                          type="button"
-                          disabled={!q.customerId}
-                          onClick={() => setAddProject(true)}
-                        >
-                          + Create Project
-                        </button>
-                      </div>
-                      {Object.entries(q.customer)
-                        .filter(([key]) => key === "name")
-                        .map(([key, value]) => (
-                          <Field
-                            key={key}
-                            label={
-                              {
-                                name: "Customer",
-                                contact: "Contact Person",
-                                address: "Customer Address",
-                                email: "Customer Email",
-                                phone: "Customer Phone",
-                              }[key] || key
-                            }
-                          >
-                            <input
-                              value={value}
-                              onChange={(e) =>
-                                update((n) => {
-                                  n.customer[
-                                    key as keyof Quotation["customer"]
-                                  ] = e.target.value;
-                                })
-                              }
-                            />
-                          </Field>
-                        ))}
-                      <Field label="Job / Project Name">
-                        <input
-                          value={q.project.name}
-                          onChange={(e) =>
-                            update((n) => {
-                              n.project.name = e.target.value;
-                            })
-                          }
-                        />
-                      </Field>
-                      <Field label="Project Location">
-                        <input
-                          value={q.project.location}
-                          onChange={(e) =>
-                            update((n) => {
-                              n.project.location = e.target.value;
-                            })
-                          }
-                        />
-                      </Field>
+                            n.projectId = selected.id;
+                            n.project = {
+                              name: selected.name,
+                              location: selected.location,
+                            };
+                          })
+                        }
+                        onClear={() =>
+                          update((n) => {
+                            n.projectId = "";
+                          })
+                        }
+                        onAdd={() => setAddProject(true)}
+                      />
                       <Field label="Salesperson / Prepared By">
                         <input
                           value={q.preparedBy}
@@ -1154,9 +1232,40 @@ export function Quotations({
                     </div>
                   </section>
                   <details className="panel quotation-advanced">
-                    <summary>Customer contact & address</summary>
+                    <summary>Document snapshot details</summary>
                     <div className="form-grid">
-                      {" "}
+                      {!q.customerId && (
+                        <Field label="Customer name on document">
+                          <input
+                            value={q.customer.name}
+                            onChange={(e) =>
+                              update((n) => {
+                                n.customer.name = e.target.value;
+                              })
+                            }
+                          />
+                        </Field>
+                      )}
+                      <Field label="Job / Project Name on document">
+                        <input
+                          value={q.project.name}
+                          onChange={(e) =>
+                            update((n) => {
+                              n.project.name = e.target.value;
+                            })
+                          }
+                        />
+                      </Field>
+                      <Field label="Project Location on document">
+                        <input
+                          value={q.project.location}
+                          onChange={(e) =>
+                            update((n) => {
+                              n.project.location = e.target.value;
+                            })
+                          }
+                        />
+                      </Field>{" "}
                       {Object.entries(q.customer)
                         .filter(([key]) => key !== "name")
                         .map(([key, value]) => (
@@ -1334,7 +1443,8 @@ export function Quotations({
                             }}
                           >
                             <span>
-                              {s.number} · {s.title || "Untitled work category"}
+                              {displayBoqCategoryNumber(q, s)} ·{" "}
+                              {s.title || "Untitled work category"}
                             </span>
                             <span>
                               {" · "}
@@ -1350,7 +1460,7 @@ export function Quotations({
                               <div className="boq-section-heading">
                                 <span>
                                   {s.parentId ? "Subcategory" : "Work category"}{" "}
-                                  {s.number}
+                                  {displayBoqCategoryNumber(q, s)}
                                 </span>
                                 <strong className="boq-subtotal">
                                   Category subtotal:{" "}
@@ -1364,7 +1474,11 @@ export function Quotations({
                                 <div className="boq-section-fields">
                                   <Field label="Category No.">
                                     <input
-                                      value={s.number}
+                                      value={
+                                        automaticNumbering
+                                          ? displayBoqCategoryNumber(q, s)
+                                          : s.number
+                                      }
                                       readOnly={automaticNumbering}
                                       onChange={(e) =>
                                         update((n) => {
@@ -1534,9 +1648,21 @@ export function Quotations({
                                   className="primary"
                                   onClick={() => addItem(si)}
                                 >
-                                  <span aria-hidden="true">+ </span>Add Priced
-                                  Item
+                                  <span aria-hidden="true">+ </span>Add Direct
+                                  Priced Item
                                 </button>
+                              </div>
+                              <div
+                                className="quotation-boq-columns"
+                                aria-hidden="true"
+                              >
+                                <span>Item No.</span>
+                                <span>Description</span>
+                                <span>Quantity</span>
+                                <span>Unit</span>
+                                <span>Rate/Unit</span>
+                                <span>Amount</span>
+                                <span>Pricing Type</span>
                               </div>
                               {!s.rows.length && (
                                 <p className="quotation-guide-help">
@@ -1563,7 +1689,7 @@ export function Quotations({
                                     node.ancestors.includes(r.id),
                                   );
                                   const parentDescription =
-                                    r.pricingType === "Heading";
+                                    isBoqParentDescription(r);
                                   const grouped =
                                     parentDescription || childCount > 0;
                                   const collapsed = collapsedParents.includes(
@@ -1594,6 +1720,12 @@ export function Quotations({
                                       const row = n.sections
                                         .find((section) => section.id === s.id)!
                                         .rows.find((item) => item.id === r.id)!;
+                                      if (
+                                        key === "pricingType" &&
+                                        isBoqParentDescription(row)
+                                      ) {
+                                        row.boqRole = "parent";
+                                      }
                                       row[key] = value;
                                       if (
                                         key === "quantity" ||
@@ -1625,14 +1757,17 @@ export function Quotations({
                                         s.rows[0]?.id);
                                   const parentActions = grouped ? (
                                     <div className="quotation-parent-actions">
-                                      {parentDescription && (
-                                        <button
-                                          onClick={() => addItem(si, false, ri)}
-                                        >
-                                          <span aria-hidden="true">+ </span>
-                                          Add Child Item
-                                        </button>
-                                      )}
+                                      {parentDescription &&
+                                        r.pricingType !== "Normal Rate" && (
+                                          <button
+                                            onClick={() =>
+                                              addItem(si, false, ri)
+                                            }
+                                          >
+                                            <span aria-hidden="true">+ </span>
+                                            Add Child Item
+                                          </button>
+                                        )}
                                       {childCount > 0 && (
                                         <button
                                           className="quotation-children-toggle"
@@ -1683,7 +1818,14 @@ export function Quotations({
                                           "Check values",
                                         )}
                                       </output>
-                                      {!parentDescription && (
+                                      {parentDescription &&
+                                        r.pricingType === "Normal Rate" && (
+                                          <span className="muted">
+                                            Change pricing type to a nonbillable
+                                            type before adding children.
+                                          </span>
+                                        )}
+                                      {!parentDescription && childCount > 0 && (
                                         <span className="muted">
                                           Existing priced parent. Use a new
                                           non-priced parent for new child work.
@@ -1715,7 +1857,7 @@ export function Quotations({
                                         open={itemExpanded}
                                         className={
                                           "quote-line " +
-                                          (r.pricingType === "Heading"
+                                          (parentDescription
                                             ? "heading-line"
                                             : "") +
                                           (r.parentId
@@ -1739,36 +1881,69 @@ export function Quotations({
                                             );
                                           }}
                                         >
-                                          <span>
-                                            {r.number} ·{" "}
+                                          <span
+                                            className="quotation-cell quotation-cell--number"
+                                            data-label="Item No."
+                                          >
+                                            {r.number}
+                                          </span>
+                                          <span
+                                            className="quotation-cell quotation-cell--description"
+                                            data-label="Description"
+                                          >
                                             {r.description ||
-                                              (r.pricingType === "Heading"
+                                              (parentDescription
                                                 ? "New parent work description"
                                                 : "New priced item")}
                                             <span className="quotation-row-kind">
                                               {parentDescription
-                                                ? "Parent description · Not billable"
+                                                ? "Parent work description"
                                                 : r.parentId
-                                                  ? "Child item · " +
-                                                    (r.pricingType ===
-                                                    "Normal Rate"
-                                                      ? "Billable"
-                                                      : r.pricingType)
-                                                  : "Direct item · " +
-                                                    (r.pricingType ===
-                                                    "Normal Rate"
-                                                      ? "Billable"
-                                                      : r.pricingType)}
+                                                  ? "Child item"
+                                                  : "Direct item"}
                                             </span>
                                           </span>
-                                          <span>
-                                            {" · "}
+                                          <span
+                                            className="quotation-cell quotation-cell--numeric"
+                                            data-label="Quantity"
+                                          >
                                             {r.pricingType === "Heading"
-                                              ? "No parent charge"
+                                              ? "—"
+                                              : r.quantity || "—"}
+                                          </span>
+                                          <span
+                                            className="quotation-cell"
+                                            data-label="Unit"
+                                          >
+                                            {r.pricingType === "Heading"
+                                              ? "—"
+                                              : r.unit || "—"}
+                                          </span>
+                                          <span
+                                            className="quotation-cell quotation-cell--numeric"
+                                            data-label="Rate/Unit"
+                                          >
+                                            {safe(
+                                              () => displayRate(r),
+                                              "Check rate",
+                                            ) || "—"}
+                                          </span>
+                                          <span
+                                            className="quotation-cell quotation-cell--numeric"
+                                            data-label="Amount"
+                                          >
+                                            {r.pricingType === "Heading"
+                                              ? "—"
                                               : safe(
                                                   () => displayAmount(r),
                                                   "Check values",
                                                 )}
+                                          </span>
+                                          <span
+                                            className="quotation-cell"
+                                            data-label="Pricing Type"
+                                          >
+                                            {r.pricingType}
                                           </span>
                                         </summary>
                                         {itemExpanded && parentActions}
@@ -1837,24 +2012,38 @@ export function Quotations({
                                             />
                                           </Field>
                                           <Field label="Rate / Unit">
-                                            <input
-                                              inputMode="decimal"
-                                              value={r.rate}
-                                              onChange={(e) =>
-                                                edit("rate", e.target.value)
-                                              }
-                                              disabled={
-                                                r.pricingType !== "Normal Rate"
-                                              }
-                                            />
+                                            {r.pricingType === "Normal Rate" ? (
+                                              <input
+                                                inputMode="decimal"
+                                                value={r.rate}
+                                                onChange={(e) =>
+                                                  edit("rate", e.target.value)
+                                                }
+                                              />
+                                            ) : (
+                                              <output className="quotation-price-label">
+                                                {r.pricingType === "Heading"
+                                                  ? "Not applicable"
+                                                  : r.pricingType}
+                                              </output>
+                                            )}
+                                          </Field>
+                                          <Field label="Amount">
+                                            <output
+                                              className="quotation-price-label quotation-price-label--amount"
+                                              aria-live="polite"
+                                            >
+                                              {r.pricingType === "Heading"
+                                                ? "Not applicable"
+                                                : safe(
+                                                    () => displayAmount(r),
+                                                    "Check quantity / rate",
+                                                  )}
+                                            </output>
                                           </Field>
                                           <Field label="Pricing Type">
                                             <select
                                               value={r.pricingType}
-                                              disabled={
-                                                parentDescription &&
-                                                childCount > 0
-                                              }
                                               onChange={(e) =>
                                                 edit(
                                                   "pricingType",
@@ -1864,11 +2053,27 @@ export function Quotations({
                                               }
                                             >
                                               {pricingTypes.map((p) => (
-                                                <option key={p}>{p}</option>
+                                                <option
+                                                  key={p}
+                                                  disabled={
+                                                    parentDescription &&
+                                                    childCount > 0 &&
+                                                    p === "Normal Rate"
+                                                  }
+                                                >
+                                                  {p}
+                                                </option>
                                               ))}
                                             </select>
                                           </Field>
                                         </div>
+                                        {r.pricingType !== "Normal Rate" && (
+                                          <p className="quotation-price-help">
+                                            {r.pricingType === "Heading"
+                                              ? "This work description has no price."
+                                              : `${r.pricingType} is shown as text in Rate/Unit and Amount and is excluded from payable totals.`}
+                                          </p>
+                                        )}
                                         {r.parentId && (
                                           <div className="quotation-row-area">
                                             <Field label="Location / Area">
@@ -2106,6 +2311,19 @@ export function Quotations({
                                     </div>
                                   );
                                 },
+                              )}
+                              {s.rows.length > 0 && (
+                                <div className="quotation-section-subtotal">
+                                  <span>
+                                    Sub total For {s.title || "Work Category"}
+                                  </span>
+                                  <strong>
+                                    {safe(
+                                      () => formatMoney(sectionAmount(s), true),
+                                      "Check line values",
+                                    )}
+                                  </strong>
+                                </div>
                               )}
                             </>
                           )}

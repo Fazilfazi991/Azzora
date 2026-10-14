@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useStore } from "../store";
-import type { Project } from "../domain/model";
+import type { Project, Database } from "../domain/model";
 import {
   roles,
   trades,
@@ -26,12 +26,16 @@ export function Wizard({
   initialCustomerId = "",
   initialName = "",
   initialLocation = "",
+  lockedCustomer = false,
+  afterCreate,
 }: {
   onClose: () => void;
   onCreated: (id: string) => void;
   initialCustomerId?: string;
   initialName?: string;
   initialLocation?: string;
+  lockedCustomer?: boolean;
+  afterCreate?: (db: Database, project: Project) => void;
 }) {
   const { db, mutate } = useStore();
   const [step, setStep] = useState(0);
@@ -67,6 +71,16 @@ export function Wizard({
   const selectedCustomer = db.clients.find((c) => c.id === p.clientId);
   const client = selectedCustomer?.name || "";
   const contact = selectedCustomer?.contact || "";
+  const duplicateProject = db.projects.find(
+    (existing) =>
+      existing.clientId === p.clientId &&
+      existing.name.trim().toLocaleLowerCase() ===
+        p.name.trim().toLocaleLowerCase() &&
+      existing.location.trim().toLocaleLowerCase() ===
+        p.location.trim().toLocaleLowerCase() &&
+      !!p.name.trim() &&
+      !!p.location.trim(),
+  );
   const [team, setTeam] = useState<Record<string, string>>({});
   const [standard, setStandard] = useState(true);
   const [error, setError] = useState("");
@@ -88,21 +102,29 @@ export function Wizard({
       setError("Enter the location and select at least one scope discipline.");
       return;
     }
+    if (step === 1 && duplicateProject) {
+      setError(
+        `A project with this name and location already exists for ${client}. Select it from the quotation instead.`,
+      );
+      return;
+    }
     setError("");
     setStep(step + 1);
   }
   function create(draft = false) {
+    if (duplicateProject) {
+      setError(
+        `A project with this name and location already exists for ${client}. Select it from the quotation instead.`,
+      );
+      return;
+    }
+    const created = { ...p, status: draft ? "Draft" : "Active" } as Project;
     if (
       mutate(
-        (d) =>
-          createProject(
-            d,
-            { ...p, status: draft ? "Draft" : "Active" },
-            client,
-            contact,
-            team,
-            standard,
-          ),
+        (d) => {
+          createProject(d, created, client, contact, team, standard);
+          afterCreate?.(d, created);
+        },
         draft
           ? "Project draft saved"
           : "Project created with connected plan and team",
@@ -148,36 +170,51 @@ export function Wizard({
                 onChange={(e) => set("code", e.target.value)}
               />
             </Field>
-            <Field label="Select Existing Customer">
-              <select
-                required
-                value={p.clientId}
-                onChange={(e) => set("clientId", e.target.value)}
-              >
-                <option value="">Select customer…</option>
-                {db.clients
-                  .filter((c) => c.status !== "Archived" || c.id === p.clientId)
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-              </select>
-            </Field>
-            <div className="field">
-              <small>Customer master</small>
-              <button type="button" onClick={() => setAddCustomer(true)}>
-                + Add New Customer
-              </button>
-              {selectedCustomer && (
-                <p className="muted">
-                  {contact} ·{" "}
-                  {selectedCustomer.phone ||
-                    selectedCustomer.email ||
-                    selectedCustomer.code}
-                </p>
-              )}
-            </div>
+            {lockedCustomer ? (
+              <div className="field">
+                <span>Customer</span>
+                <strong>
+                  {selectedCustomer?.name ||
+                    "Select customer in quotation first"}
+                </strong>
+                <small className="muted">Linked from the quotation</small>
+              </div>
+            ) : (
+              <>
+                <Field label="Select Existing Customer">
+                  <select
+                    required
+                    value={p.clientId}
+                    onChange={(e) => set("clientId", e.target.value)}
+                  >
+                    <option value="">Select customer…</option>
+                    {db.clients
+                      .filter(
+                        (c) => c.status !== "Archived" || c.id === p.clientId,
+                      )
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                  </select>
+                </Field>
+                <div className="field">
+                  <small>Customer master</small>
+                  <button type="button" onClick={() => setAddCustomer(true)}>
+                    + Add New Customer
+                  </button>
+                  {selectedCustomer && (
+                    <p className="muted">
+                      {contact} ·{" "}
+                      {selectedCustomer.phone ||
+                        selectedCustomer.email ||
+                        selectedCustomer.code}
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
             <Field label="Project type">
               <select
                 value={p.type}
@@ -413,6 +450,12 @@ export function Wizard({
         {error && (
           <p className="error" role="alert">
             {error}
+          </p>
+        )}
+        {duplicateProject && !error && (
+          <p className="notice" role="alert">
+            A project with this name and location already exists for {client}.
+            Select it from the quotation instead.
           </p>
         )}
         <div className="sticky-actions">

@@ -128,6 +128,8 @@ describe("protected loading and additive migration", () => {
     db.documents[0].status = "Approved";
     db.documents[0].reviewState = "Submitted";
     expect(() => decodeSavedData(JSON.stringify(db))).toThrow(/conflict/);
+    db.documents[0].workflowVersion = 1;
+    expect(() => decodeSavedData(JSON.stringify(db))).toThrow(/conflict/);
   });
 });
 

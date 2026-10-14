@@ -643,6 +643,16 @@ export function validateRelationships(db: Database) {
       );
   }
   for (const d of db.documents) {
+    if (d.workflowVersion && d.reviewState) {
+      const canonical = {
+        Draft: "Draft",
+        Submitted: "Pending",
+        Approved: "Approved",
+        "Revise & Resubmit": "Rejected",
+      }[d.reviewState];
+      if (canonical !== d.status)
+        throw Error("Saved document approval states conflict.");
+    }
     if (
       d.previousRevisionId &&
       !db.documents.some(
@@ -664,6 +674,27 @@ export function validateRelationships(db: Database) {
     )
       throw Error(
         "Saved invoice customer/project relationship is incompatible.",
+      );
+  for (const i of db.invoices)
+    if (i.status === "Issued" && !i.snapshot)
+      throw Error("Saved issued invoice is missing its immutable snapshot.");
+  for (const v of db.operations?.variations || [])
+    if (
+      v.status === "Approved" &&
+      [v.net, v.vat, v.gross].some(
+        (n) => typeof n !== "string" || !/^-?\d+$/.test(n),
+      )
+    )
+      throw Error(
+        "Saved approved variation has an incompatible monetary snapshot.",
+      );
+  for (const c of db.operations?.credits || [])
+    if (
+      c.status === "Issued" &&
+      [c.net, c.vat].some((n) => typeof n !== "string" || !/^-?\d+$/.test(n))
+    )
+      throw Error(
+        "Saved issued credit note has an incompatible monetary snapshot.",
       );
   for (const p of db.payments)
     if (

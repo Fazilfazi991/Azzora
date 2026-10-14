@@ -65,3 +65,9 @@ Agent2 independently reviewed coordinator source/probes. Unknown optional legacy
 ### Newly confirmed financial gate
 
 INT-REVIEW-A1 reproduced silent legacy item-credit reallocation and cumulative amount-credit VAT overrun (six0.11 credits on1.05gross/0.05VAT produce0.06VAT, then final0.39 fails). FIX-A1-02 assigned to Agent1 on its own branch. Freeze/finalQA waits for reviewed corrective commit. Original issued snapshots must remain unchanged; invalid historical bases require explicit review rather than silent repair.
+
+## Final gate composition
+
+Reviewed/merged financial follow-up857b57cd4e0519606d5be143b6851260b773c0a4 and reportd4d251fe6674f2354a40aaee5a08569f5d0cc9e2. QA compositione48ef9c31d93649f2345e944cc2d610f86376748 is committed in integration: operational boundary/atomic harnesses now use public canonical UI and source-bound fixtures; dev-only module imports are retired. Coordinator validates new optional posted allocation metadata before rendering.
+
+Pre-freeze full unit run:303 ordinary tests,0 failed/pending,13 files. TypeScript/lint pass. Production/browser/PDF gate is not yet certified. Final dev target5195 has an integration-local optimizer cache; old shared-cache5193 environment failures are retained as failed setup probes, not passing business checks. Final production preview must be built fresh from the same frozen SHA on another strict port. No source/test changes or commits while final gate runs; failures require reviewed correction and refreeze. Reports/evidence may be written, then committed after the gate with source/test tree equality checked.

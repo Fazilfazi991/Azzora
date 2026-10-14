@@ -29,8 +29,8 @@ Statuses: **Backlog | Ready | Assigned | In Progress | Blocked | In Review | Ver
 | COORD-A2-01 | Workforce authority and baseline-defect handoff | P1 | Agent 2 | QA-02, WF delivery | Verified | A2 / `dd220df` | Acknowledge; reconcile six source overlaps; assess shared dialog/storage/site issues | Acknowledged report collected; typecheck/lint/118 unit passes and 15 targeted observations |
 | COORD-A3-01 | Independent evidence reassessment and combined test plan | P1 | Agent 3 | A1/A2 recorded evidence | Verified | A3 / `11da925` | Acknowledge; precise provenance/counts; final combined regression plan | Acknowledged handoff collected; raw/tracked counts parsed; complete combined gate prepared |
 | INT-01 | Resolve authority, types, migration and shared UI contracts | P1 | Coordinator | COORD-A1-01, COORD-A2-01 | Ready | I / none | Written integration map; one command boundary per entity; preserved legacy data | Authority direction agreed; lossless adapter and completion composition pending |
-| INT-02 | Consolidate reviewed pinned source commits | P1 | Coordinator | INT-01, confirmed critical fixes | Blocked | I / none | Controlled merges; conflict review; clean diff; all source commits tracked | No merge attempted |
-| QA-FINAL | Independent complete quality gate | P1 | Agent 3 | INT-02, COORD-A3-01 | Blocked | I / none | TypeScript/lint/domain/BOQ/financial/procurement/workforce/browser/PDF/responsive/build; exact counts | NOT RUN; cannot certify separate branches as combined |
+| INT-02 | Consolidate reviewed pinned source commits | P1 | Coordinator | INT-01, confirmed critical fixes | In Review | I / none | Controlled merges; conflict review; clean diff; all source commits tracked | Original deliveries, reviewed fixes and canonical composition merged; final QA pending |
+| QA-FINAL | Independent complete quality gate | P1 | Agent 3 | INT-02, COORD-A3-01 | Ready | I / none | TypeScript/lint/domain/BOQ/financial/procurement/workforce/browser/PDF/responsive/build; exact counts | NOT RUN; cannot certify separate branches as combined |
 | REL-01 | Owner review / merge to main | P1 | Owner + Coordinator | QA-FINAL | Blocked | main / `c191498` | Owner approval of tested combined revision | No approval requested yet; combined revision not ready |
 
 ## Defect register reconciliation
@@ -69,4 +69,8 @@ Original QA details: sibling `azzora-qa-stabilization/docs/AGENT-3-ISSUES.md`. A
 | QA-PREP-02 | Strict final harnesses and ordinary defect assertions | P1 | Agent 3 | COORD-A3-01 | In Progress | A3 / b88191b | Required failures are strict; isolated URLs/actors; no baseline certification | Active acknowledged; prep remains intentionally red on old baseline |
 | QA-FINAL | Independent whole integrated system gate | P1 | Agent 3 | Reviewed fixes, composed harnesses and frozen I SHA | Blocked | I / not frozen | Full stated gate, source binding, exact counts and PDF/visual review | NOT RUN |
 
-| FIX-A1-02 | Legacy item-credit basis and cumulative tiny-credit VAT | P0 | Agent 1 | INT-REVIEW-A1 | In Progress | A1 / starting647762d | Immutable historical basis or explicit review block; repeated small credits bounded by original VAT; exact final settlement | Acknowledged active; source190 ordinary unit passes including30 new regressions; focused UI verification/report pending |
+| FIX-A1-02 | Legacy item-credit basis and cumulative tiny-credit VAT | P0 | Agent 1 | INT-REVIEW-A1 | In Review | A1 / starting647762d | Immutable historical basis or explicit review block; repeated small credits bounded by original VAT; exact final settlement | 857b57c/reportd4d251f reviewed and merged;192 source unit/14 UI passes; all303 combined unit cases pass |
+
+## Final freeze readiness
+
+All original source deliveries, both Agent1 corrective stages, Agent2 modal fixes, QA preparation and canonical test composition are integrated. Combined preflight:303 ordinary passes,0 failures/pending,13 files; TypeScript and lint pass. QA-FINAL is Ready for dispatch after this checkpoint. Any earlier Blocked/Assigned cycle entries above are historical; independent combined verification remains pending.

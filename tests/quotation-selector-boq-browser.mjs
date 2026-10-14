@@ -38,6 +38,10 @@ for (const width of [1440, 1024, 768, 390]) {
       .getByRole("button", { name: "Add Parent Work Description" })
       .click();
     const parent = category.getByTestId("quote-line").first();
+    await expect(parent.locator("summary").first()).toHaveCSS(
+      "background-color",
+      "rgb(242, 242, 242)",
+    );
     await parent
       .getByLabel("Description")
       .fill("Demolition and cart away of existing block wall");

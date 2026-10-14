@@ -245,7 +245,7 @@
   line-height: 1.4;
 }
 .quotation-module .quote-line.heading-line > .quotation-item-summary {
-  background: #eeecea;
+  background: #f2f2f2;
   font-weight: 700;
 }
 .quotation-module .quote-line > .quotation-item-summary > .quotation-cell {

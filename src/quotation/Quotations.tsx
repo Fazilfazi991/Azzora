@@ -21,7 +21,7 @@ import {
   formatMoney,
   totals,
   sectionAmount,
-  paymentAmount,
+  paymentScheduleAmounts,
   paymentPercentage,
 } from "./calculations";
 import {
@@ -870,6 +870,9 @@ export function Quotations({
         ? ["Select an active linked customer before issuing."]
         : []),
     ];
+  const paymentAmounts = t
+    ? safe<bigint[] | null>(() => paymentScheduleAmounts(q, t.grand), null)
+    : null;
   const pages = preview ? safe(() => layoutQuotation(q), null) : null;
   return (
     <div className="quotation-module">
@@ -2530,14 +2533,11 @@ export function Quotations({
                       payment allocation only.
                     </p>
                     {t &&
-                      safe(
-                        () =>
-                          q.payments.reduce(
-                            (sum, p) => sum + paymentAmount(p, t.grand),
-                            0n,
-                          ) !== t.grand,
-                        false,
-                      ) && (
+                      paymentAmounts &&
+                      paymentAmounts.reduce(
+                        (sum, amount) => sum + amount,
+                        0n,
+                      ) !== t.grand && (
                         <p className="muted">
                           Payment amounts differ from the Grand Total because of
                           rounding or manual overrides. The reference schedule
@@ -2613,16 +2613,11 @@ export function Quotations({
                         </div>
                         <div className="between">
                           <strong>
-                            {t
-                              ? safe(
-                                  () =>
-                                    formatMoney(
-                                      paymentAmount(p, t.grand),
-                                      true,
-                                    ),
-                                  "Check percentage",
-                                )
-                              : "Check values"}
+                            {paymentAmounts?.[i] !== undefined
+                              ? formatMoney(paymentAmounts[i], true)
+                              : t
+                                ? "Check percentage"
+                                : "Check values"}
                           </strong>
                           <div className="actions">
                             <Order

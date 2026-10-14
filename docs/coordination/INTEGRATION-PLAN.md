@@ -1,77 +1,64 @@
-# Controlled integration plan
+# Controlled integration plan and executed checkpoints
 
-## Pinned inputs and preparation
+All work is local in `C:/Users/USER/Desktop/Projects/Azzora/azzora-integration`, branch `codex/azzora-integration`. Current final QA freeze: **`db6bb1148effb35e32ee39c120013a588b468813`**. The original repository and all agent worktrees remain intact. Native Git is used because the chat parent directory is not a repository. No remotes exist.
 
-Common base: `ada782a21232b3072850889e3796c3bc5c8d5dd4`.
+## Pinned source and reviewed corrections
 
-- A1 delivery: `8b7992156a2f97e6f8d9d38b98a4b120ad2793a9`; implementation `26eb5002ed826acd5101bf138dacdabf662a6210`.
-- A2 delivery: `dd220dfaca1e0f072d84c5895e8a8c0639345297`; implementation `06b1ad206c94c7ad154c05ff4e5b079c2e1ada50`.
-- A3 delivery: `11da92566fe5bbb524e36a3128937756ce506204`; isolated implementation `7b9c26d03146a58dd5d602e37c708abf0c148d60`.
+| Delivery | Full pinned commit | Integration checkpoint |
+| --- | --- | --- |
+| Common commercial foundation |`ada782a21232b3072850889e3796c3bc5c8d5dd4`|Original base |
+| A1 operational delivery |`8b7992156a2f97e6f8d9d38b98a4b120ad2793a9`|75d8ca009c1af6c278857e36cb255b03e3b8180f |
+| A1 implementation |`26eb5002ed826acd5101bf138dacdabf662a6210`|Included in pinned delivery |
+| A2 workforce delivery |`dd220dfaca1e0f072d84c5895e8a8c0639345297`|e136489c004d8b8366fed61d40073ecc0130fde9 |
+| A2 implementation |`06b1ad206c94c7ad154c05ff4e5b079c2e1ada50`|Included in pinned delivery |
+| A3 QA delivery |`11da92566fe5bbb524e36a3128937756ce506204`|a539358b64f0b0808bff8b373951cbff20338886 |
+| A3 isolated fixes |`7b9c26d03146a58dd5d602e37c708abf0c148d60`|Included in pinned delivery |
+| A2 modal correction / report |`c95a1cf022c70bdeed4f55fb1099036baa2f42b5` /`94c568b737fc3f58713ef6f9c866729868bb2612`|f6fc1fa2c9f1890ab654ef3bea0cdf154e7db5f2 |
+| A1 discount/shell correction / report |`a4620eb0fae755bd3be0100386345446e6349ce4` /`647762d99fa0837df1c991d17bcd38459ab960f9`|a290dc7e0cee1016527a5f8805b7ace60f5a7780 /02fe289f05197e045cf5bc28cdc7af1a9995d98a |
+| A3 strict QA preparation |`b88191b8dcb4c0bc568b35796dbf46563cb2d9bb`|72915e0965be4f79c27e2a7c3f6968f71b63e9fd |
+| A3 canonical test composition |`e48ef9c31d93649f2345e944cc2d610f86376748`|Committed directly in integration |
+| A1 historical/cumulative credit correction / report |`857b57cd4e0519606d5be143b6851260b773c0a4` /`d4d251fe6674f2354a40aaee5a08569f5d0cc9e2`|30065be0e89b451b0c6a3101567ef5328782c53c /fba009caa5f0727a403fc544888a90738b241f4b |
+| Coordinator customer-only approval reload + scoped QA selectors |`3417fe1b52cbc6d374bf78410593009213aeae56`|Committed after failed gate safe checkpoint |
+| A1 financial dialog feedback / report |`62c694814ba2a79a20f2b54b2b5ee98815738ffd` /`3dba13435f90cbde4a27ff14deab25e814e34ec2`|49cd5ac189c68fccd9611b6c651939299210a93f /`db6bb1148effb35e32ee39c120013a588b468813` |
 
-Integration branch/worktree: `codex/azzora-integration` / `C:/Users/USER/Desktop/Projects/Azzora/azzora-integration`, created at the common base. Native Git is used because the chat parent is not a repository and these source worktrees are native Git worktrees. Source checkouts are preserved. No remotes exist.
+Every correction was reviewed before merging. Moving branch tips were not substituted for pinned inputs. Agent1 financial/procurement/variation/commercial closure logic and Agent2 workforce/document/site/QA/handover logic are both retained. Shared source conflicts were reconciled deliberately by function/type/contract; necessary dual-owner functionality was not replaced wholesale.
 
-Before any merge: refresh clean status and SHAs, read all three handoffs, inspect source diffs and financial/migration contracts, and require committed fixes. Branch cleanliness proves absence of uncommitted changes, not readiness. Do not merge unfinished branches. Review new commits explicitly rather than silently using moving branch tips.
+## Authority, compatibility and preservation
 
-## Proposed merge sequence (gated, not executed)
+Agent2 workforce/document commands are canonical. Legacy employee/document entry points delegate to these commands rather than maintaining duplicate writes. Document submissions and shared approval decisions execute inside the store's cloned transaction, save once, and become visible only after successful persistence. Superseded pending approvals and original document versions remain immutable history; active views derive current-family state without rewriting old decisions. Actual requester and assigned independent reviewer checks apply across both entry points.
 
-Agent 1 and Agent 2 handoffs now agree on Agent 2 workforce/document/site/QA authority and Agent 1 financial/procurement/closure authority. The Coordinator accepts this integration direction. The detailed adapter remains to implement and independently verify: map A1 document `reviewState` into canonical status, retain assigned reviewers and immutable source history, synchronize shared document approval lifecycle atomically, preserve old employee values without inventing missing data, exclude the legacy manual Commercial checklist and recheck both operational gates and configured finance inside `completeProject`. A1's in-memory coexistence probe confirmed that leaving both writers produces an approved document with a pending shared approval.
+Coordinator `8d7a277a760206de73cfb94132b582ab0dbbc7f5` implemented protected loading, adapters and atomic shared transitions. Hardening `562a819896c4e7093902f6dc043c0586a0fe9d83` rejects orphan targets/self-review;`93926da798d3a98cc1e1cd1cd6d9fed60bddfdac` rejects conflicting states/incomplete issued snapshots;`c6d3e7370fd64b1812fbccf5693611d26000b68b` resets only the error boundary on explicit retry;`cb3f4d9b0c133901607d05351c33543b6a01897d` reflects configured financial policy in handover;`a53fbf69077a753bfa1f70ea1d6b8e6b4c044933` validates versioned posted allocation metadata.
 
-1. Agree INT-01 authority map using A1/A2 handoffs; reject duplicate employee/document write APIs and choose compatible actor/review/revision semantics.
-2. Integrate reviewed A1 delivery as the financial/procurement baseline, preserving reports/settings/calculations/snapshots.
-3. Integrate reviewed A2 delivery with deliberate reconciliation of six shared source paths. Preserve employee history/inactive guards, independent site/QA reviews and derived operational gates alongside financial closure. No whole-file preference for either branch.
-4. Integrate A3 isolated upload/harness fixes and audit evidence. Reconcile `.gitignore` and `tests/browser.mjs`; retain explicit actor transitions and one consistent isolated server URL contract. Treat the dialog patch as a candidate only, never blindly apply it.
-5. Integrate narrowly reviewed critical fixes under scheduled ownership; promote A3-005/006 expected failures to ordinary assertions once fixed.
-6. Freeze and record an integration SHA. Agent 3 runs the complete combined gate; record exact counts, known failures and visual limits against that SHA. Final owner review follows; no merge to main without approval.
+The key remains **azzora-demo-v1**. Required collection/record/nested shapes and relationship IDs are validated before application rendering. Missing optional commercial/operations fields initialize additively. Unknown fields and legacy workflow metadata are retained. Invalid originals are preserved without automatic reset, overwrite or save; the named recovery region exposes exact-original export, retry and settings. Store write failures discard the in-memory clone, leaving the saved raw string and visible state intact. Customer-only credit approvals may have empty project IDs, but target/source consistency and other required project relationships remain validated.
 
-## Compatibility requirements
+Accepted quotations, issued invoices/credits, approved variations/POs, receipts, refunds, prior revisions and decision history are never silently reallocated or rewritten. Posted allocation versions retain exact integer-fils bases. Legacy invoices reconstruct only valid matching historical allocations; inconsistent original postings require explicit review. Cumulative credits share remaining line capacities, preventing negative net/VAT and repeated-rounding VAT overruns.
 
-- Keep `azzora-demo-v1` and stable IDs. Preserve `commercialVersion: 1`, additive `operations.version = 1`, old quotation/invoice histories and issued document snapshots.
-- A2 adds optional person/workflow fields rather than replacing existing collections. Legacy document family defaults and Pending review semantics must agree with A1's document controls and approval inbox.
-- Validate required base collections before rendering; protect original malformed/incompatible raw data and expose backup recovery. Idempotent migrations must preserve populated legacy records and both newer branches' saved records. Do not reset data to make tests pass.
-- One accepted contract source; signed approved variations applied once; full/milestone/variation invoices from valid sources. Bounded discount allocation and non-negative tax/base totals.
-- Customer receipts separate from supplier payments. Credits reduce invoice position; refunds restore it toward zero. Supplier bills create one expense; PO commitments convert to actual costs without duplication. Net profitability excludes recoverable VAT consistently.
-- One employee/document write boundary. Preserve self-review protections, actor validity, approval assignment, rejected/superseded revisions, attachments, prior history and commercial closure snapshots.
-- Operational completion and commercial closure are separate. Default financial policy must remain explicit; pending document/site/QA gates cannot be bypassed through an alternate completion command.
+Operational completion and commercial closure remain separate. Completion combines supervision/document/QA gates with the configured financial policy; neither legacy wrappers nor alternate approval commands bypass those gates.
 
-## Independent combined gate
+## Independent gate and freeze discipline
 
-Run TypeScript, ESLint, all domain/unit/quotation/BOQ/commercial/financial/procurement/workforce tests and production build. Review `.fails` cases separately; zero exit code does not establish those requirements passed.
+First freeze 19051cc1f5f70770142f116ecc4edb239099e708 **failed**. Both17-suite dev/production runs completed;303 serial unit tests passed, but customer-only approvals failed hydration and financial-modal failures were inaccessible. Two broad selectors also prevented strict assertions. Full failed evidence remains in `docs/AGENT-3-FAILED-GATE-19051CC.md` and `docs/integration-evidence/final/19051cc-run1/`. A failed parallel runner attempt is retained separately from the successful serial replay.
 
-Run existing delivery, commercial, commercial-boundary, quotation, BOQ, operational, operational-boundary and workforce browser suites plus Agent 3 strict regressions against the same combined checkout/server. Resolve fixture assumptions and `AZZORA_URL` / `AZZORA_TEST_URL` contracts explicitly. Operational boundaries require the UI-created operational fixture and development module imports. Use disposable browser contexts only; never reset owner browser data.
+After Agent3 stopped its runners/preview and returned a safe correction checkpoint,3417fe1 corrected approval project validation and added ordinary no-write/lossless reload/wrong-project coverage. It scoped Quick Add to its named dialog and the protection alert to the named recovery region; all behavioral/raw-byte assertions remain. Reviewed FIX-A1-03 makes actual errors visible/focused within the three financial dialogs, preserving drafts and persistent store protection messages.
 
-Cross-domain scenarios: legacy reload/migration twice; malformed storage/reachable original backup; storage quota/write failure; contract + positive/negative variations + invoices/credits/receipts/refunds; fractional deliveries/billing/payments/cancellations; budgets/commitments/expenses/dashboard/report consistency; inactive staff/reassignment; immutable document versions and independent review; project with financial blockers and pending operational approvals, clearing each independently; commercial closure history.
+New freeze **`db6bb1148effb35e32ee39c120013a588b468813`**:
 
-At 1440/1024/768/390px, inspect real browser output, keyboard traversal, named dialogs, interior click, nested Escape, opener focus, hidden navigation, invalid-field visibility, contrast, reduced-motion behavior and overflow. Render representative quotation/invoice/PO/credit/report PDFs, inspect multi-page tables and historical branding. Record exact test counts, errors, screenshots, PDFs, environment and source SHA. Owner visual acceptance remains a separate review step.
+- Source tree `20fa3ae859250a6c05dc6a4ae5102ae632e39779`; tests tree `bc0a19fc33d7a8f79f343c552ae617c7ecabb298`.
+- Combined preflight304 ordinary unit passes,0 failed/pending,13 files; TypeScript/ESLint/build pass. Main618.36kB/172.40kB gzip, existing bundle warning.
+- Agent3 dispatched to repeat all 18 browser suites on dev5195 and a fresh strict-port production build, plus independent static/units, rendered PDFs and four-width visual/keyboard checks. Previous passes do not substitute for this gate.
+- Source/tests/config/HEAD remain fixed while QA runs. Documentation/evidence may be written only. Any source/test correction requires a safe checkpoint, reviewed change and a new full frozen SHA.
+- All URL aliases agree within each run. Canonical public UI creates source-bound operational fixtures before boundary/atomic suites; development-only source imports are retired. The dev optimizer cache is isolated in this worktree.
+- Customer→quotation→contract→invoice→payment; positive/negative variations; procurement/delivery/billing/supplier costs; credit/refund/tax; inactive staff; document/supervision/QA approvals; operational and financial closure policies; legacy/combined migrations; original export/retry; quota/atomic rollback must pass.
+- Inspect 1440/1024/768/390px, native-dialog naming/interior/nested Escape/opener focus, sidebar, invalid-field visibility, contrast, overflow and reduced motion. Render quotation, invoice, PO, credit and report PDFs, including multipage tables/historical branding; record actual pages and visual findings.
 
-## Rollback and release
+## Completion, rollback and release
 
-Before each integration step, record the current commit and keep committed checkpoints. If a merge conflicts before resolution, use `git merge --abort` only in this coordinator's integration worktree after checking its state. Never reset/delete/clean another agent's worktree. After committed integration, rollback uses new revert commits on this branch, preserving audit history. Preserve any test database exports used for migration evidence; do not downgrade owner storage.
+Coordinator records exact independent pass/fail counts and limitations in FINAL-INTEGRATION-REPORT.md and reconciles MASTER-STATUS/TASK-BOARD after the gate. Reports/evidence may be committed afterward only with equality of tested application/test/config trees. The tested full SHA remains the certificate identity; any docs-only commit is distinguished explicitly.
 
-Integration is local and disposable relative to source branches. No push, deployment, production database migration or automatic merge to main. The owner approves a concrete tested combined revision before main changes.
+Checkpoint/revert commits preserve audit history. Only an unfinished merge in the coordinator worktree may be aborted after inspecting its state. No reset/delete/clean of any agent worktree and no downgrade/reset of owner browser records. Tests use disposable browser contexts with fictional data.
 
-## Executed checkpoints in authorized corrective cycle
+No backend/auth/server/cloud work, push, deployment or main merge is authorized. Main remains `c1914984021a20a9e83f5e60ee4f93ef035659dc`. Owner approval is requested only for a verified concrete combined revision ready to merge into main; owner visual acceptance remains a distinct review.
 
-- 7223620: clean coordination checkpoint after owner authorization.
-- Operational pinned 8b79921 merged with a merge commit; inspect git log for its full SHA.
-- e136489: A2 pinned dd220df merged with deliberate per-hunk shared-file reconciliation.
-- a539358: A3 pinned11da925 merged; retained workforce-aware delivery actions and configurable target URL.
-- 8d7a277: coordinator protected loading, exact-original backup, canonical document/approval writes and lossless compatibility adapters.
-- A2 corrective c95a1cf/report94c568b reviewed and merged; only shared modal app code changed.
-- f6f7e04: pre-freeze 25-case recovery/rollback browser evidence and visual review.
-- A1 corrective a4620eb and A3 prep b88191b discovered; final source handoffs/review required before merging them.
+## Second independent failure and safe correction checkpoint
 
-Agent2 independently reviewed coordinator source/probes. Unknown optional legacy states, requester self-review and orphan approval targets were confirmed; all three now have guards and ordinary regression cases. Application source currently passes 198 unit cases, TypeScript and lint. This is a checkpoint, not final QA; the integration branch is not frozen.
-
-### Newly confirmed financial gate
-
-INT-REVIEW-A1 reproduced silent legacy item-credit reallocation and cumulative amount-credit VAT overrun (six0.11 credits on1.05gross/0.05VAT produce0.06VAT, then final0.39 fails). FIX-A1-02 assigned to Agent1 on its own branch. Freeze/finalQA waits for reviewed corrective commit. Original issued snapshots must remain unchanged; invalid historical bases require explicit review rather than silent repair.
-
-## Final gate composition
-
-Reviewed/merged financial follow-up857b57cd4e0519606d5be143b6851260b773c0a4 and reportd4d251fe6674f2354a40aaee5a08569f5d0cc9e2. QA compositione48ef9c31d93649f2345e944cc2d610f86376748 is committed in integration: operational boundary/atomic harnesses now use public canonical UI and source-bound fixtures; dev-only module imports are retired. Coordinator validates new optional posted allocation metadata before rendering.
-
-Pre-freeze full unit run:303 ordinary tests,0 failed/pending,13 files. TypeScript/lint pass. Production/browser/PDF gate is not yet certified. Final dev target5195 has an integration-local optimizer cache; old shared-cache5193 environment failures are retained as failed setup probes, not passing business checks. Final production preview must be built fresh from the same frozen SHA on another strict port. No source/test changes or commits while final gate runs; failures require reviewed correction and refreeze. Reports/evidence may be written, then committed after the gate with source/test tree equality checked.
-
-### Failed gate and corrective checkpoint
-
-19051cc1f5f70770142f116ecc4edb239099e708 failed independent dev and production gates. Serial units passed303/303; legitimate customer-only Credit Note approval reload was rejected. Correct approval.projectId to permit the empty project used by customer-only invoices, retaining polymorphic target/project integrity. New ordinary regression covers approval, receipt, issued credit, refund, reload, no writes and wrong-project rejection. Scope Quick Add and protected-recovery harness locators to their named surfaces without changing assertions. Preserve full failed certificate in AGENT-3-FAILED-GATE-19051CC.md. Agent1 FIX-A1-03 will be reviewed/merged before a new freeze; rerun the whole final gate including its38 financial-dialog checks. No acceptance certification applies to19051cc.
+Full db6bb114 gate:304 ordinary units/static/build pass;18/18 dev suites,17/18 initial production suites pass. FINAL-05 confirmed App search/hashchange race; unchanged boundary replay passing does not erase independently reproduced erasure. FINAL-06 native quotation print adds blank page8 at1440/390; downloaded PDFs remain7pages. Agent3 completed/stopped all runners and preview before any edits. Failed certificate preserved in AGENT-3-FAILED-GATE-DB6BB114.md. Assigned Agent1 FIX-A1-04 App search/navigation plus deterministic rapid-query regression; Agent2 FIX-A2-02 scoped quotation print CSS plus actual native-PDF page-count regression. Coordinator boundary harness now waits rendered destination heading and active procurement tab, retaining exact result-count/destination/cleared-query assertions; deliberate race coverage belongs to the new focused suite. No source fixes assumed from prototypes/replays. New reviewed commits and a new full freeze/full independent gate are required.

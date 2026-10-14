@@ -98,6 +98,31 @@ try {
     await expect(hit).toHaveCount(1);
     await hit.click();
     await expect(page).toHaveURL(new RegExp(route));
+    // A hash changes before React renders the destination. Wait for the actual
+    // screen, including the active procurement tab, before the next query.
+    const heading =
+      type === "Supplier"
+        ? fixture.operations.suppliers[0].name
+        : type === "Variation"
+          ? "Variations"
+          : type === "Credit Note"
+            ? "Credit Notes"
+            : "Procurement";
+    await expect(
+      page.getByRole("heading", { level: 1, name: heading, exact: true }),
+    ).toBeVisible();
+    if (heading === "Procurement") {
+      const tab = {
+        "Purchase Request": "Purchase Requests",
+        "Purchase Order": "Purchase Orders",
+        "Supplier Bill": "Supplier Bills",
+      }[type];
+      await expect(
+        page
+          .locator("main nav.tabs")
+          .getByRole("link", { name: tab, exact: true }),
+      ).toHaveClass(/active/);
+    }
     await expect(label("Global search")).toHaveValue("");
     record(`Global search resolves ${type} and navigates`);
   }

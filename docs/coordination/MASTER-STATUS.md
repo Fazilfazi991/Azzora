@@ -1,5 +1,11 @@
 # AZZORA MASTER STATUS
 
+## Timeline and dependency planning — local implementation, 15 October 2026
+
+The approved timeline specification at `6188dda685933abb1e46016bea501238e2b9b54d` has been implemented on local branch `codex/azzora-timeline-integration`, based on GitHub `main` merge `8f00619d0c7690df07afff8ad7fb0b5eb7fe67ff`. The frozen application/test revision is `b0858807194e13b3fb397fbdd2a50283e0649a3e`. It adds an additive planning model, working-day calendars, FS/SS/FF/SF links, proposal approval, critical-path analysis, explicit baselines, planning progress, a guarded fit-out template and responsive Gantt view. Existing commercial and operational records remain in their original registers; the browser database key is unchanged.
+
+Independent verification passed 384/384 units, TypeScript, ESLint, a cold production build, and 29/29 development plus 29/29 fresh-production browser suites on that frozen revision. The real empty-plan Wizard-to-template journey passed. Agent 3 visually inspected four timeline widths and 14 generated PDF pages. The [timeline implementation report](TIMELINE-IMPLEMENTATION-REPORT.md) records integration checkpoints, before/after screenshots, exact results and remaining limitations. The revision is ready for owner visual acceptance; owner acceptance itself is pending. No push, deployment, backend implementation or merge into `main` occurred in this cycle.
+
 ## Current review-branch acceptance checkpoint — 14 October 2026
 
 The final sidebar/Dashboard, live quotation preview, parent/child BOQ editor and approved-PDF alignment cycle is **independently verified and ready for owner/client acceptance review**. Frozen application/test SHA: **`176acdc285670feffb6047cb71ec6f72900a7b3c`**; source tree `7940eccfdbda7d49769e388ec53ba8f3c7147291`; test tree `97cfffa99bd5d532b7ba32f61472236c0372b715`. TypeScript, ESLint, 338/338 unit tests, cold production build, 25/25 development and 25/25 production browser suites passed. The 52 boundary guards per environment, production served-file matches and final evidence inventory passed. Earlier stopped gate attempts are recorded separately in the [current acceptance report](FINAL-CLIENT-ACCEPTANCE-REPORT.md) and [independent QA certificate](../AGENT-3-FINAL-UI-QA.md). The original 304-test quotation UX checkpoint below is preserved as historical provenance.

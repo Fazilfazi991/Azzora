@@ -1,5 +1,13 @@
 # Controlled integration plan and executed checkpoints
 
+## Approved timeline implementation cycle — 15 October 2026
+
+The owner approved the five planning specifications and six scheduling decisions at specification SHA `6188dda685933abb1e46016bea501238e2b9b54d`. The coordinator replayed that documentation and reviewed Agent 1 engine, Agent 2 interface and Agent 3 independent-test commits in controlled stages onto local `codex/azzora-timeline-integration`, starting from `origin/main` `8f00619d0c7690df07afff8ad7fb0b5eb7fe67ff`. The integration worktree is `C:/Users/USER/Desktop/Projects/Azzora/azzora-timeline-integration`; all three agent worktrees remain intact.
+
+The frozen application/test SHA is `b0858807194e13b3fb397fbdd2a50283e0649a3e`. The first freeze `73e5e5e` exposed a multi-project recovery bug; Agent 1 corrected planning-record validation in `b1c2abe`. The next full browser diagnostic found obsolete task/progress browser fixtures; Agent 2 migrated them in `9c3f36d` without changing application behavior. A date-sensitive recovery unit fixture was corrected in `b085880`. Agent 3's independent full gate on this SHA passed 384/384 units, TypeScript, ESLint, cold build, 29/29 development and 29/29 fresh-production browser suites. The [timeline implementation report](TIMELINE-IMPLEMENTATION-REPORT.md) records exact source mapping, failed/stopped checkpoints, visual/PDF review and final browser results.
+
+Application/test files remain frozen during the gate. Any corrective source or test change requires a new full SHA and repeat verification. Documentation-only delivery may follow while retaining the tested `src` and `tests` trees. No push, deployment, backend development or merge into `main` is authorized.
+
 All work is local in `C:/Users/USER/Desktop/Projects/Azzora/azzora-integration`, branch `codex/azzora-integration`. Current final QA freeze: **`f72e6c1dd7c5914e97c509a635b64de8c6aa9750`**. The original repository and all agent worktrees remain intact. Native Git is used because the chat parent directory is not a repository. No remotes exist.
 
 ## Pinned source and reviewed corrections

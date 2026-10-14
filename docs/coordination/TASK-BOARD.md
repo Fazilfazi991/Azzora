@@ -1,5 +1,17 @@
 # Task board
 
+## Timeline implementation cycle — 15 October 2026
+
+Frozen local integration revision: `b0858807194e13b3fb397fbdd2a50283e0649a3e`. The three feature owners used isolated worktrees; the coordinator reconciled their commits into `codex/azzora-timeline-integration`. The [timeline implementation report](TIMELINE-IMPLEMENTATION-REPORT.md) contains source mapping, evidence and independent results.
+
+| ID | Scope / owner | Status | Evidence |
+| --- | --- | --- | --- |
+| TL-01 | Additive model, migration, calendar, dependency engine, CPM, proposals and atomic approval — Agent 1 | Integrated | Engine/source checkpoints `26f34fc`, `cbbb383`, `ea37a1f`, `32f867e`, `bfe76e7`, `b1c2abe` |
+| TL-02 | Responsive Gantt, review controls, accessible mobile workflow — Agent 2 | Integrated | UI checkpoints `1469c67`, `33bd951`, `4a37c5b`, `c7a56c1`, `4758603`, `73e5e5e`; four-width before/after evidence |
+| TL-03 | Empty-plan Wizard route, shared-file reconciliation and source freeze — Coordinator | Integrated | `735da56`; frozen `b085880` |
+| TL-QA-01 | Independent full CRM and timeline gate — Agent 3 | Verified | Frozen `b085880`; 384/384 units, TypeScript, ESLint, build, 29/29 development and 29/29 production browser suites; Wizard/template and visual/PDF checks passed |
+| TL-ACCEPT-01 | Owner visual acceptance and any later GitHub/main action — Owner | Ready | Verified local revision ready for visual acceptance; no push, deployment or main merge authorized |
+
 ## Current client-acceptance cycle — verified review revision
 
 The historical board below records the original local integration. The current review-branch cycle is frozen at **`176acdc285670feffb6047cb71ec6f72900a7b3c`** and passed independent 25/25 development plus 25/25 production browser suites, 338/338 units, TypeScript, ESLint and cold build. Owner acceptance remains pending; main has not been merged.

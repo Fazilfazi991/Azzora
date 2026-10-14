@@ -507,7 +507,7 @@ main {
 }
 .badge.warn {
   background: #fbf6ee;
-  color: #9b702f;
+  color: #886027;
 }
 .badge.bad {
   background: #faf1ef;
@@ -897,6 +897,10 @@ dialog {
   color: inherit;
   box-shadow: 0 20px 48px #1a19181a;
   overflow: auto;
+  scroll-padding-block: 88px;
+}
+dialog :is(input, select, textarea) {
+  scroll-margin-block: 16px;
 }
 dialog::backdrop {
   background: #1a191855;
@@ -1201,9 +1205,11 @@ dialog::backdrop {
     transform: translateX(-100%);
     width: 280px;
     transition: transform 0.15s;
+    visibility: hidden;
   }
   .sidebar.open {
     transform: translateX(0);
+    visibility: visible;
   }
   .nav-backdrop {
     display: block;

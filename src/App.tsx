@@ -1,5 +1,5 @@
 import { Quotations } from "./quotation/LazyQuotations";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   LayoutDashboard,
   Building2,
@@ -80,6 +80,58 @@ export default function App() {
   const { db, toast, error, clear, mutate, reset, exportOriginal } = useStore();
   const [route, setRoute] = useState(location.hash.slice(2) || "dashboard");
   const [menu, setMenu] = useState(false);
+  const [mobileNavigation, setMobileNavigation] = useState(
+    () => window.matchMedia("(max-width: 767px)").matches,
+  );
+  const sidebar = useRef<HTMLElement>(null);
+  const navigationOpener = useRef<HTMLButtonElement | null>(null);
+  function showNavigation(trigger: HTMLButtonElement) {
+    navigationOpener.current = trigger;
+    setMenu(true);
+  }
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 767px)");
+    const update = () => {
+      setMobileNavigation(query.matches);
+      if (!query.matches) setMenu(false);
+    };
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    if (!mobileNavigation || !menu) return;
+    const panel = sidebar.current;
+    const controls = () =>
+      Array.from(
+        panel?.querySelectorAll<HTMLElement>(
+          "a[href], button:not([disabled]), select:not([disabled]), input:not([disabled])",
+        ) || [],
+      ).filter((element) => element.getClientRects().length > 0);
+    controls()[0]?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMenu(false);
+      } else if (event.key === "Tab") {
+        const list = controls(),
+          first = list[0],
+          last = list.at(-1);
+        if (
+          !panel?.contains(document.activeElement) ||
+          (event.shiftKey && document.activeElement === first) ||
+          (!event.shiftKey && document.activeElement === last)
+        ) {
+          event.preventDefault();
+          (event.shiftKey ? last : first)?.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      navigationOpener.current?.focus();
+    };
+  }, [mobileNavigation, menu]);
   const [wizard, setWizard] = useState(false);
   const [quickAdd, setQuickAdd] = useState(false),
     [quickForm, setQuickForm] = useState("");
@@ -469,7 +521,14 @@ export default function App() {
     );
   return (
     <>
-      <aside className={"sidebar " + (menu ? "open" : "")}>
+      <aside
+        id="main-navigation"
+        ref={sidebar}
+        aria-label="Main navigation"
+        inert={mobileNavigation && !menu}
+        aria-hidden={mobileNavigation && !menu ? true : undefined}
+        className={"sidebar " + (menu ? "open" : "")}
+      >
         <a className="brand" href="#/dashboard">
           <img src="/assets/azzora-logo.png" alt="AZZORA design . build" />
           <span>
@@ -526,12 +585,14 @@ export default function App() {
           onClick={() => setMenu(false)}
         />
       )}
-      <div className="main-shell">
+      <div className="main-shell" inert={mobileNavigation && menu}>
         <header className="topbar">
           <button
             className="mobile-only"
             aria-label="Open navigation"
-            onClick={() => setMenu(!menu)}
+            aria-expanded={menu && mobileNavigation}
+            aria-controls="main-navigation"
+            onClick={(event) => showNavigation(event.currentTarget)}
           >
             <Menu size={20} />
           </button>
@@ -596,7 +657,7 @@ export default function App() {
           </footer>
         </main>
       </div>
-      <nav className="mobile-nav">
+      <nav className="mobile-nav" inert={mobileNavigation && menu}>
         <a href="#/dashboard">
           <LayoutDashboard size={20} />
           Dashboard
@@ -613,7 +674,11 @@ export default function App() {
           <HardHat size={20} />
           Updates
         </a>
-        <button onClick={() => setMenu(true)}>
+        <button
+          aria-expanded={menu && mobileNavigation}
+          aria-controls="main-navigation"
+          onClick={(event) => showNavigation(event.currentTarget)}
+        >
           <Menu size={20} />
           More
         </button>

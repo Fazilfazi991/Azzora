@@ -28,6 +28,58 @@ export function lineGross(line: InvoiceLine) {
     r = decimal(line.rate);
   return round(q.n * r.n * 100n, q.d * r.d);
 }
+/** Proportional floors; allocate residual fils from the final row backwards,
+ * bounded by each row's remaining value. Keeps the historic final-row policy
+ * wherever it fits, including zero-value trailing rows, without negative bases. */
+export function allocateDiscount(values: bigint[], discount: bigint) {
+  const subtotal = values.reduce((sum, value) => sum + value, 0n);
+  if (discount < 0n || values.some((value) => value < 0n))
+    throw Error("Discount and line values must be non-negative.");
+  if (discount > subtotal) throw Error("Discount cannot exceed subtotal.");
+  const shares = values.map((value) =>
+    subtotal ? (discount * value) / subtotal : 0n,
+  );
+  let remaining = discount - shares.reduce((sum, value) => sum + value, 0n);
+  for (let index = values.length - 1; index >= 0 && remaining > 0n; index--) {
+    const capacity = values[index] - shares[index];
+    const extra = remaining < capacity ? remaining : capacity;
+    shares[index] += extra;
+    remaining -= extra;
+  }
+  return shares;
+}
+export function invoiceLineTotals(
+  i: Pick<Invoice, "lines" | "discount" | "vatPercentage">,
+) {
+  const values = i.lines.map(lineGross),
+    shares = allocateDiscount(values, cents(i.discount || "0")),
+    rate = decimal(i.vatPercentage);
+  if (rate.n > 100n * rate.d) throw Error("VAT must be between 0 and 100%.");
+  return i.lines.map((line, index) => {
+    const value = values[index] - shares[index];
+    if (!["Inclusive", "Exclusive", "Zero Rated", "Exempt"].includes(line.tax))
+      throw Error("Choose a valid tax treatment.");
+    const net =
+      line.tax === "Inclusive"
+        ? round(value * rate.d * 100n, rate.d * 100n + rate.n)
+        : value;
+    const vat =
+      line.tax === "Inclusive"
+        ? value - net
+        : line.tax === "Exclusive"
+          ? round(value * rate.n, rate.d * 100n)
+          : 0n;
+    if (value < 0n || net < 0n || vat < 0n)
+      throw Error("Invoice taxable bases and VAT must be non-negative.");
+    return {
+      subtotal: values[index],
+      discount: shares[index],
+      net,
+      vat,
+      grand: net + vat,
+    };
+  });
+}
 export function invoiceTotals(i: Invoice) {
   if (i.snapshot && i.status !== "Draft")
     return Object.fromEntries(
@@ -42,39 +94,16 @@ export function invoiceTotals(i: Invoice) {
       vat: bigint;
       grand: bigint;
     };
-  const values = i.lines.map(lineGross);
-  const subtotal = values.reduce((s, v) => s + v, 0n);
-  const discount = cents(i.discount || "0");
-  if (discount > subtotal) throw Error("Discount cannot exceed subtotal.");
-  const rate = decimal(i.vatPercentage);
-  if (rate.n > 100n * rate.d) throw Error("VAT must be between 0 and 100%.");
-  // Allocate the invoice discount proportionately. Last non-zero row absorbs fils.
-  let last = -1;
-  values.forEach((v, index) => {
-    if (v > 0n) last = index;
-  });
-  let assigned = 0n,
-    net = 0n,
-    vat = 0n;
-  i.lines.forEach((line, index) => {
-    const share =
-      index === last
-        ? discount - assigned
-        : subtotal
-          ? (discount * values[index]) / subtotal
-          : 0n;
-    assigned += share;
-    const value = values[index] - share;
-    if (line.tax === "Inclusive") {
-      const base = round(value * rate.d * 100n, rate.d * 100n + rate.n);
-      net += base;
-      vat += value - base;
-    } else {
-      net += value;
-      if (line.tax === "Exclusive") vat += round(value * rate.n, rate.d * 100n);
-    }
-  });
-  return { subtotal, discount, net, vat, grand: net + vat };
+  return invoiceLineTotals(i).reduce(
+    (total, line) => ({
+      subtotal: total.subtotal + line.subtotal,
+      discount: total.discount + line.discount,
+      net: total.net + line.net,
+      vat: total.vat + line.vat,
+      grand: total.grand + line.grand,
+    }),
+    { subtotal: 0n, discount: 0n, net: 0n, vat: 0n, grand: 0n },
+  );
 }
 export function paidAmount(db: Database, id: string, asOf = today()) {
   return db.payments

@@ -537,6 +537,7 @@ export function decideApproval(
     );
     return a;
   }
+  if (a.kind === "Variation" && approved) variationTotals(e as Variation);
   if (a.kind === "Variation" && approved && a.stage === "Client") {
     const v = e as Variation;
     if (
@@ -1044,15 +1045,14 @@ export function generateVariationInvoice(db: Database, id: string) {
     throw Error("Variation is already invoiced/reserved.");
   const i = blankInvoice(v.customerId, v.projectId);
   i.variationId = id;
-  i.lines = [
-    {
-      id: uid(),
-      description: v.number + " · " + v.title,
-      quantity: "1",
-      rate: amountString(BigInt(v.gross!)),
-      tax: "Inclusive",
-    },
-  ];
+  i.lines = v.items.map((item) => ({
+    id: uid(),
+    description: v.number + " · " + item.description,
+    quantity: item.quantity,
+    rate: item.rate,
+    tax: item.tax,
+  }));
+  i.discount = v.discount;
   i.vatPercentage = v.vatPercentage;
   i.description = v.title;
   return saveInvoice(db, i);
@@ -1062,6 +1062,11 @@ function validateCredit(db: Database, c: CreditNote) {
     i = db.invoices.find((i) => i.id === c.invoiceId && i.status === "Issued");
   if (!i || i.projectId !== c.projectId || i.customerId !== c.customerId)
     throw Error("Credit note must match an issued invoice.");
+  const invoiceValue = invoiceTotals(i);
+  if (invoiceValue.net < 0n || invoiceValue.vat < 0n)
+    throw Error(
+      "Invoice snapshot has negative net/VAT; review the original posting before issuing adjustments.",
+    );
   required(c.reason, "Credit reason");
   validDate(c.date);
   if (c.date < i.date || c.date > today())
@@ -1071,10 +1076,7 @@ function validateCredit(db: Database, c: CreditNote) {
       (x) => x.id !== c.id && x.invoiceId === i.id && x.status !== "Rejected",
     )
     .reduce((s, x) => s + cents(x.gross), 0n);
-  if (
-    cents(c.gross) <= 0n ||
-    cents(c.gross) + reserved > invoiceTotals(i).grand
-  )
+  if (cents(c.gross) <= 0n || cents(c.gross) + reserved > invoiceValue.grand)
     throw Error("Credit exceeds eligible billed value.");
   if (c.itemId) {
     const line = i.lines.find((l) => l.id === c.itemId);

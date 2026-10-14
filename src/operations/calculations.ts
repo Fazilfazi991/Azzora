@@ -7,8 +7,7 @@ import {
   cents,
   paidAmount,
   round,
-  lineGross,
-  amountString,
+  invoiceLineTotals,
 } from "../commercial/calculations";
 import { decimal } from "../quotation/calculations";
 import { today } from "../domain/logic";
@@ -187,33 +186,7 @@ export function proportionalVat(
   return { vat: adjustedVat, net: credit - adjustedVat, originalNet: net };
 }
 export function invoiceItemTotals(i: Invoice, itemId: string) {
-  const values = i.lines.map(lineGross),
-    subtotal = values.reduce((sum, n) => sum + n, 0n),
-    discount = cents(i.discount || "0");
-  let last = -1,
-    allocated = 0n;
-  values.forEach((n, index) => {
-    if (n > 0n) last = index;
-  });
-  for (let index = 0; index < i.lines.length; index++) {
-    const share =
-      index === last
-        ? discount - allocated
-        : subtotal
-          ? (discount * values[index]) / subtotal
-          : 0n;
-    allocated += share;
-    if (i.lines[index].id === itemId)
-      return price(
-        [
-          {
-            ...i.lines[index],
-            quantity: "1",
-            rate: amountString(values[index] - share),
-          },
-        ],
-        i.vatPercentage,
-      );
-  }
-  throw Error("Invoice item not found.");
+  const index = i.lines.findIndex((line) => line.id === itemId);
+  if (index < 0) throw Error("Invoice item not found.");
+  return invoiceLineTotals(i)[index];
 }

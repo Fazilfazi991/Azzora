@@ -264,6 +264,8 @@ function validateInvoice(db: Database, i: Invoice) {
   )
     throw Error("Add invoice items with descriptions and valid tax treatment.");
   const t = invoiceTotals({ ...i, snapshot: undefined, status: "Draft" });
+  if (t.net < 0n || t.vat < 0n)
+    throw Error("Invoice taxable bases and VAT must be non-negative.");
   if (t.grand <= 0n) throw Error("Invoice total must be positive.");
   if (i.variationId) {
     const v = getOperations(db).variations.find(
@@ -274,6 +276,8 @@ function validateInvoice(db: Database, i: Invoice) {
       v.customerId !== i.customerId ||
       v.projectId !== i.projectId ||
       BigInt(v.gross!) !== t.grand ||
+      BigInt(v.net!) !== t.net ||
+      BigInt(v.vat!) !== t.vat ||
       i.quotationId ||
       i.milestoneId
     )

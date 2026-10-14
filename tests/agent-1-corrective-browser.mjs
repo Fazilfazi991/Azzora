@@ -29,19 +29,24 @@ try {
     const saved = () =>
       page.evaluate(() => JSON.parse(localStorage.getItem("azzora-demo-v1")));
     await go("dashboard");
+    await expect(page.locator("main h1")).toHaveText("Executive Overview");
+    await page.bringToFront();
     await page.keyboard.press("Tab");
-    expect(
-      await page.evaluate(() => {
+    const firstFocus = await page.evaluate(() => {
         const active = document.activeElement,
           r = active.getBoundingClientRect();
-        return (
-          r.left >= 0 &&
-          r.right <= innerWidth &&
-          r.top >= 0 &&
-          r.bottom <= innerHeight
-        );
-      }),
-    ).toBe(true);
+        return {
+          tag: active.tagName,
+          text: active.textContent?.trim().slice(0, 80),
+          rect: { left: r.left, right: r.right, top: r.top, bottom: r.bottom },
+          visible:
+            r.left >= 0 &&
+            r.right <= innerWidth &&
+            r.top >= 0 &&
+            r.bottom <= innerHeight,
+        };
+      });
+    expect(firstFocus.visible, JSON.stringify({ width, firstFocus })).toBe(true);
     expect(await page.locator(".sidebar").evaluate((el) => el.inert)).toBe(
       width < 768,
     );

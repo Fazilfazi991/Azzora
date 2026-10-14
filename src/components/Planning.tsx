@@ -51,11 +51,13 @@ export function Planning({ projectId, onTask, filteredIds }: {
   const [milestoneDate, setMilestoneDate] = useState(today());
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [calendarHoliday, setCalendarHoliday] = useState("");
+  const [calendarClosure, setCalendarClosure] = useState("");
   const [calendarDraft, setCalendarDraft] = useState<ProjectCalendar | null>(null);
   const [templatePreview, setTemplatePreview] = useState<FitOutTemplatePreview | null>(null);
   const [selectedMilestoneId, setSelectedMilestoneId] = useState("");
   const [manualMilestoneReason, setManualMilestoneReason] = useState("");
   const [paths, setPaths] = useState<{ id: string; d: string }[]>([]);
+  const [chartBodyHeight, setChartBodyHeight] = useState(0);
   const chartRef = useRef<HTMLDivElement>(null);
   const barRefs = useRef(new Map<string, HTMLButtonElement>());
   const config = scales[scale];
@@ -88,7 +90,8 @@ export function Planning({ projectId, onTask, filteredIds }: {
     tasks.filter((task) => task.phaseId === phase.id && !task.parentId).forEach(appendTask);
     tasks.filter((task) => task.phaseId === phase.id).forEach(appendTask);
   });
-  tasks.filter((task) => !seen.has(task.id)).forEach(appendTask);
+  const phaseIds = new Set(phases.map((phase) => phase.id));
+  tasks.filter((task) => !seen.has(task.id) && !phaseIds.has(task.phaseId)).forEach(appendTask);
   milestones.forEach((milestone) => rows.push({ milestone }));
   const linkKey = planning?.links.map((link) => link.id + ":" + link.predecessor.id + ":" + link.successor.id).join("|") || "";
   const approvedFinish = planning?.approvedFinish;
@@ -100,6 +103,7 @@ export function Planning({ projectId, onTask, filteredIds }: {
     const chart = chartRef.current;
     if (!chart || !showLinks) return;
     const measure = () => {
+      setChartBodyHeight(chart.scrollHeight);
       const origin = chart.getBoundingClientRect();
       const next: { id: string; d: string }[] = [];
       planning?.links.forEach((link) => {
@@ -135,6 +139,7 @@ export function Planning({ projectId, onTask, filteredIds }: {
     const barWidth = isMilestone ? Math.max(18, width) : Math.max(width / 2, (Math.min(config.span - 1, last) - Math.max(0, first) + 1) * width);
     const label = `${isMilestone ? "Milestone" : "Task"} ${node.name}. Approved ${dateLabel(start)} to ${dateLabel(finish)}.${isMilestone ? "" : ` Reported progress ${(node as Task).progress}%.`}`;
     const projection = nodeView.get((isMilestone ? "milestone:" : "task:") + node.id);
+    const accessibleDates = `${projection?.baseline ? ` Baseline ${dateLabel(projection.baseline.start)} to ${dateLabel(projection.baseline.finish)}.` : " Baseline not captured."}${projection?.proposed ? ` Proposed ${dateLabel(projection.proposed.start)} to ${dateLabel(projection.proposed.finish)}; not approved.` : " No active proposed date."}`;
     const taskMetadata = !isMilestone ? projectPlanning?.taskPlanning.find((item) => item.taskId === node.id) : undefined;
     const blocking = planning?.blockers.filter((item) => item.node?.id === node.id && item.node.kind === (isMilestone ? "milestone" : "task")) ?? [];
     const overlay = (dates: PlanningNodeView["baseline"] | PlanningNodeView["proposed"], kind: "baseline" | "proposed") => {
@@ -150,12 +155,12 @@ export function Planning({ projectId, onTask, filteredIds }: {
       {taskMetadata?.actualFinish && days(anchor, taskMetadata.actualFinish) >= 0 && days(anchor, taskMetadata.actualFinish) < config.span && <span className="gantt-actual-tick finish" style={{ left: days(anchor, taskMetadata.actualFinish) * width }} title={`Actual finish ${dateLabel(taskMetadata.actualFinish)}`}>F</span>}
       <button key={node.id} ref={(element) => { if (element) barRefs.current.set(node.id, element); else barRefs.current.delete(node.id); }}
       type="button" className={`gantt-bar ${isMilestone ? "milestone" : ""} ${projection?.critical && planning?.criticalPathFeasible ? "critical" : ""} ${!isMilestone && (overdue(node as Task) || (node as Task).status === "Blocked") ? "risk" : ""}`}
-      style={{ left: Math.max(0, first) * width, width: barWidth }} aria-label={label + (taskMetadata?.actualStart ? ` Actual start ${dateLabel(taskMetadata.actualStart)}.` : "") + (taskMetadata?.actualFinish ? ` Actual finish ${dateLabel(taskMetadata.actualFinish)}.` : "") + (projection?.critical && planning?.criticalPathFeasible ? " Critical path." : "") + (blocking.length ? ` ${blocking.length} operational blockers.` : "")} title={label}
+      style={{ left: Math.max(0, first) * width, width: barWidth }} aria-label={label + accessibleDates + (taskMetadata?.actualStart ? ` Actual start ${dateLabel(taskMetadata.actualStart)}.` : "") + (taskMetadata?.actualFinish ? ` Actual finish ${dateLabel(taskMetadata.actualFinish)}.` : "") + (projection?.critical && planning?.criticalPathFeasible ? " Approved critical path." : "") + (blocking.length ? ` ${blocking.length} operational blockers.` : "")} title={label + accessibleDates}
       onClick={() => { if (isMilestone) setSelectedMilestoneId(node.id); else onTask(node as Task); }}>
       {!isMilestone && <i style={{ width: taskProgress(db, node as Task) + "%" }} />}
       <span aria-hidden="true">{isMilestone ? "◆" : barWidth >= 70 ? node.name : ""}</span>
       </button>
-      {(projection?.critical && planning?.criticalPathFeasible || blocking.length > 0) && <span className="gantt-status-text" style={{ left: Math.max(0, first) * width }}>{projection?.critical && planning?.criticalPathFeasible ? "Critical" : ""}{blocking.length ? " · Blocked" : ""}</span>}
+      {!isMilestone && (projection?.critical && planning?.criticalPathFeasible || blocking.length > 0) && <span className="gantt-status-text" style={{ left: Math.max(0, first) * width }}>{projection?.critical && planning?.criticalPathFeasible ? "Approved critical" : ""}{blocking.length ? " · Blocked" : ""}</span>}
     </>;
   }
 
@@ -224,9 +229,12 @@ export function Planning({ projectId, onTask, filteredIds }: {
         <label>Workday start<input type="time" value={calendarDraft.workdayStart} onChange={(event) => setCalendarDraft({ ...calendarDraft, workdayStart: event.target.value })} /></label>
         <label>Workday end<input type="time" value={calendarDraft.workdayEnd} onChange={(event) => setCalendarDraft({ ...calendarDraft, workdayEnd: event.target.value })} /></label>
         <label>Add holiday<input type="date" value={calendarHoliday} onChange={(event) => setCalendarHoliday(event.target.value)} /></label>
+        <label>Add project nonworking date<input type="date" value={calendarClosure} onChange={(event) => setCalendarClosure(event.target.value)} /></label>
       </div>
-      <p>Holidays: {calendarDraft.holidays.length ? calendarDraft.holidays.join(", ") : "None set"}</p>
+      <div className="planning-calendar-dates"><strong>Holidays:</strong> {calendarDraft.holidays.length ? calendarDraft.holidays.map((date) => <span key={date}>{date} <button type="button" aria-label={`Remove holiday ${date}`} onClick={() => setCalendarDraft({ ...calendarDraft, holidays: calendarDraft.holidays.filter((item) => item !== date) })}>×</button></span>) : "None set"}</div>
       <button type="button" onClick={() => { if (calendarHoliday) setCalendarDraft({ ...calendarDraft, holidays: [...new Set([...calendarDraft.holidays, calendarHoliday])].sort() }); setCalendarHoliday(""); }}>Add holiday</button>{" "}
+      <div className="planning-calendar-dates"><strong>Project nonworking dates:</strong> {calendarDraft.projectNonworkingDates.length ? calendarDraft.projectNonworkingDates.map((date) => <span key={date}>{date} <button type="button" aria-label={`Remove project nonworking date ${date}`} onClick={() => setCalendarDraft({ ...calendarDraft, projectNonworkingDates: calendarDraft.projectNonworkingDates.filter((item) => item !== date) })}>×</button></span>) : "None set"}</div>
+      <button type="button" onClick={() => { if (calendarClosure) setCalendarDraft({ ...calendarDraft, projectNonworkingDates: [...new Set([...calendarDraft.projectNonworkingDates, calendarClosure])].sort() }); setCalendarClosure(""); }}>Add nonworking date</button>{" "}
       <button type="button" disabled={!planning?.nodes.length || reason.trim().length < 3} onClick={() => {
         const node = planning?.nodes[0]?.node;
         if (node) mutate((next) => { draftScheduleProposal(next, { projectId: selected, initiatingNode: node, actorId, reason, edit: { calendar: calendarDraft } }); }, "Working calendar proposal drafted");
@@ -257,7 +265,7 @@ export function Planning({ projectId, onTask, filteredIds }: {
             return <div className={`gantt-row ${"phase" in row ? "phase-row" : ""}`} key={key} data-row-id={key}>
               <div className="gantt-info">
                 {"phase" in row ? <button className="gantt-phase" type="button" aria-expanded={!collapsed.includes(row.phase.id)} onClick={() => setCollapsed(collapsed.includes(row.phase.id) ? collapsed.filter((id) => id !== row.phase.id) : [...collapsed, row.phase.id])}><span>{collapsed.includes(row.phase.id) ? "▸" : "▾"} {String(row.phase.order + 1).padStart(2, "0")} {row.phase.name}</span><Progress value={phaseProgress(db, row.phase.id)} /></button> :
-                  "task" in row ? <button className="gantt-task" type="button" onClick={() => onTask(row.task)} aria-label={`Open task ${row.task.name}. Approved ${dateLabel(row.task.start)} to ${dateLabel(row.task.due)}. ${planning?.links.filter((link) => link.successor.kind === "task" && link.successor.id === row.task.id).length || 0} predecessors.`}><span className="gantt-name"><strong>{row.task.parentId ? "↳ " : ""}{row.task.name}</strong>{nodeView.get("task:" + row.task.id)?.critical && planning?.criticalPathFeasible && <small className="gantt-inline-status">Critical path</small>}<small className="mobile-dates">{dateLabel(row.task.start)} → {dateLabel(row.task.due)} · {personName(db, row.task.assigneeId)}</small></span><span>{personName(db, row.task.assigneeId).split(" ")[0]}</span><span>{row.task.start.slice(5)} → {row.task.due.slice(5)}</span><Progress value={taskProgress(db, row.task)} /></button> :
+                  "task" in row ? <button className="gantt-task" type="button" onClick={() => onTask(row.task)} aria-label={`Open task ${row.task.name}. Approved ${dateLabel(row.task.start)} to ${dateLabel(row.task.due)}. ${planning?.links.filter((link) => link.successor.kind === "task" && link.successor.id === row.task.id).length || 0} predecessors.`}><span className="gantt-name"><strong>{row.task.parentId ? "↳ " : ""}{row.task.name}</strong>{nodeView.get("task:" + row.task.id)?.critical && planning?.criticalPathFeasible && <small className="gantt-inline-status">Approved critical path</small>}<small className="mobile-dates">{dateLabel(row.task.start)} → {dateLabel(row.task.due)} · {personName(db, row.task.assigneeId)}</small></span><span>{personName(db, row.task.assigneeId).split(" ")[0]}</span><span>{row.task.start.slice(5)} → {row.task.due.slice(5)}</span><Progress value={taskProgress(db, row.task)} /></button> :
                   <button className="gantt-milestone-info" type="button" onClick={() => setSelectedMilestoneId(row.milestone.id)}><span className="gantt-name"><strong>◆ {row.milestone.name}</strong><small>Milestone{row.milestone.taskId ? ` · linked to ${db.tasks.find((task) => task.id === row.milestone.taskId)?.name || "task"}` : ""}</small></span><span>—</span><span>{row.milestone.due.slice(5)}</span><span>Event</span></button>}
               </div>
               <div className="gantt-track" style={{ width: chartWidth, backgroundSize: width + "px 100%" }}>
@@ -266,7 +274,7 @@ export function Planning({ projectId, onTask, filteredIds }: {
               </div>
             </div>;
           })}
-          {showLinks && <svg className="dependency-lines" width={chartWidth} height={rows.length * 64} style={{ left: "var(--gantt-pane)" }} aria-hidden="true"><defs><marker id="planning-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="#745a37" /></marker></defs>{paths.map((path) => <path key={path.id} d={path.d} fill="none" stroke="#745a37" strokeWidth="1.5" markerEnd="url(#planning-arrow)" />)}</svg>}
+          {showLinks && <svg className="dependency-lines" width={chartWidth} height={chartBodyHeight} style={{ left: "var(--gantt-pane)" }} aria-hidden="true"><defs><marker id="planning-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="#745a37" /></marker></defs>{paths.map((path) => <path key={path.id} d={path.d} fill="none" stroke="#745a37" strokeWidth="1.5" markerEnd="url(#planning-arrow)" />)}</svg>}
         </div>
       </div>
     </div>
@@ -341,7 +349,7 @@ export function Planning({ projectId, onTask, filteredIds }: {
           {planning.activeProposal.status === "Submitted" && <button type="button" disabled={decisionReason.trim().length < 3} onClick={() => mutate((next) => { rejectScheduleProposal(next, planning.activeProposal!.id, actorId, decisionReason); }, "Schedule proposal rejected")}>Reject proposal</button>}
         </div>
       </div> : <p className="muted">Edit a task date, dependency, milestone or working calendar to draft a reviewable proposal.</p>}
-      {planning && planning.proposals.filter((item) => item.status === "Approved" || item.status === "Rejected").length > 0 && <details><summary>Decision history · {planning.proposals.filter((item) => item.status === "Approved" || item.status === "Rejected").length}</summary><ul>{planning.proposals.filter((item) => item.status === "Approved" || item.status === "Rejected").map((item) => <li key={item.id}>Revision {item.revision}: {item.status} · {item.reason}{item.decisionReason ? " · " + item.decisionReason : ""}</li>)}</ul></details>}
+      {planning && planning.proposals.filter((item) => item.status === "Approved" || item.status === "Rejected" || item.revisedByProposalId).length > 0 && <details><summary>Decision and revision history · {planning.proposals.filter((item) => item.status === "Approved" || item.status === "Rejected" || item.revisedByProposalId).length}</summary><ul>{planning.proposals.filter((item) => item.status === "Approved" || item.status === "Rejected" || item.revisedByProposalId).map((item) => <li key={item.id}>Revision {item.revision}: {item.revisedByProposalId ? "Revised by a later proposal" : item.status} · {item.reason}{item.decisionReason ? " · " + item.decisionReason : ""}</li>)}</ul></details>}
     </section>
     <p className="planning-note">The timeline shows approved dates. Select a task to review its dates and predecessors. Demo project manager actions are browser-local and are not secure authentication.</p>
   </>;

@@ -2169,6 +2169,9 @@ details > summary { overflow-wrap: anywhere; }
 .planning-milestone-form input,
 .planning-review-actions input,
 .planning-reason input { min-height: 38px; }
+.planning-calendar-dates { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; font-size: 11px; }
+.planning-calendar-dates span { padding: 3px 6px; border: 1px solid var(--line); border-radius: 4px; }
+.planning-calendar-dates span button { min-height: 20px; padding: 0 4px; border: 0; }
 .planning-reason { width: min(100%, 480px); margin: 12px 0; }
 .planning-review { scroll-margin-top: 60px; }
 .planning-review-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; }

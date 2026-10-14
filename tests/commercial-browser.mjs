@@ -6,6 +6,12 @@ import {
   openQuotationCategory,
   openQuotationItem,
 } from "./quotation-ux-helpers.mjs";
+import {
+  selectQuotationCustomer,
+  openQuotationCustomerForm,
+  openQuotationProjectForm,
+  quotationLinks,
+} from "./quotation-picker-helpers.mjs";
 
 const url = auditUrl;
 const output =
@@ -75,7 +81,7 @@ try {
     await button("New quotation").click();
     await quotationStep(page, 0);
     const quotationId = await page.evaluate(() => location.hash.split("/")[2]);
-    await label("Linked Customer").selectOption(customerId);
+    await selectQuotationCustomer(page, customerId);
     await quotationStep(page, 1);
     await button("Add Work Category").click();
     let section = page.getByTestId("quote-section").first();
@@ -84,7 +90,7 @@ try {
       .getByLabel("Work category name", { exact: true })
       .fill("Commercial fit-out");
     await section
-      .getByRole("button", { name: "Add Priced Item", exact: true })
+      .getByRole("button", { name: "Add Direct Priced Item", exact: true })
       .click();
     await openQuotationItem(section.getByTestId("quote-line").first());
     await section
@@ -96,21 +102,20 @@ try {
     await expect(page.getByTestId("grand-total")).toHaveText("AED 1,050.00");
     // Add another customer inside the populated quotation. BOQ must survive.
     await quotationStep(page, 0);
-    await button("+ Add Customer").click();
+    await openQuotationCustomerForm(page);
     await dlabel("Customer/company name").fill("Quotation inline " + width);
     await dlabel("Email").fill(`inline${width}@example.com`);
     await dbutton("Save Customer").click();
-    const inlineCustomerId = await label("Linked Customer").inputValue();
+    const inlineCustomerId = (await quotationLinks(page, quotationId))
+      .customerId;
     await quotationStep(page, 2);
     await expect(page.getByTestId("grand-total")).toHaveText("AED 1,050.00");
     await quotationStep(page, 1);
     await expect(page.getByTestId("quote-line")).toHaveCount(1);
     check(width, "quotation inline customer creation preserves BOQ");
     await quotationStep(page, 0);
-    await button("+ Create Project").click();
-    await expect(dlabel("Select Existing Customer")).toHaveValue(
-      inlineCustomerId,
-    );
+    await openQuotationProjectForm(page);
+    await expect(dialog().getByText("Linked from the quotation")).toBeVisible();
     await dlabel("Project name").fill("Commercial fit-out " + width);
     await dbutton("Continue →").click();
     await dlabel("Project location").fill("Dubai Marina");
@@ -120,7 +125,7 @@ try {
     await dbutton("Continue →").click();
     await dbutton("Create Project").click();
     await expect(dialog()).toHaveCount(0);
-    const projectId = await label("Linked Project").inputValue();
+    const projectId = (await quotationLinks(page, quotationId)).projectId;
     expect(projectId).toBeTruthy();
     await quotationStep(page, 2);
     await expect(page.getByTestId("grand-total")).toHaveText("AED 1,050.00");
@@ -131,8 +136,10 @@ try {
     await button("Save Draft").click();
     await page.reload();
     await quotationStep(page, 0);
-    await expect(label("Linked Customer")).toHaveValue(inlineCustomerId);
-    await expect(label("Linked Project")).toHaveValue(projectId);
+    expect(await quotationLinks(page, quotationId)).toEqual({
+      customerId: inlineCustomerId,
+      projectId,
+    });
     await quotationStep(page, 2);
     await expect(page.getByTestId("grand-total")).toHaveText("AED 1,050.00");
     await quotationStep(page, 4);

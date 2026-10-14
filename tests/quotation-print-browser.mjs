@@ -5,6 +5,10 @@ import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { browserOptions, auditUrl } from "./browser-runtime.mjs";
 import {
+  selectQuotationCustomer,
+  selectQuotationProject,
+} from "./quotation-picker-helpers.mjs";
+import {
   quotationStep,
   openQuotationCategory,
   openQuotationItem,
@@ -83,14 +87,17 @@ try {
           .getByRole("button", { name: "New quotation", exact: true })
           .click();
         await quotationStep(page, 0);
+        await selectQuotationCustomer(page, "client-0");
+        await selectQuotationProject(page, "project-0");
         await page
-          .getByLabel("Linked Project", { exact: true })
-          .selectOption("project-0");
+          .locator("summary")
+          .filter({ hasText: "Document snapshot details" })
+          .click();
         await page
-          .getByLabel("Job / Project Name", { exact: true })
+          .getByLabel("Job / Project Name on document", { exact: true })
           .fill(`QA Native Print Workflow ${width}`);
         await page
-          .getByLabel("Project Location", { exact: true })
+          .getByLabel("Project Location on document", { exact: true })
           .fill("Dubai QA site");
         await quotationStep(page, 1);
         await page
@@ -102,7 +109,7 @@ try {
           .getByLabel("Work category name", { exact: true })
           .fill("Coordinated ceiling works");
         await section
-          .getByRole("button", { name: "Add Priced Item", exact: true })
+          .getByRole("button", { name: "Add Direct Priced Item", exact: true })
           .click();
         const row = section.getByTestId("quote-line").first();
         await openQuotationItem(row);

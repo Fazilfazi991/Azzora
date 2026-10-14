@@ -5,6 +5,10 @@ import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { browserOptions, auditUrl } from "./browser-runtime.mjs";
 import {
+  selectQuotationCustomer,
+  selectQuotationProject,
+} from "./quotation-picker-helpers.mjs";
+import {
   quotationStep,
   quotationAdvanced,
   openQuotationCategory,
@@ -184,13 +188,18 @@ try {
       "empty/incomplete real draft preview and separate fictional example preserve inputs, step, focus and unissued status",
     );
     await quotationStep(p, 0);
+    await selectQuotationCustomer(p, "client-0");
+    await selectQuotationProject(p, "project-0");
     await p
-      .getByLabel("Linked Project", { exact: true })
-      .selectOption("project-0");
+      .locator("summary")
+      .filter({ hasText: "Document snapshot details" })
+      .click();
     const name = "Fictional QA live preview " + width;
-    await p.getByLabel("Job / Project Name", { exact: true }).fill(name);
     await p
-      .getByLabel("Project Location", { exact: true })
+      .getByLabel("Job / Project Name on document", { exact: true })
+      .fill(name);
+    await p
+      .getByLabel("Project Location on document", { exact: true })
       .fill("Dubai fictional QA site");
     const data = [
       ["Painting", "40", "35"],
@@ -209,7 +218,7 @@ try {
       await cat
         .getByLabel("Work category name", { exact: true })
         .fill(data[i][0]);
-      await button(cat, "Add Priced Item").click();
+      await button(cat, "Add Direct Priced Item").click();
       const item = cat.getByTestId("quote-line");
       await openQuotationItem(item);
       await item

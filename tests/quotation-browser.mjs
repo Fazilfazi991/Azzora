@@ -7,6 +7,10 @@ import {
 import { chromium, expect } from "@playwright/test";
 import fs from "node:fs";
 import { browserOptions, auditUrl } from "./browser-runtime.mjs";
+import {
+  selectQuotationCustomer,
+  selectQuotationProject,
+} from "./quotation-picker-helpers.mjs";
 const url = auditUrl;
 const browser = await chromium.launch(browserOptions);
 const failures = [],
@@ -57,14 +61,17 @@ try {
       .getByRole("button", { name: "New quotation", exact: true })
       .click();
     const quoteId = await page.evaluate(() => location.hash.split("/")[2]);
-    await page.getByLabel("Linked Project", exact()).selectOption("project-0");
-    await disclosure(page, "Customer contact & address");
-    await page.getByLabel("Customer", exact()).fill("QA Quotation " + width);
+    await selectQuotationCustomer(page, "client-0");
+    await selectQuotationProject(page, "project-0");
+    await disclosure(page, "Document snapshot details");
     await page
-      .getByLabel("Job / Project Name", exact())
+      .getByLabel("Customer name on document", exact())
+      .fill("QA Quotation " + width);
+    await page
+      .getByLabel("Job / Project Name on document", exact())
       .fill("QA Renovation " + width);
     await page
-      .getByLabel("Project Location", exact())
+      .getByLabel("Project Location on document", exact())
       .fill("Dubai test apartment");
     await quotationAdvanced(page);
     await page
@@ -251,10 +258,10 @@ try {
     await page.getByRole("button", { name: "Save Draft", exact: true }).click();
     await page.reload();
     await quotationStep(page, 0);
-    await disclosure(page, "Customer contact & address");
-    await expect(page.getByLabel("Customer", exact())).toHaveValue(
-      "QA Quotation " + width,
-    );
+    await disclosure(page, "Document snapshot details");
+    await expect(
+      page.getByLabel("Customer name on document", exact()),
+    ).toHaveValue("QA Quotation " + width);
     await quotationAdvanced(page);
     await openQuotationCategory(section);
     await expect(page.getByTestId("quote-line")).toHaveCount(5);
@@ -313,8 +320,10 @@ try {
       .getByRole("button", { name: "Confirm", exact: true })
       .click();
     await quotationStep(page, 0);
-    await disclosure(page, "Customer contact & address");
-    await expect(page.getByLabel("Customer", exact())).toBeDisabled();
+    await disclosure(page, "Document snapshot details");
+    await expect(
+      page.getByLabel("Customer name on document", exact()),
+    ).toBeDisabled();
     await quotationStep(page, 4);
     await page.getByLabel("Issued quotation status").selectOption("Sent");
     await expect(page.locator(".quote-toolbar .badge")).toHaveText("Sent");
@@ -332,9 +341,11 @@ try {
       .click();
     await quotationStep(page, 0);
     await disclosure(page, "Reference & revision details");
-    await disclosure(page, "Customer contact & address");
+    await disclosure(page, "Document snapshot details");
     await expect(page.getByLabel("Revision Number", exact())).toHaveValue("1");
-    await expect(page.getByLabel("Customer", exact())).toBeEnabled();
+    await expect(
+      page.getByLabel("Customer name on document", exact()),
+    ).toBeEnabled();
     await disclosure(page, "Version actions");
     await page
       .getByRole("button", { name: "Duplicate Quotation", exact: true })
@@ -345,8 +356,10 @@ try {
     const duplicateId = await page.evaluate(() => location.hash.split("/")[2]);
     await page.goto(url + "/#/quotations/" + quoteId + "/edit");
     await quotationStep(page, 0);
-    await disclosure(page, "Customer contact & address");
-    await expect(page.getByLabel("Customer", exact())).toBeDisabled();
+    await disclosure(page, "Document snapshot details");
+    await expect(
+      page.getByLabel("Customer name on document", exact()),
+    ).toBeDisabled();
     await quotationStep(page, 4);
     await page
       .getByRole("button", { name: "Return to draft", exact: true })
@@ -360,8 +373,10 @@ try {
       .getByRole("button", { name: "Return to draft", exact: true })
       .click();
     await quotationStep(page, 0);
-    await disclosure(page, "Customer contact & address");
-    await expect(page.getByLabel("Customer", exact())).toBeEnabled();
+    await disclosure(page, "Document snapshot details");
+    await expect(
+      page.getByLabel("Customer name on document", exact()),
+    ).toBeEnabled();
     await page.goto(url + "/#/quotations");
     const duplicateCard = page.locator(".quote-card").filter({
       has: page.locator(`a[href="#/quotations/${duplicateId}/edit"]`),

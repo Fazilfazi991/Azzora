@@ -4,6 +4,10 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { browserOptions, auditUrl } from "./browser-runtime.mjs";
+import {
+  selectQuotationCustomer,
+  selectQuotationProject,
+} from "./quotation-picker-helpers.mjs";
 import { exportDemo } from "./agent-3-helpers.mjs";
 import {
   quotationStep,
@@ -187,16 +191,19 @@ try {
     await p.goto(auditUrl + "/#/quotations");
     await button(p, "New quotation").click();
     const quoteId = await id(p);
+    await selectQuotationCustomer(p, "client-0");
+    await selectQuotationProject(p, "project-0");
     await p
-      .getByLabel("Linked Project", { exact: true })
-      .selectOption("project-0");
+      .locator("summary")
+      .filter({ hasText: "Document snapshot details" })
+      .click();
     await p
-      .getByLabel("Job / Project Name", { exact: true })
+      .getByLabel("Job / Project Name on document", { exact: true })
       .fill(
         "Fictional Marina fit-out: painting and ceiling finishes across two occupied floors",
       );
     await p
-      .getByLabel("Project Location", { exact: true })
+      .getByLabel("Project Location on document", { exact: true })
       .fill(
         "Fictional Marina Tower, level 18, east and west residential wings, Dubai Marina, Dubai, UAE",
       );

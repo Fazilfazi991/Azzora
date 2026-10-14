@@ -2,6 +2,7 @@ import { chromium, expect } from "@playwright/test";
 import fs from "node:fs";
 import { browserOptions, auditUrl } from "./browser-runtime.mjs";
 import { quotationStep } from "./quotation-ux-helpers.mjs";
+import { clearQuotationProject } from "./quotation-picker-helpers.mjs";
 const output =
   process.env.QA_COMMERCIAL_EVIDENCE_DIR || "docs/commercial-evidence";
 fs.mkdirSync(output, { recursive: true });
@@ -20,7 +21,7 @@ try {
   const button = (name) => page.getByRole("button", { name, exact: true });
   await page.goto(auditUrl + "/#/quotations/quotation-reference/edit");
   await quotationStep(page, 0);
-  await page.getByLabel("Linked Project", { exact: true }).selectOption("");
+  await clearQuotationProject(page);
   await quotationStep(page, 4);
   await button("Finalize").click();
   await page

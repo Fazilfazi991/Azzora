@@ -5,6 +5,11 @@ import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { browserOptions, auditUrl } from "./browser-runtime.mjs";
 import {
+  selectQuotationCustomer,
+  selectQuotationProject,
+  quotationLinks,
+} from "./quotation-picker-helpers.mjs";
+import {
   quotationStep,
   quotationAdvanced,
   openQuotationCategory,
@@ -96,7 +101,7 @@ async function shot(p, width, name) {
 async function wizard(p, name, customerId) {
   await expect(dialog(p)).toHaveCount(1);
   await dfield(p, "Project name").fill(name);
-  if (customerId)
+  if (customerId && (await dfield(p, "Select Existing Customer").count()))
     await dfield(p, "Select Existing Customer").selectOption(customerId);
   await dbutton(p, "Continue →").click();
   await dfield(p, "Project location").fill(
@@ -212,28 +217,40 @@ async function crossAndInline(width) {
     "cross-quotation SPA navigation resets search/mode/selection/modal without altering reference",
   );
   await quotationStep(p, 0);
-  const opener = button(p, "+ Add Customer");
-  await opener.focus();
-  await p.keyboard.press("Enter");
+  const customerPicker = p.locator(".quotation-record-picker").first();
+  const opener = customerPicker.locator("summary");
+  await opener.click();
+  await customerPicker
+    .getByRole("button", { name: "+ Add New Customer" })
+    .click();
   await dfield(p, "Customer/company name").fill("Cancelled inline draft");
   await p.keyboard.press("Escape");
   await expect(dialog(p)).toHaveCount(0);
   await expect(opener).toBeFocused();
-  await opener.press("Enter");
+  await opener.click();
+  await customerPicker
+    .getByRole("button", { name: "+ Add New Customer" })
+    .click();
   await dfield(p, "Customer/company name").fill("QA Inline Courtyard " + width);
   await dfield(p, "Contact person").fill("Inline fictional contact");
   await dbutton(p, "Save Customer").click();
-  const client = await field(p, "Linked Customer").inputValue();
+  const client = (await quotationLinks(p, id)).customerId;
   expect(client).toBeTruthy();
-  const projectOpener = button(p, "+ Create Project");
-  await projectOpener.focus();
-  await p.keyboard.press("Enter");
-  await expect(dfield(p, "Select Existing Customer")).toHaveValue(client);
+  const projectPicker = p.locator(".quotation-record-picker").nth(1);
+  const projectOpener = projectPicker.locator("summary");
+  await projectOpener.click();
+  await projectPicker
+    .getByRole("button", { name: "+ Add New Project" })
+    .click();
+  await expect(dialog(p).getByText("Linked from the quotation")).toBeVisible();
   await p.keyboard.press("Escape");
   await expect(projectOpener).toBeFocused();
-  await projectOpener.press("Enter");
+  await projectOpener.click();
+  await projectPicker
+    .getByRole("button", { name: "+ Add New Project" })
+    .click();
   await wizard(p, "QA inline project " + width, client);
-  expect(await field(p, "Linked Project").inputValue()).toBeTruthy();
+  expect((await quotationLinks(p, id)).projectId).toBeTruthy();
   expect((await db(p)).quotations.find((q) => q.id === id).sections).toEqual(
     [],
   );
@@ -284,10 +301,13 @@ async function crossAndInline(width) {
   await rows
     .nth(1)
     .getByLabel("Description", { exact: true })
-    .fill("Advanced QA heading");
+    .fill("Advanced QA parent work description");
   await expect(
     rows.nth(1).getByLabel("Quantity", { exact: true }),
-  ).toBeDisabled();
+  ).toBeEnabled();
+  await expect(rows.nth(1).getByLabel("Amount", { exact: true })).toHaveText(
+    "By Client",
+  );
   await openQuotationItem(rows.nth(1));
   await rows
     .nth(1)
@@ -305,8 +325,13 @@ async function crossAndInline(width) {
     .selectOption("FOC");
   let record = (await db(p)).quotations.find((q) => q.id === id);
   expect(record.sections[0].rows).toHaveLength(3);
-  expect(record.sections[0].rows[2].parentId).toBe(record.sections[0].rows[1].id);
-  expect(record.sections[0].rows[1].pricingType).toBe("Heading");
+  expect(record.sections[0].rows[2].parentId).toBe(
+    record.sections[0].rows[1].id,
+  );
+  expect(record.sections[0].rows[1]).toMatchObject({
+    pricingType: "By Client",
+    boqRole: "parent",
+  });
   await cat
     .getByRole("button", { name: "Add Subcategory", exact: true })
     .click();
@@ -321,7 +346,7 @@ async function crossAndInline(width) {
   );
   check(
     width,
-    "explicit example append creates one category; advanced no-price heading, FOC breakdown and subcategory retain parents and total across Simple switch",
+    "explicit example append creates one category; By Client parent, FOC breakdown and subcategory retain parents and total across Simple switch",
   );
   await c.close();
 }
@@ -350,8 +375,8 @@ async function oliveJourney(width) {
   await p.goto(url + "/#/quotations");
   await button(p, "New quotation").click();
   const id = await qid(p);
-  await field(p, "Linked Customer").selectOption(customerId);
-  await field(p, "Linked Project").selectOption(projectId);
+  await selectQuotationCustomer(p, customerId);
+  await selectQuotationProject(p, projectId);
   await shot(p, width, "03-quote-step1");
   await expect(
     p
@@ -408,7 +433,7 @@ async function oliveJourney(width) {
     await category.getByLabel("Work category name", { exact: true }).fill(name);
     if (i === 0) await shot(p, width, "04-category");
     await category
-      .getByRole("button", { name: "Add Priced Item", exact: true })
+      .getByRole("button", { name: "Add Direct Priced Item", exact: true })
       .click();
     const row = category.getByTestId("quote-line");
     await expect(row).toHaveCount(1);
@@ -571,7 +596,10 @@ async function oliveJourney(width) {
     await openQuotationItem(row);
     await expect(row.getByLabel("Rate / Unit", { exact: true })).toBeDisabled();
     await expect(
-      category.getByRole("button", { name: "Add Priced Item", exact: true }),
+      category.getByRole("button", {
+        name: "Add Direct Priced Item",
+        exact: true,
+      }),
     ).toBeDisabled();
   }
   await quotationAdvanced(p, false);

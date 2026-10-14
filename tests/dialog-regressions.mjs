@@ -7,6 +7,12 @@ import {
 import { chromium, expect } from "@playwright/test";
 import fs from "node:fs";
 import { browserOptions } from "./browser-runtime.mjs";
+import {
+  selectQuotationCustomer,
+  selectQuotationProject,
+  openQuotationCustomerForm,
+  openQuotationProjectForm,
+} from "./quotation-picker-helpers.mjs";
 
 const base = process.env.AZZORA_TEST_URL || "http://127.0.0.1:5187";
 const output =
@@ -267,9 +273,8 @@ try {
       .getByRole("button", { name: "New quotation", exact: true })
       .click();
     const quoteId = await page.evaluate(() => location.hash.split("/")[2]);
-    await page
-      .getByLabel("Linked Project", { exact: true })
-      .selectOption("project-0");
+    await selectQuotationCustomer(page, "client-0");
+    await selectQuotationProject(page, "project-0");
     await page
       .locator("summary")
       .filter({ hasText: "Reference & revision details" })
@@ -287,7 +292,7 @@ try {
       .getByLabel("Work category name", { exact: true })
       .fill("Ceiling rectification scope");
     await section
-      .getByRole("button", { name: "Add Priced Item", exact: true })
+      .getByRole("button", { name: "Add Direct Priced Item", exact: true })
       .click();
     const line = section.getByTestId("quote-line").first();
     await openQuotationItem(line);
@@ -300,12 +305,7 @@ try {
     await quotationStep(page, 2);
     const totalBefore = await page.getByTestId("grand-total").textContent();
     await quotationStep(page, 0);
-    const quoteAddCustomer = page.getByRole("button", {
-      name: "+ Add Customer",
-      exact: true,
-    });
-    await quoteAddCustomer.focus();
-    await page.keyboard.press("Enter");
+    const quoteAddCustomer = await openQuotationCustomerForm(page);
     await onlyDialog(page)
       .getByLabel("Customer/company name", { exact: true })
       .fill("Cancelled quotation customer");
@@ -322,12 +322,7 @@ try {
       width,
       "Quotation customer cancellation preserves BOQ, terms, milestones and header draft",
     );
-    const quoteCreateProject = page.getByRole("button", {
-      name: "+ Create Project",
-      exact: true,
-    });
-    await quoteCreateProject.focus();
-    await page.keyboard.press("Enter");
+    const quoteCreateProject = await openQuotationProjectForm(page);
     const quoteParent = page
       .getByRole("dialog")
       .filter({ has: page.getByLabel("Project name", { exact: true }) });
@@ -335,25 +330,22 @@ try {
     await quoteParent
       .getByLabel("Project name", { exact: true })
       .fill(quoteProjectName);
-    const nestedAdd = quoteParent.getByRole("button", {
-      name: "+ Add New Customer",
-      exact: true,
-    });
-    await nestedAdd.focus();
-    await page.keyboard.press("Enter");
-    await latestDialog(page)
-      .getByLabel("Customer/company name", { exact: true })
-      .fill("Cancelled nested quotation customer");
-    await page.keyboard.press("Escape");
-    await expect(onlyDialog(page)).toHaveCount(1);
-    await expect(nestedAdd).toBeFocused();
+    await expect(
+      quoteParent.getByText("Linked from the quotation"),
+    ).toBeVisible();
+    await expect(
+      quoteParent.getByRole("button", { name: "+ Add New Customer" }),
+    ).toHaveCount(0);
+    await expect(
+      quoteParent.getByLabel("Select Existing Customer"),
+    ).toHaveCount(0);
     await expect(
       quoteParent.getByLabel("Project name", { exact: true }),
     ).toHaveValue(quoteProjectName);
     expect(await quoteSnapshot(page, quoteId)).toEqual(baseline);
     pass(
       width,
-      "Quotation → project → customer Escape retains both parent draft and BOQ",
+      "Quotation project creation locks the selected customer and retains BOQ",
     );
     await page.keyboard.press("Escape");
     await closed(page);
@@ -366,10 +358,9 @@ try {
     await quotationStep(page, 0);
     pass(
       width,
-      "Successive nested Escape returns through project to quotation trigger without BOQ loss",
+      "Escape returns from project to quotation trigger without BOQ loss",
     );
-    await quoteAddCustomer.focus();
-    await page.keyboard.press("Enter");
+    await openQuotationCustomerForm(page);
     await onlyDialog(page)
       .getByLabel("Customer/company name", { exact: true })
       .fill(`QA quotation saved customer ${width}`);

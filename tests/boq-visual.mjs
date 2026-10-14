@@ -28,7 +28,7 @@ for (const width of [1440, 1024, 768, 390]) {
     .getByRole("button", { name: "Add Parent Work Description", exact: true })
     .click();
   await section
-    .getByRole("button", { name: "Add Priced Item", exact: true })
+    .getByRole("button", { name: "Add Direct Priced Item", exact: true })
     .click();
   const rows = section.getByTestId("quote-line");
   await expect(rows).toHaveCount(2);

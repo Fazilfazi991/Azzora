@@ -1,4 +1,5 @@
 import type { Quotation } from "../quotation/model";
+import type { ProjectPlanning } from "../planning/model";
 import type { OperationalData } from "../operations/model";
 import type {
   Contract,
@@ -218,6 +219,8 @@ export interface Activity {
 }
 export interface Database {
   version: 1;
+  planningVersion?: 1;
+  planning?: ProjectPlanning[];
   operations?: OperationalData;
   commercialVersion?: 1;
   invoices: Invoice[];

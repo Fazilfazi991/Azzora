@@ -35,6 +35,70 @@ const attachment = entity({
   category: text,
   dataUrl: text.optional(),
 });
+const localDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
+  const parsed = new Date(`${value}T12:00:00Z`);
+  return !Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
+});
+const planningNode = z.object({ kind: z.enum(["task", "milestone"]), id });
+const planningCalendar = z.object({
+  timezone: id,
+  workingWeekdays: z.array(z.number().int().min(1).max(7)).min(1),
+  workdayStart: text.regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  workdayEnd: text.regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  holidays: z.array(localDate),
+  projectNonworkingDates: z.array(localDate),
+});
+const planningLink = z.object({
+  id, projectId: id, predecessor: planningNode, successor: planningNode,
+  type: z.enum(["FS", "SS", "FF", "SF"]), lagWorkingDays: z.number().int(), createdAt: text,
+});
+const planningDates = z.object({ start: localDate, finish: localDate,
+  durationWorkingDays: z.number().int().nonnegative() });
+const planningIssue = z.object({ code: id, detail: text, node: planningNode.optional() });
+const planningTask = z.object({ taskId: id, durationWorkingDays: z.number().int().positive(),
+  scheduleRole: z.enum(["work", "summary"]), durationNeedsReview: z.boolean().optional(),
+  startNoEarlierThan: localDate.optional(), finishNoLaterThan: localDate.optional(),
+  lockedStart: localDate.optional(), lockedFinish: localDate.optional(),
+  actualStart: localDate.optional(), actualFinish: localDate.optional(),
+  explicitProgressWeight: z.number().finite().positive().optional(),
+  assigneeIds: z.array(id).optional(), requiredInspectionIds: z.array(id).optional(),
+  progressHistory: z.array(z.object({ id, taskId: id, date: localDate, actorId: id,
+    percent: z.number().min(0).max(100), notes: text, evidenceRefs: z.array(id), createdAt: text })).optional(),
+});
+const milestoneCondition = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("Manual") }),
+  z.object({ kind: z.literal("TaskComplete"), taskId: id }),
+  z.object({ kind: z.literal("DocumentApproved"), documentId: id }),
+  z.object({ kind: z.literal("QAApproved"), referenceId: id }),
+]);
+const planningMilestone = z.object({ milestoneId: id, requiredDate: localDate.optional(),
+  actualDate: localDate.optional(), completionCondition: milestoneCondition,
+  completedAt: text.optional(), completedBy: id.optional() });
+const planningSnapshot = z.object({ id, revision: z.number().int().positive(), capturedAt: text,
+  actorId: id, reason: text, calendar: planningCalendar,
+  nodes: z.array(z.object({ node: planningNode }).merge(planningDates)), links: z.array(planningLink), finish: localDate });
+const planningProposal = z.object({ id, projectId: id, revision: z.number().int().positive(),
+  status: z.enum(["Draft", "Submitted", "Approved", "Rejected"]),
+  sourceApprovedRevision: z.number().int().nonnegative(), sourceFingerprint: id,
+  initiatingNode: planningNode, reason: text, initiatedBy: id,
+  submittedAt: text.optional(), submittedBy: id.optional(), decidedAt: text.optional(),
+  decidedBy: id.optional(), decisionReason: text.optional(),
+  changes: z.array(z.object({ node: planningNode, before: planningDates,
+    after: planningDates, cause: z.enum(["direct", "indirect"]) })),
+  unchangedSuccessors: z.array(planningNode), proposedLinks: z.array(planningLink).optional(),
+  proposedCalendar: planningCalendar.optional(), proposedTaskPlanning: z.array(planningTask).optional(),
+  proposedMilestonePlanning: z.array(planningMilestone).optional(),
+  proposedTask: z.object({ id, projectId: id, phaseId: id, name: id,
+    start: localDate, due: localDate, dependencies: z.array(id) }).passthrough().optional(),
+  proposedMilestone: z.object({ id, projectId: id, name: id, due: localDate, taskId: text }).passthrough().optional(),
+  requestedEdit: z.object({ start: localDate.optional(), finish: localDate.optional(),
+    milestoneDate: localDate.optional(), durationWorkingDays: z.number().int().nonnegative().optional(),
+    links: z.array(planningLink).optional(), calendar: planningCalendar.optional(),
+    taskPlanning: z.array(planningTask).optional(), milestonePlanning: z.array(planningMilestone).optional() }).optional(),
+  considerEarlierDates: z.boolean().optional(),
+  warnings: z.array(planningIssue), conflicts: z.array(planningIssue),
+  history: z.array(z.object({ action: text, actorId: id, at: text, reason: text })),
+});
 const attachments = z.array(attachment);
 const history = z
   .array(
@@ -480,6 +544,17 @@ export function validateSavedShape(value: unknown): asserts value is Database {
     check(z.array(schema), v[key], key);
   if (v.commercialVersion !== undefined && v.commercialVersion !== 1)
     throw Error("Unsupported commercial data version.");
+  if (v.planningVersion !== undefined || v.planning !== undefined) {
+    check(z.literal(1), v.planningVersion, "planningVersion");
+    check(z.array(z.object({
+      projectId: id, enabled: z.boolean().optional(), calendar: planningCalendar,
+      approvedRevision: z.number().int().nonnegative(),
+      baselineStatus: z.enum(["Unset", "Captured"]),
+      baselineHistory: z.array(planningSnapshot), taskPlanning: z.array(planningTask),
+      milestonePlanning: z.array(planningMilestone), links: z.array(planningLink),
+      proposals: z.array(planningProposal),
+    })), v.planning, "planning");
+  }
   for (const [key, schema] of Object.entries(commercialSchemas)) {
     if (v.commercialVersion === 1 || v[key] !== undefined)
       check(z.array(schema), v[key], key);

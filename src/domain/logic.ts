@@ -60,7 +60,13 @@ export function currentPhase(db: Database, id: string) {
 export const overdue = (t: Task, date = today()) =>
   t.status !== "Completed" && t.due < date;
 export function dependencyRisk(db: Database, t: Task, date = today()) {
-  return t.dependencies.some((id) => {
+  const canonical = db.planning?.find((p) => p.projectId === t.projectId && p.enabled);
+  const predecessors = canonical
+    ? canonical.links.filter((link) => link.successor.kind === "task" && link.successor.id === t.id)
+        .filter((link) => link.predecessor.kind === "task")
+        .map((link) => link.predecessor.id)
+    : t.dependencies;
+  return predecessors.some((id) => {
     const p = db.tasks.find((x) => x.id === id);
     return (
       p &&

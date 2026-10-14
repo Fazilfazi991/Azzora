@@ -7,6 +7,7 @@ import { validateSavedShape, validateRelationships } from "./validation";
 import { initializeDocumentCompatibility } from "../workforce/document-approvals";
 import type { Database, Task, Project, SnagStatus, Activity } from "./model";
 import { seed, generatePlan } from "./seed";
+import { validatePlanningData } from "../planning/compatibility";
 import { uid, validDependency, handoverState, taskProgress } from "./logic";
 const KEY = "azzora-demo-v1";
 export interface Repository {
@@ -38,6 +39,7 @@ export function decodeSavedData(raw: string | null): Database {
   initializeCommercial(value);
   initializeDocumentCompatibility(value);
   validateRelationships(value);
+  validatePlanningData(value);
   return value;
 }
 export const localRepository: Repository = {
@@ -97,6 +99,13 @@ export function record(
 }
 export function saveTask(db: Database, task: Task) {
   taskSchema.parse(task);
+  const old = db.tasks.find((t) => t.id === task.id);
+  const planningEnabled = db.planning?.some((p) =>
+    p.enabled && (p.projectId === task.projectId || p.projectId === old?.projectId));
+  if (planningEnabled && (!old || old.projectId !== task.projectId ||
+      old.start !== task.start || old.due !== task.due ||
+      JSON.stringify(old.dependencies) !== JSON.stringify(task.dependencies)))
+    throw Error("Approved task dates and dependencies require a schedule proposal and Project Manager approval.");
   if (
     !validDependency(
       {
@@ -112,7 +121,6 @@ export function saveTask(db: Database, task: Task) {
     throw Error(
       "Dependencies must be in this project and cannot form a cycle.",
     );
-  const old = db.tasks.find((t) => t.id === task.id);
   if (
     !db.projects.some((p) => p.id === task.projectId) ||
     !db.phases.some(
@@ -173,11 +181,12 @@ export function saveTask(db: Database, task: Task) {
   db.tasks = old
     ? db.tasks.map((t) => (t.id === task.id ? task : t))
     : [...db.tasks, task];
-  db.milestones
-    .filter((m) => m.taskId === task.id)
-    .forEach((m) => {
-      m.due = task.due;
-    });
+  if (!planningEnabled)
+    db.milestones
+      .filter((m) => m.taskId === task.id)
+      .forEach((m) => {
+        m.due = task.due;
+      });
   if (task.parentId) {
     const p = db.tasks.find((t) => t.id === task.parentId)!;
     p.progress = taskProgress(db, p);

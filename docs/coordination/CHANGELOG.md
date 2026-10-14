@@ -12,12 +12,12 @@
 
 ## Committed source deliveries collected
 
-| Delivery | Code commit | Report commit | Evidence / integration state |
-| --- | --- | --- | --- |
-| Commercial foundation | `a4cd36d`, `fb483565f802e780e13a9b274e42e64fc695e6d4` | `ada782a21232b3072850889e3796c3bc5c8d5dd4` | `docs/COMMERCIAL-DELIVERY.md`; common source foundation |
-| Operational/financial completion | `26eb5002ed826acd5101bf138dacdabf662a6210` | `8b7992156a2f97e6f8d9d38b98a4b120ad2793a9` | A1 `docs/OPERATIONAL-COMPLETION-REPORT.md`, `operational-validation.json`; not consolidated |
-| Workforce/site/approval completion | `06b1ad206c94c7ad154c05ff4e5b079c2e1ada50` | `dd220dfaca1e0f072d84c5895e8a8c0639345297` | A2 `docs/AGENT-2-WORKFORCE-REPORT.md`, workforce JSON/screenshots; not consolidated |
-| Independent baseline QA and isolated fixes | `7b9c26d03146a58dd5d602e37c708abf0c148d60` | `11da92566fe5bbb524e36a3128937756ce506204` | A3 report/issue register/evidence; ten open baseline issues; not consolidated |
+| Delivery                                   | Code commit                                           | Report commit                              | Evidence / integration state                                                                |
+| ------------------------------------------ | ----------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| Commercial foundation                      | `a4cd36d`, `fb483565f802e780e13a9b274e42e64fc695e6d4` | `ada782a21232b3072850889e3796c3bc5c8d5dd4` | `docs/COMMERCIAL-DELIVERY.md`; common source foundation                                     |
+| Operational/financial completion           | `26eb5002ed826acd5101bf138dacdabf662a6210`            | `8b7992156a2f97e6f8d9d38b98a4b120ad2793a9` | A1 `docs/OPERATIONAL-COMPLETION-REPORT.md`, `operational-validation.json`; not consolidated |
+| Workforce/site/approval completion         | `06b1ad206c94c7ad154c05ff4e5b079c2e1ada50`            | `dd220dfaca1e0f072d84c5895e8a8c0639345297` | A2 `docs/AGENT-2-WORKFORCE-REPORT.md`, workforce JSON/screenshots; not consolidated         |
+| Independent baseline QA and isolated fixes | `7b9c26d03146a58dd5d602e37c708abf0c148d60`            | `11da92566fe5bbb524e36a3128937756ce506204` | A3 report/issue register/evidence; ten open baseline issues; not consolidated               |
 
 This changelog describes committed deliveries and coordination events, not approval of combined behavior. Retrieve coordination commit identities with `git log --oneline -- docs/coordination`; a commit cannot contain its own SHA.
 
@@ -28,3 +28,11 @@ Pinned A1/A2/A3 deliveries merged with checkpoints; per-hunk reconciliation pres
 ## Failed first gate and new freeze
 
 Independent19051cc dev/production gate failed;303 serial units passed but customer-only approval hydration and accessible financial feedback required corrections; two strict locator ambiguities also blocked assertions. Preserved failed report. After safe stopped-runner checkpoint, coordinator3417fe1 fixes optional approval project and adds ordinary lossless no-write/cross-project regression; named-surface harness scoping retains assertions. Reviewed Agent1 source62c6948/report3dba134 merged as49cd5ac/db6bb114. New full freeze db6bb1148effb35e32ee39c120013a588b468813 passes coordinator304-unit/TypeScript/ESLint/build preflight; independent18-suite dev+fresh production/visual/PDF gate dispatched and acknowledged. Source/tests held; only coordination/evidence docs change while QA runs.
+
+## Second safe correction checkpoint
+
+Agent3 db6bb114 completed304 ordinary units/static/build;18dev suites pass,17of18 initialproduction suites pass. Independently reproduced FINAL-05 late hashchange query erasure despite an unchanged passing boundary replay; FINAL-06 native print blank trailing page confirmed for reference quotation. Assigned/acknowledged FIX-A1-04 and FIX-A2-02 in existing source chats. Root3fbf085 waits real rendered boundary destinations without weakening count/destination/raw assertions; preparatory18/18 checks pass with no browser errors. Both failed independent certificates retained. New source corrections and final refreeze remain pending; owner acceptance withheld.
+
+## Final independent PASS — f72e6c1
+
+Reviewed search08a2a153 andnative-print39c1bff/reportd69e692 integrated,retaining coordinator source. Full freeze f72e6c1dd7c5914e97c509a635b64de8c6aa9750 passed304ordinaryunits,allstatic/build,20browser suites on eachdev/production target with no retries,24handover policy checks and four-width review.66PDFs/158pages parsed,42rendered pages reviewed;zero source/build mismatches. Failed prior gates preserved. Agent1 report-only service failure transparently handled with copiedactualoutputs;no fabricated completion. Final central report published;owner acceptance Ready;no main/push/deploy/backend/reset/delete. Final docs/evidence checkpoint must preserve tested source/test/config equality.

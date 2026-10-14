@@ -19,3 +19,11 @@ Owner-authorized financial/shell correction: implementation a4620eb, report64776
 ## FIX-A1-02 — assigned financial follow-up
 
 P0. After completing current read-only review, implement two confirmed financial defects on own operational branch from647762d: preserve legacy issued item-credit allocation/limits (or explicit review block for inconsistent original postings) and cumulative amount-credit VAT conservation/capacity. Ordinary tests cover exact six0.11 + final0.39 on1.05gross/0.05VAT, mixed item/amount sequences, historic snapshots, refunds and balances. Owned files: financial calculations/repositories/models/tests and docs/AGENT-1-FINANCIAL-FOLLOWUP.md only. No schema/document/closure/modal/shell edits. Deliver full correctiveSHA and exact targeted results; coordinator reviews/merges before finalfreeze. Supported task dispatch succeeded; acknowledgement tracked separately.
+
+## Latest allocation — FIX-A1-04 / FINAL-05
+
+Assigned and acknowledged after safe stopped-runner db6bb114 checkpoint. Own branch source scope App.tsx search/hashchange only; new rapid-search browser regression and AGENT-1-SEARCH-FOLLOWUP.md. Preserve fresh input across delayed old route events,normal/same-route/modal dismissal,history and keyboard semantics. Deterministic held-event and rapid six-domain production tests; committed handoff with exact results. Do not edit root Settings recovery changes or print/workforce/store/schema/math. Root reviews/merges; final QA repeats after full refreeze.
+
+## Closed source allocation and evidence handoff
+
+FIX-A1-04 committed08a2a153062f0be2bc90a77d786deec3f8ba9f17,reviewed/merged in finalf72e6c1. Actual166browser/192unit outputs collected by Coordinator after report-only model-capacity failure;see ../COORDINATOR-SEARCH-HANDOFF.md. Final independent20-suite gate verifies search on dev/production,166checks each. Source allocation complete;no agent-authored report commit or successful report-only turn claimed. All four owned source correction stages integrated/verified. No further source task remains in this cycle.

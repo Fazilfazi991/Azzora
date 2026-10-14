@@ -1,25 +1,25 @@
 # Controlled integration plan and executed checkpoints
 
-All work is local in `C:/Users/USER/Desktop/Projects/Azzora/azzora-integration`, branch `codex/azzora-integration`. Current final QA freeze: **`db6bb1148effb35e32ee39c120013a588b468813`**. The original repository and all agent worktrees remain intact. Native Git is used because the chat parent directory is not a repository. No remotes exist.
+All work is local in `C:/Users/USER/Desktop/Projects/Azzora/azzora-integration`, branch `codex/azzora-integration`. Current final QA freeze: **`f72e6c1dd7c5914e97c509a635b64de8c6aa9750`**. The original repository and all agent worktrees remain intact. Native Git is used because the chat parent directory is not a repository. No remotes exist.
 
 ## Pinned source and reviewed corrections
 
-| Delivery | Full pinned commit | Integration checkpoint |
-| --- | --- | --- |
-| Common commercial foundation |`ada782a21232b3072850889e3796c3bc5c8d5dd4`|Original base |
-| A1 operational delivery |`8b7992156a2f97e6f8d9d38b98a4b120ad2793a9`|75d8ca009c1af6c278857e36cb255b03e3b8180f |
-| A1 implementation |`26eb5002ed826acd5101bf138dacdabf662a6210`|Included in pinned delivery |
-| A2 workforce delivery |`dd220dfaca1e0f072d84c5895e8a8c0639345297`|e136489c004d8b8366fed61d40073ecc0130fde9 |
-| A2 implementation |`06b1ad206c94c7ad154c05ff4e5b079c2e1ada50`|Included in pinned delivery |
-| A3 QA delivery |`11da92566fe5bbb524e36a3128937756ce506204`|a539358b64f0b0808bff8b373951cbff20338886 |
-| A3 isolated fixes |`7b9c26d03146a58dd5d602e37c708abf0c148d60`|Included in pinned delivery |
-| A2 modal correction / report |`c95a1cf022c70bdeed4f55fb1099036baa2f42b5` /`94c568b737fc3f58713ef6f9c866729868bb2612`|f6fc1fa2c9f1890ab654ef3bea0cdf154e7db5f2 |
-| A1 discount/shell correction / report |`a4620eb0fae755bd3be0100386345446e6349ce4` /`647762d99fa0837df1c991d17bcd38459ab960f9`|a290dc7e0cee1016527a5f8805b7ace60f5a7780 /02fe289f05197e045cf5bc28cdc7af1a9995d98a |
-| A3 strict QA preparation |`b88191b8dcb4c0bc568b35796dbf46563cb2d9bb`|72915e0965be4f79c27e2a7c3f6968f71b63e9fd |
-| A3 canonical test composition |`e48ef9c31d93649f2345e944cc2d610f86376748`|Committed directly in integration |
-| A1 historical/cumulative credit correction / report |`857b57cd4e0519606d5be143b6851260b773c0a4` /`d4d251fe6674f2354a40aaee5a08569f5d0cc9e2`|30065be0e89b451b0c6a3101567ef5328782c53c /fba009caa5f0727a403fc544888a90738b241f4b |
-| Coordinator customer-only approval reload + scoped QA selectors |`3417fe1b52cbc6d374bf78410593009213aeae56`|Committed after failed gate safe checkpoint |
-| A1 financial dialog feedback / report |`62c694814ba2a79a20f2b54b2b5ee98815738ffd` /`3dba13435f90cbde4a27ff14deab25e814e34ec2`|49cd5ac189c68fccd9611b6c651939299210a93f /`db6bb1148effb35e32ee39c120013a588b468813` |
+| Delivery                                                        | Full pinned commit                                                                     | Integration checkpoint                                                               |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Common commercial foundation                                    | `ada782a21232b3072850889e3796c3bc5c8d5dd4`                                             | Original base                                                                        |
+| A1 operational delivery                                         | `8b7992156a2f97e6f8d9d38b98a4b120ad2793a9`                                             | 75d8ca009c1af6c278857e36cb255b03e3b8180f                                             |
+| A1 implementation                                               | `26eb5002ed826acd5101bf138dacdabf662a6210`                                             | Included in pinned delivery                                                          |
+| A2 workforce delivery                                           | `dd220dfaca1e0f072d84c5895e8a8c0639345297`                                             | `e136489c004d8b8366fed61d40073ecc0130fde9`                                           |
+| A2 implementation                                               | `06b1ad206c94c7ad154c05ff4e5b079c2e1ada50`                                             | Included in pinned delivery                                                          |
+| A3 QA delivery                                                  | `11da92566fe5bbb524e36a3128937756ce506204`                                             | `a539358b64f0b0808bff8b373951cbff20338886`                                           |
+| A3 isolated fixes                                               | `7b9c26d03146a58dd5d602e37c708abf0c148d60`                                             | Included in pinned delivery                                                          |
+| A2 modal correction / report                                    | `c95a1cf022c70bdeed4f55fb1099036baa2f42b5` /`94c568b737fc3f58713ef6f9c866729868bb2612` | f6fc1fa2c9f1890ab654ef3bea0cdf154e7db5f2                                             |
+| A1 discount/shell correction / report                           | `a4620eb0fae755bd3be0100386345446e6349ce4` /`647762d99fa0837df1c991d17bcd38459ab960f9` | a290dc7e0cee1016527a5f8805b7ace60f5a7780 /02fe289f05197e045cf5bc28cdc7af1a9995d98a   |
+| A3 strict QA preparation                                        | `b88191b8dcb4c0bc568b35796dbf46563cb2d9bb`                                             | 72915e0965be4f79c27e2a7c3f6968f71b63e9fd                                             |
+| A3 canonical test composition                                   | `e48ef9c31d93649f2345e944cc2d610f86376748`                                             | Committed directly in integration                                                    |
+| A1 historical/cumulative credit correction / report             | `857b57cd4e0519606d5be143b6851260b773c0a4` /`d4d251fe6674f2354a40aaee5a08569f5d0cc9e2` | 30065be0e89b451b0c6a3101567ef5328782c53c /fba009caa5f0727a403fc544888a90738b241f4b   |
+| Coordinator customer-only approval reload + scoped QA selectors | `3417fe1b52cbc6d374bf78410593009213aeae56`                                             | Committed after failed gate safe checkpoint                                          |
+| A1 financial dialog feedback / report                           | `62c694814ba2a79a20f2b54b2b5ee98815738ffd` /`3dba13435f90cbde4a27ff14deab25e814e34ec2` | 49cd5ac189c68fccd9611b6c651939299210a93f /`db6bb1148effb35e32ee39c120013a588b468813` |
 
 Every correction was reviewed before merging. Moving branch tips were not substituted for pinned inputs. Agent1 financial/procurement/variation/commercial closure logic and Agent2 workforce/document/site/QA/handover logic are both retained. Shared source conflicts were reconciled deliberately by function/type/contract; necessary dual-owner functionality was not replaced wholesale.
 
@@ -62,3 +62,15 @@ No backend/auth/server/cloud work, push, deployment or main merge is authorized.
 ## Second independent failure and safe correction checkpoint
 
 Full db6bb114 gate:304 ordinary units/static/build pass;18/18 dev suites,17/18 initial production suites pass. FINAL-05 confirmed App search/hashchange race; unchanged boundary replay passing does not erase independently reproduced erasure. FINAL-06 native quotation print adds blank page8 at1440/390; downloaded PDFs remain7pages. Agent3 completed/stopped all runners and preview before any edits. Failed certificate preserved in AGENT-3-FAILED-GATE-DB6BB114.md. Assigned Agent1 FIX-A1-04 App search/navigation plus deterministic rapid-query regression; Agent2 FIX-A2-02 scoped quotation print CSS plus actual native-PDF page-count regression. Coordinator boundary harness now waits rendered destination heading and active procurement tab, retaining exact result-count/destination/cleared-query assertions; deliberate race coverage belongs to the new focused suite. No source fixes assumed from prototypes/replays. New reviewed commits and a new full freeze/full independent gate are required.
+
+Reviewed and merged FIX-A2-02 source `39c1bffebdac0abedf1bbf2c92ecc679e3ee1935` and evidence/report `d69e69294496ea857a46b06a3d0823db3de73568`. Source change is scoped popup .sheet svg display:block; no other quotation content/calculations/history changed. Four ordinary native-PDF cases pass7/3pages at1440/390;23 quotation units/static/build pass on source branch. Combined certification remains pending Agent1 search fix and new full freeze.
+
+Reviewed/merged FIX-A1-04 source `08a2a153062f0be2bc90a77d786deec3f8ba9f17` as `f72e6c1dd7c5914e97c509a635b64de8c6aa9750`, retaining coordinator Settings export and allfinancial/workforce logic. New frozenSHA `f72e6c1dd7c5914e97c509a635b64de8c6aa9750`; source `913fb64df6bde41a8c4c1b6d689760aee65099e5`/tests `8fcc10d8b13e612c43d3095ca59a27e1ba79deeb`. Combined304ordinaryunits/tsc/eslint/build pass; main618.46kB/172.44gzip. Agent3 assigned full20-suite dev/freshproduction gate including rapid-search166checks and actual nativeprint4cases plus matrix/visual/PDF/static/unit. Agent1 report-only handoff may be collected but cannot merge/changeHEAD during gate. Reports/evidence only maychange; any source correction requires safecheckpoint/refreeze.
+
+## Final executed checkpoint — independent PASS
+
+Agent3 completed the immutable `f72e6c1dd7c5914e97c509a635b64de8c6aa9750` gate:304ordinary units/13files,0failed/pending;TypeScript/ESLint/cold build pass;20of20dev and20of20production browser suites pass on first executions without retry. Additional24policy/supervision matrix and four-width reviews pass;66freshPDFs/158pages parsed,42rendered pages inspected,20production native pages pixel-identical. Zero source/build hash mismatches;all14served production files match cold build. All runners/production preview stopped;dev5195 retained for owner review. No recorded blocking defect remains.
+
+31reviewed source/report inputs are verified ancestors in source-provenance.json, including scoped print39c1bff/reportd69e692, search08a2a153 androot boundary3fbf085. Agent1 report-only remote-compaction capacity failure is recorded separately;Coordinator collected its real166browser/192unit outputs in COORDINATOR-SEARCH-HANDOFF.md. No source completion or agent-authored report is invented. Full independent certificate is AGENT-3-FINAL-INTEGRATION-QA.md;central result/features/commits/counts/limits are FINAL-INTEGRATION-REPORT.md.
+
+Final reporting commits alter documentation/evidence only. Verify final source/tests/configuration equal frozenf72e6c1 before closing. The tested fullSHA remains the certification identity even when reporting HEAD advances. Owner acceptance is Ready;main remains `c1914984021a20a9e83f5e60ee4f93ef035659dc` until explicit owner approval. No push, deploy, backend or agent-worktree reset/delete.

@@ -1,5 +1,11 @@
 # AZZORA — Agent 3 issue register
 
+> Final verification at **f72e6c1dd7c5914e97c509a635b64de8c6aa9750**: original13 issue IDs and FINAL-01..06 have passing covered regressions; no open blocking issue identified. Earlier counts/statuses below are historical. Complete current evidence and limits: AGENT-3-FINAL-INTEGRATION-QA.md.
+
+
+> Current integration checkpoint (db6bb1148effb35e32ee39c120013a588b468813): baseline counts/statuses below are historical. FINAL-01..04 now pass fresh regressions; FINAL-05 global search race and FINAL-06 native quotation blank print page remain open. See AGENT-3-FINAL-INTEGRATION-QA.md for exact evidence and limits.
+
+
 Audited 14 October 2026 (Asia/Dubai), committed baseline `ada782a`. All reproductions use disposable Chromium contexts and fictional records. No actual browser profile or saved user records were accessed.
 
 Severity: P1 = material correctness, data-loss or accessibility defect; P2 = bounded validation, interaction or QA infrastructure defect. There are **13 issues: 9 P1 and 4 P2; 3 fixed and 10 open**. Repeated viewport observations count as one issue.
@@ -141,3 +147,85 @@ Agent 1 owns financial changes and the active application shell/styles. Agent 2 
 `AGENT-3-DIALOG-FIXES.patch` is an **unapplied candidate**, not a shipped or verified fix. Its applicability was checked against `ada782a`; it must be reconciled with Agent 2's evolving `ui.tsx`. The two initial edits were removed from this branch as soon as overlapping ownership was observed. A coordination request was raised; no cross-agent message or source change is assumed authorized by silence.
 
 Promote the two `it.fails` tests to ordinary assertions when their owners fix A3-005/A3-006. Convert diagnostic browser observations into strict assertions as the accessibility/validation issues are resolved. Run all suites against the final integrated commit; this register does not certify unfinished feature branches.
+
+
+## FINAL-01 — customer-only credit approval fails reload (frozen 19051cc)
+
+- **Module / severity:** Credits, approval schema and persistence; critical.
+- **Exact reproduction:** Fresh context → customer-only AED 1.00 net invoice → issue AED 1.05 gross → receipt AED 1.05 → six approved/issued AED 0.11 amount credits → AED 0.66 refund → reload → attempt final AED 0.39 credit.
+- **Expected:** Valid persisted records hydrate; final credit/refund remain available and statement reconciles to zero.
+- **Actual:** Read-only recovery fallback reports incompatible operations.approvals.0.projectId. Approvals written by the application contain empty projectId; original saved data remains intact, but the fallback has no issued invoice options.
+- **Suggested correction:** Reconcile optional project relationships for customer-only credit approvals with structural/reference validation; add repository→migration/hydration round-trip and browser absence-of-recovery assertions.
+- **Responsible agent:** Agent 1; coordinate Agent 2 if shared approval validation ownership requires it. Agent 3 has not edited domain files.
+- **Verification status:** Reproduced twice at exact frozen 19051cc1f5f70770142f116ecc4edb239099e708 on dev 5195. Blocks final certification. Details and evidence paths in AGENT-3-FINAL-INTEGRATION-QA.md.
+
+## FINAL-02 / FINAL-03 — final harness strict locator ambiguity
+
+- **Module / severity:** QA harness; certification blockers.
+- **Exact reproduction:** Critical A3-010 uses unscoped + New Project after Quick Add (both main/dialog match), at four widths. Commercial recovery uses unscoped role alert when recovery banner and error toast both exist.
+- **Expected:** Scope intended dialog/banner; assert actual behavior.
+- **Actual:** Strict locator errors prevent four nested Escape groups and the last commercial write-protection assertion; no application regression established by those locator errors.
+- **Suggested correction:** Scope dialog and named Saved data recovery region; obtain coordinator refreeze before source/test edit and rerun full affected suites.
+- **Responsible agent:** Agent 3 QA harness; coordinator owns current freeze.
+- **Verification status:** Confirmed dev final suite failures; no frozen tests edited.
+
+
+## FINAL-04 — financial rejection feedback is outside the active modal
+
+- **Module / severity:** Credit Note Draft and Customer Refund forms; P1 accessibility/usability.
+- **Exact reproduction:** Use valid operational fixture with issued invoice105/receipt80/credits50; credit dialog enter999 and save. Separately use same fictional fixture without its refund, leaving25 customer credit; refund dialog enter25.01 with required reference/reason and post. Repeat at1440/390px.
+- **Expected:** Rejection appears as an accessible alert inside the retained dialog, with entered values and saved data preserved.
+- **Actual:** Stored bytes unchanged and native dialog remains open, but zero alerts/errors inside it; only external toast says Credit exceeds eligible billed value / Refund exceeds eligible customer credit balance. Chrome CDP Accessibility.getPartialAXTree marks the toast ignored for activeModalDialog. Programmatic focus of its dismiss button fails and focus stays on dialog submit. Playwright getByRole(alert) still locates the global node; that alone is inadequate accessibility proof.
+- **Suggested correction:** Consume Store error or equivalent WorkflowError within both financial forms (and relevant reversal forms); render persistent role=alert inside native dialog, preserve values, and assert inside-dialog feedback for over-credit/over-refund/legacy-review rejection.
+- **Responsible agent:** Agent1 financial UI; coordinator has assigned a scoped correction.
+- **Verification status:** Confirmed in production5203 at frozen19051cc, four fresh contexts, no browser errors, CDP AX/focus/screenshot evidence in integration-evidence/final/19051cc-run1/modal-diagnostic/results.json. No source edits by Agent3.
+
+
+## FINAL-05 — global search query cleared by a late route event
+
+- Module/severity: Global Search/navigation, P2; required production boundary failure.
+- Reproduction: freshly generated production fixture, rapid Supplier→Variation→Request→PO→Bill→Credit searches, fill next query after URL and empty input assertions; bounded repeated journey.
+- Expected: fresh query survives and finds typed record.
+- Actual: original Bill lookup failed after9 checks; strict replay18 passes, but diagnostic repeats fail after52 checks. Captured CN-00001 input4706.700ms→old hashchange4706.900 seesCN→settled4708.900 empty. Data/IDs intact, no console errors.
+- Suggested correction: prevent old navigation clear from erasing new input; retain modal/same-route dismissal; assert settled destination and deliberately exercise delayed-route race in regression.
+- Responsible agent: Agent1/coordinator shell; coordinator/Agent3 harness.
+- Verification: confirmed on frozen db6bb114, open; exact events/results/screenshot in integration-evidence/final/db6bb114-run1/boundary-search-stress/search-failure.json. No source edit.
+
+## FINAL-06 — quotation native print adds a blank page
+
+- Module/severity: Quotation print layout, P2.
+- Reproduction: reference preview→Print→native Chromium A4 print output,1440/390.
+- Expected:7 pages matching7 .sheet elements and downloaded PDF.
+- Actual:8 pages, final page zero text and visually blank, both contexts. Existing browser test only counts DOM sheets.
+- Suggested correction: print-scoped svg display:block and actual printed-page/no-blank regression. Disposable popup prototype fixes7 pages; not applied to source.
+- Responsible agent: Agent1/coordinator quotation UI or explicitly coordinated isolated Agent3 fix.
+- Verification: reproduced twice at db6bb114; PDFs/page counts/blank render/inline-vs-block geometry in integration-evidence/final/db6bb114-run1/print-keyboard. Open, no source change.
+
+
+## Final integrated issue verification — f72e6c1
+
+All rows refer to fresh dev+production evidence at the exact frozenSHA. Historical failed reproductions remain unchanged above.
+
+| Issue | Defect | Correction owner | Current verification |
+|---|---|---|---|
+| A3-001 | Named dialogs/drawers | Agent2 | Fixed / verified: Critical38, dialog64, audit5 targets |
+| A3-002 | Interior dialog padding discarded draft | Agent2 | Fixed / verified: Critical/dialog padding and real-backdrop checks at4 widths |
+| A3-003 | Harness targeted another server | Agent3 | Fixed / verified: URL resolver9 unit cases; aliases consistent in all40 invocations |
+| A3-004 | Boundary output directory absent | Agent3 | Fixed / verified: mkdir source fix retained;6 boundary checks each target; original fresh-folder failure not re-induced |
+| A3-005 | Discount could create negative VAT | Agent1 | Fixed / verified: Ordinary financial/discount cases and corrective35 each target |
+| A3-006 | Invalid storage could blank the workspace | Agent2/coordinator | Fixed / verified: Storage/recovery units, recovery25 and critical malformed fixtures |
+| A3-007 | Off-screen mobile sidebar remained focusable | Agent1 | Fixed / verified: Critical mobile keyboard and corrective navigation checks |
+| A3-008 | Whitespace-only site update saved | Agent2 | Fixed / verified: Four-width strict site-validation/interaction checks |
+| A3-009 | Drawer opener focus not restored | Agent2 | Fixed / verified: Four-width critical/dialog focus assertions |
+| A3-010 | Nested Escape discarded parent draft | Agent2 | Fixed / verified: Four-width child-only close, retained parent data and focus |
+| A3-011 | Warning badge contrast below4.5 | Agent1 | Fixed / verified: Four-width targeted computed contrast assertions |
+| A3-012 | Attachment removal/upload race resurrected file | Agent3 | Fixed / verified: Upload2 each target; oversize rejection/save/reload checks |
+| A3-013 | Invalid field hidden by sticky drawer heading | Agents1/2 | Fixed / verified: Four-width critical/interactions/corrective geometry checks |
+| FINAL-01 | Customer-only credit approval failed hydration | Coordinator/Agent1 | Fixed / verified: 304 units include lossless valid roundtrip and wrong-project rejection; financial14 each target |
+| FINAL-02 | Critical Quick Add selector ambiguous | Coordinator | Fixed / verified: Critical38 each target, nesting reached normally |
+| FINAL-03 | Recovery banner selector ambiguous | Coordinator | Fixed / verified: Commercial129 each target; protected raw-byte guard reached |
+| FINAL-04 | Financial rejection feedback outside modal | Agent1 | Fixed / verified: Financial-modal38 each target: visible/focused nonignored AX alert and retained bytes/values |
+| FINAL-05 | Late route event erased fresh search query | Agent1/coordinator | Fixed / verified: Rapid166 each target, including144 unwrapped selections; settled-destination boundary18 |
+| FINAL-06 | Quotation native print added blank page | Agent2 | Fixed / verified: Native print4 each target: actual7/3 pages, no blank tail, A4/page text/totals and raw invariance |
+
+Nonblocking observations:main bundle618.46kB, and intentional supplied historical words/milestone overrides. No source/test/config edits or commits during finalgate. See finalcertificate for limits; passing coverage is not exhaustive UI/accessibility/security/regulatory certification.

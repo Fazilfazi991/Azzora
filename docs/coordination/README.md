@@ -9,6 +9,7 @@ The Master Coordinator maintains this folder on `codex/azzora-integration`, in t
 - [Integration plan](INTEGRATION-PLAN.md)
 - [Decisions](DECISIONS.md)
 - [Changelog](CHANGELOG.md)
+- [Consolidated integration report](FINAL-INTEGRATION-REPORT.md)
 - Agent inboxes: [1](agent-1-tasks.md), [2](agent-2-tasks.md), [3](agent-3-tasks.md)
 - Collected handoffs: [1](agent-1-handoff.md), [2](agent-2-handoff.md), [3](agent-3-handoff.md)
 
@@ -16,4 +17,4 @@ On every coordinator invocation, run `node docs/coordination/refresh-evidence.cj
 
 Source reports can be read directly from sibling worktrees without copying completion messages. Supported messaging has dispatched three scoped review tasks to the existing chats. Delivery, acknowledgement, completion, independent verification, and integration are separate states.
 
-Do not edit another agent's handoff file while its task runs. Coordinator owns all other files here. Only committed, pinned, reviewed work may enter integration. No feature branch has been merged into this checkout yet.
+Do not edit another agent's handoff file while its task runs. Coordinator owns all other files here. Only committed, pinned, reviewed work may enter integration. Pinned feature deliveries and reviewed corrections are merged locally with checkpoints. Independent gates19051cc anddb6bb114 failed and are preserved. Reviewed search/print corrections are integrated;finalf72e6c1 passes304units,20suites on each target,visual/PDF/static/build gates. Owner acceptance is Ready. MASTER-STATUS/TASK-BOARD and the consolidated report hold current readiness; initial handoffs remain historical evidence.

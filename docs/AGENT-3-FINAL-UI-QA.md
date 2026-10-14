@@ -1,62 +1,90 @@
-# Independent QA preparation — final UI, live preview and BOQ hierarchy
+# AZZORA — Agent 3 final UI and quotation QA
 
-Status: **preparation only; no combined-feature certification**. Published starting SHA: `aebd0688853e3fff416939ae8227946d690c211e`. QA native worktree: `C:/Users/USER/Desktop/Projects/Azzora/azzora-final-ui-qa`, branch `codex/azzora-final-ui-qa`. No application source edits, pushes, deployments or merges. The coordinator integrates reviewed work and provides the exact final freeze SHA before final runs.
+**Final result: passed on frozen combined application SHA `176acdc285670feffb6047cb71ec6f72900a7b3c`.** This is an independent acceptance result for the integrated sidebar/dashboard correction, live quotation preview and BOQ hierarchy, together with the retained CRM regression inventory. No open blocking defect was found in the executed scope. The tested `src` tree is `7940eccfdbda7d49769e388ec53ba8f3c7147291`; the tested `tests` tree is `97cfffa99bd5d532b7ba32f61472236c0372b715`. Agent 3 made no application-source change, did not deploy or merge, and did not use a real user browser profile or user data.
 
-## Accepted scope and ownership
+The broader original 18-module audit, financial cases, issue reproductions and disposition remain in [AGENT-3-QA-REPORT.md](AGENT-3-QA-REPORT.md), [AGENT-3-ISSUES.md](AGENT-3-ISSUES.md) and [AGENT-3-FINAL-INTEGRATION-QA.md](AGENT-3-FINAL-INTEGRATION-QA.md). Those earlier reports identify their own checkpoints. This document records the later combined-feature freeze and final rerun; it supersedes this document's former preparation-only status.
 
-The three owner instructions have been read in full: final sidebar/dashboard corrections; real live quotation preview; intuitive BOQ parent/child structure and deterministic numbering. These are one cumulative acceptance cycle. Previous requirements remain active.
+## Final gate
 
-- Agent 2 owns sidebar/dashboard, preview surface and hierarchy UI, with sequential shared-editor ownership coordinated by the coordinator.
-- Agent 1 owns Accounts verification, preview editor wiring and hierarchy/domain numbering and pricing work.
-- Coordinator exclusively owns quotation `document.ts` alignment and integration. Agent 3 will not edit it.
-- Agent 3 owns independent QA/test/report work. Reserved test changes: new `final-ui-navigation-browser.mjs`, `quotation-live-preview-browser.mjs`, `quotation-hierarchy-browser.mjs`, and the explicitly requested exact educational-action label update in `quotation-ux-browser.mjs`.
+| Check | Result |
+|---|---|
+| TypeScript, `tsc --noEmit` | Pass |
+| ESLint, `eslint src` | Pass |
+| Vitest, isolated Vite config, one worker | **338/338 tests passed**, 15/15 files |
+| Fresh cold Vite production build | Pass; 1,903 modules transformed |
+| Development browser phase, strict port 5241 | **25/25 suites passed**, 52/52 source/test guards |
+| Cold-build production browser phase, strict port 5242 | **25/25 suites passed**, 52/52 source/test/build guards |
+| Final evidence integrity | **944 actual PNGs**, **122 PDFs**, **382 PDF pages** across both phases; zero evidence issues |
+| Closing immutability guard | Pass: clean tested checkout, 122 tracked input hashes, three served dev modules, all 15 served production files, old-issued fixture hash |
 
-The seven-page reference expectations remain unchanged. Coordinator reports that approved alignment fixes retain exactly seven pages; existing ordinary quotation assertions must not be relaxed. Short custom templates and default-terms workflows retain their actual distinct pagination contracts.
+The cold build emitted the existing 623.07 kB main-chunk size advisory. It was not a build failure. Browser suites ran without filters, skipped tests, expected failures or relaxed application assertions. Every suite below passed once against the frozen development server and once against its separately served cold production build. The manifests identify each suite's command, status, timing and guard sequence.
 
-## Immutable published-base evidence
+| Browser suite | Development | Production |
+|---|---:|---:|
+| operational-browser | Pass | Pass |
+| browser | Pass | Pass |
+| quotation-browser | Pass | Pass |
+| boq-visual | Pass | Pass |
+| agent-1-corrective-browser | Pass | Pass |
+| agent-3-audit | Pass | Pass |
+| operational-boundaries | Pass | Pass |
+| agent-3-critical | Pass | Pass |
+| agent-3-compose-browser | Pass | Pass |
+| commercial-browser | Pass | Pass |
+| commercial-boundaries | Pass | Pass |
+| agent-3-interactions | Pass | Pass |
+| workforce-browser | Pass | Pass |
+| financial-followup-browser | Pass | Pass |
+| agent-3-upload | Pass | Pass |
+| dialog-regressions | Pass | Pass |
+| financial-modal-feedback-browser | Pass | Pass |
+| rapid-search-browser | Pass | Pass |
+| recovery-browser | Pass | Pass |
+| final-ui-navigation-browser | Pass | Pass |
+| quotation-print-browser | Pass | Pass |
+| quotation-ux-browser | Pass | Pass |
+| agent-1-accounts-navigation | Pass | Pass |
+| quotation-live-preview-browser | Pass | Pass |
+| quotation-hierarchy-browser | Pass | Pass |
 
-An isolated cold build of the published SHA was served on strict local port 5240. It produced 96 route/width observations: all 19 existing sidebar modules plus the five additional Accounts URLs at 1440, 1024, 768 and 390 pixels. Captured 36 actual PNGs, eight reference quotation PDFs (download/native at four widths), and public fictional seed exports. All 15 served files matched local cold-build SHA256 hashes; captured browser errors: zero. The baseline build passed, with the existing main-chunk size advisory.
+The gate evidence is local and ignored, under `docs/integration-evidence/final-ui-qa/final/176acdc285670feffb6047cb71ec6f72900a7b3c/`. Primary indexes are `dev/gate-manifest.json`, `production/gate-manifest.json`, `evidence-verification.json` and `closing-guard.json`. The last reports **zero issues**, exact frozen tree IDs, 25 passing suites and 52 passing guards per phase, 122 unchanged tracked inputs, three served development modules and 15 served production files whose SHA256 values match the cold build. These generated files were deliberately not committed.
 
-Evidence: `docs/integration-evidence/final-ui-qa/before/manifest.json`. Application captures are from the actual immutable baseline, not a mockup or moving feature source. Dashboard full-page shots start at scroll position zero. Accounts direct pages all render the Accounts heading successfully.
+## What the final browser run established
 
-The first 390px open-sidebar capture caught its transition partway through. A separate `sidebar-open-stable-390.png` was captured after the drawer reached x=0 (280px wide), and its SHA256 and geometry were added to the manifest. The original file remains as captured; the stable image is the valid visual comparison for the open mobile menu. Baseline image inventory is therefore 36 original PNGs plus this one corrected timing capture.
+The navigation suite passed 113 assertion groups per phase at **1440, 1024, 768 and 390 px**. It traversed the full sidebar and six Accounts URLs, checked one current route, direct navigation, refresh and browser history, initial Accounts visibility, group and mobile menu keyboard behavior, focus restoration, reduced-motion behavior, and unchanged records. The integrated Accounts link is at y=412–456 at each standard width and has no nested scrolling ancestor. A separate 390×667 short-height case also passed four hard visibility assertions. The dashboard now brings active fit-outs and items needing attention near the top while preserving AZZORA's existing visual language.
 
-Observed visibility cause: the published sidebar is a flat 19-entry list under a single Project Execution label. Its navigation scroll area is 859px high but has only 595px of space at 1440×900 and 607px at 1024/768×900. Accounts is low in that list (y≈668/662), while lower modules require scrolling. Mobile correctly hides the closed sidebar. Thus the module is registered and reachable; information grouping and discoverability are the issue. These measurements describe the tested viewport; they do not claim Accounts is outside every viewport or missing.
+The live-preview suite passed 29 assertion groups per phase. It exercised the actual in-editor preview from every step, empty/incomplete and edited drafts, current BOQ, discount/VAT, milestones, terms, generated SVG/PDF, download and native print, close/Escape/focus/input and step restoration, and reload. The preview remained draft/unissued and did not mutate saved commercial records. The suite also injected a failed PDF logo asset and a blocked print popup and verified a recoverable response.
 
-Additional independent historical fixture: `before/historical-issued-reference.json`, created by Finalize→Confirm through the immutable published app in a new disposable context. The original `quotation-reference` is Finalized, including the repository-generated issued history snapshot and original manual numbering. Its PDF and both file hashes are recorded in the baseline manifest. Baseline PDF count including this extra historical export is nine; the original eight-file capture set remains separately identifiable. No actual browser profile or user records were used.
+The hierarchy suite passed 28 assertion groups per phase: category, parent and child creation; deterministic labels (including 2.1.1 through 2.1.3 and 2.2.1); insert/reorder/delete; whole-group duplicate/move/delete; stable IDs; collapse; long location text; excluded, by-client and free-of-charge pricing; no parent double charge; persistence; rendered SVG/PDF numbering; and old-issued record immutability. The fixed fictional arithmetic case was AED 3,175 net + AED 158.75 VAT = AED 3,333.75 gross; duplication and deletion produced the expected changes. The historical seven-page issued record was created through the published old UI before the new hierarchy was integrated. Its finalized status, reference, manual numbers, saved history snapshot and generated PDF remained unchanged through preview/download/reload at all four widths. The ignored fixture SHA256 is `dbd5a18d900d7a5853a477abf5a88ee21048ffc643ca002972645c702c227926`.
 
-The exported fixture remains ignored and local. No client-reference copy or browser export is tracked. The committed hierarchy harness can reconstruct a fictional issued record from the app's existing reference seed when the export is unavailable; final certification will set `QA_HISTORICAL_FIXTURE` to this authentic old-UI export so the migration/immutability assertion is independent of the new implementation.
+Retained browser suites also passed customer/commercial workflows, invoice/payment/credit boundaries and calculations, storage failure and recovery, uploads, operations/workforce delivery, financial dialogs, rapid search and Quick Add. Specific retained measurements include 64 guided-quotation groups, 166 rapid-search checks, 35 corrective checks and 113 Accounts-navigation checks per phase. These are suite-reported assertion groups/checks; they are not a claim that every possible user journey or every browser engine was tested.
 
-## New harness preparation
+## Visual and PDF inspection
 
-| Harness | Prepared contract | Execution status |
-|---|---|---|
-| final-ui-navigation-browser | Five exact navigation groups, all 19 route links through keyboard, initial Accounts visibility without scrolling, one current link, no nested scroll ancestors, six Accounts URLs plus refresh/Back/Forward, mobile openers/Tab/Escape/focus, raw record invariance, four widths | Syntax/preparation only; owner UI pending |
-| quotation-live-preview-browser | Separate fictional View Example, empty/incomplete draft preview, current three-category long BOQ, discount/VAT, milestones/terms, all five steps, real SVG/download/native-print page counts and text, draft/unissued state, exact-step/opener-focus/input preservation and reload, four widths | Syntax/preparation only; actual preview labels/surface contract pending |
-| quotation-hierarchy-browser | Category 2, parent 2.1 and children 2.1.1/2/3, second parent 2.2/2.2.1, special pricing, delete/insert/reorder, duplicate/move/delete whole groups, unique IDs/numbers, no double-charge, save/reload, SVG/PDF numbering, independently old-issued immutability, four widths | Syntax/preparation only; actual hierarchy controls pending |
-| retained quotation-ux-browser | Exact View worked example→View Example label change required by new owner instruction | All substantive existing assertions retained; no final execution yet |
+The production captures were visually reviewed at **1440, 1024, 768 and 390 px** for the dashboard, initial navigation/mobile open drawer and Accounts overview. Additional views covered the short-height sidebar, desktop/mobile BOQ editor and a mobile live-document page. The reviewed screens remained readable, with no observed clipping or body-width overflow. The new sidebar hierarchy and Accounts access were visible; the mobile drawer aligned and remained usable. The approved palette, typography and overall layout were preserved.
 
-The new tests intentionally encode requested behavior instead of passing against the old implementation. Their selectors must be checked against the completed owner UI before the consolidated test/source freeze. The navigation contract permits a semantic static heading, native details, or an aria-expanded button because collapsible groups are optional; it does not permit ambiguous route fallbacks.
+Representative local screenshots (all generated and ignored):
 
-Preparatory runs against Agent 2's development server passed 113 independent navigation groups, 29 live-preview groups and 28 hierarchy groups across the four widths. The preview run includes recoverable failure messages for an aborted PDF logo asset and a blocked print popup. The authentic ignored old-UI finalized reference survived hierarchy preview, download and reload unchanged. Retained BOQ visual (four widths), quotation workflow, guided quotation UX (64 groups) and rapid search (166 checks) also passed after the exact changed labels, safe parent→child setup and new deletion confirmation were incorporated. These are useful selector/behavior preflights only: the served code was not the completed combined SHA.
+- `production/accounts-navigation/production-sidebar-dashboard-{1440,1024,768,390}.png`
+- `production/accounts-navigation/production-overview-{1440,1024,768,390}.png`
+- `production/accounts-navigation/production-short-sidebar-390x667.png`
+- `production/hierarchy/` and `production/live-preview/` for editor and document captures
 
-Remaining additions before final test handoff: reconcile actual preview accessible name/close action and row/group operation labels; complete preview-generation/download/print failure injection using a supported observable network or browser failure; add parent collapse/expand and long multiline location cases, reference Demolition/Tiling/Gypsum/Plumbing relationship assertions, and native/download geometry checks for the approved alignment changes. None of these pending cases is currently represented as passing.
+Each phase produced **61 PDFs / 191 pages**: quotation reference and workflows, hierarchy and live draft previews, native print and downloads, invoice, report, purchase order and credit examples. The verifier opened every page, found nonblank extracted text throughout, and reported no tiny screenshots or PDF issue. The original `QTN-AF-26049` reference remained exactly **seven pages**. Poppler renders of final pages 2, 5 and 7 were visually inspected against the baseline page-2 render: the alignment improvement preserved the cover, grey table headers, long plumbing rows, totals, terms and footer without observed cut text. The accepted short quotation has a complete **two-page** native/download result at desktop and mobile; its cover, BOQ, summary, payment schedule and terms fit without an empty page. Both pages were visually reviewed.
 
-## Final verification plan
+Reference renders are `visual-review/reference-page2.png`, `reference-page5.png`, `reference-page7.png` and `baseline-reference-page2.png` under the same final evidence root. Baseline published app SHA `aebd0688853e3fff416939ae8227946d690c211e` has its own `before/manifest.json`: 96 route/width observations, 36 original screenshots plus one stable mobile-sidebar timing capture, eight reference PDFs plus the separately created historical-issued PDF, 15 matching served build files and zero browser errors. That baseline is the before-state comparator, not a final feature pass.
 
-1. Coordinator reviews and consolidates all owner changes and QA tests, then supplies a full frozen SHA. Use an isolated QA checkout of that completed commit; retain published-base captures and old worktrees. No unintegrated branch is a final target.
-2. Record exact HEAD, source/test trees, tracked source/test/config/package hashes and clean status. No source/test/config edits during the gate. A genuine application failure stops certification and is reported with reproduction evidence and responsible owner; a reviewed correction requires a new frozen checkpoint. Preserve failed attempts separately; no silent retries.
-3. Run TypeScript, ESLint, all ordinary unit/domain tests using the existing isolated-cache Vite/Vitest config, and a fresh cold production build. The published baseline inventory was 304 tests across 13 files; final counts must come from the completed run, including owner-added hierarchy tests.
-4. Run every retained 21 browser suite against both dev and a fresh strict-port cold preview, plus the three independent new suites and any separately delivered Agent 1 Accounts check. Final suite count is determined by the frozen inventory, not assumed from the old certificate. Use no filters, skips, expected failures or weakened assertions.
-5. Generate same-target, manifest-bound operational/commercial fixtures before their dependent boundary/composition suites. Set every available evidence environment variable explicitly. Route remaining hardcoded generated-artifact paths in an ignored temporary runner, preserving source/test bytes and tracked baseline artifacts; preflight screenshot parent paths and download copy destinations before the gate.
-6. Check all requested widths, groups and routes, six Accounts URLs, mobile closed-menu inertness, group keyboard traversal, current states, focus restoration, refresh/Back/Forward, no page overflow, controls/tables/long names, empty/validation states, and reduced motion. Verify navigation and preview do not alter commercial records, linked relationships or domain totals.
-7. Verify the exact category→parent→children numbering sequence and the 12 owner hierarchy scenarios. Known independent numbers: painting children 1400+700+875=2975 net; ceiling child 200; combined3175 net,158.75 VAT,3333.75 gross. Parent duplication adds only its2975 descendant subtotal, yielding6150 net/6457.50 gross, and deletion restores the original totals. FOC/By Client/Excluded add no charge. Compare stable IDs separately from visible numbers.
-8. Test live preview before issuance from every step, with empty/incomplete/invalid and latest valid draft inputs. Assert real shared-renderer pages, DRAFT / NOT ISSUED label, all relevant BOQ/totals/milestones/terms, scrolling/zoom if provided, close/back/Escape exact-step/focus/input preservation, export/print success and clear failure handling. Preview must not bypass issue validation or rewrite issued snapshots.
-9. Verify source QTN-AF-26049 semantics in Demolition, Tiling, Gypsum and Plumbing, alongside multi-page long description/location fixtures. Preserve cover, logo, grey headers, original columns, numbering, Summary of Cost, amounts/words, Payment Schedule, terms and footers. Inspect actual before/after screenshot and PDF-render pairs; alignment may change pixels but not saved content, approved styling or figures. Keep exact seven-page reference assertions.
-10. Inspect every generated PDF's text, pages/nonblank tails and page renders; check quotation, invoice, PO, credit and populated report exports plus native print. Repeat the populated Project Financial Summary/Invoice Register and clearly labelled disposable pagination stress validation if the final changed surface warrants it. Record supplemental counts separately from the main browser gate.
-11. Close with fresh HEAD/source/test/config/cold-build/served-file guards; record exact suite/check/unit/PDF/page/image counts and manual visual scope. No broad “fully tested” claim for unexecuted features, other browser engines, physical printers, actual backend/auth or owner acceptance.
-12. Stop only owned QA runners/previews. Coordinator alone publishes the updated review branch/PR #1 after independent QA; Agent 3 does not push or merge main. Record final tested SHA separately from any later docs-only publication SHA and verify source/test trees match before publication certification.
+## Stopped attempts and corrections
 
-## Readiness
+The final result comes from a fresh full rerun on `176acdc...`; two earlier freezes were stopped at first failure and their logs/manifests retained separately.
 
-Baseline evidence and historical issued fixture are prepared. New test scripts and the verification contract are available for coordinator review. Final browser execution is intentionally pending completed owner implementation and an exact combined freeze. No feature pass claim, remote SHA update or PR acceptance claim has been made in this preparation stage.
+1. At `11d4e5d32be9d629b2f8941128b1be563676125c`, the retained native-print suite expected three pages for the short accepted quotation, while the complete result was two. The seven-page reference assertion passed. Inspecting both pages showed the required content, amounts and native/download parity with unchanged saved bytes. The obsolete short-fixture expectation was corrected in a **test-only** commit `c53198663b55bf2818b37181a4a34a342956c5ac`, then integrated by the coordinator.
+2. At `8bd519c995e03bfc95684ec72f7da346e15c2233`, a first-Tab assertion in `agent-1-corrective-browser.mjs` failed at 768 px after passing at 1440/1024. In a headless-browser diagnostic, focus remained on BODY in 6/20 newly opened contexts despite the page heading being rendered. Waiting for a visible heading and bringing the page to the foreground yielded 20/20 visible initial sidebar focus results. The browser setup was made deterministic in **test-only** commit `4d4639f7860beefd0ade500454cf44246ccbacc2`, then integrated by the coordinator. The corrective suite passed targeted development and production checks before the new complete freeze.
+
+Neither stopped attempt is counted as a final pass. No application defect was inferred from these two harness failures, and no application file was edited concurrently by Agent 3.
+
+## Limits and integration handoff
+
+This certificate covers the frozen commit, fictional disposable Chromium contexts, the listed browser suites, actual local PDF generation and the inspected widths. It does not certify other browser engines, physical printer output, actual customer data, a backend/auth deployment, or the owner's final aesthetic approval. The ignored screenshots and PDFs are reproducible local evidence; publication of the review branch should preserve this tested source/test tree even if this report receives a later docs-only commit. Any application or test change after the freeze requires a new targeted review, and a material change requires a new full gate.
+
+The final report commit will contain this Markdown file only. Coordinator owns integration and PR publication. Agent 3 has not pushed, deployed or merged.

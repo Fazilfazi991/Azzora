@@ -161,6 +161,8 @@ describe("planning graph and proposals", () => {
     reportTaskProgress(db, "a", 25, "2026-11-02", managerId, "Site work started");
     expect(() => approveScheduleProposal(db, row.id, managerId)).toThrow(/stale/);
     expect(db.tasks.find((task) => task.id === "a")?.start).toBe("2026-11-02");
+    expect(() => reportTaskProgress(db, "a", 30, "2026-11-03", managerId,
+      "Update with missing evidence", ["missing-evidence"])).toThrow(/evidence/);
   });
   it("preserves revision history while preventing an older submitted proposal from approval", () => {
     const { db, project, managerId } = fixture([["a", "2026-11-02", "2026-11-03", 0]]);
@@ -227,6 +229,7 @@ describe("planning graph and proposals", () => {
     expect(before.blockers.some((blocker) => blocker.code === "ManualMilestonePending")).toBe(true);
     completeManualMilestone(db, "inspection", managerId, "Inspection evidence approved");
     expect(getPlanningView(db, project.id).nodes.find((node) => node.node.id === "inspection")?.completionSatisfied).toBe(true);
+    expect(() => reportTaskProgress(db, "a", 80, "2026-11-04", managerId, "Correct prior report")).toThrow(/Reopen/);
   });
   it("loads legacy records without baseline or storage writes and preserves all IDs", () => {
     const db = seed();

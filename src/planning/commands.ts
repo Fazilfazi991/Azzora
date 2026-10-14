@@ -1,7 +1,7 @@
 import type { Database, Milestone, Task } from "../domain/model";
 import { uid } from "../domain/logic";
 import { activePerson } from "../workforce/commands";
-import { inclusiveWorkingDuration, isWorkingDate, validateCalendar } from "./calendar";
+import { inclusiveWorkingDuration, isWorkingDate, validDate, validateCalendar } from "./calendar";
 import { activateProjectPlanning, getProjectPlanning } from "./compatibility";
 import { approvedNodeDates, calculateSchedule, sourceFingerprint, type ScheduleEdit } from "./engine";
 import { nodeKey, validateLinks } from "./graph";
@@ -232,8 +232,18 @@ export function captureScheduleBaseline(db: Database, projectId: string, actorId
 export function reportTaskProgress(db: Database, taskId: string, percent: number, date: string, actorId: string, notes: string, evidenceRefs: string[] = []): void {
   actor(db, actorId);
   const task = db.tasks.find((row) => row.id === taskId);
-  if (!task || !Number.isFinite(percent) || percent < 0 || percent > 100 || !/^\d{4}-\d{2}-\d{2}$/.test(date))
+  if (!task || !Number.isFinite(percent) || percent < 0 || percent > 100 || !validDate(date))
     throw Error("Progress report is invalid.");
+  if (task.status === "Completed" && percent < 100)
+    throw Error("Reopen the completed task explicitly before reporting less than 100% progress.");
+  const evidence = new Set([
+    ...task.attachments.map((file) => file.id),
+    ...db.updates.filter((update) => update.projectId === task.projectId).flatMap((update) => [update.id, ...update.photos.map((file) => file.id)]),
+    ...db.documents.filter((doc) => doc.projectId === task.projectId).flatMap((doc) => [doc.id, ...(doc.attachment ? [doc.attachment.id] : [])]),
+    ...db.snags.filter((snag) => snag.projectId === task.projectId).flatMap((snag) => [snag.id, ...snag.before.map((file) => file.id), ...snag.after.map((file) => file.id)]),
+  ]);
+  if (evidenceRefs.some((id) => !evidence.has(id)))
+    throw Error("Progress evidence must reference an existing project document, site update, QA record or attachment.");
   const planning = activateProjectPlanning(db, task.projectId);
   const metadata = planning.taskPlanning.find((row) => row.taskId === taskId)!;
   metadata.progressHistory ??= [];

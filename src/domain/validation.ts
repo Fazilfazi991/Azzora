@@ -6,6 +6,26 @@ const text = z.string(),
   number = z.number().finite();
 const money = text.regex(/^-?\d+(?:\.\d+)?$/),
   integerMoney = text.regex(/^-?\d+$/);
+const postedInteger = text.regex(/^\d+$/);
+const invoiceAllocation = z
+  .object({
+    itemId: id,
+    tax: z.enum(["Exclusive", "Inclusive", "Zero Rated", "Exempt"]),
+    subtotal: postedInteger,
+    discount: postedInteger,
+    net: postedInteger,
+    vat: postedInteger,
+    grand: postedInteger,
+  })
+  .passthrough();
+const creditAllocation = z
+  .object({
+    itemId: id,
+    net: postedInteger,
+    vat: postedInteger,
+    gross: postedInteger,
+  })
+  .passthrough();
 const entity = (shape: z.ZodRawShape) =>
   z.object({ id, ...shape }).passthrough();
 const attachment = entity({
@@ -266,6 +286,8 @@ const commercialSchemas = {
         net: integerMoney,
         vat: integerMoney,
         grand: integerMoney,
+        allocationVersion: z.literal(1).optional(),
+        lineAllocations: z.array(invoiceAllocation).optional(),
       })
       .passthrough()
       .optional(),
@@ -403,6 +425,8 @@ const opSchemas = {
     gross: money,
     itemId: text,
     status: text,
+    allocationVersion: z.literal(1).optional(),
+    lineAllocations: z.array(creditAllocation).optional(),
   }),
   refunds: entity({
     projectId: text,
@@ -534,6 +558,18 @@ export function validateSavedShape(value: unknown): asserts value is Database {
       "operations.settings",
     );
   }
+  const allocations = [
+    ...(
+      (v.invoices as { snapshot?: Record<string, unknown> }[] | undefined) || []
+    ).flatMap((i) => (i.snapshot ? [i.snapshot] : [])),
+    ...((v.operations as { credits?: Record<string, unknown>[] } | undefined)
+      ?.credits || []),
+  ];
+  for (const a of allocations)
+    if (a.allocationVersion !== undefined || a.lineAllocations !== undefined) {
+      if (a.allocationVersion !== 1 || !Array.isArray(a.lineAllocations))
+        throw Error("Saved posted line allocations are incompatible.");
+    }
 }
 
 export function validateRelationships(db: Database) {

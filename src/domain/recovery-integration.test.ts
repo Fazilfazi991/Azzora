@@ -8,6 +8,11 @@ import {
 } from "./repository";
 import { initializeCommercial } from "../commercial/migration";
 import {
+  blankInvoice,
+  saveInvoice,
+  issueInvoice,
+} from "../commercial/repository";
+import {
   reviewDocument,
   saveDocumentDraft,
   reviseDocument,
@@ -28,6 +33,33 @@ const ready = () => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("protected loading and additive migration", () => {
+  it("validates posted allocation metadata before rendering while retaining original records", () => {
+    const db = ready(),
+      draft = blankInvoice(db.clients[0].id, db.projects[0].id);
+    draft.lines[0].description = "Posted allocation schema";
+    draft.lines[0].rate = "1";
+    saveInvoice(db, draft);
+    issueInvoice(db, draft.id);
+    const value = JSON.parse(JSON.stringify(db));
+    value.invoices[0].snapshot.allocationVersion = 1;
+    value.invoices[0].snapshot.lineAllocations = [
+      {
+        itemId: draft.lines[0].id,
+        tax: "Exclusive",
+        subtotal: "100",
+        discount: "0",
+        net: 100,
+        vat: "5",
+        grand: "105",
+      },
+    ];
+    expect(() => decodeSavedData(JSON.stringify(value))).toThrow(
+      /lineAllocations/,
+    );
+    value.invoices[0].snapshot.lineAllocations[0].net = "100";
+    delete value.invoices[0].snapshot.allocationVersion;
+    expect(() => decodeSavedData(JSON.stringify(value))).toThrow(/allocations/);
+  });
   it.each([
     "people",
     "clients",

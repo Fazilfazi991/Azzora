@@ -1,3 +1,9 @@
+import {
+  quotationStep,
+  quotationAdvanced,
+  openQuotationCategory,
+  openQuotationItem,
+} from "./quotation-ux-helpers.mjs";
 import { chromium, expect } from "@playwright/test";
 import fs from "node:fs";
 import { browserOptions } from "./browser-runtime.mjs";
@@ -265,26 +271,35 @@ try {
       .getByLabel("Linked Project", { exact: true })
       .selectOption("project-0");
     await page
+      .locator("summary")
+      .filter({ hasText: "Reference & revision details" })
+      .click();
+    await page
       .getByLabel("Reference", { exact: true })
       .fill(`QA retained reference ${width}`);
+    await quotationStep(page, 1);
     await page
-      .getByRole("button", { name: "Add section", exact: true })
+      .getByRole("button", { name: "Add Work Category", exact: true })
       .click();
     const section = page.getByTestId("quote-section").first();
+    await openQuotationCategory(section);
     await section
-      .getByLabel("Section description", { exact: true })
+      .getByLabel("Work category name", { exact: true })
       .fill("Ceiling rectification scope");
     await section
-      .getByRole("button", { name: "Add line", exact: true })
+      .getByRole("button", { name: "Add Priced Item", exact: true })
       .click();
     const line = section.getByTestId("quote-line").first();
+    await openQuotationItem(line);
     await line
       .getByLabel("Description", { exact: true })
       .fill("Retained coordinated ceiling works");
     await line.getByLabel("Quantity", { exact: true }).fill("2.5");
     await line.getByLabel("Rate / Unit", { exact: true }).fill("90");
     const baseline = await quoteSnapshot(page, quoteId);
+    await quotationStep(page, 2);
     const totalBefore = await page.getByTestId("grand-total").textContent();
+    await quotationStep(page, 0);
     const quoteAddCustomer = page.getByRole("button", {
       name: "+ Add Customer",
       exact: true,
@@ -298,9 +313,11 @@ try {
     await closed(page);
     await expect(quoteAddCustomer).toBeFocused();
     expect(await quoteSnapshot(page, quoteId)).toEqual(baseline);
+    await quotationStep(page, 2);
     expect(await page.getByTestId("grand-total").textContent()).toBe(
       totalBefore,
     );
+    await quotationStep(page, 0);
     pass(
       width,
       "Quotation customer cancellation preserves BOQ, terms, milestones and header draft",
@@ -342,9 +359,11 @@ try {
     await closed(page);
     await expect(quoteCreateProject).toBeFocused();
     expect(await quoteSnapshot(page, quoteId)).toEqual(baseline);
+    await quotationStep(page, 2);
     expect(await page.getByTestId("grand-total").textContent()).toBe(
       totalBefore,
     );
+    await quotationStep(page, 0);
     pass(
       width,
       "Successive nested Escape returns through project to quotation trigger without BOQ loss",
@@ -365,13 +384,17 @@ try {
     expect(saved.terms).toEqual(baseline.terms);
     expect(saved.reference).toEqual(baseline.reference);
     expect(saved.customerId).not.toBe(baseline.customerId);
+    await quotationStep(page, 2);
     expect(await page.getByTestId("grand-total").textContent()).toBe(
       totalBefore,
     );
+    await quotationStep(page, 0);
     pass(
       width,
       "Successful quotation customer transition retains BOQ and restores connected trigger",
     );
+    await quotationStep(page, 1);
+    await openQuotationCategory(section);
     await section.scrollIntoViewIfNeeded();
     await page.screenshot({
       path: `${output}/quotation-retained-${width}.png`,

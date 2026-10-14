@@ -1,3 +1,9 @@
+import {
+  quotationStep,
+  quotationAdvanced,
+  openQuotationCategory,
+  openQuotationItem,
+} from "./quotation-ux-helpers.mjs";
 import { chromium, expect } from "@playwright/test";
 import fs from "node:fs";
 import { browserOptions, auditUrl } from "./browser-runtime.mjs";
@@ -52,6 +58,7 @@ try {
       .click();
     const quoteId = await page.evaluate(() => location.hash.split("/")[2]);
     await page.getByLabel("Linked Project", exact()).selectOption("project-0");
+    await disclosure(page, "Customer contact & address");
     await page.getByLabel("Customer", exact()).fill("QA Quotation " + width);
     await page
       .getByLabel("Job / Project Name", exact())
@@ -59,69 +66,87 @@ try {
     await page
       .getByLabel("Project Location", exact())
       .fill("Dubai test apartment");
+    await quotationAdvanced(page);
     await page
-      .getByRole("button", { name: "Add section", exact: true })
+      .getByRole("button", { name: "Add Work Category", exact: true })
       .click();
     let section = page.getByTestId("quote-section").first();
+    await openQuotationCategory(section);
+    await section.getByLabel("Work category name", exact()).fill("Civil works");
     await section
-      .getByLabel("Section description", exact())
-      .fill("Civil works");
-    await section
-      .getByRole("button", { name: "Add main item", exact: true })
+      .getByRole("button", { name: "Add Heading (No Price)", exact: true })
       .click();
     let rows = section.getByTestId("quote-line");
+    await openQuotationItem(rows.nth(0));
     await rows
       .nth(0)
       .getByLabel("Description", exact())
       .fill("Renovation scope");
     await section
-      .getByRole("button", { name: "Add line", exact: true })
+      .getByRole("button", { name: "Add Priced Item", exact: true })
       .click();
+    await openQuotationItem(rows.nth(1));
     await rows
       .nth(1)
       .getByLabel("Description", exact())
       .fill("Tiling installation");
+    await openQuotationItem(rows.nth(1));
     await rows.nth(1).getByLabel("Quantity", exact()).fill("2.5");
+    await openQuotationItem(rows.nth(1));
     await rows.nth(1).getByLabel("Unit", exact()).fill("M2");
+    await openQuotationItem(rows.nth(1));
     await rows.nth(1).getByLabel("Rate / Unit", exact()).fill("90");
+    await quotationStep(page, 2);
     await expect(page.getByTestId("grand-total")).toHaveText("AED 236.25");
+    await quotationAdvanced(page);
+    await openQuotationItem(rows.nth(1));
     await rows
       .nth(1)
-      .getByRole("button", { name: "Add sub-line", exact: true })
+      .getByRole("button", { name: "Add Item Breakdown", exact: true })
       .click();
+    await openQuotationItem(rows.nth(2));
     await rows
       .nth(2)
       .getByLabel("Description", exact())
       .fill("Complimentary cleanup");
+    await openQuotationItem(rows.nth(2));
     await rows.nth(2).getByLabel("Pricing Type", exact()).selectOption("FOC");
+    await openQuotationItem(rows.nth(2));
     await rows
       .nth(2)
       .getByRole("button", { name: "Duplicate row", exact: true })
       .click();
+    await openQuotationItem(rows.nth(3));
     await rows
       .nth(3)
       .getByLabel("Pricing Type", exact())
       .selectOption("By Client");
+    await openQuotationItem(rows.nth(3));
     await rows
       .nth(3)
       .getByRole("button", { name: "Duplicate row", exact: true })
       .click();
+    await openQuotationItem(rows.nth(4));
     await rows
       .nth(4)
       .getByLabel("Pricing Type", exact())
       .selectOption("Excluded");
+    await openQuotationItem(rows.nth(4));
     await rows
       .nth(4)
       .getByRole("button", { name: /Move row .* up/ })
       .click();
+    await openQuotationItem(rows.nth(3));
     await rows
       .nth(3)
       .getByRole("button", { name: /Move row .* down/ })
       .click();
+    await openQuotationItem(rows.nth(4));
     await rows
       .nth(4)
       .getByRole("button", { name: "Duplicate row", exact: true })
       .click();
+    await openQuotationItem(rows.nth(5));
     await rows
       .nth(5)
       .getByRole("button", { name: "Delete row", exact: true })
@@ -130,16 +155,19 @@ try {
     await section
       .getByRole("button", { name: "Duplicate section", exact: true })
       .click();
+    await openQuotationCategory(page.getByTestId("quote-section").nth(1));
     await page
       .getByTestId("quote-section")
       .nth(1)
       .getByRole("button", { name: /Move section .* up/ })
       .click();
+    await openQuotationCategory(page.getByTestId("quote-section").nth(0));
     await page
       .getByTestId("quote-section")
       .nth(0)
       .getByRole("button", { name: /Move section .* down/ })
       .click();
+    await openQuotationCategory(page.getByTestId("quote-section").nth(1));
     await page
       .getByTestId("quote-section")
       .nth(1)
@@ -150,9 +178,11 @@ try {
       .nth(1)
       .getByRole("button", { name: "Delete section", exact: true })
       .click();
+    await openQuotationCategory(section);
     await section
-      .getByRole("button", { name: "Add subsection", exact: true })
+      .getByRole("button", { name: "Add Subcategory", exact: true })
       .click();
+    await openQuotationCategory(page.getByTestId("quote-section").nth(1));
     await page
       .getByTestId("quote-section")
       .nth(1)
@@ -163,11 +193,13 @@ try {
       .nth(1)
       .getByRole("button", { name: "Delete section", exact: true })
       .click();
+    await quotationStep(page, 2);
     await page.getByLabel("VAT percentage", exact()).fill("10");
     await expect(page.getByTestId("grand-total")).toHaveText("AED 247.50");
     await page.getByLabel("VAT percentage", exact()).fill("5");
+    await quotationStep(page, 3);
     await page
-      .getByRole("button", { name: "Add payment term", exact: true })
+      .getByRole("button", { name: "Add payment milestone", exact: true })
       .click();
     await page
       .getByRole("button", { name: "Delete payment term", exact: true })
@@ -180,6 +212,7 @@ try {
         .filter({ hasText: "Payment percentages must total 100%." }),
     ).toBeVisible();
     await page.getByLabel("Payment percentage", exact()).first().fill("50");
+    await openTerm(page, 0);
     await page
       .getByLabel("Term text", exact())
       .first()
@@ -187,10 +220,15 @@ try {
     await page
       .getByRole("button", { name: "Move term 1 down", exact: true })
       .click();
+    await openTerm(page, 1);
     await page
       .getByRole("button", { name: "Move term 1 up", exact: true })
       .click();
     await page.getByRole("button", { name: "Add term", exact: true }).click();
+    await openTerm(
+      page,
+      (await page.getByLabel("Term text", exact()).count()) - 1,
+    );
     await page
       .getByLabel("Term text", exact())
       .last()
@@ -201,15 +239,25 @@ try {
       .click();
     await page.getByRole("button", { name: "Save Draft", exact: true }).click();
     await page.reload();
+    await quotationStep(page, 0);
+    await disclosure(page, "Customer contact & address");
     await expect(page.getByLabel("Customer", exact())).toHaveValue(
       "QA Quotation " + width,
     );
+    await quotationAdvanced(page);
+    await openQuotationCategory(section);
     await expect(page.getByTestId("quote-line")).toHaveCount(5);
+    await quotationStep(page, 3);
+    await openTerm(page, 0);
     await expect(page.getByLabel("Term text", exact()).first()).toHaveValue(
       "QA preserved commercial condition",
     );
+    await quotationStep(page, 2);
     await expect(page.getByTestId("grand-total")).toHaveText("AED 236.25");
+    await quotationAdvanced(page);
     await page.screenshot({ path: `tmp/quotation-qa/editor-${width}.png` });
+    await openQuotationCategory(section);
+    await openQuotationItem(page.getByTestId("quote-line").nth(1));
     await page.getByTestId("quote-line").nth(1).scrollIntoViewIfNeeded();
     await page
       .getByTestId("quote-line")
@@ -221,7 +269,7 @@ try {
       )
     )
       throw Error("Editor overflow " + width);
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await quotationStep(page, 4);
     await expect(page.locator(".quote-sheet").first()).toBeVisible();
     const expectedPages = await page.locator(".quote-sheet").count();
     expect(expectedPages).toBeGreaterThanOrEqual(2);
@@ -247,14 +295,19 @@ try {
     await page
       .getByRole("button", { name: "Open / Edit", exact: true })
       .click();
+    await quotationStep(page, 4);
     await page.getByRole("button", { name: "Finalize", exact: true }).click();
     await page
       .getByRole("dialog")
       .getByRole("button", { name: "Confirm", exact: true })
       .click();
+    await quotationStep(page, 0);
+    await disclosure(page, "Customer contact & address");
     await expect(page.getByLabel("Customer", exact())).toBeDisabled();
+    await quotationStep(page, 4);
     await page.getByLabel("Issued quotation status").selectOption("Sent");
     await expect(page.locator(".quote-toolbar .badge")).toHaveText("Sent");
+    await disclosure(page, "Version actions");
     await page
       .getByRole("button", { name: "Create Revision", exact: true })
       .click();
@@ -266,15 +319,24 @@ try {
       .getByRole("dialog")
       .getByRole("button", { name: "Create draft revision", exact: true })
       .click();
+    await quotationStep(page, 0);
+    await disclosure(page, "Reference & revision details");
+    await disclosure(page, "Customer contact & address");
     await expect(page.getByLabel("Revision Number", exact())).toHaveValue("1");
     await expect(page.getByLabel("Customer", exact())).toBeEnabled();
+    await disclosure(page, "Version actions");
     await page
       .getByRole("button", { name: "Duplicate Quotation", exact: true })
       .click();
+    await quotationStep(page, 0);
+    await disclosure(page, "Reference & revision details");
     await expect(page.getByLabel("Revision Number", exact())).toHaveValue("0");
     const duplicateId = await page.evaluate(() => location.hash.split("/")[2]);
     await page.goto(url + "/#/quotations/" + quoteId + "/edit");
+    await quotationStep(page, 0);
+    await disclosure(page, "Customer contact & address");
     await expect(page.getByLabel("Customer", exact())).toBeDisabled();
+    await quotationStep(page, 4);
     await page
       .getByRole("button", { name: "Return to draft", exact: true })
       .click();
@@ -286,6 +348,8 @@ try {
       .getByRole("dialog")
       .getByRole("button", { name: "Return to draft", exact: true })
       .click();
+    await quotationStep(page, 0);
+    await disclosure(page, "Customer contact & address");
     await expect(page.getByLabel("Customer", exact())).toBeEnabled();
     await page.goto(url + "/#/quotations");
     const duplicateCard = page.locator(".quote-card").filter({
@@ -329,4 +393,19 @@ try {
 }
 function exact() {
   return { exact: true };
+}
+
+async function disclosure(page, label) {
+  const summary = page.locator("summary").filter({ hasText: label });
+  await expect(summary).toHaveCount(1);
+  if ((await summary.locator("..").getAttribute("open")) === null)
+    await summary.click();
+}
+async function openTerm(page, index) {
+  const term = page
+    .getByLabel("Term text", exact())
+    .nth(index)
+    .locator("xpath=ancestor::details[1]");
+  if ((await term.getAttribute("open")) === null)
+    await term.locator(":scope > summary").click();
 }

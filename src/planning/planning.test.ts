@@ -7,7 +7,8 @@ import { getProjectPlanning } from "./compatibility";
 import { validateLinks } from "./graph";
 import { calculateSchedule, getPlanningView, linkFirstPermittedDate } from "./engine";
 import { approveScheduleProposal, captureScheduleBaseline, draftScheduleProposal,
-  draftTaskCreation, rejectScheduleProposal, submitScheduleProposal } from "./commands";
+  draftTaskCreation, rejectScheduleProposal, submitScheduleProposal, completeManualMilestone,
+  reportTaskProgress } from "./commands";
 import type { DependencyLink, NodeRef } from "./model";
 import { instantiateFitOutTemplate, previewFitOutTemplate } from "./template";
 
@@ -96,6 +97,20 @@ describe("planning graph and proposals", () => {
     expect(row.changes.find((change) => change.node.id === "b")?.after.start).toBe("2026-11-05");
     expect(row.conflicts).toEqual([]);
   });
+  it("keeps removed-link successors in the impact set and pulls earlier only by explicit PM option", () => {
+    const { db, project, managerId } = fixture([
+      ["a", "2026-11-02", "2026-11-03", 0],
+      ["b", "2026-11-04", "2026-11-05", 0],
+      ["c", "2026-11-02", "2026-11-02", 0],
+    ], [["a", "b"]]);
+    const ordinary = draftScheduleProposal(db, { projectId: project.id, initiatingNode: n("c"),
+      actorId: managerId, reason: "Remove obsolete link", edit: { links: [] } });
+    expect(ordinary.unchangedSuccessors.some((node) => node.id === "b")).toBe(true);
+    expect(ordinary.changes.some((change) => change.node.id === "b")).toBe(false);
+    const earlier = draftScheduleProposal(db, { projectId: project.id, initiatingNode: n("c"),
+      actorId: managerId, reason: "Consider earlier dates", edit: { links: [] }, considerEarlierDates: true });
+    expect(earlier.changes.find((change) => change.node.id === "b")?.after.start).toBe("2026-11-02");
+  });
   it("computes one-day float on a feasible parallel branch and suppresses infeasible CPM", () => {
     const { db, project } = fixture([
       ["a", "2026-11-02", "2026-11-03", 0],
@@ -138,6 +153,15 @@ describe("planning graph and proposals", () => {
     expect(() => approveScheduleProposal(db, row.id, managerId)).toThrow(/stale/);
     expect(db.tasks).toEqual(before);
   });
+  it("treats a new progress report as a stale source before approval", () => {
+    const { db, project, managerId } = fixture([["a", "2026-11-02", "2026-11-03", 0]]);
+    const row = draftScheduleProposal(db, { projectId: project.id, initiatingNode: n("a"),
+      actorId: managerId, reason: "Move work later", edit: { start: "2026-11-04" } });
+    submitScheduleProposal(db, row.id, managerId);
+    reportTaskProgress(db, "a", 25, "2026-11-02", managerId, "Site work started");
+    expect(() => approveScheduleProposal(db, row.id, managerId)).toThrow(/stale/);
+    expect(db.tasks.find((task) => task.id === "a")?.start).toBe("2026-11-02");
+  });
   it("allows non-schedule save but blocks TaskDrawer-style date/link bypass after activation", () => {
     const { db } = fixture([["a", "2026-11-02", "2026-11-03", 0], ["b", "2026-11-04", "2026-11-05", 0]]);
     const task = db.tasks.find((row) => row.id === "b")!;
@@ -178,6 +202,18 @@ describe("planning graph and proposals", () => {
     expect(() => submitScheduleProposal(db, row.id, managerId)).toThrow(/Confirm/);
     submitScheduleProposal(db, row.id, managerId, true);
     expect(row.history.some((item) => item.action === "LeadOverlapConfirmed")).toBe(true);
+  });
+  it("keeps 100% work separate from an explicit inspection milestone", () => {
+    const { db, project, managerId } = fixture([["a", "2026-11-02", "2026-11-03", 100]]);
+    db.milestones.push({ id: "inspection", projectId: project.id,
+      name: "Inspection approved", due: "2026-11-04", taskId: "" });
+    db.planning![0].milestonePlanning.push({ milestoneId: "inspection", completionCondition: { kind: "Manual" } });
+    const before = getPlanningView(db, project.id);
+    expect(before.nodes.find((node) => node.node.id === "a")?.completionSatisfied).toBe(true);
+    expect(before.nodes.find((node) => node.node.id === "inspection")?.completionSatisfied).toBe(false);
+    expect(before.blockers.some((blocker) => blocker.code === "ManualMilestonePending")).toBe(true);
+    completeManualMilestone(db, "inspection", managerId, "Inspection evidence approved");
+    expect(getPlanningView(db, project.id).nodes.find((node) => node.node.id === "inspection")?.completionSatisfied).toBe(true);
   });
   it("loads legacy records without baseline or storage writes and preserves all IDs", () => {
     const db = seed();

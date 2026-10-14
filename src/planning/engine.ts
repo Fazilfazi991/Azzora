@@ -126,11 +126,16 @@ export function calculateSchedule(
   if (edit.calendar) for (const node of order) affected.add(nodeKey(node));
   if (edit.links) {
     const oldById = new Map(planning.links.map((link) => [link.id, link]));
+    const newIds = new Set(edit.links.map((link) => link.id));
     for (const link of edit.links) {
       if (JSON.stringify(oldById.get(link.id)) !== JSON.stringify(link)) {
         affected.add(nodeKey(link.successor));
         for (const key of reachableSuccessors(links, link.successor)) affected.add(key);
       }
+    }
+    for (const link of planning.links.filter((old) => !newIds.has(old.id))) {
+      affected.add(nodeKey(link.successor));
+      for (const key of reachableSuccessors(links, link.successor)) affected.add(key);
     }
   }
   if (edit.taskPlanning)
@@ -211,7 +216,7 @@ export function calculateSchedule(
         conflicts.push(issue("InvalidLinkAnchor", `A dependency into ${key} uses a nonworking legacy anchor.`, node));
       }
     }
-    if (earliest > current.start) {
+    if (earliest > current.start || (considerEarlierDates && key !== initiatingKey && earliest < current.start)) {
       current.start = earliest;
       current.finish = finishFor(calendar, earliest, current.durationWorkingDays);
     }
@@ -320,6 +325,14 @@ export function getPlanningView(db: Database, projectId: string, asOf?: LocalDat
     const key = nodeKey(item.node), approved = dates.get(key)!;
     const metadata = item.node.kind === "task" ? planning.taskPlanning.find((row) => row.taskId === item.node.id) : undefined;
     const scheduleRole = item.node.kind === "milestone" ? "milestone" as const : metadata?.scheduleRole ?? "work";
+    const milestoneMetadata = item.node.kind === "milestone"
+      ? planning.milestonePlanning.find((row) => row.milestoneId === item.node.id) : undefined;
+    const condition = milestoneMetadata?.completionCondition;
+    const completionSatisfied = item.node.kind === "task" ? item.progress === 100 :
+      condition?.kind === "Manual" ? !!milestoneMetadata?.completedAt :
+      condition?.kind === "TaskComplete" ? db.tasks.find((task) => task.id === condition.taskId)?.progress === 100 :
+      condition?.kind === "DocumentApproved" ? db.documents.find((doc) => doc.id === condition.documentId)?.status === "Approved" :
+      condition?.kind === "QAApproved" ? db.snags.find((snag) => snag.id === condition.referenceId)?.status === "Closed" : false;
     if (scheduleRole === "work" && !db.tasks.some((child) => child.parentId === item.node.id)) {
       const weight = metadata?.explicitProgressWeight ?? approved.durationWorkingDays;
       if (weight > 0) { totalWeight += weight; weighted += weight * item.progress; }
@@ -334,7 +347,7 @@ export function getPlanningView(db: Database, projectId: string, asOf?: LocalDat
     }
     return { ...item, approved, baseline: baselineMap.get(key), proposed: proposedMap.get(key),
       totalFloatWorkingDays: path.float.get(key), critical: path.feasible && path.float.get(key) === 0,
-      scheduleRole, plannedProgress };
+      scheduleRole, plannedProgress, completionSatisfied };
   });
   const warnings: ScheduleIssue[] = [...(activeProposal?.warnings ?? [])];
   for (const row of planning.taskPlanning.filter((item) => item.durationNeedsReview))
@@ -352,6 +365,8 @@ export function getPlanningView(db: Database, projectId: string, asOf?: LocalDat
   for (const row of planning.milestonePlanning) {
     const condition = row.completionCondition;
     const node: NodeRef = { kind: "milestone", id: row.milestoneId };
+    if (condition.kind === "Manual" && !row.completedAt)
+      blockers.push({ code: "ManualMilestonePending", detail: `Milestone ${row.milestoneId} awaits explicit Project Manager confirmation.`, node, sourceId: row.milestoneId });
     if (condition.kind === "TaskComplete" && db.tasks.find((task) => task.id === condition.taskId)?.progress !== 100)
       blockers.push({ code: "TaskIncomplete", detail: `Milestone ${row.milestoneId} awaits task completion.`, node, sourceId: condition.taskId });
     if (condition.kind === "DocumentApproved" && db.documents.find((doc) => doc.id === condition.documentId)?.status !== "Approved")
@@ -363,6 +378,9 @@ export function getPlanningView(db: Database, projectId: string, asOf?: LocalDat
     blockers.push({ code: "DocumentPending", detail: `${doc.name} awaits approval.`, sourceId: doc.id });
   for (const snag of db.snags.filter((row) => row.projectId === projectId && row.status !== "Closed"))
     blockers.push({ code: "QAPending", detail: `${snag.description} remains open.`, sourceId: snag.id });
+  for (const update of db.updates.filter((row) => row.projectId === projectId &&
+    (row.reviewStatus === "Pending" || row.reviewStatus === "Changes Requested")))
+    blockers.push({ code: "SiteUpdateReview", detail: `Site report dated ${update.date} awaits review.`, sourceId: update.id });
   for (const handover of db.handover.filter((row) => row.projectId === projectId && row.required && row.applicable && !row.complete))
     blockers.push({ code: "HandoverPending", detail: `${handover.name} remains incomplete.`, sourceId: handover.id });
   return { projectId, calendar: planning.calendar, links: planning.links, nodes, proposals: planning.proposals,

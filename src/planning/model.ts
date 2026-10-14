@@ -137,6 +137,7 @@ export interface PlanningNodeView {
   scheduleRole: "work" | "summary" | "milestone";
   progress: number;
   plannedProgress: number;
+  completionSatisfied?: boolean;
 }
 export interface PlanningView {
   projectId: string;

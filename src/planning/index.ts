@@ -12,6 +12,7 @@ export {
   draftScheduleProposal, draftTaskCreation, draftMilestoneCreation,
   submitScheduleProposal, approveScheduleProposal, rejectScheduleProposal,
   captureScheduleBaseline, reportTaskProgress,
+  completeManualMilestone,
 } from "./commands";
 export type { DraftScheduleInput } from "./commands";
 export { previewFitOutTemplate, instantiateFitOutTemplate } from "./template";

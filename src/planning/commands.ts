@@ -232,3 +232,18 @@ export function reportTaskProgress(db: Database, taskId: string, percent: number
   if (percent === 100) task.completedAt ??= new Date().toISOString();
   task.updatedAt = new Date().toISOString();
 }
+export function completeManualMilestone(db: Database, milestoneId: string, actorId: string, reason: string): void {
+  const milestone = db.milestones.find((row) => row.id === milestoneId);
+  if (!milestone) throw Error("Milestone not found.");
+  manager(db, milestone.projectId, actorId);
+  reason = reasonRequired(reason);
+  const planning = activateProjectPlanning(db, milestone.projectId);
+  const metadata = planning.milestonePlanning.find((row) => row.milestoneId === milestoneId);
+  if (!metadata || metadata.completionCondition.kind !== "Manual" || metadata.completedAt)
+    throw Error("Only an incomplete manual milestone can be confirmed here.");
+  metadata.completedAt = new Date().toISOString();
+  metadata.completedBy = actorId;
+  db.activities.unshift({ id: uid(), actorId, action: "Milestone condition confirmed",
+    entityType: "Milestone", entityId: milestoneId, projectId: milestone.projectId,
+    timestamp: metadata.completedAt, summary: reason });
+}

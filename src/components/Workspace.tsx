@@ -20,6 +20,7 @@ import { Planning } from "./Planning";
 import { Team } from "./Team";
 import { SiteUpdates, Snags, Documents } from "./Operations";
 import { Handover } from "./Handover";
+import { ProjectFinancials } from "../commercial/Accounts";
 const tabs = [
   ["overview", "Overview"],
   ["timeline", "Timeline"],
@@ -28,6 +29,7 @@ const tabs = [
   ["site-updates", "Site Updates"],
   ["documents", "Documents"],
   ["quotations", "Quotations"],
+  ["financials", "Financials"],
   ["snags-qa", "Snags & QA"],
   ["handover", "Handover"],
 ];
@@ -249,6 +251,8 @@ export function Workspace({
         <SiteUpdates projectId={id} />
       ) : tab === "quotations" ? (
         <Quotations projectId={id} />
+      ) : tab === "financials" ? (
+        <ProjectFinancials projectId={id} />
       ) : tab === "documents" ? (
         <Documents projectId={id} />
       ) : tab === "snags-qa" ? (

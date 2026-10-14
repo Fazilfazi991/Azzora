@@ -44,5 +44,7 @@ blob-report/
 *~
 /tmp/
 /temp/
+/docs/commercial-evidence/
+/docs/boq/
 .vscode/
 .idea/

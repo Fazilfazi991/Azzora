@@ -15,7 +15,7 @@ import {
   dubaiDate,
 } from "./calculations";
 import { discountAmount, totals } from "../quotation/calculations";
-import { today } from "../domain/logic";
+import { today, projectProgress, health } from "../domain/logic";
 export interface ReportData {
   headers: string[];
   rows: string[][];
@@ -377,12 +377,22 @@ export function reportData(
         }),
     };
   return {
-    headers: ["Project", "Customer", "Target", "Status", "Estimated Value AED"],
+    headers: [
+      "Project",
+      "Customer",
+      "Progress %",
+      "Health",
+      "Target",
+      "Status",
+      "Estimated Value AED",
+    ],
     rows: db.projects
       .filter((p) => matches(p.clientId, p.id, p.start, f))
       .map((p) => [
         p.code + " · " + p.name,
         cName(p.clientId),
+        String(projectProgress(db, p.id)),
+        health(db, p.id),
         p.due,
         p.status,
         aed(cents(p.value.toFixed(2))),

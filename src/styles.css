@@ -1644,3 +1644,130 @@ dialog::backdrop {
   .boq-section-controls > button, .boq-more summary { width: 44px; }
   .boq-builder .boq-subsection { margin-left: 8px; }
 }
+
+/* Commercial additions use the incumbent AZZORA controls, surfaces and density. */
+.commercial-dashboard {
+  margin: 24px 0 32px;
+}
+.kpis.commercial-kpis {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.commercial-kpis .kpi {
+  min-width: 0;
+}
+.commercial-kpis .kpi strong {
+  font-size: clamp(18px, 1.8vw, 26px);
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.commercial-kpis a.kpi {
+  color: inherit;
+  text-decoration: none;
+}
+.commercial-kpis a.kpi:hover {
+  border-color: var(--bronze);
+}
+.commercial-filters .field {
+  flex: 1 1 155px;
+  margin: 0;
+  min-width: 0;
+}
+.table-scroll {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  margin-top: 16px;
+  padding: 0;
+}
+.commercial-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 680px;
+  font-size: 13px;
+}
+.commercial-table th {
+  padding: 14px 16px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  text-align: left;
+  background: #faf8f5;
+  white-space: nowrap;
+}
+.commercial-table td {
+  padding: 14px 16px;
+  border-top: 1px solid var(--line);
+  vertical-align: top;
+  max-width: 320px;
+  overflow-wrap: anywhere;
+}
+.commercial-table .numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.commercial-table small {
+  margin-top: 4px;
+  letter-spacing: 0.035em;
+}
+.invoice-paper {
+  margin-top: 20px;
+}
+.invoice-paper .table-scroll {
+  border: 0;
+  border-radius: 0;
+}
+.invoice-paper .quote-totals {
+  max-width: 480px;
+  margin-left: auto;
+}
+.invoice-line {
+  padding: 16px;
+  margin: 12px 0;
+}
+.preserve-lines {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.audit-json {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 320px;
+  overflow-y: auto;
+  font-size: 11px;
+}
+.history-entry {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.quick-action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 16px 0;
+}
+.form-grid > * {
+  min-width: 0;
+}
+@media (max-width: 1100px) {
+  .kpis.commercial-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 480px) {
+  .kpis.commercial-kpis {
+    gap: 10px;
+  }
+  .commercial-kpis .kpi {
+    padding: 14px;
+  }
+  .commercial-kpis .kpi strong {
+    font-size: 18px;
+  }
+  .commercial-kpis .kpi p {
+    font-size: 11px;
+  }
+  .commercial-filters .field {
+    flex-basis: 140px;
+  }
+}

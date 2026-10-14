@@ -19,12 +19,19 @@ import {
 import { createProject } from "../domain/repository";
 import { templates } from "../domain/seed";
 import { Modal, Field, personName } from "./ui";
+import { CustomerForm } from "../commercial/Customers";
 export function Wizard({
   onClose,
   onCreated,
+  initialCustomerId = "",
+  initialName = "",
+  initialLocation = "",
 }: {
   onClose: () => void;
   onCreated: (id: string) => void;
+  initialCustomerId?: string;
+  initialName?: string;
+  initialLocation?: string;
 }) {
   const { db, mutate } = useStore();
   const [step, setStep] = useState(0);
@@ -38,9 +45,9 @@ export function Wizard({
           ...db.projects.map((p) => Number(p.code.replace(/\D/g, ""))),
         ) + 1,
       ).padStart(3, "0"),
-    name: "",
-    clientId: uid(),
-    location: "",
+    name: initialName,
+    clientId: initialCustomerId,
+    location: initialLocation,
     emirate: "Dubai",
     building: "",
     unit: "",
@@ -55,8 +62,10 @@ export function Wizard({
     priority: "Normal",
     status: "Active",
   });
-  const [client, setClient] = useState("");
-  const [contact, setContact] = useState("");
+  const [addCustomer, setAddCustomer] = useState(false);
+  const selectedCustomer = db.clients.find((c) => c.id === p.clientId);
+  const client = selectedCustomer?.name || "";
+  const contact = selectedCustomer?.contact || "";
   const [team, setTeam] = useState<Record<string, string>>({});
   const [standard, setStandard] = useState(true);
   const [error, setError] = useState("");
@@ -138,19 +147,36 @@ export function Wizard({
                 onChange={(e) => set("code", e.target.value)}
               />
             </Field>
-            <Field label="Client name">
-              <input
+            <Field label="Select Existing Customer">
+              <select
                 required
-                value={client}
-                onChange={(e) => setClient(e.target.value)}
-              />
+                value={p.clientId}
+                onChange={(e) => set("clientId", e.target.value)}
+              >
+                <option value="">Select customer…</option>
+                {db.clients
+                  .filter((c) => c.status !== "Archived" || c.id === p.clientId)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+              </select>
             </Field>
-            <Field label="Client contact">
-              <input
-                value={contact}
-                onChange={(e) => setContact(e.target.value)}
-              />
-            </Field>
+            <div className="field">
+              <small>Customer master</small>
+              <button type="button" onClick={() => setAddCustomer(true)}>
+                + Add New Customer
+              </button>
+              {selectedCustomer && (
+                <p className="muted">
+                  {contact} ·{" "}
+                  {selectedCustomer.phone ||
+                    selectedCustomer.email ||
+                    selectedCustomer.code}
+                </p>
+              )}
+            </div>
             <Field label="Project type">
               <select
                 value={p.type}
@@ -400,6 +426,15 @@ export function Wizard({
           </button>
         </div>
       </form>
+      {addCustomer && (
+        <CustomerForm
+          onClose={() => setAddCustomer(false)}
+          onSaved={(id) => {
+            set("clientId", id);
+            setAddCustomer(false);
+          }}
+        />
+      )}
     </Modal>
   );
 }

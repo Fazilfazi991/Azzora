@@ -12,6 +12,7 @@ import {
 } from "../domain/logic";
 import { Header, Badge, Progress, Empty, personName } from "./ui";
 import { ProjectCard } from "./Projects";
+import { CommercialDashboard } from "../commercial/Accounts";
 export function Dashboard({
   onOpen,
   onTask,
@@ -78,6 +79,7 @@ export function Dashboard({
           </div>
         ))}
       </div>
+      <CommercialDashboard />
       <div className="dashboard-grid">
         <section>
           <div className="between">

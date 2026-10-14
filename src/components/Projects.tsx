@@ -11,6 +11,7 @@ import {
   today,
 } from "../domain/logic";
 import { Header, Badge, Avatar, Progress, Empty, personName } from "./ui";
+import { aed } from "../commercial/calculations";
 export function ProjectCard({
   project: p,
   onOpen,
@@ -20,6 +21,7 @@ export function ProjectCard({
 }) {
   const { db } = useStore();
   const phases = db.phases.filter((ph) => ph.projectId === p.id);
+  const contract = db.contracts.find((c) => c.projectId === p.id);
   return (
     <button className="project-card" onClick={() => onOpen(p.id)}>
       <div className="project-card-head">
@@ -34,8 +36,14 @@ export function ProjectCard({
           </p>
         </div>
         <div className="value">
-          <small>Contract value</small>
-          <strong>{money(p.value)}</strong>
+          <small>
+            {contract
+              ? "Accepted contract excl. VAT"
+              : "Estimated project value"}
+          </small>
+          <strong>
+            {contract ? aed(BigInt(contract.net)) : money(p.value)}
+          </strong>
           <small>Target: {dateLabel(p.due)}</small>
         </div>
       </div>

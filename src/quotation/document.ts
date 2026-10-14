@@ -9,6 +9,7 @@ import {
   sectionAmount,
   totals,
   cents,
+  discountAmount,
 } from "./calculations";
 export type Draw =
   | {
@@ -395,9 +396,12 @@ export function layoutQuotation(q: Quotation): DocumentPage[] {
   }
   const t = totals(q);
   const totalBlock = (height = 22.6) => {
-    ensure(height * 3);
+    ensure(height * (discountAmount(q) > 0n ? 4 : 3));
     [
       ["SUB TOTAL (AED)", t.subtotal],
+      ...(discountAmount(q) > 0n
+        ? [["DISCOUNT (AED)", discountAmount(q)]]
+        : []),
       ["TAX " + (q.vatEnabled ? q.vatPercentage : "0") + "% (AED)", t.vat],
       ["GRAND TOTAL (AED)", t.grand],
     ].forEach(([label, value]) => {

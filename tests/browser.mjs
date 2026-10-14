@@ -1,11 +1,7 @@
 import { chromium } from "@playwright/test";
 import fs from "node:fs";
-const browser = await chromium.launch({
-  executablePath:
-    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  headless: true,
-  args: ["--no-sandbox"],
-});
+import { browserOptions } from "./browser-runtime.mjs";
+const browser = await chromium.launch(browserOptions);
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const errors = [];
 page.on("response", (r) => {
@@ -65,11 +61,18 @@ await dialog
   .getByLabel("Project name", { exact: true })
   .fill("QA Dubai Office");
 await dialog
-  .getByLabel("Client name", { exact: true })
+  .getByRole("button", { name: "+ Add New Customer", exact: true })
+  .click();
+let customerDialog = page.getByRole("dialog").last();
+await customerDialog
+  .getByLabel("Customer/company name", { exact: true })
   .fill("QA Fictional Client");
-await dialog
-  .getByLabel("Client contact", { exact: true })
+await customerDialog
+  .getByLabel("Contact person", { exact: true })
   .fill("Demo representative");
+await customerDialog
+  .getByRole("button", { name: "Save Customer", exact: true })
+  .click();
 await dialog.getByLabel("Contract value AED").fill("450000");
 await dialog.getByRole("button", { name: "Continue →" }).click();
 await dialog

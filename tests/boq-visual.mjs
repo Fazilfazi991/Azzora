@@ -1,10 +1,7 @@
 import { chromium, expect } from "@playwright/test";
 import fs from "node:fs";
-const browser = await chromium.launch({
-  executablePath:
-    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  headless: true,
-});
+import { browserOptions } from "./browser-runtime.mjs";
+const browser = await chromium.launch(browserOptions);
 fs.mkdirSync("docs/boq", { recursive: true });
 for (const width of [1440, 1024, 768, 390]) {
   const page = await browser.newPage({ viewport: { width, height: 1000 } });
@@ -62,12 +59,10 @@ for (const width of [1440, 1024, 768, 390]) {
     path: `docs/boq/${process.env.BOQ_PHASE || "after"}-${width}.png`,
     fullPage: true,
   });
-  await page
-    .locator(".boq-builder")
-    .screenshot({
-      style: ".topbar, .mobile-nav { visibility: hidden !important; }",
-      path: `docs/boq/${process.env.BOQ_PHASE || "after"}-boq-${width}.png`,
-    });
+  await page.locator(".boq-builder").screenshot({
+    style: ".topbar, .mobile-nav { visibility: hidden !important; }",
+    path: `docs/boq/${process.env.BOQ_PHASE || "after"}-boq-${width}.png`,
+  });
   await expect(page.locator("body")).toHaveJSProperty("scrollWidth", width);
   await page.close();
 }

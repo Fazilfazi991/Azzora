@@ -1,14 +1,11 @@
 import { chromium, expect } from "@playwright/test";
 import fs from "node:fs";
+import { browserOptions } from "./browser-runtime.mjs";
 const url = process.env.QUOTATION_URL || "http://127.0.0.1:5173";
-const browser = await chromium.launch({
-  executablePath:
-    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  headless: true,
-});
+const browser = await chromium.launch(browserOptions);
 const failures = [],
   checks = [];
-fs.mkdirSync("output/pdf", { recursive: true });
+fs.mkdirSync("tmp/quotation-qa", { recursive: true });
 fs.mkdirSync("tmp/quotation-qa", { recursive: true });
 try {
   for (const width of [1440, 1024, 768, 390]) {
@@ -45,7 +42,7 @@ try {
       await page
         .getByRole("button", { name: "Download PDF", exact: true })
         .click();
-      await (await dl).saveAs("output/pdf/QTN-AF-26049.pdf");
+      await (await dl).saveAs("tmp/quotation-qa/QTN-AF-26049.pdf");
     }
     await page
       .getByRole("link", { name: "Quotation list", exact: true })

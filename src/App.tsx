@@ -21,7 +21,7 @@ import {
 import type { Task } from "./domain/model";
 import { useStore } from "./store";
 import { record } from "./domain/repository";
-import { money, projectProgress, health, today } from "./domain/logic";
+import { today } from "./domain/logic";
 import { Dashboard } from "./components/Dashboard";
 import { Projects } from "./components/Projects";
 import { Workspace } from "./components/Workspace";
@@ -33,9 +33,16 @@ import { Team } from "./components/Team";
 import { SiteUpdates, Snags, Documents } from "./components/Operations";
 import { Handover } from "./components/Handover";
 import { Modal, Header, Empty, Badge, Confirm, Field } from "./components/ui";
+import { Customers, CustomerForm } from "./commercial/Customers";
+import { Accounts } from "./commercial/Accounts";
+import { Reports } from "./commercial/Reports";
+import { InvoiceForm, ExpenseForm } from "./commercial/Registers";
+import { newQuotation } from "./quotation/repository";
+import { blankTask } from "./domain/seed";
 const navigation = [
   ["dashboard", "Dashboard", LayoutDashboard],
   ["projects", "Projects", Building2],
+  ["customers", "Customers", Users],
   ["planning", "Planning", CalendarRange],
   ["tasks", "Tasks", ListChecks],
   ["team", "Team", Users],
@@ -43,6 +50,7 @@ const navigation = [
   ["snags-qa", "Snags & QA", ClipboardCheck],
   ["documents", "Documents", Files],
   ["quotations", "Quotations", Files],
+  ["accounts", "Accounts", ChartNoAxesCombined],
   ["handover", "Handover", KeyRound],
   ["reports", "Reports", ChartNoAxesCombined],
   ["settings", "Settings", Settings],
@@ -60,6 +68,8 @@ export default function App() {
   const [route, setRoute] = useState(location.hash.slice(2) || "dashboard");
   const [menu, setMenu] = useState(false);
   const [wizard, setWizard] = useState(false);
+  const [quickAdd, setQuickAdd] = useState(false),
+    [quickForm, setQuickForm] = useState("");
   const [task, setTask] = useState<Task | null>(null);
   const [query, setQuery] = useState("");
   const [notifications, setNotifications] = useState(false);
@@ -88,6 +98,57 @@ export default function App() {
   };
   const q = query.toLowerCase().trim();
   const search = [
+    ...db.clients.map((c) => ({
+      id: c.id,
+      label: [c.code, c.name, c.contact, c.phone, c.email, c.trn]
+        .filter(Boolean)
+        .join(" · "),
+      type: "Customer",
+      open: () => {
+        location.hash = `/customers/${c.id}/overview`;
+      },
+    })),
+    ...db.quotations.map((q) => ({
+      id: q.id,
+      label:
+        q.number +
+        " Rev " +
+        q.revision +
+        " · " +
+        q.customer.name +
+        " · " +
+        q.project.name,
+      type: "Quotation",
+      open: () => {
+        location.hash = `/quotations/${q.id}/edit`;
+      },
+    })),
+    ...db.invoices.map((i) => ({
+      id: i.id,
+      label:
+        i.number +
+        " · " +
+        db.clients.find((c) => c.id === i.customerId)?.name +
+        " · " +
+        db.projects.find((p) => p.id === i.projectId)?.code,
+      type: "Invoice",
+      open: () => {
+        location.hash = `/accounts/invoices/${i.id}`;
+      },
+    })),
+    ...db.payments.map((p) => ({
+      id: p.id,
+      label:
+        p.number +
+        " · " +
+        p.reference +
+        " · " +
+        db.clients.find((c) => c.id === p.customerId)?.name,
+      type: "Payment",
+      open: () => {
+        location.hash = `/accounts/payments/${p.id}`;
+      },
+    })),
     ...db.projects.map((p) => ({
       id: p.id,
       label: p.code + " · " + p.name,
@@ -136,6 +197,16 @@ export default function App() {
     content = <Workspace key={id + tab} id={id} tab={tab} onTask={setTask} />;
   else if (page === "projects")
     content = <Projects onOpen={open} onNew={() => setWizard(true)} />;
+  else if (page === "customers")
+    content = <Customers key={id || "directory"} id={id} tab={tab} />;
+  else if (page === "accounts")
+    content = (
+      <Accounts
+        key={(id || "overview") + tab}
+        section={id}
+        recordId={route.split("/")[2]}
+      />
+    );
   else if (page === "planning") content = <Planning onTask={setTask} />;
   else if (page === "tasks") content = <Tasks onTask={setTask} />;
   else if (page === "team") content = <Team onTask={setTask} />;
@@ -145,68 +216,7 @@ export default function App() {
   else if (page === "quotations")
     content = <Quotations key={id || "list"} id={id} mode={tab} />;
   else if (page === "handover") content = <Handover />;
-  else if (page === "reports")
-    content = (
-      <>
-        <Header
-          title="Portfolio Reports"
-          description="Current project delivery metrics derived from the demo repository."
-          action={
-            <button
-              onClick={() =>
-                exportData(
-                  [
-                    "Code,Project,Progress,Health,Target,Contract AED",
-                    ...db.projects.map((p) =>
-                      [
-                        p.code,
-                        '"' + p.name.replaceAll('"', '""') + '"',
-                        projectProgress(db, p.id),
-                        health(db, p.id),
-                        p.due,
-                        p.value,
-                      ].join(","),
-                    ),
-                  ].join("\n"),
-                  "azzora-portfolio-" + today() + ".csv",
-                  "text/csv",
-                )
-              }
-            >
-              Export CSV
-            </button>
-          }
-        />
-        <div className="panel">
-          {db.projects.map((p) => (
-            <button className="list-row" key={p.id} onClick={() => open(p.id)}>
-              <span>
-                <strong>
-                  {p.code} · {p.name}
-                </strong>
-                <small>
-                  {money(p.value)} · {p.due}
-                </small>
-              </span>
-              <Badge>{health(db, p.id)}</Badge>
-              <strong>{projectProgress(db, p.id)}%</strong>
-            </button>
-          ))}
-        </div>
-        <h2>Activity Record</h2>
-        <div className="panel">
-          {db.activities.slice(0, 30).map((a) => (
-            <p key={a.id}>
-              {a.action}: {a.summary}
-              <small>{a.timestamp} · Demo actor: Sarah Mansoor</small>
-            </p>
-          ))}
-          {!db.activities.length && (
-            <Empty>No demo actions recorded yet.</Empty>
-          )}
-        </div>
-      </>
-    );
+  else if (page === "reports") content = <Reports />;
   else if (page === "settings")
     content = (
       <>
@@ -221,6 +231,17 @@ export default function App() {
             server authorization, multi-user sync or backup is configured.
           </p>
           <div className="actions">
+            <button
+              onClick={() =>
+                exportData(
+                  localStorage.getItem("azzora-demo-v1") || "{}",
+                  "azzora-original-saved-data.json",
+                  "application/json",
+                )
+              }
+            >
+              Export original saved data
+            </button>
             <button
               onClick={() =>
                 exportData(
@@ -436,7 +457,7 @@ export default function App() {
             <Search size={18} />
             <input
               aria-label="Global search"
-              placeholder="Search projects, tasks, people…"
+              placeholder="Search customers, projects, invoices…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -458,7 +479,11 @@ export default function App() {
               </div>
             )}
           </div>
-          <button className="primary quick-add" onClick={() => setWizard(true)}>
+          <button
+            className="primary quick-add"
+            aria-label="Quick Add"
+            onClick={() => setQuickAdd(true)}
+          >
             <Plus size={18} />
             <span>Quick Add</span>
           </button>
@@ -530,6 +555,68 @@ export default function App() {
             open(id);
           }}
         />
+      )}
+      {quickAdd && (
+        <Modal title="Quick Add" onClose={() => setQuickAdd(false)}>
+          <div className="quick-action-grid">
+            {[
+              "Customer",
+              "Project",
+              "Quotation",
+              "Invoice",
+              "Task",
+              "Expense",
+            ].map((action) => (
+              <button
+                key={action}
+                onClick={() => {
+                  setQuickAdd(false);
+                  if (action === "Project") setWizard(true);
+                  else if (action === "Quotation") {
+                    let id = "";
+                    if (
+                      mutate((d) => {
+                        id = newQuotation(d).id;
+                      })
+                    )
+                      location.hash = `/quotations/${id}/edit`;
+                  } else if (action === "Task") {
+                    const p =
+                      db.projects.find((p) => p.id === id) || db.projects[0];
+                    const phase = db.phases.find(
+                      (ph) => ph.projectId === p?.id,
+                    );
+                    if (p && phase)
+                      setTask(blankTask(p.id, phase.id, p.managerId));
+                  } else setQuickForm(action);
+                }}
+              >
+                + New {action}
+              </button>
+            ))}
+          </div>
+        </Modal>
+      )}
+      {quickForm === "Customer" && (
+        <CustomerForm
+          onClose={() => setQuickForm("")}
+          onSaved={(id) => {
+            setQuickForm("");
+            location.hash = `/customers/${id}/overview`;
+          }}
+        />
+      )}
+      {quickForm === "Invoice" && (
+        <InvoiceForm
+          onClose={() => setQuickForm("")}
+          onSaved={(id) => {
+            setQuickForm("");
+            location.hash = `/accounts/invoices/${id}`;
+          }}
+        />
+      )}
+      {quickForm === "Expense" && (
+        <ExpenseForm onClose={() => setQuickForm("")} />
       )}
       {task && (
         <TaskDrawer key={task.id} task={task} onClose={() => setTask(null)} />

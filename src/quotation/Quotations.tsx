@@ -30,6 +30,11 @@ import {
   printQuotation,
 } from "./document";
 import { uid } from "../domain/logic";
+import { CustomerForm } from "../commercial/Customers";
+import { Wizard } from "../components/Wizard";
+import { convertQuotation, newProjectDetails } from "../commercial/repository";
+import type { Project, Client } from "../domain/model";
+import { discountAmount } from "./calculations";
 const open = (id: string, mode = "edit") => {
   location.hash = "/quotations/" + id + "/" + mode;
 };
@@ -94,6 +99,31 @@ export function Quotations({
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   const q = db.quotations.find((q) => q.id === id);
+  const [addCustomer, setAddCustomer] = useState(false),
+    [addProject, setAddProject] = useState(false),
+    [convert, setConvert] = useState(false);
+  const [conversionProject, setConversionProject] = useState(""),
+    [conversionNew, setConversionNew] = useState<Project | null>(null);
+  function selectCustomer(c: Client) {
+    update((n) => {
+      n.customerId = c.id;
+      n.customer = {
+        name: c.name,
+        contact: c.contact,
+        address: c.address || "",
+        email: c.email || "",
+        phone: c.phone || "",
+      };
+      n.introduction.attention = "Dear: " + c.name;
+      if (
+        n.projectId &&
+        db.projects.find((p) => p.id === n.projectId)?.clientId !== c.id
+      ) {
+        n.projectId = "";
+        n.project = { name: "", location: "" };
+      }
+    });
+  }
   function create() {
     let created = "";
     if (
@@ -213,6 +243,164 @@ export function Quotations({
           >
             Return to draft
           </button>
+        </Modal>
+      )}
+      {addCustomer && q && (
+        <CustomerForm
+          onClose={() => setAddCustomer(false)}
+          onSaved={(_id, c) => {
+            selectCustomer(c);
+            setAddCustomer(false);
+          }}
+        />
+      )}
+      {addProject && q && (
+        <Wizard
+          initialCustomerId={q.customerId}
+          initialName={q.project.name}
+          initialLocation={q.project.location}
+          onClose={() => setAddProject(false)}
+          onCreated={(projectId) => {
+            mutate((d) => {
+              const next = structuredClone(
+                d.quotations.find((x) => x.id === q.id)!,
+              );
+              const p = d.projects.find((p) => p.id === projectId)!;
+              const c = d.clients.find((c) => c.id === p.clientId)!;
+              next.projectId = p.id;
+              next.project = { name: p.name, location: p.location };
+              next.customerId = c.id;
+              next.customer = {
+                name: c.name,
+                contact: c.contact,
+                address: c.address || "",
+                email: c.email || "",
+                phone: c.phone || "",
+              };
+              saveQuotation(d, next);
+            }, "Project linked to quotation");
+            setAddProject(false);
+          }}
+        />
+      )}
+      {convert && q && (
+        <Modal title="Convert to Project" onClose={() => setConvert(false)}>
+          <p>
+            The accepted BOQ, payment terms and contract values are preserved.
+            Invoice creation is a separate action.
+          </p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              let projectId = "";
+              if (
+                mutate((d) => {
+                  projectId = convertQuotation(
+                    d,
+                    q.id,
+                    conversionNew?.id || conversionProject,
+                    conversionNew || undefined,
+                  ).projectId;
+                }, "Accepted quotation linked as project contract")
+              ) {
+                setConvert(false);
+                location.hash = `/projects/${projectId}/financials`;
+              }
+            }}
+          >
+            <Field label="Conversion project">
+              <select
+                required={!conversionNew}
+                disabled={!!conversionNew}
+                value={conversionProject}
+                onChange={(e) => setConversionProject(e.target.value)}
+              >
+                <option value="">Select existing project…</option>
+                {db.projects
+                  .filter(
+                    (p) =>
+                      p.clientId === q.customerId &&
+                      (!q.projectId || p.id === q.projectId),
+                  )
+                  .map((p) => (
+                    <option value={p.id} key={p.id}>
+                      {p.code} · {p.name}
+                    </option>
+                  ))}
+              </select>
+            </Field>
+            {!q.projectId && (
+              <button
+                type="button"
+                onClick={() =>
+                  setConversionNew(
+                    conversionNew
+                      ? null
+                      : newProjectDetails(
+                          db,
+                          q.customerId,
+                          q.project.name,
+                          q.project.location,
+                        ),
+                  )
+                }
+              >
+                {conversionNew
+                  ? "Use existing project"
+                  : "Create new project from accepted quotation"}
+              </button>
+            )}
+            {conversionNew && (
+              <div className="form-grid">
+                {(
+                  [
+                    ["name", "Contract project name"],
+                    ["location", "Contract project location"],
+                    ["start", "Contract project start"],
+                    ["due", "Contract project due"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <Field label={label} key={key}>
+                    <input
+                      required
+                      type={key === "start" || key === "due" ? "date" : "text"}
+                      value={conversionNew[key]}
+                      onChange={(e) =>
+                        setConversionNew({
+                          ...conversionNew,
+                          [key]: e.target.value,
+                        })
+                      }
+                    />
+                  </Field>
+                ))}
+                <Field label="Contract project manager">
+                  <select
+                    required
+                    value={conversionNew.managerId}
+                    onChange={(e) =>
+                      setConversionNew({
+                        ...conversionNew,
+                        managerId: e.target.value,
+                      })
+                    }
+                  >
+                    {db.people.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+            )}
+            <div className="sticky-actions">
+              <button type="button" onClick={() => setConvert(false)}>
+                Cancel
+              </button>
+              <button className="primary">Confirm Conversion</button>
+            </div>
+          </form>
         </Modal>
       )}
     </>
@@ -459,6 +647,7 @@ export function Quotations({
               <select
                 aria-label="Issued quotation status"
                 value={q.status}
+                disabled={q.status === "Accepted"}
                 onChange={(e) =>
                   mutate((d) =>
                     changeQuotationStatus(
@@ -475,13 +664,36 @@ export function Quotations({
                     <option key={s}>{s}</option>
                   ))}
               </select>
-              <button onClick={() => setReturnDraft(true)}>
+              <button
+                disabled={q.status === "Accepted"}
+                onClick={() => setReturnDraft(true)}
+              >
                 Return to draft
               </button>
             </>
           )}
           <button onClick={() => duplicate(q.id)}>Duplicate Quotation</button>
           <button onClick={() => setRevision(true)}>Create Revision</button>
+          {q.status === "Accepted" &&
+            (db.contracts.some((c) => c.quotationId === q.id) ? (
+              <a
+                className="button"
+                href={`#/projects/${db.contracts.find((c) => c.quotationId === q.id)!.projectId}/financials`}
+              >
+                Open Contract Project
+              </a>
+            ) : (
+              <button
+                className="primary"
+                onClick={() => {
+                  setConversionProject(q.projectId);
+                  setConversionNew(null);
+                  setConvert(true);
+                }}
+              >
+                Convert to Project
+              </button>
+            ))}
         </div>
       </div>
       {error && (
@@ -552,32 +764,26 @@ export function Quotations({
                 <Field label="Linked Customer">
                   <select
                     value={q.customerId}
-                    onChange={(e) =>
-                      update((n) => {
-                        n.customerId = e.target.value;
-                        const c = db.clients.find(
-                          (c) => c.id === e.target.value,
-                        );
-                        if (c) {
-                          n.customer.name = c.name;
-                          n.customer.contact = c.contact;
-                          n.introduction.attention = "Dear: " + c.name;
-                        }
-                        if (
-                          n.projectId &&
-                          db.projects.find((p) => p.id === n.projectId)
-                            ?.clientId !== e.target.value
-                        )
+                    onChange={(e) => {
+                      const c = db.clients.find((c) => c.id === e.target.value);
+                      if (c) selectCustomer(c);
+                      else
+                        update((n) => {
+                          n.customerId = "";
                           n.projectId = "";
-                      })
-                    }
+                        });
+                    }}
                   >
                     <option value="">Unlinked customer snapshot</option>
-                    {db.clients.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
+                    {db.clients
+                      .filter(
+                        (c) => c.status !== "Archived" || c.id === q.customerId,
+                      )
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
                   </select>
                 </Field>
                 <Field label="Linked Project">
@@ -594,8 +800,13 @@ export function Quotations({
                           n.customerId = p.clientId;
                           const c = db.clients.find((c) => c.id === p.clientId);
                           if (c) {
-                            n.customer.name = c.name;
-                            n.customer.contact = c.contact;
+                            n.customer = {
+                              name: c.name,
+                              contact: c.contact,
+                              address: c.address || "",
+                              email: c.email || "",
+                              phone: c.phone || "",
+                            };
                             n.introduction.attention = "Dear: " + c.name;
                           }
                         }
@@ -603,13 +814,29 @@ export function Quotations({
                     }
                   >
                     <option value="">Unlinked project snapshot</option>
-                    {db.projects.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
+                    {db.projects
+                      .filter(
+                        (p) => !q.customerId || p.clientId === q.customerId,
+                      )
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
                   </select>
                 </Field>
+                <div className="actions">
+                  <button type="button" onClick={() => setAddCustomer(true)}>
+                    + Add Customer
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!q.customerId}
+                    onClick={() => setAddProject(true)}
+                  >
+                    + Create Project
+                  </button>
+                </div>
                 {Object.entries(q.customer).map(([key, value]) => (
                   <Field
                     key={key}
@@ -1186,6 +1413,17 @@ export function Quotations({
             <section className="panel">
               <h2>Commercial Terms</h2>
               <div className="form-grid">
+                <Field label="Quotation discount AED">
+                  <input
+                    inputMode="decimal"
+                    value={q.discount || "0"}
+                    onChange={(e) =>
+                      update((n) => {
+                        n.discount = e.target.value;
+                      })
+                    }
+                  />
+                </Field>
                 <Field label="VAT enabled">
                   <input
                     type="checkbox"
@@ -1242,6 +1480,7 @@ export function Quotations({
                 {t &&
                   [
                     ["Subtotal", t.subtotal],
+                    ["Discount", safe(() => discountAmount(q), 0n)],
                     ["VAT", t.vat],
                     ["Grand Total", t.grand],
                   ].map(([label, value]) => (

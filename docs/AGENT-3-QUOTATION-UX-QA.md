@@ -1,6 +1,8 @@
-# QUOT-UX-03 — Independent quotation usability QA preparation
+# QUOT-UX-03 — Independent quotation usability QA report
 
-Status: baseline captured; workflow implementation in progress; **no feature certification**. Agent3 works only in C:/Users/USER/Desktop/Projects/Azzora/azzora-quotation-ux, branch codex/azzora-quotation-ux. Coordinator alone stages/commits. No old worktree source/reports changed.
+**FINAL PASS on frozen fullSHA861db54bcbb171fe3ac4f8a36b604333b4595e67.**21/21browser suites on dev and21/21on fresh cold production;TypeScript/ESLint exit0;304unit/domain tests across13files passed with isolatedcache. Source tree8439141b90e0d2e6c8f7dd6dab701073480d6d37;tests tree4afbd991131652d1b7548e6ffcb1580e04195b4e. Agent3 works only in C:/Users/USER/Desktop/Projects/Azzora/azzora-quotation-ux, branch codex/azzora-quotation-ux. Coordinator alone stages/commits. No source/test/config edits during freeze, no main/merge/push/deploy/backend/auth work or actual user browser data changes. Preparation sections below are historical and superseded by the final certificate at the end.
+
+Final evidence: [summary](integration-evidence/quotation-ux/final/861db54bcbb171fe3ac4f8a36b604333b4595e67/final-summary.json), [dev gate](integration-evidence/quotation-ux/final/861db54bcbb171fe3ac4f8a36b604333b4595e67/dev/gate-manifest.json), [production gate](integration-evidence/quotation-ux/final/861db54bcbb171fe3ac4f8a36b604333b4595e67/production/gate-manifest.json), [PDF comparison](integration-evidence/quotation-ux/final/861db54bcbb171fe3ac4f8a36b604333b4595e67/pdf-dev-production-comparison.json), [manual visual review](integration-evidence/quotation-ux/final/861db54bcbb171fe3ac4f8a36b604333b4595e67/visual-review.json).
 
 ## Actual BEFORE evidence
 
@@ -96,3 +98,114 @@ Final Vitest and any Agent3-owned dev server must use tests/agent-3-vite.config.
 Final preparatory attempt07 also passed all64groups with zero browser errors:60actual full-page PNGs,16PDFs/48pages. Manifest:integration-evidence/quotation-ux/preparatory-attempt07/browser-results.json. Application source remained unchanged through the suite. Matched reference Scope heights1440/1024/768/390:4494/4723/4915/5511px;blank Simple Scope1603/1619/1641/1817px. No horizontal page overflow in any matched capture. These are separate step documents, whereas the old before heights measured the entire single-page editor; the comparison documents scope reduction but does not claim equal visible content or DOM-control counts. FullSHA final evidence is still pending.
 
 Coordinator demo refinement: the Olive fixture explicitly edits all3Payment descriptions and Due condition / Notes through public fields, replacing any default template wording.50%:Advance on acceptance / Due on acceptance;40%:Progress stage / Due at agreed progress inspection;10%:Handover / Due at agreed handover. The test asserts exact saved description/note arrays both before and after the invalid-percentage/recovery case, alongside the unchanged5040grand total. No application source or actual browser profile is changed. Attempt08 PASS:all64groups,zero browser errors,60screenshots and16PDFs/48pages. Refreshed evidence:integration-evidence/quotation-ux/preparatory-attempt08/browser-results.json;log:quotation-ux-browser-prep08.log. Independent pypdf text extraction of1440draft export confirms all3milestone descriptions and5,040.00. This is the latest preparatory fixture/evidence; final frozen-SHA dev/production gate remains pending.
+
+## Frozen final gate — in progress
+
+Coordinator froze fullSHA861db54bcbb171fe3ac4f8a36b604333b4595e67;source tree8439141b90e0d2e6c8f7dd6dab701073480d6d37;tests tree4afbd991131652d1b7548e6ffcb1580e04195b4e. No source/test/config edits during this gate. Evidence root:integration-evidence/quotation-ux/final/861db54bcbb171fe3ac4f8a36b604333b4595e67.
+
+Fresh TypeScript and ESLint exit0;fresh isolated-cache Vitest304tests/13files passed;fresh cold Vite production build exit0 (existing618.49kB main-chunk advisory, not a build failure). Production preview strict port5224;requested existing owner dev preview5216. Agent3 owns only the new5224preview and final runners, not5210baseline/5216owner services.
+
+Three temporary runner failures are preserved separately, not hidden or counted as application defects:runner-preflight-failed(Node Windows --import requires fileURL;neither test loaded),runner-routing-directory-failed(redirected screenshot parent missing),runner-routing-download-failed(Playwright download copyFile destination was not redirected, causing readback ENOENT). Temporary ignored routing now handles parent creation and both copy/rename arguments;the full dev/production targets were restarted with fresh folders after these corrections. Frozen application/harness bytes remained unchanged. No assertion/filter/skip/browser-engine/native-print changes. Final native-print harness runs directly without preload. Hardcoded artifact filesystem paths in other retained suites are redirected/read back inside each phase folder to preserve tracked baseline evidence.
+
+21suite phase manifests record individual PID/start/end/exit status and per-suite before/after HEAD,source/test/config hash/cleanliness checks. Production guards compare every served build file to local bytes;dev records a stable served quotation-module hash. Operational boundaries/composition consume only the freshly generated same-phase manifest-bound fixture. Final pass/fail and visual/PDF aggregate results remain pending;do not treat initial partial successful suites as the completed gate.
+
+Additional dev infrastructure failure preserved in dev-server-unavailable-failed:7suites passed;composition page.reload failed net::ERR_CONNECTION_REFUSED on5216;critical case4andallsubsequent cases failed page.goto for the same connection refusal(3passed/35failed). This is not evidence that35application functions are defective. Production's corresponding38critical checks passed. Read-only listener inspection confirmed5216was free;Agent3 then started its own strict-port dev server with tests/agent-3-vite.config.mjs(isolatedcache) and restarted the entire21suite dev target into a fresh dev folder. No frozen-file correction or application retry was made. Agent3 now owns this replacement5216service and will stop it with5224when the gate ends;the original owner process was already unavailable.
+
+## Final certificate — completed
+
+Both fresh completed targets pass on exactly861db54bcbb171fe3ac4f8a36b604333b4595e67. Failed setup/outage attempts remain in distinct folders;none is relabeled a pass. The completed dev target was a full fresh21suite restart after server restoration. Production's completed21suite run required no application/test correction or retries.44before/after/closing guards per environment passed, including frozenHEAD and tracked source/test/config hashes/cleanliness. Production15served files matched the15file cold build throughout;closing cold-build hashes remain unchanged. Dev served quotation-module hash remained stable. Docs-only coordinator/report edits are outside the frozen application/test surface.
+
+| Suite | Recorded groups/cases per target | Dev | Production |
+|---|---:|---|---|
+| browser | 66 | PASS | PASS |
+| quotation-browser | 4complete journeys | PASS | PASS |
+| boq-visual | 4viewport cases | PASS | PASS |
+| agent-1-corrective-browser | 35 | PASS | PASS |
+| agent-3-audit | 128route/layout+5targeted observations | PASS | PASS |
+| agent-3-critical | 38 | PASS | PASS |
+| agent-3-interactions | 18 | PASS | PASS |
+| agent-3-upload | 2 | PASS | PASS |
+| dialog-regressions | 64 | PASS | PASS |
+| recovery-browser | 25 | PASS | PASS |
+| quotation-print-browser | 4native-print cases | PASS | PASS |
+| quotation-ux-browser | 64 | PASS | PASS |
+| operational-browser | 136 | PASS | PASS |
+| operational-boundaries | 18 | PASS | PASS |
+| agent-3-compose-browser | 9 | PASS | PASS |
+| commercial-browser | 129 | PASS | PASS |
+| commercial-boundaries | 6 | PASS | PASS |
+| workforce-browser | 40 | PASS | PASS |
+| financial-followup-browser | 14 | PASS | PASS |
+| financial-modal-feedback-browser | 38 | PASS | PASS |
+| rapid-search-browser | 166 | PASS | PASS |
+
+Totals:42suite passes/0final suite failures;1000recorded check groups per target(2000combined),plus5audit observations,4BOQ viewport cases and4native-print cases per target. These counts represent recorded groups/cases, not the many individual expect assertions inside them. No filtering,skip,expected-failure or assertion weakening. Ordinary unit tests are304unique tests, not counted twice. Captured unexpected browser-error arrays are empty in successful results;storage-failure/recovery stimuli remain explicitly asserted.
+
+### Complete module audit
+
+Each listed module has passing final route/layout coverage at1440/1024/768/390. Specific workflow coverage below describes the actual tests, not every imaginable feature or input.
+
+| Module | Final behavioral evidence | Result |
+|---|---|---|
+| Dashboard | financial/delivery KPIs against fixture records;routes and responsive layout | PASS |
+| Customers | create/link/statement;inline dialog cancel/save and relationship retention | PASS |
+| Projects | create wizard;existing-project quotation conversion without duplication;delivery composition | PASS |
+| Planning/timelines | project planning edits/dependencies and progress through delivery journey | PASS |
+| Quotations/BOQ | five steps;simple/advanced;search/mode isolation;nesting/reorder/duplicate/delete;VAT/discount;issued locking/revision;reference history/PDF | PASS |
+| Accounts | commercial balances and saved transaction relationships | PASS |
+| Invoices | net/VAT/gross snapshots;issue locking;milestone/full-scope creation;PDF/print | PASS |
+| Payments | partial/full receipt allocation;reversal;outstanding/statement reconciliation | PASS |
+| Expenses | persisted cost records and financial totals;operational cost composition | PASS |
+| Project Financials | net contract versus cash;cost/margin/outstanding reconciliation | PASS |
+| Tasks/Team | task CRUD/delivery;employee assignment/workforce;keyboard/dialog/drawer regressions | PASS |
+| Documents | attachments/uploads,race/size/persistence;approval and delivery requirements | PASS |
+| Site Updates | active author/whitespace validation;photo upload and persistence | PASS |
+| QA/Snags | inspect/close/reopen delivery workflow and relationship checks | PASS |
+| Handover | blockers/confirmation/project closure;composed operational journey and reload | PASS |
+| Reports | data filters/totals/CSV exports;populated financial/register PDF;60-row multipage stress export | PASS,supplement below |
+| Settings | backup/restore;malformed/null/missing/orphan data recovery;quota rollback/reload | PASS |
+| Global Search/Quick Add | 166rapid-search groups;keyboard/navigation/dialog/focus;project/customer nested transitions | PASS |
+
+### Financial and quotation result
+
+Olive Courtyard Interiors LLC/Maya Reed and Marina Courtyard Apartment Refresh are fictional isolated fixtures created through public UI on all4widths in each target. Painting40m²×35=1400;flooring25m²×90=2250;joinery2Nos×650=1300.4950subtotal−150discount=4800net;5%VAT240;grand5040.50/40/10milestones allocate2520/2016/504 and retain explicit matching descriptions/due notes. An invalid39%stage raises the100%validation error without inflating grand total. Accepted conversion keeps one existing project and one contract;full invoice snapshot4800net/240VAT/5040gross;1000receipt yields4040statement/outstanding. Project net contract4800andcash1000remain distinct. Revision quantity41changes only its new draft total to5076.75;accepted source,contract andissued invoice snapshot remain byte-for-byte equal as objects. Existing commercial/operational suites separately pass full payment,reversal,credit/refund,discount,inclusive/exclusive tax,margin/report andstorage-rollback checks.
+
+### Final visual and PDF evidence
+
+Each target contains372raw application PNGs,45PDFs/123pages and123rendered PDF-page PNGs. Combined independent gate:744application screenshots,90PDFs/246pages and246PDF-page renders(990PNG files). All45matched PDF pairs have identical page counts and extracted text;all123corresponding rendered pages are pixel-identical between dev andproduction. Every PDF page has nonblank text and a render. Olive draft/accepted exports and native prints include exact5040total and updated milestone descriptions. The unmodified native-print harness passes reference7pages andaccepted workflow3pages at1440/390,with embedded fonts/sheet geometry/nonblank pages andsaved-data invariance;the UX suite additionally covers native/download cases at all4widths.
+
+Manual visual record contains25actual inspected PNGs:dashboard,blank Simple Scope,reference expanded Scope andOlive Pricing at all4widths;representative invoice/report/credit/PO/reference/accepted quotation PDF first,last andinterior BOQ pages. No observed clipping or horizontal page overflow in those states. All128route/layout cases per target and8matched quote states per target also assert containment. This is not a claim that every glyph in every PDF was manually read.
+
+Matched before/after example links(raw actual UI):[before reference390](integration-evidence/quotation-ux/before/reference-boq-390.png),[final reference390](integration-evidence/quotation-ux/final/861db54bcbb171fe3ac4f8a36b604333b4595e67/production/guided-ux/matched-reference-scope-390.png),[before blank1440](integration-evidence/quotation-ux/before/blank-top-1440.png),[final blank Scope1440](integration-evidence/quotation-ux/final/861db54bcbb171fe3ac4f8a36b604333b4595e67/production/guided-ux/matched-blank-simple-scope-1440.png). Final reference Scope heights4494/4723/4915/5511px andblank Scope1603/1619/1641/1817px(1440/1024/768/390),identical ondev/production andwithout pageoverflow. Baseline heights are whole-editor documents;final heights are one step with closed categories,so this demonstrates reduced visible document scope rather than identical visible-content counts.
+
+Raw full-page screenshots taken while scrolled show fixed navigation at the original viewport offset. Originals/manifests remain intact. Coordinator completed a separate clean public-UI replay(60PNGs/16PDFs48pages/64groups,zeroerrors) in quotation-ux/client-demo/861db54...;these supplemental counts are excluded from all independent gate totals above. Agent3's partially started supplemental replay was cancelled after coordinator tookownership;its clean-demo/CANCELLED.txt preserves that disposition andpartial outputs are likewise excluded.
+
+### Defects, limitations and handoff
+
+No new application defect was established on the completed frozen gate;no application-source fix was made in this quotation-UX assignment. Agent3 adapted only owned regression harness navigation/disclosures/labels,added independent UX coverage anddocumented results;coordinator committed the completed test checkpoint. Existing feature source belongs to Agents1/2. Confirmed runner/setup/outage failures are documented above andpreserved,not assigned as financial-domain defects. No source/test correction/refreeze was required after861db54.
+
+Limits:Chromium/Chrome only;desktop headless browser print-to-PDF instead ofphysical printers/system-dialog operation;fictional local demo persistence,not real backend/auth/payment services. The original90PDF gate's report samples were Approval Pending Report withanempty table;the separately recorded supplement below closes populated financial/register andmultipage reportPDF sampling for the tested fixtures. Other report schemas andarbitrary extreme data are not exhaustively certified. Owner visual approval/integration/merge/deploy areoutside this QA certificate. The pre-existing Vite main-bundle size advisory remains;no unrelated optimization/redesign attempted.
+
+Integration risk:certificate binds exact fullSHA861db54bcbb171fe3ac4f8a36b604333b4595e67 andtrees stated above. Any later source/test/config change needs appropriately scoped revalidation;docs-only commits do not retroactively change this testedSHA. Raw screenshots/PDFs are ignored local evidence;preserve them andmanifests before worktree cleanup. No cherry-pick of unfinished branches,staging,commit,push,main merge or deployment byAgent3.
+
+Safe checkpoint:closing-guard.json passes final frozen file hashes,HEAD,dev module andall15production served files against the cold build after visual/PDF work. All owned test runners completed. After coordinator confirmed its clean captures complete,Agent3 stopped its replacement5216dev and5224production preview(andtheir owned children);cleanup.json confirms neither QA port remains listening. Baseline5210was not touched. Current fullSHA remains861db54bcbb171fe3ac4f8a36b604333b4595e67;only docs edits are pending coordinator review/commit. Ready for coordinator integration review;no merge/deploy authorization inferred.
+
+## Supplemental populated report-PDF validation — PASS
+
+Exact testedSHA remains861db54bcbb171fe3ac4f8a36b604333b4595e67. This supplement is separate from the original42suite passes,90PDFs/246pages and744application screenshots;those completed gate totals are unchanged. Temporary executable:tmp/supplemental-report-pdf.mjs,with preserved script/hash provenance in the supplemental evidence folder. No tracked source,test,config orHEAD changes andno new committed browser suite.
+
+The saved Olive fixture from the completed public-UI production journey was hash-recorded andloaded only into fresh disposable browser contexts. Reports→Filter project selects Marina Courtyard Apartment Refresh. Existing Export PDF produced:
+
+| Export | Rows | Pages | Actual PDF assertions |
+|---|---:|---:|---|
+| Project Financial Summary | 1 | 1 | Contract4800.00;Invoiced5040.00;Collected1000.00;Balance4040.00 |
+| Invoice Register | 1 | 1 | INV-00001;Total5040.00;Paid1000.00;Balance4040.00 |
+| Invoice Register,SYNTHETIC disposable pagination fixture | 60 | 5 | STRESS-0001throughSTRESS-0060each exactly once;column headers on every page;all pages populated/nonblank |
+
+All exports were downloaded through the existing Reports UI,not generated directly by an imported PDF helper. Original fixture contained only1invoice,so it didnot naturally paginate. The clearly labelled stress JSON clones that fictional issued invoice into60unique synthetic invoice/line IDs andnumbers,withone1000receipt linked only to thefirst row. It is a pagination/wrapping fixture,not a claim that60invoices were business-authorized orcreated through UI. No actual user profile/data wasused. Export/navigation preserved the saved localStorage bytes in each disposable context.
+
+The first supplement completed on Agent3's temporarily restarted5224QApreview before the coordinator's new5225preview instruction arrived. All3exports were then independently confirmed on coordinator-owned5225from the same cold build. Evidence:[initial supplement](integration-evidence/quotation-ux/final/861db54bcbb171fe3ac4f8a36b604333b4595e67/supplemental-report-pdf/supplemental-results.json),[owner-preview confirmation](integration-evidence/quotation-ux/final/861db54bcbb171fe3ac4f8a36b604333b4595e67/supplemental-report-pdf-owner-preview/supplemental-results.json). Supplemental totals across these two runs:6PDFs/14pages,14PDF-page renders and6UI screenshots;all7matched page renders are pixel-identical. Browser console/page errors0;all frozen-file,cold-build and15served-file guards pass on both preview URLs. These supplemental artifacts are outside dev/production gate folders andexcluded from final-summary.json totals.
+
+Manual inspection covered both populated single-page reports andall5stress pages. Amounts align beneath their named columns;long customer names andinvoice identifiers wrap within cells;repeated headers/footer numbering remain visible;last page contains the60throw andisnot a blank tail. A long customer cell continues at thetop of page2 without truncation,consistent with the existing shared PDF row-splitting behavior. Poppler printed environment font-configuration warnings for unused font mappings;rendering exited0 andthe actual reviewed PDFs remain readable. This is not a browser/runtime error.
+
+All report-PDF assertions andvisual sampling requested by the coordinator are now complete. The original exactSHA21/21dev+production certificate remains PASS. Agent3's temporary5224preview is stopped after this supplement;coordinator-owned5225is left running for acceptance. No deployment or merge performed.

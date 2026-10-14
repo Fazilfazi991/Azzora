@@ -70,11 +70,11 @@ Original A3-003/004/012 were isolated QA fixes documented in the issue register 
 
 | ID         | Scope                                                                                                 | Priority | Status  | Constraint                                            |
 | ---------- | ----------------------------------------------------------------------------------------------------- | -------- | ------- | ----------------------------------------------------- |
-| PERF-01    | Main bundle optimization                                                                              | P2       | Backlog | 618.46kB/172.44gzip warning; outside corrective scope |
+| PERF-01    | Main bundle optimization                                                                              | P2       | Backlog | 618.49kB/172.45gzip warning; outside corrective scope |
 | FUT-01     | Retention release, inventory/debit notes, multi-invoice allocation, ledger, timesheets, Unicode fonts | P3       | Backlog | Separate owner scope/acceptance                       |
 | BACKEND-01 | Auth/server persistence/concurrency/cloud attachments/deployment                                      | P3       | Backlog | Explicitly prohibited in this cycle                   |
 
-## Completed independent gate
+## Historical completed integration gate
 
 Full tested SHA `f72e6c1dd7c5914e97c509a635b64de8c6aa9750`:304ordinary unit passes,0failed/pending,13files;TypeScript/ESLint/cold build pass;20/20browser suites on each target pass without retries;24policy/supervision checks, four-width visual/keyboard review,66PDFs/158pages parsed and42rendered pages reviewed. Zero source/build hash mismatches. All recorded blocking audit issues resolved. Agent3 completed/stopped its runners and preview. Agent1 final report-only capacity failure is transparently covered by Coordinator-collected actual source/output evidence;no agent completion/report commit is invented.
 
@@ -84,9 +84,11 @@ REL-01 is Ready for owner acceptance. No main merge, push, deployment, backend o
 
 | ID | Scope / owner | Status | Dependencies / evidence |
 | --- | --- | --- | --- |
-| QUOT-UX-01 | Guided workflow, progressive simple/advanced scope and help — Agent 1 | Implemented; final QA pending | Reviewed `c53f08e62c86f46e64bd4cfce7c7162aab6362a8`; includes all three review refinements |
-| QUOT-UX-02 | Accessible responsive guide, scoped styles and usability review — Agent 2 | Implemented; final QA pending | Reviewed `efc8670061d5bfef01d6396d748c8b029da03acd`; composed desktop/mobile review passed |
-| QUOT-UX-03 | Actual before/after, independent UX and retained regressions — Agent 3 | In progress | 32 baseline screenshots complete; test implementation/adaptations underway |
-| QUOT-UX-04 | Integration, demo walkthrough and report — Coordinator | In progress | Baseline/tag/worktree/ownership and reviewed source commits complete |
-| QUOT-UX-FINAL | Fresh full quality gate — Agent 3 | Waiting for test checkpoint | Requires reviewed source/tests and frozen full SHA; prior 304/20 results are baseline only |
-| QUOT-UX-ACCEPT | Owner/client acceptance — Owner | Waiting for final gate | Main/push/deployment remain prohibited without explicit authorization |
+| QUOT-UX-01 | Guided workflow, progressive simple/advanced scope and help — Agent 1 | Complete | Reviewed `c53f08e62c86f46e64bd4cfce7c7162aab6362a8`; all three refinements included and final QA passed |
+| QUOT-UX-02 | Accessible responsive guide, scoped styles and usability review — Agent 2 | Complete | Reviewed `efc8670061d5bfef01d6396d748c8b029da03acd`; final four-width/keyboard checks passed |
+| QUOT-UX-03 | Actual before/after, independent UX and retained regressions — Agent 3 | Complete | Reviewed `861db54bcbb171fe3ac4f8a36b604333b4595e67`; 64 UX groups, retained quotation/dialog assertions and full final gate passed |
+| QUOT-UX-04 | Integration, demo walkthrough and report — Coordinator | Complete | Serialized review/commits, rollback/freeze, actual clean captures and consolidated delivery complete |
+| QUOT-UX-FINAL | Fresh full quality gate — Agent 3 | Passed | Exact `861db54bcbb171fe3ac4f8a36b604333b4595e67`; 304 units, 21/21 suites on each target, static/build, four widths, 90 PDFs/246 pages and separate populated-report supplement |
+| QUOT-UX-ACCEPT | Owner/client acceptance — Owner | Ready for review | Owner visual/usability acceptance pending; main merge/push/deployment remain unauthorized |
+
+No open critical application regression was established. Three runner setup failures and one dev service outage remain separately preserved; complete final target runs passed afterward without source/test changes. Coordinator clean captures and supplemental populated-report checks are distinct from primary gate totals. See QUOTATION-UX-DELIVERY.md and CLIENT-DEMO-WALKTHROUGH.md. Main remains `c1914984021a20a9e83f5e60ee4f93ef035659dc`; no release or owner-data reset occurred.

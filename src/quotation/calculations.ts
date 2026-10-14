@@ -26,20 +26,68 @@ export function lineAmount(row: QuotationLineItem): bigint {
 }
 export const sectionAmount = (section: QuotationSection) =>
   section.rows.reduce((sum, row) => sum + lineAmount(row), 0n);
+export const discountAmount = (q: Quotation) => cents(q.discount || "0");
 export function totals(q: Quotation) {
   const subtotal = q.sections.reduce(
     (sum, section) => sum + sectionAmount(section),
     0n,
   );
   const v = decimal(q.vatPercentage || "0");
-  const vat = q.vatEnabled ? round(subtotal * v.n, v.d * 100n) : 0n;
-  return { subtotal, vat, grand: subtotal + vat };
+  const discount = discountAmount(q);
+  if (discount > subtotal) throw Error("Discount cannot exceed subtotal.");
+  const net = subtotal - discount;
+  const vat = q.vatEnabled ? round(net * v.n, v.d * 100n) : 0n;
+  return { subtotal, vat, grand: net + vat };
 }
 export function paymentAmount(term: QuotationPaymentTerm, grand: bigint) {
   if (term.amountOverride !== undefined && term.amountOverride !== "")
     return cents(term.amountOverride);
   const p = decimal(term.percentage || "0");
   return round(grand * p.n, p.d * 100n);
+}
+/**
+ * Align future automatic schedules with the document total without editing any
+ * saved term. Legacy/issued records without the opt-in and explicit source
+ * overrides retain their recorded payment amounts exactly.
+ */
+export function paymentScheduleAmounts(q: Quotation, grand: bigint): bigint[] {
+  const amounts = q.payments.map((term) => paymentAmount(term, grand));
+  if (
+    q.paymentRoundingPolicy !== "reconcile-final" ||
+    !amounts.length ||
+    q.payments.some(
+      (term) => term.amountOverride !== undefined && term.amountOverride !== "",
+    ) ||
+    paymentPercentage(q) !== 100000000n
+  )
+    return amounts;
+
+  const positive = q.payments.map((term) => decimal(term.percentage).n > 0n);
+  const positiveCount = positive.filter(Boolean).length;
+  const minimum = grand >= BigInt(positiveCount) ? 1n : 0n;
+  for (let index = 0; index < amounts.length; index++)
+    if (positive[index] && amounts[index] < minimum) amounts[index] = minimum;
+
+  let difference = grand - amounts.reduce((sum, amount) => sum + amount, 0n);
+  const lastPositive = positive.lastIndexOf(true);
+  if (difference > 0n && lastPositive >= 0) {
+    amounts[lastPositive] += difference;
+  } else if (difference < 0n) {
+    // Reduce the last rounded line first, but retain one fils per positive
+    // milestone whenever the total can fund that many milestones.
+    for (
+      let index = amounts.length - 1;
+      index >= 0 && difference < 0n;
+      index--
+    ) {
+      const floor = positive[index] ? minimum : 0n;
+      const available = amounts[index] - floor;
+      const reduction = available < -difference ? available : -difference;
+      amounts[index] -= reduction;
+      difference += reduction;
+    }
+  }
+  return amounts;
 }
 export function paymentPercentage(q: Quotation) {
   return q.payments.reduce((sum, term) => {
@@ -48,6 +96,7 @@ export function paymentPercentage(q: Quotation) {
   }, 0n);
 }
 export function formatMoney(value: bigint, prefix = false): string {
+  if (value < 0n) return (prefix ? "AED " : "") + "−" + formatMoney(-value);
   const s = value.toString().padStart(3, "0");
   return (
     (prefix ? "AED " : "") +
@@ -116,6 +165,15 @@ export function amountInWords(value: bigint): string {
 export function displayAmount(row: QuotationLineItem) {
   return row.pricingType === "Normal Rate"
     ? formatMoney(lineAmount(row))
+    : ["Heading", "Included"].includes(row.pricingType)
+      ? ""
+      : row.pricingType;
+}
+
+/** Rate labels are presentation only; saved legacy numeric rates remain untouched. */
+export function displayRate(row: QuotationLineItem) {
+  return row.pricingType === "Normal Rate"
+    ? formatMoney(cents(row.rate))
     : ["Heading", "Included"].includes(row.pricingType)
       ? ""
       : row.pricingType;

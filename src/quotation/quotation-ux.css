@@ -1,0 +1,452 @@
+/*
+ * Quotation composition contract (presentation only):
+ * quotation-context-help: short example/help, adjacent to its relevant field.
+ * quotation-category-grid + quotation-work-category: simple work-category choices.
+ * quotation-advanced + quotation-advanced__body: native details/summary; closed by default.
+ * quotation-editable-grid: editable inputs, distinct from derived values.
+ * quotation-calculated-grid + quotation-calculated-value: read-only pricing outputs.
+ * quotation-calculated-value--total: final total emphasis.
+ * quotation-summary-line: label/value rows within the pricing summary.
+ * quotation-step-actions: Back/Continue and the current step's primary action.
+ * The parent renders only the active step; no lifecycle or value is changed here.
+ */
+.quotation-guide {
+  --quotation-ink: #1c1b1a;
+  --quotation-surface: #fff;
+  --quotation-wash: #f7f3f0;
+  --quotation-muted: var(--muted, #6b6661);
+  --quotation-edge: var(--line, #e6e2df);
+  --quotation-accent: var(--rust, #9a3c25);
+  --quotation-bronze: var(--bronze, #745a37);
+  min-width: 0;
+  margin-block: 24px;
+  color: var(--quotation-ink);
+}
+
+.quotation-guide__nav {
+  margin-bottom: 32px;
+}
+
+.quotation-guide__steps {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.quotation-guide__steps > li {
+  min-width: 0;
+}
+
+.quotation-guide .quotation-guide__step {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  min-width: 44px;
+  min-height: 72px;
+  padding: 12px;
+  border: 1px solid var(--quotation-edge);
+  border-radius: 8px;
+  background: var(--quotation-wash);
+  color: var(--quotation-muted);
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.quotation-guide .quotation-guide__step:hover {
+  background: var(--quotation-surface);
+  color: var(--quotation-ink);
+}
+
+.quotation-guide .quotation-guide__step[aria-current="step"] {
+  border-color: var(--quotation-accent);
+  background: var(--quotation-surface);
+  color: var(--quotation-accent);
+}
+
+.quotation-guide__number {
+  display: grid;
+  place-items: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--quotation-edge);
+  border-radius: 4px;
+  background: var(--quotation-surface);
+  color: var(--quotation-bronze);
+  font-variant-numeric: tabular-nums;
+}
+
+.quotation-guide__step[aria-current="step"] .quotation-guide__number {
+  border-color: var(--quotation-accent);
+  background: var(--quotation-accent);
+  color: #fff;
+}
+
+.quotation-guide__step-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.quotation-guide__compact-label {
+  display: none;
+}
+
+.quotation-guide__heading {
+  margin-bottom: 24px;
+}
+
+.quotation-guide__position {
+  margin: 0 0 8px;
+  color: var(--quotation-bronze);
+  font-family: "Space Grotesk", Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.quotation-guide__heading h2 {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 8px;
+  font-size: 24px;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+  scroll-margin-top: 96px;
+}
+
+.quotation-guide__heading h2:focus-visible,
+.quotation-guide .quotation-guide__step:focus-visible,
+.quotation-guide .quotation-advanced > summary:focus-visible {
+  outline: 2px solid var(--quotation-accent);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.quotation-guide .quotation-context-help {
+  max-width: 72ch;
+  margin: 8px 0 16px;
+  color: var(--quotation-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.quotation-guide p.quotation-guide-help {
+  max-width: 72ch;
+  color: var(--quotation-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.quotation-guide section.quotation-guide-help {
+  padding: 20px;
+  background: var(--quotation-wash);
+}
+
+.quotation-guide section.quotation-guide-help > .between {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+}
+
+.quotation-guide section.quotation-guide-help > .between > div {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.quotation-guide section.quotation-guide-help p {
+  max-width: 76ch;
+  color: var(--quotation-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.quotation-guide .quotation-advanced-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  color: var(--quotation-bronze);
+}
+
+.quotation-guide .quotation-category-summary,
+.quotation-guide .quotation-item-summary {
+  min-height: 48px;
+  padding-block: 12px;
+  color: var(--quotation-ink);
+  font-family: "Space Grotesk", Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  list-style-position: inside;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.quotation-guide .quotation-category-summary::marker,
+.quotation-guide .quotation-item-summary::marker {
+  color: var(--quotation-accent);
+}
+
+.quotation-guide .quotation-category-summary > span:last-child,
+.quotation-guide .quotation-item-summary > span:last-child {
+  display: block;
+  margin-top: 4px;
+  color: var(--quotation-muted);
+  font-size: 12px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.quotation-guide .quotation-calculated {
+  display: inline-block;
+  min-width: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--quotation-edge);
+  border-radius: 8px;
+  background: var(--quotation-wash);
+  color: var(--quotation-ink);
+  font-family: "Space Grotesk", Arial, sans-serif;
+  font-size: 18px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+.quotation-guide .quotation-step-panel {
+  min-width: 0;
+}
+
+.quotation-guide .quotation-step-panel > .panel:first-child {
+  margin-top: 0;
+}
+
+.quotation-guide .quotation-step-panel > .panel + .panel,
+.quotation-guide .quotation-form-section + .quotation-form-section {
+  margin-top: 24px;
+}
+
+.quotation-guide .quotation-form-section {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--quotation-edge);
+  border-radius: 12px;
+  background: var(--quotation-surface);
+}
+
+.quotation-guide .quotation-category-grid,
+.quotation-guide .quotation-editable-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 16px;
+  min-width: 0;
+  margin-block: 16px;
+}
+
+.quotation-guide .quotation-work-category {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 12px 16px;
+  border: 1px solid var(--quotation-edge);
+  border-radius: 8px;
+  background: var(--quotation-surface);
+  text-align: left;
+  line-height: 1.5;
+}
+
+.quotation-guide .quotation-work-category[aria-pressed="true"] {
+  border-color: var(--quotation-accent);
+  color: var(--quotation-accent);
+  background: var(--quotation-wash);
+}
+
+.quotation-guide .quotation-advanced {
+  margin-block: 16px;
+  padding: 0 16px;
+  border: 1px solid var(--quotation-edge);
+  border-radius: 8px;
+  background: var(--quotation-wash);
+}
+
+.quotation-guide .quotation-advanced > summary {
+  min-height: 44px;
+  padding-block: 12px;
+  color: var(--quotation-bronze);
+  font-family: "Space Grotesk", Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.quotation-guide .quotation-advanced__body {
+  min-width: 0;
+  padding-block: 8px 16px;
+}
+
+.quotation-guide .quotation-calculated-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 16px;
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  margin-block: 24px;
+}
+
+.quotation-guide .quotation-calculated-value {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--quotation-edge);
+  border-radius: 12px;
+  background: var(--quotation-wash);
+}
+
+.quotation-guide .quotation-calculated-value--total {
+  border-color: var(--quotation-accent);
+  background: var(--quotation-surface);
+}
+
+.quotation-guide .quotation-calculated-value > span,
+.quotation-guide .quotation-calculated-value > small {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--quotation-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.quotation-guide .quotation-calculated-value output,
+.quotation-guide .quotation-calculated-value__amount {
+  display: block;
+  color: var(--quotation-ink);
+  font-family: "Space Grotesk", Arial, sans-serif;
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.quotation-guide .quotation-calculated-value--total output,
+.quotation-guide
+  .quotation-calculated-value--total
+  .quotation-calculated-value__amount {
+  color: var(--quotation-accent);
+}
+
+.quotation-guide .quotation-summary-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  padding-block: 12px;
+  border-bottom: 1px solid var(--quotation-edge);
+  font-variant-numeric: tabular-nums;
+}
+
+.quotation-module .quotation-step-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 24px;
+  margin-top: 24px;
+  border-top: 1px solid var(--quotation-edge, var(--line, #e6e2df));
+}
+
+.quotation-module .quotation-step-actions button,
+.quotation-module .quotation-step-actions .button {
+  min-height: 44px;
+}
+
+.quotation-module .quotation-step-panel .boq-section-controls > button,
+.quotation-module .quotation-step-panel .boq-more > summary {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.quotation-module .quotation-step-panel .boq-section-toolbar button,
+.quotation-module .quotation-step-panel .quote-line .actions button {
+  min-height: 44px;
+}
+
+.quotation-module .quotation-step-panel .boq-section-toolbar {
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+}
+
+.quotation-module
+  .quotation-step-panel
+  .quote-section[open]
+  > .quotation-category-summary,
+.quotation-module
+  .quotation-step-panel
+  .quote-line[open]
+  > .quotation-item-summary {
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--quotation-edge);
+}
+
+@media (max-width: 900px) {
+  .quotation-guide__steps {
+    gap: 6px;
+  }
+
+  .quotation-guide .quotation-guide__step {
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    min-height: 64px;
+    padding: 8px 4px;
+    text-align: center;
+  }
+
+  .quotation-guide__step-label {
+    display: none;
+  }
+
+  .quotation-guide__compact-label {
+    display: block;
+    max-width: 100%;
+    font-size: 11px;
+    line-height: 1.3;
+  }
+}
+
+@media (max-width: 600px) {
+  .quotation-guide {
+    margin-block: 20px;
+  }
+
+  .quotation-guide__nav {
+    margin-bottom: 24px;
+  }
+
+  .quotation-guide__heading h2 {
+    font-size: 22px;
+  }
+
+  .quotation-guide .quotation-form-section {
+    padding: 20px;
+  }
+
+  .quotation-guide .quotation-calculated-grid {
+    gap: 12px;
+  }
+}

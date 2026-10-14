@@ -1,14 +1,16 @@
 import fonts from "./fonts.json";
 import { jsPDF } from "jspdf";
 import type { Quotation, QuotationLineItem } from "./model";
+import { displayBoqCategoryNumber, isBoqParentDescription } from "./hierarchy";
 import {
   amountInWords,
   displayAmount,
+  displayRate,
   formatMoney,
-  paymentAmount,
+  paymentScheduleAmounts,
   sectionAmount,
   totals,
-  cents,
+  discountAmount,
 } from "./calculations";
 export type Draw =
   | {
@@ -140,7 +142,16 @@ export function layoutQuotation(q: Quotation): DocumentPage[] {
     pages.push(page);
     y = 72;
     image("/assets/quotation/watermark.png", 162.6, 195.84, 317.4, 411.6);
-    if (logo) image("/assets/quotation/logo.png", 81, 21.6, 153.84, 32.64);
+    if (logo)
+      image(
+        q.company.logo?.startsWith("data:")
+          ? q.company.logo
+          : "/assets/quotation/logo.png",
+        81,
+        21.6,
+        153.84,
+        32.64,
+      );
   };
   const ensure = (height: number) => {
     if (y + height > BOTTOM && y > 105) {
@@ -238,15 +249,26 @@ export function layoutQuotation(q: Quotation): DocumentPage[] {
     }
   });
   newPage();
+  // All BOQ anchors share the approved column boundaries. Keep stationery,
+  // fonts, fills and borders unchanged; reserve padding inside each cell.
+  const descriptionX = 114.9;
+  const descriptionWidth = 199;
+  const descriptionCenter = descriptionX + descriptionWidth / 2;
+  const cellLines = (r: QuotationLineItem) => [
+    wrap(r.quantity, 30),
+    wrap(r.unit, 30),
+    wrap(displayRate(r), 45),
+    wrap(displayAmount(r), 78),
+  ];
   const tableHeader = () => {
     rect(LEFT, y, WIDTH, 14);
     [
       ["Sl.No", 96],
-      ["ITEM DESCRIPTION", 218],
-      ["QTY", 333],
+      ["ITEM DESCRIPTION", descriptionCenter],
+      ["QTY", 338],
       ["UNIT", 369],
       ["RATE/UNIT", 416],
-      ["AMOUNT", 511],
+      ["AMOUNT", 487],
     ].forEach(([s, x]) =>
       text(String(s), Number(x), y + 3, 8, "bold", "center", "#ffffff"),
     );
@@ -256,63 +278,116 @@ export function layoutQuotation(q: Quotation): DocumentPage[] {
   const rowLines = (r: QuotationLineItem) =>
     wrap(
       r.description + (r.location ? "\n" + r.location : ""),
-      199,
+      descriptionWidth,
       8.2,
-      r.pricingType === "Heading" ? "bold" : "italic",
+      isBoqParentDescription(r) ? "bold" : "italic",
     );
-  const rowHeight = (r: QuotationLineItem) =>
-    Math.max((r.minHeight || 14.52) * 0.95, rowLines(r).length * 10.2 + 0.2);
+  const rowHeight = (r: QuotationLineItem) => {
+    const count = Math.max(
+      rowLines(r).length,
+      ...(r.pricingType === "Heading" || r.pricingType === "Included"
+        ? [1]
+        : cellLines(r).map((ls) => ls.length)),
+    );
+    return Math.max(
+      (r.minHeight || 14.52) * 0.9,
+      count * 10.2 + (count > 1 ? 2.4 : 0.2),
+    );
+  };
   const sectionHeader = (number: string, title: string) => {
     const ls = wrap(title, 199, 8.2, "bold");
-    const h = Math.max(10.6, ls.length * 10.2 + 0.2);
+    const h = Math.max(10.6, ls.length * 10.2 + 2.2);
     rect(LEFT, y, WIDTH, h);
-    text(number, 88, y + 2, 8.2, "bold", "left", "#ffffff");
+    text(number, 96, y + 2, 8.2, "bold", "center", "#ffffff");
     ls.forEach((s, i) =>
-      text(s, 213, y + 2 + i * 10.2, 8.2, "bold", "center", "#ffffff"),
+      text(
+        s,
+        descriptionCenter,
+        y + 2 + i * 10.2,
+        8.2,
+        "bold",
+        "center",
+        "#ffffff",
+      ),
     );
-    y += h + 2;
+    y += h;
   };
   for (const section of q.sections) {
-    if (section.rows[0]?.pageBreakBefore && y > 95)
-      newPage(section.rows[0].pageLogo !== false);
+    const headingNumber = displayBoqCategoryNumber(q, section);
     const first = section.rows[0],
       second = section.rows[1];
+    let preparedBreakRowId: string | undefined;
+    if (
+      (first?.pageBreakBefore ||
+        (first && isBoqParentDescription(first) && second?.pageBreakBefore)) &&
+      y > 95
+    ) {
+      newPage(section.rows[0].pageLogo !== false);
+      tableHeader();
+      if (first && isBoqParentDescription(first) && second?.pageBreakBefore)
+        preparedBreakRowId = second.id;
+    }
     const openingHeight =
-      15 +
-      (first ? rowHeight(first) : 0) +
-      (first?.pricingType === "Heading" && second ? rowHeight(second) : 0);
+      Math.max(
+        10.6,
+        wrap(section.title, 199, 8.2, "bold").length * 10.2 + 2.2,
+      ) +
+      2 +
+      (first ? Math.min(rowHeight(first), BOTTOM - 140) : 0) +
+      (first && isBoqParentDescription(first) && second
+        ? Math.min(rowHeight(second), BOTTOM - 180)
+        : 0);
     if (ensure(openingHeight)) tableHeader();
-    sectionHeader(section.number, section.title);
+    sectionHeader(headingNumber, section.title);
     for (let i = 0; i < section.rows.length; i++) {
       const r = section.rows[i],
         ls = rowLines(r),
         h = rowHeight(r);
-      if (i > 0 && r.pageBreakBefore && y > 95) newPage(r.pageLogo !== false);
+      const nextBreak =
+        isBoqParentDescription(r) && section.rows[i + 1]?.pageBreakBefore;
+      if (
+        i > 0 &&
+        ((r.pageBreakBefore && r.id !== preparedBreakRowId) || nextBreak) &&
+        y > 95
+      ) {
+        newPage(r.pageLogo !== false);
+        tableHeader();
+        sectionHeader(headingNumber, section.title + " (continued)");
+        if (nextBreak) preparedBreakRowId = section.rows[i + 1].id;
+      }
       const keep =
-        h +
-        (r.pricingType === "Heading" && section.rows[i + 1]
-          ? rowHeight(section.rows[i + 1])
+        (h > BOTTOM - 120 ? 40 : h) +
+        (isBoqParentDescription(r) && section.rows[i + 1]
+          ? Math.min(rowHeight(section.rows[i + 1]), 40)
           : 0) +
         (i === section.rows.length - 1 ? 18 : 0);
       if (ensure(keep)) {
         tableHeader();
-        sectionHeader(section.number, section.title + " (continued)");
+        sectionHeader(headingNumber, section.title + " (continued)");
       }
       // Keep ordinary rows intact. Oversized descriptions continue in deliberate chunks.
       let offset = 0;
-      while (offset < ls.length) {
+      const valueLines =
+        r.pricingType === "Heading" || r.pricingType === "Included"
+          ? []
+          : cellLines(r);
+      const totalLines = Math.max(
+        ls.length,
+        ...valueLines.map((values) => values.length),
+      );
+      while (offset < totalLines) {
         const availableLines = Math.max(
           1,
           Math.floor((BOTTOM - y - 12) / 10.2),
         );
         const count =
           h <= BOTTOM - y
-            ? ls.length
-            : Math.min(availableLines, ls.length - offset);
+            ? totalLines - offset
+            : Math.min(availableLines, totalLines - offset);
         const segment = ls.slice(offset, offset + count);
         const segmentHeight =
-          offset === 0 && count === ls.length ? h : segment.length * 10.2 + 4;
-        if (r.pricingType === "Heading")
+          offset === 0 && count === totalLines ? h : count * 10.2 + 4;
+        if (isBoqParentDescription(r))
           rect(LEFT, y, WIDTH, segmentHeight, "#f2f2f2");
         else if (section.number !== "1")
           for (const x of [320, 356, 443]) line(x, y, x, y + segmentHeight);
@@ -321,66 +396,70 @@ export function layoutQuotation(q: Quotation): DocumentPage[] {
           96,
           y + 2,
           8.2,
-          r.pricingType === "Heading" ? "bold" : "italic",
+          isBoqParentDescription(r) ? "bold" : "italic",
           "center",
         );
         segment.forEach((s, j) =>
           text(
             s,
-            114.9,
+            descriptionX,
             y + 2 + j * 10.2,
             8.2,
-            r.pricingType === "Heading" ? "bold" : "italic",
+            isBoqParentDescription(r) ? "bold" : "italic",
           ),
         );
-        if (
-          offset === 0 &&
-          r.pricingType !== "Heading" &&
-          r.pricingType !== "Included"
-        ) {
+        if (r.pricingType !== "Heading" && r.pricingType !== "Included") {
           const spanHeight =
             (r.priceSpanRows || 1) > 1
               ? section.rows
                   .slice(i + 1, i + (r.priceSpanRows || 1))
                   .reduce((sum, next) => sum + rowHeight(next), 0)
               : 0;
-          const middle =
-            section.number === "1"
-              ? y + 2
-              : y + Math.max(2, (segmentHeight + spanHeight - 10) / 2);
-          text(r.quantity, 331, middle, 8.2, "italic", "center");
-          text(r.unit, 369, middle, 8.2, "italic", "center");
-          text(
-            r.pricingType === "Normal Rate"
-              ? formatMoney(cents(r.rate))
-              : r.pricingType,
-            440,
-            middle,
-            8.2,
-            "italic",
-            "right",
+          const lines = valueLines.map((values) =>
+            values.slice(offset, offset + count),
           );
-          text(displayAmount(r), 526, middle, 8.2, "italic", "right");
+          const cellHeight = Math.max(...lines.map((ls) => ls.length)) * 10.2;
+          // A merged price is centered only inside rows present on this page.
+          const visibleSpan =
+            segmentHeight + spanHeight <= BOTTOM - y ? spanHeight : 0;
+          const middle =
+            y + Math.max(2, (segmentHeight + visibleSpan - cellHeight) / 2);
+          lines.forEach((values, column) =>
+            values.forEach((value, j) =>
+              text(
+                value,
+                [338, 369, 440, 526][column],
+                middle + j * 10.2,
+                8.2,
+                "italic",
+                column < 2 ? "center" : "right",
+              ),
+            ),
+          );
         }
         y += segmentHeight;
         offset += count;
-        if (offset < ls.length) {
+        if (offset < totalLines) {
           newPage();
           tableHeader();
-          sectionHeader(section.number, section.title + " (continued)");
+          sectionHeader(headingNumber, section.title + " (continued)");
         }
       }
     }
-    ensure(14);
-    rect(LEFT, y, WIDTH, 13);
-    text(
+    const subtotalLines = wrap(
       "Sub total For  " + section.title,
-      306,
-      y + 2,
+      352,
       8.4,
       "bold",
-      "center",
-      "#ffffff",
+    );
+    const subtotalHeight = Math.max(13, subtotalLines.length * 10.2 + 4);
+    if (ensure(subtotalHeight)) {
+      tableHeader();
+      sectionHeader(headingNumber, section.title + " (continued)");
+    }
+    rect(LEFT, y, WIDTH, subtotalHeight);
+    subtotalLines.forEach((value, i) =>
+      text(value, 262, y + 2 + i * 10.2, 8.4, "bold", "center", "#ffffff"),
     );
     text(
       formatMoney(sectionAmount(section)),
@@ -391,13 +470,16 @@ export function layoutQuotation(q: Quotation): DocumentPage[] {
       "right",
       "#ffffff",
     );
-    y += 16.3;
+    y += subtotalHeight + 3.3;
   }
   const t = totals(q);
-  const totalBlock = (height = 22.6) => {
-    ensure(height * 3);
+  const totalBlock = (height = 22.6, continued = tableHeader) => {
+    if (ensure(height * (discountAmount(q) > 0n ? 4 : 3))) continued();
     [
       ["SUB TOTAL (AED)", t.subtotal],
+      ...(discountAmount(q) > 0n
+        ? [["DISCOUNT (AED)", discountAmount(q)]]
+        : []),
       ["TAX " + (q.vatEnabled ? q.vatPercentage : "0") + "% (AED)", t.vat],
       ["GRAND TOTAL (AED)", t.grand],
     ].forEach(([label, value]) => {
@@ -425,39 +507,65 @@ export function layoutQuotation(q: Quotation): DocumentPage[] {
       y += height;
     });
   };
-  y += 16;
+  y += 8;
   totalBlock();
-  y += 22;
+  y += 14;
   const wordLines = wrap(
     q.amountWordsOverride || amountInWords(t.grand),
-    WIDTH,
+    WIDTH - 8,
     9,
     "bold",
   );
-  ensure(wordLines.length * 12 + 18);
-  wordLines.forEach((s, i) => text(s, 306, y + i * 12, 9, "bold", "center"));
-  y += wordLines.length * 12 + 18;
-  bar("SUMMARY OF COST");
-  rect(LEFT, y, WIDTH, 14, "#f2f2f2");
-  text("SL #", 96, y + 2, 8.2, "bold", "center");
-  text("ITEM DESCRIPTION", 281, y + 2, 8.2, "bold", "center");
-  text("AMOUNT (AED)", 488, y + 2, 8.2, "bold", "center");
-  y += 14;
+  for (const value of wordLines) {
+    ensure(12);
+    text(value, 306, y, 9, "bold", "center");
+    y += 12;
+  }
+  y += 12;
+  const summaryHeader = () => {
+    bar("SUMMARY OF COST");
+    rect(LEFT, y, WIDTH, 14, "#f2f2f2");
+    text("SL #", 96, y + 2, 8.2, "bold", "center");
+    text("ITEM DESCRIPTION", 277, y + 2, 8.2, "bold", "center");
+    text("AMOUNT (AED)", 488, y + 2, 8.2, "bold", "center");
+    y += 14;
+  };
+  ensure(
+    28 +
+      (q.sections[0]
+        ? Math.max(14.52, wrap(q.sections[0].title, 322, 9.3).length * 11.2 + 4)
+        : 0),
+  );
+  summaryHeader();
   for (const s of q.sections) {
-    const ls = wrap(s.title, 300, 9.3);
+    const ls = wrap(s.title, 322, 9.3);
     const h = Math.max(14.52, ls.length * 11.2 + 3);
-    ensure(h);
+    if (ensure(h)) summaryHeader();
     text(s.number.replace(/\.00$/, ""), 96, y + 2, 9.3, "italic", "center");
     ls.forEach((v, i) =>
-      text(v, 275, y + 2 + i * 11.2, 9.3, "italic", "center"),
+      text(v, 277, y + 2 + i * 11.2, 9.3, "italic", "center"),
     );
     text(formatMoney(sectionAmount(s)), 526, y + 2, 8.2, "italic", "right");
     y += h;
   }
-  totalBlock(18.5);
-  y += 14;
+  totalBlock(18.5, summaryHeader);
+  y += 10;
+  const firstPayment = q.payments[0];
+  if (firstPayment) {
+    const firstLines = wrap(
+      "Term " +
+        firstPayment.number +
+        " - " +
+        firstPayment.description +
+        (firstPayment.notes ? "\n" + firstPayment.notes : ""),
+      273,
+      8.2,
+    );
+    ensure(14 + Math.min(Math.max(21.2, firstLines.length * 11.2 + 7), 80));
+  }
   bar("PAYMENT TERMS & CONDITION");
-  for (const p of q.payments) {
+  const scheduledAmounts = paymentScheduleAmounts(q, t.grand);
+  for (const [paymentIndex, p] of q.payments.entries()) {
     const ls = wrap(
       "Term " +
         p.number +
@@ -468,32 +576,65 @@ export function layoutQuotation(q: Quotation): DocumentPage[] {
       8.2,
     );
     const h = Math.max(21.2, ls.length * 11.2 + 7);
-    ensure(h);
-    ls.forEach((v, i) => text(v, 83, y + 4 + i * 11.2));
-    text(p.percentage + "%", 369, y + 4, 8.2, "italic", "center");
-    text(
-      formatMoney(paymentAmount(p, t.grand), true),
-      526,
-      y + 4,
-      8.2,
-      "italic",
-      "right",
-    );
-    y += h;
-    line(LEFT, y, RIGHT, y, "#000000");
+    if (ensure(h > BOTTOM - 114 ? 44 : h)) bar("PAYMENT TERMS & CONDITION");
+    let offset = 0;
+    while (offset < ls.length) {
+      const count = Math.min(
+        ls.length - offset,
+        Math.max(1, Math.floor((BOTTOM - y - 7) / 11.2)),
+      );
+      const segment = ls.slice(offset, offset + count);
+      segment.forEach((v, i) => text(v, 83, y + 4 + i * 11.2));
+      if (offset === 0) {
+        text(p.percentage + "%", 369, y + 4, 8.2, "italic", "center");
+        text(
+          formatMoney(scheduledAmounts[paymentIndex], true),
+          526,
+          y + 4,
+          8.2,
+          "italic",
+          "right",
+        );
+      }
+      y += Math.max(21.2, segment.length * 11.2 + 7);
+      line(LEFT, y, RIGHT, y, "#000000");
+      offset += count;
+      if (offset < ls.length) {
+        newPage();
+        bar("PAYMENT TERMS & CONDITION");
+      }
+    }
   }
-  y += 14;
+  y += 10;
+  const firstTerm = q.terms[0];
+  if (firstTerm)
+    ensure(
+      28 +
+        Math.min(
+          Math.max(14.52, wrap(firstTerm.text, 412, 8.2).length * 11.2 + 3),
+          60,
+        ),
+    );
   bar("TERMS & CONDITION");
   y += 14;
   for (const term of q.terms) {
-    if (term.pageBreakBefore && y > 95) newPage();
+    const continuedTerms = () => {
+      bar("TERMS & CONDITION");
+      y += 14;
+    };
+    if (term.pageBreakBefore && y > 95) {
+      newPage();
+      continuedTerms();
+    }
     const ls = wrap(term.text, 412, 8.2);
     const h = Math.max(14.52, ls.length * 11.2 + 3);
-    ensure(Math.min(h, BOTTOM - 72));
+    if (ensure(h > BOTTOM - 114 ? 44 : h)) continuedTerms();
     text(term.number, 96, y + 2, 8.2, "italic", "center");
     for (const v of ls) {
-      if (ensure(11.2))
+      if (ensure(11.2)) {
+        continuedTerms();
         text(term.number + " (cont.)", 96, y + 2, 7, "italic", "center");
+      }
       text(v, 114.9, y + 2);
       y += 11.2;
     }
@@ -554,6 +695,7 @@ export async function generatePdf(q: Quotation): Promise<jsPDF> {
   for (const src of [
     "/assets/quotation/logo.png",
     "/assets/quotation/watermark.png",
+    ...(q.company.logo?.startsWith("data:") ? [q.company.logo] : []),
   ]) {
     const r = await fetch(src);
     if (!r.ok) throw Error("Quotation stationery could not be loaded.");
@@ -627,7 +769,7 @@ export function printQuotation(q: Quotation) {
       escape(q.number) +
       '</title><base href="' +
       escape(location.origin) +
-      '/"><style>@page{size:A4;margin:0}body{margin:0}.sheet{width:210mm;height:297mm;break-after:page}.sheet:last-child{break-after:auto}svg{width:100%;height:100%}</style></head><body>' +
+      '/"><style>@page{size:A4;margin:0}body{margin:0}.sheet{width:210mm;height:297mm;break-after:page}.sheet:last-child{break-after:auto}.sheet svg{display:block;width:100%;height:100%}</style></head><body>' +
       layoutQuotation(q)
         .map((p) => '<div class="sheet">' + pageSvg(p) + "</div>")
         .join("") +

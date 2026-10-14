@@ -7,8 +7,10 @@ import {
   totals,
   paymentPercentage,
   paymentAmount,
+  paymentScheduleAmounts,
 } from "./calculations";
 import { today, uid } from "../domain/logic";
+import { getOperations } from "../operations/migration";
 export function initializeQuotations(db: Database, seedReference = false) {
   if (db.quotations && !seedReference) return;
   db.quotations = [referenceQuotation()];
@@ -61,6 +63,12 @@ export function newQuotation(db: Database): Quotation {
   let n = next;
   while (db.quotations.some((q) => q.number === prefix + n)) n++;
   const q = blankQuotation(prefix + n);
+  q.paymentRoundingPolicy = "reconcile-final";
+  if (db.operations) {
+    const s = getOperations(db).settings;
+    q.company = structuredClone(s.company);
+    q.vatPercentage = s.vatPercentage;
+  }
   db.quotationNumbering.next = n + 1;
   db.quotations.push(q);
   return q;
@@ -109,11 +117,22 @@ export function validationErrors(q: Quotation): string[] {
   for (const s of q.sections) {
     if (!s.title.trim()) errors.push("Section description is required.");
     if (!s.rows.length) errors.push("Each section needs at least one item.");
+    const parentIds = new Set(s.rows.map((r) => r.parentId).filter(Boolean));
     for (const r of s.rows) {
       if (!r.description.trim())
         errors.push("Item " + r.number + ": description is required.");
       if (!pricingTypes.includes(r.pricingType))
         errors.push("Unsupported pricing type.");
+      if (
+        r.boqRole === "parent" &&
+        r.pricingType === "Normal Rate" &&
+        parentIds.has(r.id)
+      )
+        errors.push(
+          "Item " +
+            r.number +
+            ": a priced parent cannot also contain child items.",
+        );
       try {
         if (r.pricingType === "Normal Rate") {
           decimal(r.quantity);
@@ -149,6 +168,18 @@ export function validationErrors(q: Quotation): string[] {
     }
     if (paymentPercentage(q) !== 100000000n)
       errors.push("Payment percentages must total 100%.");
+    if (
+      q.paymentRoundingPolicy === "reconcile-final" &&
+      q.payments.every(
+        (term) =>
+          term.amountOverride === undefined || term.amountOverride === "",
+      ) &&
+      paymentPercentage(q) === 100000000n &&
+      paymentScheduleAmounts(q, t.grand).some((amount) => amount <= 0n)
+    )
+      errors.push(
+        "Each payment milestone needs at least one fils; reduce the number of milestones or increase the quotation total.",
+      );
   } catch {
     errors.push("Check payment percentages and financial values.");
   }
@@ -175,6 +206,11 @@ export function saveQuotation(db: Database, q: Quotation, validate = false) {
     throw Error("Linked customer does not exist.");
   if (q.projectId && !db.projects.some((p) => p.id === q.projectId))
     throw Error("Linked project does not exist.");
+  if (
+    q.projectId &&
+    db.projects.find((p) => p.id === q.projectId)?.clientId !== q.customerId
+  )
+    throw Error("Linked project must belong to the selected customer.");
   if (validate) {
     const errors = validationErrors(q);
     if (errors.length) throw Error(errors.join(" "));
@@ -195,6 +231,17 @@ export function changeQuotationStatus(
   if (!q) throw Error("Quotation not found.");
   if (!quotationStatuses.includes(status)) throw Error("Invalid status.");
   if (status === q.status) return;
+  if (q.status === "Accepted")
+    throw Error(
+      "Accepted quotations are immutable commercial records. Create a revision for proposed changes.",
+    );
+  if (
+    ["Rejected", "Expired", "Revised"].includes(q.status) &&
+    status !== "Draft"
+  )
+    throw Error(
+      "Create a revision or reopen with a reason before changing this terminal status.",
+    );
   if (status === "Draft" && !notes.trim())
     throw Error("Enter a reason to return this quotation to draft.");
   if (status !== "Draft") {
@@ -203,16 +250,34 @@ export function changeQuotationStatus(
   }
   if (q.status === "Draft" && status !== "Finalized")
     throw Error("Finalize the draft before recording delivery status.");
+  if (status === "Finalized" && q.status !== "Draft")
+    throw Error("Only drafts can be finalized.");
+  if (status !== "Draft") {
+    if (
+      !db.clients.some((c) => c.id === q.customerId && c.status !== "Archived")
+    )
+      throw Error("Select an active Customer Master record before issuing.");
+    if (
+      q.projectId &&
+      !db.projects.some(
+        (p) => p.id === q.projectId && p.clientId === q.customerId,
+      )
+    )
+      throw Error("Quotation project must belong to its customer.");
+  }
   q.history.push({
     date: new Date().toISOString(),
     action: q.status + " → " + status,
     notes,
     snapshot:
-      status === "Draft" ? JSON.stringify({ ...q, history: [] }) : undefined,
+      status === "Draft" || status === "Finalized" || status === "Accepted"
+        ? JSON.stringify({ ...q, history: [] })
+        : undefined,
   });
   q.status = status;
   q.updatedAt = new Date().toISOString();
   if (status === "Finalized") q.finalizedAt = q.updatedAt;
+  if (status === "Accepted") q.acceptedAt = q.updatedAt;
 }
 export function copyQuotation(
   db: Database,
@@ -225,7 +290,9 @@ export function copyQuotation(
   const q = structuredClone(source);
   q.id = uid();
   q.status = "Draft";
+  q.paymentRoundingPolicy = "reconcile-final";
   delete q.finalizedAt;
+  delete q.acceptedAt;
   q.createdAt = q.updatedAt = new Date().toISOString();
   q.date = today();
   if (revision) {

@@ -33,10 +33,15 @@ export interface QuotationCompanyDetails {
   location: string;
   email: string;
   phone: string;
+  trn?: string;
+  bank?: string;
+  logo?: string;
 }
 export interface QuotationLineItem {
   id: string;
   parentId?: string;
+  /** Persisted work-description intent, independent of the pricing label. */
+  boqRole?: "parent";
   number: string;
   description: string;
   location: string;
@@ -96,6 +101,10 @@ export interface Quotation {
   validity: string;
   vatEnabled: boolean;
   vatPercentage: string;
+  /** Opt-in on quotations created after schedule reconciliation was introduced. */
+  paymentRoundingPolicy?: "reconcile-final";
+  discount?: string;
+  acceptedAt?: string;
   introduction: {
     attention: string;
     opening: string;

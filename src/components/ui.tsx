@@ -93,22 +93,64 @@ export function Modal({
   drawer?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
   useEffect(() => {
     const dialog = ref.current;
+    const opener =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     dialog?.showModal();
-    return () => dialog?.close();
+    return () => {
+      dialog?.close();
+      if (opener?.isConnected) opener.focus();
+    };
   }, []);
   return (
     <dialog
       ref={ref}
+      aria-labelledby={titleId}
       className={drawer ? "drawer" : ""}
-      onCancel={onClose}
+      onCancel={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }}
+      onKeyDown={(e) => {
+        if (
+          e.key !== "Tab" ||
+          (e.target as HTMLElement).closest("dialog") !== e.currentTarget
+        )
+          return;
+        e.stopPropagation();
+        const controls = [
+          ...e.currentTarget.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex="0"]',
+          ),
+        ].filter((element) => element.getClientRects().length > 0);
+        const target = e.shiftKey ? controls.at(-1) : controls[0];
+        if (
+          (e.shiftKey && document.activeElement === controls[0]) ||
+          (!e.shiftKey && document.activeElement === controls.at(-1))
+        ) {
+          e.preventDefault();
+          target?.focus();
+        }
+      }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target !== e.currentTarget) return;
+        const bounds = e.currentTarget.getBoundingClientRect();
+        if (
+          e.clientX < bounds.left ||
+          e.clientX > bounds.right ||
+          e.clientY < bounds.top ||
+          e.clientY > bounds.bottom
+        )
+          onClose();
       }}
     >
       <div className="modal-head">
-        <h2>{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         <button onClick={onClose} aria-label="Close dialog">
           <X size={20} />
         </button>
@@ -130,7 +172,7 @@ export function Confirm({
 }) {
   return (
     <Modal title={title} onClose={onClose}>
-      <p>{children}</p>
+      <div>{children}</div>
       <div className="actions">
         <button onClick={onClose}>Cancel</button>
         <button className="primary" onClick={onConfirm}>

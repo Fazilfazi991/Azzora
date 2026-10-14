@@ -20,6 +20,10 @@ import { Planning } from "./Planning";
 import { Team } from "./Team";
 import { SiteUpdates, Snags, Documents } from "./Operations";
 import { Handover } from "./Handover";
+import { ProjectFinancials } from "../commercial/Accounts";
+import { Variations } from "../operations/Variations";
+import { Procurement } from "../operations/Procurement";
+import { Approvals } from "../operations/Controls";
 const tabs = [
   ["overview", "Overview"],
   ["timeline", "Timeline"],
@@ -28,16 +32,22 @@ const tabs = [
   ["site-updates", "Site Updates"],
   ["documents", "Documents"],
   ["quotations", "Quotations"],
+  ["financials", "Financials"],
+  ["variations", "Variations"],
+  ["procurement", "Procurement"],
+  ["approvals", "Approvals"],
   ["snags-qa", "Snags & QA"],
   ["handover", "Handover"],
 ];
 export function Workspace({
   id,
   tab,
+  subtab,
   onTask,
 }: {
   id: string;
   tab: string;
+  subtab?: string;
   onTask: (t: Task) => void;
 }) {
   const { db, mutate } = useStore();
@@ -249,6 +259,14 @@ export function Workspace({
         <SiteUpdates projectId={id} />
       ) : tab === "quotations" ? (
         <Quotations projectId={id} />
+      ) : tab === "variations" ? (
+        <Variations projectId={id} />
+      ) : tab === "procurement" ? (
+        <Procurement projectId={id} section={subtab} />
+      ) : tab === "approvals" ? (
+        <Approvals projectId={id} />
+      ) : tab === "financials" ? (
+        <ProjectFinancials projectId={id} />
       ) : tab === "documents" ? (
         <Documents projectId={id} />
       ) : tab === "snags-qa" ? (

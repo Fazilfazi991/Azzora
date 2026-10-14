@@ -191,6 +191,11 @@ export function generatePlan(db: Database, p: Project, standard = true) {
 export function seed(): Database {
   const db: Database = {
     version: 1,
+    invoices: [],
+    payments: [],
+    expenses: [],
+    contracts: [],
+    commercialNumbering: { customer: 1, invoice: 1, receipt: 1, expense: 1 },
     quotations: [],
     quotationNumbering: { prefix: "QTN-AF-", next: 26050 },
     people: [],

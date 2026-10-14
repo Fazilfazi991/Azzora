@@ -44,5 +44,22 @@ blob-report/
 *~
 /tmp/
 /temp/
+/docs/commercial-evidence/
+/docs/operational-evidence/
+/docs/agent-1-corrective-evidence/
+/docs/boq/
+/docs/agent-3-evidence/baseline/
+/docs/agent-3-evidence/confirmation/
+/docs/agent-3-evidence/*-pages/
 .vscode/
 .idea/
+
+/docs/integration-evidence/
+
+# Publication excludes local browser exports and generated review artifacts
+/output/
+*.zip
+/docs/*-evidence/
+/docs/*-samples/
+/docs/operational-screenshots/
+/docs/*-validation.json

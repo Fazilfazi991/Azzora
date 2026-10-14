@@ -1,4 +1,5 @@
 import type { Database, Task, SnagStatus } from "./model";
+import { operationalReadiness } from "../workforce/readiness";
 export const today = () =>
   new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Dubai",
@@ -105,8 +106,11 @@ export const availability = (n: number) =>
         ? "Healthy"
         : "Available";
 export function handoverState(db: Database, id: string) {
+  const operational = operationalReadiness(db, id);
   const items = db.handover
-    .filter((h) => h.projectId === id && h.applicable)
+    .filter(
+      (h) => h.projectId === id && h.applicable && h.group !== "Commercial",
+    )
     .map((h) => ({
       ...h,
       complete:
@@ -121,6 +125,40 @@ export function handoverState(db: Database, id: string) {
                 .every((s) => s.status === "Closed")
             : h.complete,
     }));
+  items.push(
+    ...[
+      {
+        id: `operational-documents-${id}`,
+        projectId: id,
+        group: "Documents",
+        name: "Latest drawing and submission revisions approved",
+        required: true,
+        applicable: true,
+        complete: operational.documentsReady,
+        automatic: undefined,
+      },
+      {
+        id: `operational-supervision-${id}`,
+        projectId: id,
+        group: "Site Completion",
+        name: "Site records approved by supervision",
+        required: true,
+        applicable: true,
+        complete: operational.supervisionReady,
+        automatic: undefined,
+      },
+      {
+        id: `operational-qa-${id}`,
+        projectId: id,
+        group: "Quality",
+        name: "All QA snags resolved",
+        required: true,
+        applicable: true,
+        complete: operational.qaReady,
+        automatic: undefined,
+      },
+    ],
+  );
   return {
     items,
     percent: items.length

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { Assignment, Person, Task } from "../domain/model";
 import { roles } from "../domain/model";
-import { workload, availability, today, uid } from "../domain/logic";
-import { record, saveTask } from "../domain/repository";
+import { workload, today, uid } from "../domain/logic";
+import { record } from "../domain/repository";
 import { useStore } from "../store";
 import {
   Header,
@@ -16,6 +16,11 @@ import {
   Empty,
 } from "./ui";
 import { TaskList } from "./Tasks";
+import { EmployeeEditor, EmployeeStatus } from "../workforce/Employees";
+import { ActorField, History, WorkflowError } from "../workforce/ui";
+import { saveAssignment } from "../workforce/commands";
+import "../workforce/workforce.css";
+
 export function Team({
   projectId,
   onTask,
@@ -24,60 +29,86 @@ export function Team({
   onTask: (t: Task) => void;
 }) {
   const { db, mutate } = useStore();
-  const [person, setPerson] = useState<Person | null>(null);
+  const [personId, setPersonId] = useState("");
+  const person = db.people.find((p) => p.id === personId);
+  const [employee, setEmployee] = useState<Person | null | undefined>(
+    undefined,
+  );
+  const [statusEmployee, setStatusEmployee] = useState<Person | null>(null);
   const [draft, setDraft] = useState<Assignment | null>(null);
   const [replacement, setReplacement] = useState("");
   const [reassign, setReassign] = useState(false);
   const [remove, setRemove] = useState<Assignment | null>(null);
+  const [actor, setActor] = useState("");
+  const [search, setSearch] = useState("");
+  const [department, setDepartment] = useState("");
+  const [status, setStatus] = useState("");
   const assignments = db.assignments.filter(
-    (a) => (!projectId || a.projectId === projectId) && a.status === "Active",
+    (a) => !projectId || a.projectId === projectId,
   );
-  const list = projectId
-    ? db.people.filter((p) => assignments.some((a) => a.personId === p.id))
-    : db.people;
+  const list = db.people.filter(
+    (p) =>
+      (!projectId ||
+        assignments.some((a) => a.personId === p.id) ||
+        db.tasks.some(
+          (t) => t.projectId === projectId && t.assigneeId === p.id,
+        )) &&
+      (!department || p.department === department) &&
+      (!status || p.status === status) &&
+      [p.name, p.email, p.role, p.employeeCode, p.department]
+        .join(" ")
+        .toLowerCase()
+        .includes(search.toLowerCase()),
+  );
   function edit(a?: Assignment) {
+    const project =
+      db.projects.find((p) => p.id === (a?.projectId || projectId)) ||
+      db.projects[0];
+    if (!project) return;
     setDraft(
       a
         ? structuredClone(a)
         : {
             id: uid(),
-            projectId: projectId || db.projects[0].id,
-            personId: db.people[0].id,
-            role: "Project Manager",
+            projectId: project.id,
+            personId: "",
+            role: "Site Engineer",
             start: today(),
-            end: db.projects.find(
-              (p) => p.id === (projectId || db.projects[0].id),
-            )!.due,
+            end: project.due < today() ? today() : project.due,
             responsibility: "",
             status: "Active",
           },
     );
-    setReplacement(a?.personId || db.people[0].id);
+    setReplacement(a?.personId || "");
     setReassign(false);
+    setActor("");
   }
   return (
     <>
       <Header
         title={projectId ? "Project Team" : "Team & Resource Allocation"}
-        description="Project roles and task allocations share one resource view."
+        description="Employee directory, project roles and task allocations."
         action={
-          <button className="primary" onClick={() => edit()}>
-            + Assign Person
-          </button>
+          <>
+            <button onClick={() => setEmployee(null)}>+ Add Employee</button>
+            <button
+              className="primary"
+              disabled={!db.projects.length}
+              onClick={() => edit()}
+            >
+              + Assign Person
+            </button>
+          </>
         }
       />
       <div className="kpis">
         {[
-          ["Total Team", list.length],
+          ["Employees", list.length],
+          ["Active", list.filter((p) => p.status !== "Inactive").length],
+          ["Inactive", list.filter((p) => p.status === "Inactive").length],
           [
-            "Assigned",
-            list.filter((p) => assignments.some((a) => a.personId === p.id))
-              .length,
-          ],
-          ["Available", list.filter((p) => workload(db, p.id) < 50).length],
-          [
-            "Over Capacity",
-            list.filter((p) => workload(db, p.id) > 100).length,
+            "Over capacity",
+            list.filter((p) => workload(db, p.id) > p.capacity).length,
           ],
         ].map(([label, n]) => (
           <div className="panel kpi" key={label}>
@@ -86,12 +117,42 @@ export function Team({
           </div>
         ))}
       </div>
+      <div className="filters">
+        <input
+          aria-label="Search employees"
+          placeholder="Name, role, email or code…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <select
+          aria-label="Employee department"
+          value={department}
+          onChange={(e) => setDepartment(e.target.value)}
+        >
+          <option value="">All departments</option>
+          {[...new Set(db.people.map((p) => p.department).filter(Boolean))].map(
+            (d) => (
+              <option key={d}>{d}</option>
+            ),
+          )}
+        </select>
+        <select
+          aria-label="Employee status"
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+        >
+          <option value="">All statuses</option>
+          <option>Active</option>
+          <option>Away</option>
+          <option>Inactive</option>
+        </select>
+      </div>
       <div className="team-grid">
         {list.map((p) => (
           <button
             className="panel team-card"
             key={p.id}
-            onClick={() => setPerson(p)}
+            onClick={() => setPersonId(p.id)}
           >
             <div className="inline">
               <Avatar name={p.name} />
@@ -100,9 +161,16 @@ export function Team({
                 <p>{p.role}</p>
               </div>
             </div>
-            <Progress value={Math.min(100, workload(db, p.id))} />
+            <small>
+              {p.department || "Department unassigned"} ·{" "}
+              {p.employeeCode || p.id}
+            </small>
+            <Badge>{p.status}</Badge>
+            <Progress
+              value={Math.min(100, (workload(db, p.id) / p.capacity) * 100)}
+            />
             <p>
-              {workload(db, p.id)}% allocated ·{" "}
+              {workload(db, p.id)}% allocated / {p.capacity}% capacity ·{" "}
               {
                 db.tasks.filter(
                   (t) => t.assigneeId === p.id && t.status !== "Completed",
@@ -110,7 +178,6 @@ export function Team({
               }{" "}
               active tasks
             </p>
-            <Badge>{availability(workload(db, p.id))}</Badge>
             <small>
               {
                 db.assignments.filter(
@@ -122,6 +189,7 @@ export function Team({
           </button>
         ))}
       </div>
+      {!list.length && <Empty>No employees match this view.</Empty>}
       <h2>Project assignments</h2>
       <div className="panel">
         {assignments.map((a) => (
@@ -133,140 +201,103 @@ export function Team({
                 · {a.start} → {a.end}
               </small>
             </span>
-            <button onClick={() => edit(a)}>Edit / replace</button>
-            <button onClick={() => setRemove(a)}>Remove</button>
+            <Badge>{a.status}</Badge>
+            {a.status === "Active" && (
+              <>
+                <button onClick={() => edit(a)}>Edit / replace</button>
+                <button onClick={() => setRemove(a)}>Remove</button>
+              </>
+            )}
           </div>
         ))}
         {!assignments.length && <Empty />}
       </div>
       {person && (
-        <Modal drawer title={person.name} onClose={() => setPerson(null)}>
+        <Modal drawer title={person.name} onClose={() => setPersonId("")}>
+          <Badge>{person.status}</Badge>
           <p>
-            {person.role} · {person.status}
+            {person.department || "Department unassigned"} · {person.role}
           </p>
           <p>
             {person.email}
             <br />
             {person.phone}
           </p>
-          <h3>
-            {workload(db, person.id)}% · {availability(workload(db, person.id))}
-          </h3>
-          {db.projects
-            .filter(
-              (p) =>
-                db.tasks.some(
-                  (t) => t.projectId === p.id && t.assigneeId === person.id,
-                ) ||
-                db.assignments.some(
-                  (a) =>
-                    a.projectId === p.id &&
-                    a.personId === person.id &&
-                    a.status === "Active",
-                ),
-            )
-            .map((p) => (
-              <p key={p.id}>
-                {p.name} ·{" "}
-                {db.tasks
-                  .filter(
-                    (t) =>
-                      t.projectId === p.id &&
-                      t.assigneeId === person.id &&
-                      t.status !== "Completed",
-                  )
-                  .reduce((s, t) => s + t.allocation, 0)}
-                %
+          <p>{person.notes}</p>
+          <p>
+            {workload(db, person.id)}% allocated / {person.capacity}% capacity
+          </p>
+          <div className="actions">
+            <button
+              disabled={person.status === "Inactive"}
+              onClick={() => {
+                setEmployee(person);
+                setPersonId("");
+              }}
+            >
+              Edit Employee
+            </button>
+            <button
+              onClick={() => {
+                setStatusEmployee(person);
+                setPersonId("");
+              }}
+            >
+              {person.status === "Inactive"
+                ? "Reactivate Employee"
+                : "Deactivate Employee"}
+            </button>
+          </div>
+          <h3>Project & assignment history</h3>
+          {db.assignments
+            .filter((a) => a.personId === person.id)
+            .map((a) => (
+              <p key={a.id}>
+                {db.projects.find((p) => p.id === a.projectId)?.name} · {a.role}
                 <small>
-                  {db.assignments
-                    .filter(
-                      (a) =>
-                        a.projectId === p.id &&
-                        a.personId === person.id &&
-                        a.status === "Active",
-                    )
-                    .map((a) => a.role)
-                    .join(", ")}
+                  {a.status} · {a.start} → {a.end}
                 </small>
               </p>
             ))}
-          <h3>Current & upcoming tasks</h3>
+          <h3>Current & historical tasks</h3>
           <TaskList
-            tasks={db.tasks.filter(
-              (t) => t.assigneeId === person.id && t.status !== "Completed",
-            )}
+            tasks={db.tasks.filter((t) => t.assigneeId === person.id)}
             onTask={(t) => {
-              setPerson(null);
+              setPersonId("");
               onTask(t);
             }}
           />
+          <History entries={person.history} />
         </Modal>
+      )}
+      {employee !== undefined && (
+        <EmployeeEditor
+          employee={employee || undefined}
+          onClose={() => setEmployee(undefined)}
+        />
+      )}
+      {statusEmployee && (
+        <EmployeeStatus
+          employee={statusEmployee}
+          onClose={() => setStatusEmployee(null)}
+        />
       )}
       {draft && (
         <Modal title="Project Assignment" onClose={() => setDraft(null)}>
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (draft.end < draft.start)
-                return mutate(() => {
-                  throw Error("Assignment end date must follow start.");
-                });
               if (
-                mutate((d) => {
-                  const old = d.assignments.find((a) => a.id === draft.id);
-                  if (old && old.personId !== replacement) {
-                    old.status = "Replaced";
-                    d.assignments.push({
-                      ...draft,
-                      id: uid(),
-                      personId: replacement,
-                      status: "Active",
-                    });
-                    if (reassign)
-                      d.tasks
-                        .filter(
-                          (t) =>
-                            t.projectId === draft.projectId &&
-                            t.assigneeId === old.personId &&
-                            t.status !== "Completed",
-                        )
-                        .forEach((t) =>
-                          saveTask(d, { ...t, assigneeId: replacement }),
-                        );
-                  } else if (old)
-                    Object.assign(old, { ...draft, personId: replacement });
-                  else d.assignments.push({ ...draft, personId: replacement });
-                  if (draft.role === "Project Manager") {
-                    d.assignments
-                      .filter(
-                        (a) =>
-                          a.projectId === draft.projectId &&
-                          a.role === "Project Manager" &&
-                          a.personId !== replacement &&
-                          a.status === "Active",
-                      )
-                      .forEach((a) => {
-                        a.status = "Replaced";
-                      });
-                    d.projects.find(
-                      (p) => p.id === draft.projectId,
-                    )!.managerId = replacement;
-                  }
-                  record(
-                    d,
-                    draft.projectId,
-                    "Assignment",
-                    draft.id,
-                    "Person assigned",
-                    personName(d, replacement) + " · " + draft.role,
-                  );
-                })
+                mutate((d) =>
+                  saveAssignment(d, draft, replacement, reassign, actor),
+                )
               )
                 setDraft(null);
             }}
           >
             <Field label="Project">
               <select
+                disabled={db.assignments.some((a) => a.id === draft.id)}
                 value={draft.projectId}
                 onChange={(e) =>
                   setDraft({ ...draft, projectId: e.target.value })
@@ -281,15 +312,25 @@ export function Team({
             </Field>
             <Field label="Person">
               <select
+                required
                 value={replacement}
                 onChange={(e) => setReplacement(e.target.value)}
               >
-                {db.people.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} · {workload(db, p.id)}% ·{" "}
-                    {availability(workload(db, p.id))}
-                  </option>
-                ))}
+                <option value="">Choose employee</option>
+                {db.people
+                  .filter(
+                    (p) => p.status !== "Inactive" || p.id === replacement,
+                  )
+                  .map((p) => (
+                    <option
+                      disabled={p.status === "Inactive"}
+                      key={p.id}
+                      value={p.id}
+                    >
+                      {p.name} · {p.status} · {workload(db, p.id)}% /{" "}
+                      {p.capacity}%
+                    </option>
+                  ))}
               </select>
             </Field>
             <Field label="Project role">
@@ -336,12 +377,14 @@ export function Team({
                 type="checkbox"
                 checked={reassign}
                 onChange={(e) => setReassign(e.target.checked)}
-              />{" "}
+              />
               Reassign active tasks when replacing this person
             </label>
+            <ActorField value={actor} onChange={setActor} />
             <p className="muted">
               Previous assignments and completed task history are retained.
             </p>
+            <WorkflowError />
             <button className="primary">Save Assignment</button>
           </form>
         </Modal>
@@ -355,13 +398,14 @@ export function Team({
               mutate((d) => {
                 d.assignments.find((a) => a.id === remove.id)!.status =
                   "Removed";
+                const project = d.projects.find(
+                  (p) => p.id === remove.projectId,
+                )!;
                 if (
                   remove.role === "Project Manager" &&
-                  d.projects.find((p) => p.id === remove.projectId)!
-                    .managerId === remove.personId
+                  project.managerId === remove.personId
                 )
-                  d.projects.find((p) => p.id === remove.projectId)!.managerId =
-                    "";
+                  project.managerId = "";
                 record(
                   d,
                   remove.projectId,

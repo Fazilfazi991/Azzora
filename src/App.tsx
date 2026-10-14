@@ -1,5 +1,5 @@
 import { Quotations } from "./quotation/LazyQuotations";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   LayoutDashboard,
   Building2,
@@ -17,11 +17,17 @@ import {
   Bell,
   Menu,
   X,
+  ChevronDown,
+  FileText,
+  Wallet,
+  Package,
+  ShoppingCart,
+  GitBranch,
 } from "lucide-react";
 import type { Task } from "./domain/model";
 import { useStore } from "./store";
 import { record } from "./domain/repository";
-import { money, projectProgress, health, today } from "./domain/logic";
+import { today } from "./domain/logic";
 import { Dashboard } from "./components/Dashboard";
 import { Projects } from "./components/Projects";
 import { Workspace } from "./components/Workspace";
@@ -33,19 +39,68 @@ import { Team } from "./components/Team";
 import { SiteUpdates, Snags, Documents } from "./components/Operations";
 import { Handover } from "./components/Handover";
 import { Modal, Header, Empty, Badge, Confirm, Field } from "./components/ui";
-const navigation = [
-  ["dashboard", "Dashboard", LayoutDashboard],
-  ["projects", "Projects", Building2],
-  ["planning", "Planning", CalendarRange],
-  ["tasks", "Tasks", ListChecks],
-  ["team", "Team", Users],
-  ["site-updates", "Site Updates", HardHat],
-  ["snags-qa", "Snags & QA", ClipboardCheck],
-  ["documents", "Documents", Files],
-  ["quotations", "Quotations", Files],
-  ["handover", "Handover", KeyRound],
-  ["reports", "Reports", ChartNoAxesCombined],
-  ["settings", "Settings", Settings],
+import { Customers, CustomerForm } from "./commercial/Customers";
+import { Accounts } from "./commercial/Accounts";
+import { Reports } from "./commercial/Reports";
+import { InvoiceForm, ExpenseForm } from "./commercial/Registers";
+import { newQuotation } from "./quotation/repository";
+import { blankTask } from "./domain/seed";
+import { Suppliers, SupplierForm } from "./operations/Suppliers";
+import { Variations } from "./operations/Variations";
+import { Procurement, ProcurementForm } from "./operations/Procurement";
+import { Credits } from "./operations/Credits";
+import { Approvals } from "./operations/Controls";
+import { Budgets } from "./operations/Budgets";
+import { CompanySettings } from "./operations/CompanySettings";
+import { getOperations } from "./operations/migration";
+const navigationGroups = [
+  {
+    key: "overview",
+    label: "Overview",
+    items: [["dashboard", "Dashboard", LayoutDashboard]],
+  },
+  {
+    key: "commercial",
+    label: "CRM & Commercial",
+    items: [
+      ["customers", "Customers", Users],
+      ["projects", "Projects", Building2],
+      ["quotations", "Quotations", FileText],
+      ["accounts", "Accounts", Wallet],
+    ],
+  },
+  {
+    key: "execution",
+    label: "Project Execution",
+    items: [
+      ["planning", "Planning", CalendarRange],
+      ["tasks", "Tasks", ListChecks],
+      ["team", "Team", Users],
+      ["site-updates", "Site Updates", HardHat],
+      ["snags-qa", "Snags & QA", ClipboardCheck],
+      ["documents", "Documents", Files],
+    ],
+  },
+  {
+    key: "controls",
+    label: "Procurement & Controls",
+    items: [
+      ["variations", "Variations", GitBranch],
+      ["suppliers", "Suppliers", Package],
+      ["procurement", "Procurement", ShoppingCart],
+      ["approvals", "Approvals", ClipboardCheck],
+      ["budgets", "Budgets", ChartNoAxesCombined],
+    ],
+  },
+  {
+    key: "management",
+    label: "Management",
+    items: [
+      ["handover", "Handover", KeyRound],
+      ["reports", "Reports", ChartNoAxesCombined],
+      ["settings", "Settings", Settings],
+    ],
+  },
 ] as const;
 function exportData(data: string, name: string, type: string) {
   const url = URL.createObjectURL(new Blob([data], { type }));
@@ -56,12 +111,80 @@ function exportData(data: string, name: string, type: string) {
   URL.revokeObjectURL(url);
 }
 export default function App() {
-  const { db, toast, error, clear, mutate, reset } = useStore();
+  const { db, toast, error, clear, mutate, reset, exportOriginal } = useStore();
   const [route, setRoute] = useState(location.hash.slice(2) || "dashboard");
+  const [collapsedGroups, setCollapsedGroups] = useState<string[]>(() =>
+    navigationGroups
+      .filter(
+        (group) =>
+          group.key !== "overview" &&
+          group.key !== "commercial" &&
+          !group.items.some(([key]) => key === route.split("/")[0]),
+      )
+      .map((group) => group.key),
+  );
   const [menu, setMenu] = useState(false);
+  const [mobileNavigation, setMobileNavigation] = useState(
+    () => window.matchMedia("(max-width: 767px)").matches,
+  );
+  const sidebar = useRef<HTMLElement>(null);
+  const navigationOpener = useRef<HTMLButtonElement | null>(null);
+  function showNavigation(trigger: HTMLButtonElement) {
+    navigationOpener.current = trigger;
+    setMenu(true);
+  }
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 767px)");
+    const update = () => {
+      setMobileNavigation(query.matches);
+      if (!query.matches) setMenu(false);
+    };
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    if (!mobileNavigation || !menu) return;
+    const panel = sidebar.current;
+    const controls = () =>
+      Array.from(
+        panel?.querySelectorAll<HTMLElement>(
+          "a[href], button:not([disabled]), select:not([disabled]), input:not([disabled])",
+        ) || [],
+      ).filter((element) => element.getClientRects().length > 0);
+    controls()[0]?.focus();
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMenu(false);
+      } else if (event.key === "Tab") {
+        const list = controls(),
+          first = list[0],
+          last = list.at(-1);
+        if (
+          !panel?.contains(document.activeElement) ||
+          (event.shiftKey && document.activeElement === first) ||
+          (!event.shiftKey && document.activeElement === last)
+        ) {
+          event.preventDefault();
+          (event.shiftKey ? last : first)?.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      navigationOpener.current?.focus();
+    };
+  }, [mobileNavigation, menu]);
   const [wizard, setWizard] = useState(false);
+  const [quickAdd, setQuickAdd] = useState(false),
+    [quickForm, setQuickForm] = useState("");
   const [task, setTask] = useState<Task | null>(null);
   const [query, setQuery] = useState("");
+  const queryLocation = useRef(location.hash);
   const [notifications, setNotifications] = useState(false);
   const [profile, setProfile] = useState(false);
   const [resetConfirm, setResetConfirm] = useState(false);
@@ -69,9 +192,14 @@ export default function App() {
   const [weightProject, setWeightProject] = useState(db.projects[0]?.id || "");
   useEffect(() => {
     const fn = () => {
-      setRoute(location.hash.slice(2) || "dashboard");
+      const hash = location.hash;
+      setRoute(hash.slice(2) || "dashboard");
       setMenu(false);
-      setQuery("");
+      // An older queued event must not erase input typed for the current URL.
+      if (queryLocation.current !== hash) {
+        queryLocation.current = hash;
+        setQuery("");
+      }
     };
     window.addEventListener("hashchange", fn);
     return () => window.removeEventListener("hashchange", fn);
@@ -83,11 +211,125 @@ export default function App() {
     }
   }, [toast, clear]);
   const [page, id, tab = "overview"] = route.split("/");
+  useEffect(() => {
+    const group = navigationGroups.find((g) =>
+      g.items.some(([key]) => key === page),
+    );
+    if (group)
+      setCollapsedGroups((collapsed) =>
+        collapsed.includes(group.key)
+          ? collapsed.filter((key) => key !== group.key)
+          : collapsed,
+      );
+  }, [page]);
   const open = (id: string) => {
     location.hash = "/projects/" + id + "/overview";
   };
   const q = query.toLowerCase().trim();
+  const operations = getOperations(db);
   const search = [
+    ...operations.suppliers.map((s) => ({
+      id: s.id,
+      label: s.code + " · " + s.name + " · " + s.phone,
+      type: "Supplier",
+      open: () => {
+        location.hash = "/suppliers/" + s.id + "/overview";
+      },
+    })),
+    ...operations.variations.map((v) => ({
+      id: v.id,
+      label: v.number + " · " + v.title,
+      type: "Variation",
+      open: () => {
+        location.hash = "/variations/" + v.id;
+      },
+    })),
+    ...operations.requests.map((r) => ({
+      id: r.id,
+      label: r.number + " · " + r.notes,
+      type: "Purchase Request",
+      open: () => {
+        location.hash = "/procurement/requests";
+      },
+    })),
+    ...operations.orders.map((o) => ({
+      id: o.id,
+      label:
+        o.number +
+        " · " +
+        operations.suppliers.find((s) => s.id === o.supplierId)?.name,
+      type: "Purchase Order",
+      open: () => {
+        location.hash = "/procurement/orders";
+      },
+    })),
+    ...operations.bills.map((b) => ({
+      id: b.id,
+      label: b.number + " · " + b.reference,
+      type: "Supplier Bill",
+      open: () => {
+        location.hash = "/procurement/bills";
+      },
+    })),
+    ...operations.credits.map((c) => ({
+      id: c.id,
+      label: c.number + " · " + c.reason,
+      type: "Credit Note",
+      open: () => {
+        location.hash = "/accounts/credit-notes/" + c.id;
+      },
+    })),
+    ...db.clients.map((c) => ({
+      id: c.id,
+      label: [c.code, c.name, c.contact, c.phone, c.email, c.trn]
+        .filter(Boolean)
+        .join(" · "),
+      type: "Customer",
+      open: () => {
+        location.hash = `/customers/${c.id}/overview`;
+      },
+    })),
+    ...db.quotations.map((q) => ({
+      id: q.id,
+      label:
+        q.number +
+        " Rev " +
+        q.revision +
+        " · " +
+        q.customer.name +
+        " · " +
+        q.project.name,
+      type: "Quotation",
+      open: () => {
+        location.hash = `/quotations/${q.id}/edit`;
+      },
+    })),
+    ...db.invoices.map((i) => ({
+      id: i.id,
+      label:
+        i.number +
+        " · " +
+        db.clients.find((c) => c.id === i.customerId)?.name +
+        " · " +
+        db.projects.find((p) => p.id === i.projectId)?.code,
+      type: "Invoice",
+      open: () => {
+        location.hash = `/accounts/invoices/${i.id}`;
+      },
+    })),
+    ...db.payments.map((p) => ({
+      id: p.id,
+      label:
+        p.number +
+        " · " +
+        p.reference +
+        " · " +
+        db.clients.find((c) => c.id === p.customerId)?.name,
+      type: "Payment",
+      open: () => {
+        location.hash = `/accounts/payments/${p.id}`;
+      },
+    })),
     ...db.projects.map((p) => ({
       id: p.id,
       label: p.code + " · " + p.name,
@@ -133,9 +375,50 @@ export default function App() {
       <Dashboard onOpen={open} onTask={setTask} onNew={() => setWizard(true)} />
     );
   else if (page === "projects" && id)
-    content = <Workspace key={id + tab} id={id} tab={tab} onTask={setTask} />;
+    content = (
+      <Workspace
+        key={route}
+        id={id}
+        tab={tab}
+        subtab={route.split("/")[3]}
+        onTask={setTask}
+      />
+    );
   else if (page === "projects")
     content = <Projects onOpen={open} onNew={() => setWizard(true)} />;
+  else if (page === "customers")
+    content = <Customers key={id || "directory"} id={id} tab={tab} />;
+  else if (page === "suppliers")
+    content = <Suppliers key={id || "list"} id={id} tab={tab} />;
+  else if (page === "variations")
+    content = (
+      <Variations
+        key={id || "list"}
+        id={id === "new" ? undefined : id}
+        startNew={id === "new"}
+      />
+    );
+  else if (page === "procurement")
+    content = <Procurement key={id || "materials"} section={id} />;
+  else if (page === "approvals") content = <Approvals />;
+  else if (page === "budgets") content = <Budgets />;
+  else if (page === "accounts" && ["credit-notes", "refunds"].includes(id))
+    content = (
+      <Credits
+        key={route}
+        section={id}
+        id={tab === "overview" || tab === "new" ? undefined : tab}
+        startNew={tab === "new"}
+      />
+    );
+  else if (page === "accounts")
+    content = (
+      <Accounts
+        key={(id || "overview") + tab}
+        section={id}
+        recordId={route.split("/")[2]}
+      />
+    );
   else if (page === "planning") content = <Planning onTask={setTask} />;
   else if (page === "tasks") content = <Tasks onTask={setTask} />;
   else if (page === "team") content = <Team onTask={setTask} />;
@@ -145,68 +428,7 @@ export default function App() {
   else if (page === "quotations")
     content = <Quotations key={id || "list"} id={id} mode={tab} />;
   else if (page === "handover") content = <Handover />;
-  else if (page === "reports")
-    content = (
-      <>
-        <Header
-          title="Portfolio Reports"
-          description="Current project delivery metrics derived from the demo repository."
-          action={
-            <button
-              onClick={() =>
-                exportData(
-                  [
-                    "Code,Project,Progress,Health,Target,Contract AED",
-                    ...db.projects.map((p) =>
-                      [
-                        p.code,
-                        '"' + p.name.replaceAll('"', '""') + '"',
-                        projectProgress(db, p.id),
-                        health(db, p.id),
-                        p.due,
-                        p.value,
-                      ].join(","),
-                    ),
-                  ].join("\n"),
-                  "azzora-portfolio-" + today() + ".csv",
-                  "text/csv",
-                )
-              }
-            >
-              Export CSV
-            </button>
-          }
-        />
-        <div className="panel">
-          {db.projects.map((p) => (
-            <button className="list-row" key={p.id} onClick={() => open(p.id)}>
-              <span>
-                <strong>
-                  {p.code} · {p.name}
-                </strong>
-                <small>
-                  {money(p.value)} · {p.due}
-                </small>
-              </span>
-              <Badge>{health(db, p.id)}</Badge>
-              <strong>{projectProgress(db, p.id)}%</strong>
-            </button>
-          ))}
-        </div>
-        <h2>Activity Record</h2>
-        <div className="panel">
-          {db.activities.slice(0, 30).map((a) => (
-            <p key={a.id}>
-              {a.action}: {a.summary}
-              <small>{a.timestamp} · Demo actor: Sarah Mansoor</small>
-            </p>
-          ))}
-          {!db.activities.length && (
-            <Empty>No demo actions recorded yet.</Empty>
-          )}
-        </div>
-      </>
-    );
+  else if (page === "reports") content = <Reports />;
   else if (page === "settings")
     content = (
       <>
@@ -221,6 +443,7 @@ export default function App() {
             server authorization, multi-user sync or backup is configured.
           </p>
           <div className="actions">
+            <button onClick={exportOriginal}>Export original saved data</button>
             <button
               onClick={() =>
                 exportData(
@@ -245,6 +468,7 @@ export default function App() {
             demo behavior only.
           </p>
         </section>
+        <CompanySettings />
         <section className="panel">
           <h2>Quotation numbering</h2>
           <Field label="Quotation number prefix">
@@ -361,15 +585,34 @@ export default function App() {
     );
   return (
     <>
-      <aside className={"sidebar " + (menu ? "open" : "")}>
-        <a className="brand" href="#/dashboard">
-          <img src="/assets/azzora-logo.png" alt="AZZORA design . build" />
-          <span>
-            <strong>AZZORA</strong>
-            <small>design . build</small>
-          </span>
-          <Badge>DXB</Badge>
-        </a>
+      <aside
+        id="main-navigation"
+        ref={sidebar}
+        aria-label="Main navigation"
+        inert={mobileNavigation && !menu}
+        aria-hidden={mobileNavigation && !menu ? true : undefined}
+        className={"sidebar " + (menu ? "open" : "")}
+      >
+        <div className="sidebar-brand-row">
+          <a
+            className="brand"
+            href="#/dashboard"
+            onClick={() => setMenu(false)}
+          >
+            <img src="/assets/azzora-logo.png" alt="AZZORA design . build" />
+            <span>
+              <strong>AZZORA</strong>
+              <small>design . build</small>
+            </span>
+          </a>
+          <button
+            className="mobile-only sidebar-close"
+            aria-label="Close menu"
+            onClick={() => setMenu(false)}
+          >
+            <X size={18} />
+          </button>
+        </div>
         <div className="site-select">
           <small>Active project</small>
           <select
@@ -387,21 +630,46 @@ export default function App() {
               ))}
           </select>
         </div>
-        <small className="nav-label">Project Execution</small>
-        <nav>
-          {navigation.map(([key, label, Icon], i) => (
-            <a
-              key={key}
-              href={"#/" + key}
-              aria-current={page === key ? "page" : undefined}
-              className={
-                (page === key ? "active " : "") + (i === 9 ? "governance" : "")
-              }
-            >
-              <Icon size={18} />
-              <span>{label}</span>
-            </a>
-          ))}
+        <nav aria-label="Modules">
+          {navigationGroups.map((group) => {
+            const expanded = !collapsedGroups.includes(group.key);
+            const current = group.items.some(([key]) => key === page);
+            return (
+              <section className="nav-group" key={group.key}>
+                <h2>
+                  <button
+                    className={"nav-group-toggle" + (current ? " current" : "")}
+                    aria-expanded={expanded}
+                    aria-controls={`nav-${group.key}`}
+                    onClick={() =>
+                      setCollapsedGroups((collapsed) =>
+                        expanded
+                          ? [...collapsed, group.key]
+                          : collapsed.filter((key) => key !== group.key),
+                      )
+                    }
+                  >
+                    <span>{group.label}</span>
+                    <ChevronDown size={14} aria-hidden="true" />
+                  </button>
+                </h2>
+                <div id={`nav-${group.key}`} hidden={!expanded}>
+                  {group.items.map(([key, label, Icon]) => (
+                    <a
+                      key={key}
+                      href={"#/" + key}
+                      onClick={() => setMenu(false)}
+                      aria-current={page === key ? "page" : undefined}
+                      className={page === key ? "active" : undefined}
+                    >
+                      <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
+                      <span>{label}</span>
+                    </a>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         </nav>
         <footer>
           <small>Dubai HQ Studio</small>
@@ -418,12 +686,14 @@ export default function App() {
           onClick={() => setMenu(false)}
         />
       )}
-      <div className="main-shell">
+      <div className="main-shell" inert={mobileNavigation && menu}>
         <header className="topbar">
           <button
             className="mobile-only"
             aria-label="Open navigation"
-            onClick={() => setMenu(!menu)}
+            aria-expanded={menu && mobileNavigation}
+            aria-controls="main-navigation"
+            onClick={(event) => showNavigation(event.currentTarget)}
           >
             <Menu size={20} />
           </button>
@@ -436,9 +706,12 @@ export default function App() {
             <Search size={18} />
             <input
               aria-label="Global search"
-              placeholder="Search projects, tasks, people…"
+              placeholder="Search customers, projects, invoices…"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                queryLocation.current = location.hash;
+                setQuery(e.target.value);
+              }}
             />
             {q && (
               <div className="search-results">
@@ -447,6 +720,7 @@ export default function App() {
                     key={r.type + r.id}
                     onClick={() => {
                       r.open();
+                      queryLocation.current = location.hash;
                       setQuery("");
                     }}
                   >
@@ -458,7 +732,11 @@ export default function App() {
               </div>
             )}
           </div>
-          <button className="primary quick-add" onClick={() => setWizard(true)}>
+          <button
+            className="primary quick-add"
+            aria-label="Quick Add"
+            onClick={() => setQuickAdd(true)}
+          >
             <Plus size={18} />
             <span>Quick Add</span>
           </button>
@@ -484,24 +762,41 @@ export default function App() {
           </footer>
         </main>
       </div>
-      <nav className="mobile-nav">
-        <a href="#/dashboard">
+      <nav
+        className="mobile-nav"
+        aria-label="Mobile navigation"
+        inert={mobileNavigation && menu}
+      >
+        <a
+          href="#/dashboard"
+          aria-current={page === "dashboard" ? "page" : undefined}
+        >
           <LayoutDashboard size={20} />
           Dashboard
         </a>
-        <a href="#/projects">
+        <a
+          href="#/projects"
+          aria-current={page === "projects" ? "page" : undefined}
+        >
           <Building2 size={20} />
           Projects
         </a>
-        <a href="#/tasks">
+        <a href="#/tasks" aria-current={page === "tasks" ? "page" : undefined}>
           <ListChecks size={20} />
           Tasks
         </a>
-        <a href="#/site-updates">
+        <a
+          href="#/site-updates"
+          aria-current={page === "site-updates" ? "page" : undefined}
+        >
           <HardHat size={20} />
           Updates
         </a>
-        <button onClick={() => setMenu(true)}>
+        <button
+          aria-expanded={menu && mobileNavigation}
+          aria-controls="main-navigation"
+          onClick={(event) => showNavigation(event.currentTarget)}
+        >
           <Menu size={20} />
           More
         </button>
@@ -529,6 +824,89 @@ export default function App() {
             setWizard(false);
             open(id);
           }}
+        />
+      )}
+      {quickAdd && (
+        <Modal title="Quick Add" onClose={() => setQuickAdd(false)}>
+          <div className="quick-action-grid">
+            {[
+              "Customer",
+              "Project",
+              "Quotation",
+              "Invoice",
+              "Task",
+              "Expense",
+              "Supplier",
+              "Variation",
+              "Purchase Request",
+              "Purchase Order",
+              "Credit Note",
+            ].map((action) => (
+              <button
+                key={action}
+                onClick={() => {
+                  setQuickAdd(false);
+                  if (action === "Project") setWizard(true);
+                  else if (action === "Quotation") {
+                    let id = "";
+                    if (
+                      mutate((d) => {
+                        id = newQuotation(d).id;
+                      })
+                    )
+                      location.hash = `/quotations/${id}/edit`;
+                  } else if (action === "Task") {
+                    const p =
+                      db.projects.find((p) => p.id === id) || db.projects[0];
+                    const phase = db.phases.find(
+                      (ph) => ph.projectId === p?.id,
+                    );
+                    if (p && phase)
+                      setTask(blankTask(p.id, phase.id, p.managerId));
+                  } else if (action === "Variation")
+                    location.hash = "/variations/new";
+                  else if (action === "Credit Note")
+                    location.hash = "/accounts/credit-notes/new";
+                  else setQuickForm(action);
+                }}
+              >
+                + New {action}
+              </button>
+            ))}
+          </div>
+        </Modal>
+      )}
+      {quickForm === "Customer" && (
+        <CustomerForm
+          onClose={() => setQuickForm("")}
+          onSaved={(id) => {
+            setQuickForm("");
+            location.hash = `/customers/${id}/overview`;
+          }}
+        />
+      )}
+      {quickForm === "Invoice" && (
+        <InvoiceForm
+          onClose={() => setQuickForm("")}
+          onSaved={(id) => {
+            setQuickForm("");
+            location.hash = `/accounts/invoices/${id}`;
+          }}
+        />
+      )}
+      {quickForm === "Expense" && (
+        <ExpenseForm onClose={() => setQuickForm("")} />
+      )}
+      {quickForm === "Supplier" && (
+        <SupplierForm onClose={() => setQuickForm("")} />
+      )}
+      {["Purchase Request", "Purchase Order"].includes(quickForm) && (
+        <ProcurementForm
+          type={quickForm === "Purchase Order" ? "order" : "request"}
+          id=""
+          projectId=""
+          actor={db.people.find((p) => p.status !== "Inactive")?.id || ""}
+          onClose={() => setQuickForm("")}
         />
       )}
       {task && (

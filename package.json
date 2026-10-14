@@ -10,6 +10,12 @@
     "lint": "eslint src",
     "test": "vitest run",
     "test:browser": "node tests/browser.mjs",
+    "test:commercial:browser": "node tests/commercial-browser.mjs",
+    "test:commercial:boundaries": "node tests/commercial-boundaries.mjs",
+    "test:operational:browser": "node tests/operational-browser.mjs",
+    "test:operational:boundaries": "node tests/operational-boundaries.mjs",
+    "test:corrective:browser": "node tests/agent-1-corrective-browser.mjs",
+    "test:boq:visual": "node tests/boq-visual.mjs",
     "format": "prettier --write src tests *.json *.ts *.js index.html",
     "test:quotations:browser": "node tests/quotation-browser.mjs"
   },

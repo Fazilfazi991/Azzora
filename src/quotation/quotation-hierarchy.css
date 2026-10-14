@@ -1,0 +1,469 @@
+.quotation-module .quotation-boq-node {
+  margin-left: calc(var(--boq-depth, 0) * 14px);
+  min-width: 0;
+}
+.quotation-module .quotation-boq-node.is-child {
+  padding-left: 10px;
+  border-left: 2px solid #dedbd8;
+}
+.quotation-module .quotation-boq-node > .quote-line {
+  margin-bottom: 0;
+}
+.quotation-module .quotation-parent-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 12px;
+  margin-bottom: 16px;
+  background: var(--quotation-canvas, #fdf8f6);
+  border: 1px solid var(--quotation-edge, var(--line));
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
+}
+.quotation-module .quotation-parent-actions button {
+  min-height: 44px;
+  font-size: 12px;
+}
+.quotation-module .quotation-parent-actions output {
+  font-size: 12px;
+  font-family: "Space Grotesk", Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--quotation-muted, var(--muted));
+}
+.quotation-module .quotation-children-toggle {
+  background: transparent;
+  border-color: transparent;
+  color: var(--quotation-muted, var(--muted));
+}
+.quotation-module .quotation-children-toggle svg {
+  flex-shrink: 0;
+}
+.quotation-module .quotation-children-toggle[aria-expanded="false"] svg {
+  transform: rotate(-90deg);
+}
+.quotation-module .quotation-row-kind {
+  display: block;
+  color: var(--quotation-muted, var(--muted));
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+  margin-top: 4px;
+}
+.quotation-module .quote-line .quotation-parent-actions {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--quotation-edge, var(--line));
+  border-radius: 0;
+  padding: 0 0 12px;
+}
+.quotation-module .quotation-row-area {
+  max-width: 600px;
+}
+.quotation-module .quotation-row-area .field {
+  margin-bottom: 16px;
+}
+.quotation-module .quotation-numbering-note {
+  padding: 12px 0;
+  margin: 0 0 16px;
+  font-size: 12px;
+  color: var(--quotation-muted, var(--muted));
+  border-bottom: 1px solid var(--quotation-edge, var(--line));
+}
+.quotation-module .quotation-boq-node input[readonly] {
+  color: var(--quotation-muted, var(--muted));
+  background: var(--quotation-canvas, #fdf8f6);
+}
+.quotation-module .quotation-record-field {
+  position: relative;
+}
+.quotation-module .quotation-record-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.quotation-module .quotation-record-picker > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 12px;
+  margin: 0;
+  border: 1px solid var(--quotation-edge, var(--line));
+  border-radius: 6px;
+  background: white;
+  font-size: 14px;
+  font-weight: 500;
+  list-style: none;
+}
+.quotation-module .quotation-record-picker > summary::-webkit-details-marker {
+  display: none;
+}
+.quotation-module .quotation-record-picker > summary[aria-disabled="true"] {
+  color: var(--muted);
+  background: #f7f3f0;
+  cursor: not-allowed;
+}
+.quotation-module .quotation-record-picker > summary:focus-visible {
+  outline: 2px solid var(--rust);
+  outline-offset: 2px;
+}
+.quotation-module .quotation-record-options {
+  position: absolute;
+  z-index: 12;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  min-width: min(100%, 280px);
+  padding: 8px;
+  border: 1px solid var(--quotation-edge, var(--line));
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 12px 30px #1c1b1a20;
+}
+.quotation-module .quotation-record-options input {
+  width: 100%;
+  margin-bottom: 8px;
+}
+.quotation-module .quotation-record-list {
+  max-height: 220px;
+  overflow-y: auto;
+}
+.quotation-module .quotation-record-list button,
+.quotation-module .quotation-record-add {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: white;
+  color: #1c1b1a;
+  text-align: left;
+  line-height: 1.3;
+}
+.quotation-module .quotation-record-list button:hover,
+.quotation-module .quotation-record-list button:focus-visible,
+.quotation-module .quotation-record-list button.is-selected {
+  background: #f2edeb;
+}
+.quotation-module .quotation-record-list small {
+  color: var(--muted);
+}
+.quotation-module .quotation-record-add {
+  margin-top: 6px;
+  border-top: 1px solid var(--quotation-edge, var(--line));
+  color: var(--rust);
+  font-weight: 600;
+}
+
+.quotation-module .boq-builder .quote-section {
+  padding: 0;
+  overflow: visible;
+  border-color: #d5d2cf;
+  background: white;
+}
+.quotation-module .quote-section > .quotation-category-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  min-height: 48px;
+  padding: 10px 14px;
+  margin: 0;
+  background: #777979;
+  color: white;
+  border-radius: 7px 7px 0 0;
+  font-weight: 700;
+}
+.quotation-module
+  .quote-section
+  > .quotation-category-summary
+  > span:last-child {
+  color: white;
+  margin: 0;
+  font-weight: 500;
+  text-align: right;
+}
+.quotation-module .quote-section[open] > .quotation-category-summary {
+  border-bottom: 0;
+  margin: 0;
+}
+.quotation-module .boq-section-heading,
+.quotation-module .boq-section-header,
+.quotation-module .boq-section-toolbar,
+.quotation-module .quotation-boq-columns,
+.quotation-module .quote-section > .quotation-guide-help {
+  margin-left: 14px;
+  margin-right: 14px;
+}
+.quotation-module .boq-section-heading {
+  margin-top: 12px;
+}
+.quotation-module .boq-section-toolbar {
+  margin-bottom: 12px;
+}
+.quotation-module .quotation-boq-columns,
+.quotation-module .quote-line > .quotation-item-summary,
+.quotation-module .quote-line-fields {
+  display: grid;
+  grid-template-columns: 68px minmax(160px, 3fr) 72px 62px 96px 106px 126px;
+  gap: 8px;
+  align-items: start;
+}
+.quotation-module .quotation-boq-columns {
+  padding: 8px 12px;
+  background: #f2edeb;
+  color: #4a4846;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.quotation-module .quotation-boq-columns span:nth-child(n + 3) {
+  text-align: right;
+}
+.quotation-module .quotation-boq-node > .quote-line {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid #e8e6e4;
+  border-radius: 0;
+  padding: 0;
+}
+.quotation-module .quote-line > .quotation-item-summary {
+  min-height: 44px;
+  padding: 10px 12px;
+  margin: 0;
+  background: #fff;
+  color: #1c1b1a;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.quotation-module .quote-line.heading-line > .quotation-item-summary {
+  background: #f2f2f2;
+  font-weight: 700;
+}
+.quotation-module .quote-line > .quotation-item-summary > .quotation-cell {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.quotation-module
+  .quote-line
+  > .quotation-item-summary
+  > .quotation-cell--description {
+  white-space: pre-line;
+}
+.quotation-module
+  .quote-line
+  > .quotation-item-summary
+  > .quotation-cell--numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.quotation-module .quote-line > .quotation-item-summary .quotation-row-kind {
+  margin: 3px 0 0;
+  font-weight: 400;
+}
+.quotation-module .quote-line[open] > .quotation-item-summary {
+  margin: 0;
+  border-bottom: 1px solid #dedbd8;
+}
+.quotation-module .quote-line-fields,
+.quotation-module .quote-line > .quotation-parent-actions,
+.quotation-module .quote-line > .quotation-row-area,
+.quotation-module .quote-line > .between,
+.quotation-module .quote-line > details,
+.quotation-module .quote-line > .quotation-price-help {
+  margin: 10px 12px;
+}
+.quotation-module .quote-line-fields {
+  align-items: end;
+}
+.quotation-module .quote-line-fields .field {
+  min-width: 0;
+}
+.quotation-module .quote-line-fields .field:nth-child(2) {
+  grid-column: auto;
+  grid-row: auto;
+}
+.quotation-module .quotation-price-label {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 9px;
+  border: 1px solid #dedbd8;
+  border-radius: 5px;
+  background: #f7f3f0;
+  color: #4a4846;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.quotation-module .quotation-price-label--amount {
+  justify-content: flex-end;
+  font-weight: 600;
+}
+.quotation-module .quotation-price-help {
+  color: #5f5c59;
+  font-size: 12px;
+}
+.quotation-module .quotation-parent-actions {
+  padding: 8px 0;
+  margin-bottom: 0;
+  border-bottom: 1px solid #dedbd8;
+}
+.quotation-module .quotation-section-subtotal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #777979;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.quotation-module .quotation-section-subtotal strong {
+  margin-left: auto;
+  text-align: right;
+}
+@media (max-width: 1200px) {
+  .quotation-module .quotation-boq-columns {
+    display: none;
+  }
+  .quotation-module .quote-line > .quotation-item-summary {
+    grid-template-columns: 64px minmax(0, 2fr) repeat(2, minmax(64px, 1fr));
+  }
+  .quotation-module
+    .quote-line
+    > .quotation-item-summary
+    > .quotation-cell:nth-child(n + 5) {
+    grid-row: 2;
+  }
+  .quotation-module
+    .quote-line
+    > .quotation-item-summary
+    > .quotation-cell:nth-child(5) {
+    grid-column: 2;
+  }
+  .quotation-module
+    .quote-line
+    > .quotation-item-summary
+    > .quotation-cell:nth-child(6) {
+    grid-column: 3;
+  }
+  .quotation-module
+    .quote-line
+    > .quotation-item-summary
+    > .quotation-cell:nth-child(7) {
+    grid-column: 4;
+  }
+  .quotation-module
+    .quote-line
+    > .quotation-item-summary
+    > .quotation-cell:nth-child(n + 3)::before {
+    content: attr(data-label) " ";
+    display: block;
+    color: #706b67;
+    font-size: 10px;
+    font-weight: 500;
+  }
+  .quotation-module .quote-line-fields {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .quotation-module .quote-line-fields .field:nth-child(2) {
+    grid-column: span 3;
+  }
+  .quotation-module .quote-line-fields .field:nth-child(7) {
+    grid-column: span 2;
+  }
+}
+@media (max-width: 767px) {
+  .quotation-module .quote-section > .quotation-category-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .quotation-module
+    .quote-section
+    > .quotation-category-summary
+    > span:last-child {
+    text-align: left;
+  }
+  .quotation-module .quote-line > .quotation-item-summary {
+    grid-template-columns: 64px repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+  .quotation-module
+    .quote-line
+    > .quotation-item-summary
+    > .quotation-cell--description {
+    grid-column: 2 / -1;
+  }
+  .quotation-module
+    .quote-line
+    > .quotation-item-summary
+    > .quotation-cell:nth-child(3) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .quotation-module
+    .quote-line
+    > .quotation-item-summary
+    > .quotation-cell:nth-child(4) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .quotation-module
+    .quote-line
+    > .quotation-item-summary
+    > .quotation-cell:nth-child(5) {
+    grid-column: 3;
+    grid-row: 2;
+  }
+  .quotation-module
+    .quote-line
+    > .quotation-item-summary
+    > .quotation-cell:nth-child(6) {
+    grid-column: 2;
+    grid-row: 3;
+  }
+  .quotation-module
+    .quote-line
+    > .quotation-item-summary
+    > .quotation-cell:nth-child(7) {
+    grid-column: 3;
+    grid-row: 3;
+  }
+  .quotation-module .quote-line-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .quotation-module .quote-line-fields .field:nth-child(2) {
+    grid-column: 1 / -1;
+  }
+  .quotation-module .quotation-boq-node {
+    margin-left: calc(var(--boq-depth, 0) * 6px);
+  }
+  .quotation-module .boq-section-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 767px) {
+  .quotation-module .quotation-boq-node {
+    margin-left: calc(var(--boq-depth, 0) * 8px);
+  }
+  .quotation-module .quotation-boq-node.is-child {
+    padding-left: 8px;
+  }
+  .quotation-module .quotation-parent-actions {
+    padding: 12px 8px;
+  }
+  .quotation-module .quotation-parent-actions output {
+    flex-basis: 100%;
+  }
+}

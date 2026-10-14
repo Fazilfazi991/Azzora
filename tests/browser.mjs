@@ -1,11 +1,8 @@
 import { chromium } from "@playwright/test";
 import fs from "node:fs";
-const browser = await chromium.launch({
-  executablePath:
-    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  headless: true,
-  args: ["--no-sandbox"],
-});
+import { browserOptions, auditUrl } from "./browser-runtime.mjs";
+const base = process.env.AZZORA_TEST_URL || auditUrl;
+const browser = await chromium.launch(browserOptions);
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const errors = [];
 page.on("response", (r) => {
@@ -15,7 +12,7 @@ page.on("pageerror", (e) => errors.push(e.message));
 page.on("console", (m) => {
   if (m.type() === "error") errors.push(m.text());
 });
-await page.goto("http://127.0.0.1:5173");
+await page.goto(base + "");
 await page.getByRole("heading", { name: "Executive Overview" }).waitFor();
 await page.evaluate(() => window.scrollTo(0, 0));
 await page.screenshot({ path: "docs/dashboard-desktop.png", fullPage: true });
@@ -44,7 +41,7 @@ const checks = [];
 for (const [width, height] of sizes) {
   await page.setViewportSize({ width, height });
   for (const route of routes) {
-    await page.goto("http://127.0.0.1:5173/#/" + route);
+    await page.goto(base + "/#/" + route);
     await page.locator("main h1").first().waitFor();
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth > window.innerWidth,
@@ -55,7 +52,7 @@ for (const [width, height] of sizes) {
 }
 await page.evaluate(() => window.scrollTo(0, 0));
 await page.screenshot({ path: "docs/settings-mobile.png", fullPage: true });
-await page.goto("http://127.0.0.1:5173/#/dashboard");
+await page.goto(base + "/#/dashboard");
 await page.evaluate(() => window.scrollTo(0, 0));
 await page.screenshot({ path: "docs/dashboard-mobile.png", fullPage: true });
 await page.setViewportSize({ width: 1440, height: 900 });
@@ -65,11 +62,18 @@ await dialog
   .getByLabel("Project name", { exact: true })
   .fill("QA Dubai Office");
 await dialog
-  .getByLabel("Client name", { exact: true })
+  .getByRole("button", { name: "+ Add New Customer", exact: true })
+  .click();
+let customerDialog = page.getByRole("dialog").last();
+await customerDialog
+  .getByLabel("Customer/company name", { exact: true })
   .fill("QA Fictional Client");
-await dialog
-  .getByLabel("Client contact", { exact: true })
+await customerDialog
+  .getByLabel("Contact person", { exact: true })
   .fill("Demo representative");
+await customerDialog
+  .getByRole("button", { name: "Save Customer", exact: true })
+  .click();
 await dialog.getByLabel("Contract value AED").fill("450000");
 await dialog.getByRole("button", { name: "Continue →" }).click();
 await dialog
@@ -95,7 +99,7 @@ const projectId = await page.evaluate(
       (p) => p.name === "QA Dubai Office",
     ).id,
 );
-await page.goto("http://127.0.0.1:5173/#/projects/" + projectId + "/timeline");
+await page.goto(base + "/#/projects/" + projectId + "/timeline");
 await page
   .getByRole("button", { name: /Site Survey/ })
   .first()
@@ -125,13 +129,11 @@ if (
   computed.task.dependencies.length !== 1
 )
   throw Error("Planning changes did not persist");
-await page.goto("http://127.0.0.1:5173/#/projects/" + projectId + "/overview");
+await page.goto(base + "/#/projects/" + projectId + "/overview");
 await page.getByText("1%", { exact: true }).first().waitFor();
-await page.goto("http://127.0.0.1:5173/#/projects/" + projectId + "/team");
+await page.goto(base + "/#/projects/" + projectId + "/team");
 await page.getByRole("heading", { name: "Omar Faris", exact: true }).count();
-await page.goto(
-  "http://127.0.0.1:5173/#/projects/" + projectId + "/site-updates",
-);
+await page.goto(base + "/#/projects/" + projectId + "/site-updates");
 await page.getByRole("button", { name: "+ Post Site Update" }).click();
 dialog = page.getByRole("dialog");
 await dialog
@@ -142,10 +144,21 @@ await dialog
   .getByLabel("Upload photos")
   .setInputFiles("public/assets/azzora-logo.png");
 await dialog.locator(".photo-grid img").waitFor();
+await dialog.getByLabel("Demo site author").selectOption("person-3");
 await dialog.getByRole("button", { name: "Post Update", exact: true }).click();
 await page.getByText("QA site survey completed", { exact: true }).waitFor();
+await page
+  .getByRole("button", { name: "Supervisory review / history" })
+  .click();
+dialog = page.getByRole("dialog");
+await dialog.getByLabel("Demo supervisor").selectOption("person-0");
+await dialog
+  .getByLabel("Supervision note / reason")
+  .fill("Survey verified on site");
+await dialog.getByRole("button", { name: "Approve Site Record" }).click();
+await page.getByRole("dialog").waitFor({ state: "hidden" });
 
-await page.goto("http://127.0.0.1:5173/#/projects/" + projectId + "/tasks");
+await page.goto(base + "/#/projects/" + projectId + "/tasks");
 await page.getByRole("button", { name: "+ Create Task" }).click();
 dialog = page.getByRole("dialog");
 await dialog
@@ -159,7 +172,7 @@ await page
   .getByRole("button")
   .filter({ hasText: "QA supplemental inspection" })
   .waitFor();
-await page.goto("http://127.0.0.1:5173/#/projects/" + projectId + "/team");
+await page.goto(base + "/#/projects/" + projectId + "/team");
 await page
   .locator(".list-row")
   .filter({ hasText: "Site Engineer" })
@@ -170,6 +183,7 @@ await dialog.getByLabel("Person", { exact: true }).selectOption("person-4");
 await dialog
   .getByLabel("Reassign active tasks when replacing this person")
   .check();
+await dialog.getByLabel("Demo actor").selectOption("person-0");
 await dialog.getByRole("button", { name: "Save Assignment" }).click();
 await page.getByRole("dialog").waitFor({ state: "hidden" });
 const replacement = await page.evaluate((id) => {
@@ -188,19 +202,33 @@ const replacement = await page.evaluate((id) => {
 }, projectId);
 if (!replacement.historic || replacement.task !== "person-4")
   throw Error("Replacement did not retain history/reassign tasks");
-await page.goto("http://127.0.0.1:5173/#/projects/" + projectId + "/documents");
+await page.goto(base + "/#/projects/" + projectId + "/documents");
 await page.getByRole("button", { name: "+ Add Document" }).click();
 dialog = page.getByRole("dialog");
 await dialog.getByLabel("Document name").fill("QA client layout approval");
 await dialog.getByLabel("Category", { exact: true }).selectOption("Approvals");
-await dialog.getByLabel("Approval status").selectOption("Approved");
+await dialog
+  .getByLabel("Revision description")
+  .fill("Client layout initial submission");
+await dialog.getByLabel("Demo submitter").selectOption("person-3");
+await dialog.getByLabel("Review note / reason").fill("Submitted for approval");
 await dialog
   .getByLabel("Attach files")
   .setInputFiles("public/assets/azzora-logo.png");
 await dialog.locator(".photo-grid img").waitFor();
-await dialog.getByRole("button", { name: "Save Document" }).click();
-await page.getByRole("link", { name: "Download", exact: true }).waitFor();
-await page.goto("http://127.0.0.1:5173/#/projects/" + projectId + "/snags-qa");
+await dialog.getByRole("button", { name: "Submit Revision" }).click();
+await page
+  .getByRole("button", {
+    name: "Review QA client layout approval v1",
+    exact: true,
+  })
+  .click();
+dialog = page.getByRole("dialog");
+await dialog.getByLabel("Demo reviewer").selectOption("person-0");
+await dialog.getByLabel("Review note / reason").fill("Client layout verified");
+await dialog.getByRole("button", { name: "Approve Revision" }).click();
+await page.getByRole("link", { name: "Download v1", exact: true }).waitFor();
+await page.goto(base + "/#/projects/" + projectId + "/snags-qa");
 await page.getByRole("button", { name: "+ Create Snag" }).click();
 dialog = page.getByRole("dialog");
 await dialog.getByLabel("Area / Room").fill("Reception");
@@ -208,6 +236,8 @@ await dialog
   .getByLabel("Description", { exact: true })
   .fill("QA ceiling alignment");
 await dialog.getByLabel("Responsible person").selectOption("person-3");
+await dialog.getByLabel("Demo QA actor").selectOption("person-0");
+await dialog.getByLabel("Action reason").fill("Recorded QA inspection action");
 await dialog.getByRole("button", { name: "Save Snag" }).click();
 for (const status of [
   "Assigned",
@@ -225,17 +255,21 @@ for (const status of [
     await dialog
       .getByLabel("Inspection notes")
       .fill("Verified alignment against approved drawing");
+  await dialog.getByLabel("Demo QA actor").selectOption("person-0");
+  await dialog
+    .getByLabel("Action reason")
+    .fill("Recorded QA inspection action");
   await dialog.getByRole("button", { name: "Save Snag" }).click();
   await page.getByRole("dialog").waitFor({ state: "hidden" });
 }
-await page.goto("http://127.0.0.1:5173/#/projects/" + projectId + "/handover");
+await page.goto(base + "/#/projects/" + projectId + "/handover");
 if (
   await page
     .getByRole("button", { name: "Complete Project", exact: true })
     .isEnabled()
 )
   throw Error("Handover incorrectly ready");
-await page.goto("http://127.0.0.1:5173/#/projects/" + projectId + "/tasks");
+await page.goto(base + "/#/projects/" + projectId + "/tasks");
 for (let i = 0; i < 38; i++) {
   await page.locator(".task-row").nth(i).click();
   await page
@@ -244,13 +278,21 @@ for (let i = 0; i < 38; i++) {
     .click();
   await page.getByRole("dialog").waitFor({ state: "hidden" });
 }
-await page.goto("http://127.0.0.1:5173/#/projects/" + projectId + "/handover");
+await page.goto(base + "/#/projects/" + projectId + "/handover");
 const boxes = page.locator("main input[type=checkbox]:not([disabled])");
 for (let i = 0; i < (await boxes.count()); i++) await boxes.nth(i).check();
 await page.getByText("Ready for Handover", { exact: true }).waitFor();
 await page
   .getByRole("button", { name: "Complete Project", exact: true })
   .click();
+await page
+  .getByRole("dialog")
+  .getByLabel("Demo handover reviewer")
+  .selectOption("person-0");
+await page
+  .getByRole("dialog")
+  .getByLabel("Handover confirmation note")
+  .fill("All operational criteria verified");
 await page
   .getByRole("dialog")
   .getByRole("button", { name: "Confirm", exact: true })

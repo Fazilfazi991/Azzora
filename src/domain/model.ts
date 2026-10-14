@@ -1,4 +1,12 @@
 import type { Quotation } from "../quotation/model";
+import type { OperationalData } from "../operations/model";
+import type {
+  Contract,
+  Expense,
+  Invoice,
+  Payment,
+  CustomerContact,
+} from "../commercial/model";
 export type TaskStatus =
   "Not Started" | "In Progress" | "Waiting" | "Blocked" | "Completed";
 export type Priority = "Low" | "Normal" | "High" | "Critical";
@@ -10,13 +18,34 @@ export interface Person {
   role: string;
   email: string;
   phone: string;
-  status: "Active" | "Away";
+  status: "Active" | "Away" | "Inactive";
+  demoRole?: string;
   capacity: number;
+  department?: string;
+  employeeCode?: string;
+  notes?: string;
+  deactivatedAt?: string;
+  history?: WorkflowEvent[];
 }
 export interface Client {
   id: string;
   name: string;
   contact: string;
+  code?: string;
+  type?: "Individual" | "Company";
+  phone?: string;
+  whatsapp?: string;
+  email?: string;
+  address?: string;
+  siteAddress?: string;
+  city?: string;
+  emirate?: string;
+  country?: string;
+  trn?: string;
+  notes?: string;
+  createdAt?: string;
+  status?: "Active" | "Archived";
+  contacts?: CustomerContact[];
 }
 export interface Project {
   id: string;
@@ -111,6 +140,8 @@ export interface SiteUpdate {
   notes: string;
   authorId: string;
   photos: Attachment[];
+  reviewStatus?: "Pending" | "Changes Requested" | "Approved";
+  history?: WorkflowEvent[];
 }
 export interface Snag {
   id: string;
@@ -129,17 +160,40 @@ export interface Snag {
   createdBy: string;
   closedBy?: string;
   closedAt?: string;
+  history?: WorkflowEvent[];
+}
+export interface WorkflowEvent {
+  id: string;
+  action: string;
+  actorId: string;
+  actorName: string;
+  timestamp: string;
+  reason: string;
+  previous?: string;
 }
 export interface DocumentRecord {
   id: string;
   projectId: string;
   name: string;
   category: string;
-  status: "Pending" | "Approved";
+  status: "Draft" | "Pending" | "Rejected" | "Approved";
   version: number;
   uploadedAt: string;
   uploadedBy: string;
   attachment?: Attachment;
+  familyId?: string;
+  revisionOf?: string;
+  reviewerId?: string;
+  reviewState?: "Draft" | "Submitted" | "Approved" | "Revise & Resubmit";
+  reviewComments?: string;
+  decisionAt?: string;
+  previousRevisionId?: string;
+  revisionNote?: string;
+  history?: WorkflowEvent[];
+  workflowVersion?: 1;
+  submittedBy?: string;
+  submittedAt?: string;
+  legacyWorkflowSnapshot?: string;
 }
 export interface HandoverItem {
   id: string;
@@ -164,6 +218,18 @@ export interface Activity {
 }
 export interface Database {
   version: 1;
+  operations?: OperationalData;
+  commercialVersion?: 1;
+  invoices: Invoice[];
+  payments: Payment[];
+  expenses: Expense[];
+  contracts: Contract[];
+  commercialNumbering: {
+    customer: number;
+    invoice: number;
+    receipt: number;
+    expense: number;
+  };
   quotations: Quotation[];
   quotationNumbering: { prefix: string; next: number };
   people: Person[];

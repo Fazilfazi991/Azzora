@@ -1,34 +1,48 @@
 import { initializeQuotations } from "../quotation/repository";
+import { initializeCommercial } from "../commercial/migration";
+import { closureSummary } from "../operations/closure-domain";
+import { activePerson, saveSnag } from "../workforce/commands";
 import { z } from "zod";
+import { validateSavedShape, validateRelationships } from "./validation";
+import { initializeDocumentCompatibility } from "../workforce/document-approvals";
 import type { Database, Task, Project, SnagStatus, Activity } from "./model";
 import { seed, generatePlan } from "./seed";
-import {
-  uid,
-  validDependency,
-  handoverState,
-  canTransition,
-  taskProgress,
-} from "./logic";
+import { uid, validDependency, handoverState, taskProgress } from "./logic";
 const KEY = "azzora-demo-v1";
 export interface Repository {
   load(): Database;
   save(db: Database): void;
 }
+export function decodeSavedData(raw: string | null): Database {
+  if (raw === null) {
+    const db = seed();
+    initializeCommercial(db);
+    return db;
+  }
+  const value: unknown = JSON.parse(raw);
+  validateSavedShape(value);
+  if (
+    value.version !== 1 ||
+    !Array.isArray(value.projects) ||
+    !Array.isArray(value.tasks) ||
+    !Array.isArray(value.clients) ||
+    (value.commercialVersion !== undefined && value.commercialVersion !== 1) ||
+    [value.invoices, value.payments, value.expenses, value.contracts].some(
+      (collection) => collection !== undefined && !Array.isArray(collection),
+    )
+  )
+    throw Error(
+      "Saved demo data is incompatible. Export it or reset from Settings.",
+    );
+  initializeQuotations(value);
+  initializeCommercial(value);
+  initializeDocumentCompatibility(value);
+  validateRelationships(value);
+  return value;
+}
 export const localRepository: Repository = {
   load() {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return seed();
-    const value = JSON.parse(raw) as Database;
-    if (
-      value.version !== 1 ||
-      !Array.isArray(value.projects) ||
-      !Array.isArray(value.tasks)
-    )
-      throw Error(
-        "Saved demo data is incompatible. Export it or reset from Settings.",
-      );
-    initializeQuotations(value);
-    return value;
+    return decodeSavedData(localStorage.getItem(KEY));
   },
   save(db) {
     localStorage.setItem(KEY, JSON.stringify(db));
@@ -67,10 +81,11 @@ export function record(
   action: string,
   summary: string,
   previous?: string,
+  actorId = "person-0",
 ) {
   db.activities.unshift({
     id: uid(),
-    actorId: "person-0",
+    actorId,
     action,
     entityType,
     entityId,
@@ -98,6 +113,20 @@ export function saveTask(db: Database, task: Task) {
       "Dependencies must be in this project and cannot form a cycle.",
     );
   const old = db.tasks.find((t) => t.id === task.id);
+  if (
+    !db.projects.some((p) => p.id === task.projectId) ||
+    !db.phases.some(
+      (p) => p.id === task.phaseId && p.projectId === task.projectId,
+    )
+  )
+    throw Error("Choose a phase in the task's project.");
+  if (
+    task.assigneeId &&
+    (!old ||
+      task.assigneeId !== old.assigneeId ||
+      task.projectId !== old.projectId)
+  )
+    activePerson(db, task.assigneeId);
   if (task.parentId) {
     const parent = db.tasks.find((t) => t.id === task.parentId);
     if (
@@ -118,6 +147,29 @@ export function saveTask(db: Database, task: Task) {
       ? task.completedAt || new Date().toISOString()
       : undefined;
   task.updatedAt = new Date().toISOString();
+  if (
+    task.assigneeId &&
+    (!old ||
+      task.assigneeId !== old.assigneeId ||
+      task.projectId !== old.projectId) &&
+    !db.assignments.some(
+      (a) =>
+        a.projectId === task.projectId &&
+        a.personId === task.assigneeId &&
+        a.status === "Active",
+    )
+  ) {
+    db.assignments.push({
+      id: uid(),
+      projectId: task.projectId,
+      personId: task.assigneeId,
+      role: db.people.find((p) => p.id === task.assigneeId)!.role,
+      start: task.start,
+      end: task.due,
+      responsibility: "Task delivery",
+      status: "Active",
+    });
+  }
   db.tasks = old
     ? db.tasks.map((t) => (t.id === task.id ? task : t))
     : [...db.tasks, task];
@@ -155,10 +207,33 @@ export function createProject(
   standard: boolean,
 ) {
   projectSchema.parse(p);
+  Object.values({ ...team, manager: p.managerId })
+    .filter(Boolean)
+    .forEach((id) => activePerson(db, id));
   if (db.projects.some((x) => x.code.toLowerCase() === p.code.toLowerCase()))
     throw Error("Project code must be unique.");
   if (!clientName.trim()) throw Error("Client name is required.");
-  db.clients.push({ id: p.clientId, name: clientName, contact });
+  const client = db.clients.find((c) => c.id === p.clientId);
+  if (client?.status === "Archived") throw Error("Choose an active customer.");
+  if (!client) {
+    const normalized = (s: string) =>
+      s
+        .normalize("NFKC")
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}]/gu, "");
+    if (db.clients.some((c) => normalized(c.name) === normalized(clientName)))
+      throw Error(
+        "Possible duplicate customer. Select the existing customer or add one through Customer Master.",
+      );
+    db.clients.push({
+      id: p.clientId,
+      name: clientName.trim(),
+      contact,
+      status: "Active",
+      createdAt: new Date().toISOString(),
+    });
+    initializeCommercial(db);
+  }
   db.projects.push(p);
   generatePlan(db, p, standard);
   const selected = { ...team, "Project Manager": p.managerId };
@@ -178,26 +253,32 @@ export function createProject(
     );
   record(db, p.id, "Project", p.id, "Project created", p.name);
 }
-export function transitionSnag(db: Database, id: string, status: SnagStatus) {
-  const snag = db.snags.find((s) => s.id === id)!;
-  if (!canTransition(snag.status, status))
-    throw Error("Move the snag one step at a time so inspection is recorded.");
-  if (status === "Closed" && !snag.inspection.trim())
-    throw Error("Inspection notes are required before closing.");
-  record(
-    db,
-    snag.projectId,
-    "Snag",
-    id,
-    "Snag status changed",
-    `${snag.reference}: ${snag.status} → ${status}`,
-    JSON.stringify(snag),
-  );
-  snag.status = status;
-  snag.closedAt = status === "Closed" ? new Date().toISOString() : undefined;
-  snag.closedBy = status === "Closed" ? "person-0" : undefined;
+export function transitionSnag(
+  db: Database,
+  id: string,
+  status: SnagStatus,
+  actorId = "person-0",
+  reason = "Legacy snag transition",
+) {
+  const snag = db.snags.find((s) => s.id === id);
+  if (!snag) throw Error("Snag not found.");
+  saveSnag(db, snag, status, actorId, reason);
 }
-export function completeProject(db: Database, id: string) {
+export function completeProject(
+  db: Database,
+  id: string,
+  actorId = "person-0",
+  reason = "Required handover criteria confirmed.",
+) {
+  activePerson(db, actorId);
+  if (!reason.trim()) throw Error("Record a handover confirmation note.");
+  if (
+    db.operations?.settings.blockOperationalForFinance &&
+    !closureSummary(db, id).commercialClear
+  )
+    throw Error(
+      "Configured policy requires commercial obligations to be clear before operational handover.",
+    );
   if (!handoverState(db, id).ready)
     throw Error("Complete all required handover criteria first.");
   db.projects.find((p) => p.id === id)!.status = "Completed";
@@ -207,6 +288,8 @@ export function completeProject(db: Database, id: string) {
     "Project",
     id,
     "Project completed",
-    "Required handover criteria confirmed.",
+    reason.trim(),
+    undefined,
+    actorId,
   );
 }

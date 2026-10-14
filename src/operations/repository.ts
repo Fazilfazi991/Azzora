@@ -451,8 +451,7 @@ export function submitApproval(
     if (requesterId === approverId)
       throw Error("Choose an independent assigned reviewer.");
     demoActor(db, approverId);
-    d.reviewerId = approverId;
-    reviewDocument(db, id, "Pending", requesterId, stage);
+    reviewDocument(db, id, "Pending", requesterId, stage, approverId);
     return initializeOperations(db).approvals.find(
       (a) =>
         a.entityId === id && a.status === "Pending Approval" && !a.supersededBy,
@@ -619,7 +618,7 @@ export function reassignApproval(
     (!activeApprovals(db).some(
       (v) => v.id === id && v.status === "Pending Approval",
     ) ||
-      db.documents.find((d) => d.id === a.entityId)?.uploadedBy === approverId)
+      a.requesterId === approverId)
   )
     throw Error(
       "Assign an independent active reviewer to the current revision.",

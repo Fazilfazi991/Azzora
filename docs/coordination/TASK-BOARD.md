@@ -57,3 +57,14 @@ Original QA details: sibling `azzora-qa-stabilization/docs/AGENT-3-ISSUES.md`. A
 | PERF-01 | Main bundle optimization | P2 | Unassigned; coordinator to schedule | INT-02 | Backlog | A1 / `26eb500` | Preserve lazy PDF/domain behavior while reducing measured main chunk | Recorded 585.22 kB warning |
 | FUT-01 | Retention release, price variance/inventory, supplier debit notes, multi-invoice allocation, ledger, timesheets, Unicode fonts | P3 | Unassigned | Separate owner scope | Backlog | none | Define scope and acceptance before allocation | Not implemented/verified |
 | BACKEND-01 | Auth/server persistence/concurrency/cloud attachments/deployment | P3 | Unassigned; explicitly deferred | New owner authorization | Backlog | none | Separate production phase approved before work | No action initiated |
+
+## Authorized corrective cycle register
+
+| Task ID | Description / module | Priority | Agent | Dependencies | Status | Branch / commit | Acceptance criteria | Verification result |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| FIX-A1-01 | Bounded discounts, variation tax basis, shell focus/contrast/validation | P0 | Agent 1 | COORD-A1-01 | In Progress | A1 / a4620eb | Non-negative line base/VAT; exact approved basis; snapshots preserved; strict shell checks | Active acknowledged; recorded 160 unit passes and 35 focused browser checks; final handoff pending |
+| FIX-A2-01 | Modal padding, opener focus, nested Escape/BOQ retention | P1 | Agent 2 | COORD-A2-01 | In Review | A2 / c95a1cf; report94c568b; merged into I | Strict four-width regressions preserve parent drafts | Acknowledged complete; 64 branch checks pass; combined QA pending |
+| FIX-RECOVERY-01 | Saved-shape/ref validation and reachable original backup | P0 | Coordinator | A3-006 | In Review | I / 8d7a277 plus reviewed hardening | No automatic resets/writes; incompatible raw exact export; fallback reachable | 25 browser recovery cases pass; malformed/missing collections covered by ordinary tests |
+| INT-01 | Canonical workforce/documents with lossless approvals/closure adapters | P1 | Coordinator | A1/A2 handoffs | In Review | I / e136489,8d7a277 | One write boundary, assigned independent reviewer, supersession/history, both completion gates | 198 application unit passes; three Agent2 review findings addressed |
+| QA-PREP-02 | Strict final harnesses and ordinary defect assertions | P1 | Agent 3 | COORD-A3-01 | In Progress | A3 / b88191b | Required failures are strict; isolated URLs/actors; no baseline certification | Active acknowledged; prep remains intentionally red on old baseline |
+| QA-FINAL | Independent whole integrated system gate | P1 | Agent 3 | Reviewed fixes, composed harnesses and frozen I SHA | Blocked | I / not frozen | Full stated gate, source binding, exact counts and PDF/visual review | NOT RUN |

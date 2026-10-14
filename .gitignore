@@ -52,3 +52,5 @@ blob-report/
 /docs/agent-3-evidence/*-pages/
 .vscode/
 .idea/
+
+/docs/integration-evidence/

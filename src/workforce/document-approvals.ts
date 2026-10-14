@@ -73,6 +73,8 @@ export function submitDocumentApproval(
   d: DocumentRecord,
   actorId: string,
   reason: string,
+  reviewerId?: string,
+  timestamp = new Date().toISOString(),
 ) {
   const op = initializeOperations(db);
   if (
@@ -86,6 +88,7 @@ export function submitDocumentApproval(
   )
     throw Error("This revision already has a pending approval.");
   const reviewer =
+    reviewerId ||
     d.reviewerId ||
     db.people.find((p) => p.status !== "Inactive" && p.id !== actorId)?.id;
   if (
@@ -103,9 +106,15 @@ export function submitDocumentApproval(
     stage: "Drawing review",
     requesterId: actorId,
     approverId: reviewer,
-    submittedAt: new Date().toISOString(),
+    submittedAt: timestamp,
     status: "Pending Approval",
-    snapshot: JSON.stringify(d),
+    snapshot: JSON.stringify({
+      ...d,
+      status: "Pending",
+      reviewState: "Submitted",
+      submittedBy: actorId,
+      submittedAt: timestamp,
+    }),
     comments: reason,
   };
   op.approvals.push(a);

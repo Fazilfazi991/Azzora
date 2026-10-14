@@ -146,6 +146,13 @@ const baseSchemas = {
     uploadedBy: text,
     attachment: attachment.optional(),
     history,
+    reviewState: z
+      .enum(["Draft", "Submitted", "Approved", "Revise & Resubmit"])
+      .optional(),
+    workflowVersion: z.literal(1).optional(),
+    reviewerId: text.optional(),
+    submittedBy: text.optional(),
+    submittedAt: text.optional(),
   }),
   handover: entity({
     projectId: id,
@@ -417,7 +424,14 @@ const opSchemas = {
     ),
   }),
   approvals: entity({
-    kind: text,
+    kind: z.enum([
+      "Variation",
+      "Purchase Request",
+      "Supplier Quotation",
+      "Purchase Order",
+      "Credit Note",
+      "Document",
+    ]),
     entityId: id,
     projectId: id,
     stage: text,
@@ -670,4 +684,27 @@ export function validateRelationships(db: Database) {
       throw Error("Saved accepted contract snapshot is unreadable.");
     }
   }
+  const approvalTargets = {
+    Variation: "variations",
+    "Purchase Request": "requests",
+    "Supplier Quotation": "quotes",
+    "Purchase Order": "orders",
+    "Credit Note": "credits",
+    Document: "documents",
+  };
+  for (const a of db.operations?.approvals || []) {
+    const target = approvalTargets[a.kind];
+    if (!index.get(target)?.has(a.entityId))
+      throw Error("Saved approval refers to a missing source record.");
+    const record = (
+      all as unknown as Record<string, { id: string; projectId: string }[]>
+    )[target].find((x) => x.id === a.entityId)!;
+    if (record.projectId !== a.projectId)
+      throw Error("Saved approval source belongs to a different project.");
+  }
+  const revisionKeys = db.documents.map(
+    (d) => `${d.projectId}:${d.familyId || d.id}:${d.version}`,
+  );
+  if (new Set(revisionKeys).size !== revisionKeys.length)
+    throw Error("Saved document family contains duplicate revisions.");
 }

@@ -172,8 +172,9 @@ export function Documents({ projectId }: { projectId?: string }) {
         >
           <Badge>{stored?.status || "Draft"}</Badge>
           <p>
-            Submitted by {personName(db, stored?.uploadedBy || "")} ·{" "}
-            {stored?.uploadedAt || "Not submitted"}
+            Submitted by{" "}
+            {personName(db, stored?.submittedBy || stored?.uploadedBy || "")} ·{" "}
+            {stored?.submittedAt || stored?.uploadedAt || "Not submitted"}
           </p>
           <form
             onSubmit={(e) => {

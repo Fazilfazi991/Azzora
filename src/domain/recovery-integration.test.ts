@@ -146,6 +146,53 @@ function draft(db: Database): DocumentRecord {
   };
 }
 describe("one document command boundary and atomic approval ledger", () => {
+  it("protects unknown legacy workflow states and orphan approval sources", () => {
+    const db = ready(),
+      d = draft(db);
+    saveDocumentDraft(db, d, "person-3");
+    const a = submitApproval(
+      db,
+      "Document",
+      d.id,
+      "Review",
+      "person-3",
+      "person-0",
+    );
+    const raw = structuredClone(db) as unknown as {
+      documents: { reviewState?: string }[];
+    };
+    raw.documents.at(-1)!.reviewState = "Corrupted Legacy State";
+    expect(() => decodeSavedData(JSON.stringify(raw))).toThrow(/documents/);
+    a.entityId = "missing-document";
+    expect(() => decodeSavedData(JSON.stringify(db))).toThrow(/approval/);
+  });
+  it("prevents the actual requester from self-review even when draft author differs", () => {
+    const db = ready(),
+      d = draft(db);
+    saveDocumentDraft(db, d, "person-3");
+    const a = submitApproval(
+      db,
+      "Document",
+      d.id,
+      "Review",
+      "person-1",
+      "person-0",
+    );
+    expect(() =>
+      reassignApproval(
+        db,
+        a.id,
+        "person-1",
+        "Attempt requester assignment",
+        "person-0",
+      ),
+    ).toThrow(/independent/);
+    expect(() =>
+      reviewDocument(db, d.id, "Approved", "person-1", "Attempt self review"),
+    ).toThrow(/submitter/);
+    expect(a.status).toBe("Pending Approval");
+    expect(db.documents.at(-1)?.status).toBe("Pending");
+  });
   it("submission in workforce and decision in shared inbox update the same record/history", () => {
     const db = ready(),
       d = draft(db);

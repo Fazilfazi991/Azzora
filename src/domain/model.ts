@@ -191,6 +191,8 @@ export interface DocumentRecord {
   revisionNote?: string;
   history?: WorkflowEvent[];
   workflowVersion?: 1;
+  submittedBy?: string;
+  submittedAt?: string;
   legacyWorkflowSnapshot?: string;
 }
 export interface HandoverItem {

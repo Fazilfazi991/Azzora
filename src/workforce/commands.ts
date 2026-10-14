@@ -257,6 +257,8 @@ export function saveDocumentDraft(
     status: "Draft" as const,
     reviewState: "Draft" as const,
     workflowVersion: 1 as const,
+    submittedBy: undefined,
+    submittedAt: undefined,
     uploadedBy: actorId,
     uploadedAt: entry.timestamp.slice(0, 10),
     history: [...(old?.history || []), entry],
@@ -289,10 +291,14 @@ export function reviseDocument(
     id: nextId,
     familyId,
     previousRevisionId: old.id,
+    revisionOf: old.id,
+    legacyWorkflowSnapshot: undefined,
     version: Math.max(...siblings.map((d) => d.version)) + 1,
     status: "Draft",
     reviewState: "Draft",
     workflowVersion: 1,
+    submittedBy: undefined,
+    submittedAt: undefined,
     reviewerId: undefined,
     reviewComments: undefined,
     decisionAt: undefined,
@@ -323,6 +329,7 @@ export function reviewDocument(
   status: "Pending" | "Rejected" | "Approved",
   actorId: string,
   reason: string,
+  reviewerId?: string,
 ) {
   const document = db.documents.find((d) => d.id === id);
   if (!document) throw Error("Document not found.");
@@ -339,7 +346,10 @@ export function reviewDocument(
     throw Error(
       "Submit a draft, then approve or reject the submitted revision.",
     );
-  if (status !== "Pending" && document.uploadedBy === actorId)
+  if (
+    status !== "Pending" &&
+    (document.submittedBy || document.uploadedBy) === actorId
+  )
     throw Error("Choose a reviewer different from the submitter.");
   if (
     status !== "Pending" &&
@@ -357,6 +367,8 @@ export function reviewDocument(
     ) || [];
   if (status !== "Pending" && pending.some((a) => a.approverId !== actorId))
     throw Error("Select the assigned document reviewer.");
+  if (status !== "Pending" && pending.some((a) => a.requesterId === actorId))
+    throw Error("Choose a reviewer different from the submitter.");
   const entry = event(
     db,
     actorId,
@@ -367,7 +379,14 @@ export function reviewDocument(
     { status: document.status, version: document.version },
   );
   if (status === "Pending")
-    submitDocumentApproval(db, document, actorId, reason);
+    submitDocumentApproval(
+      db,
+      document,
+      actorId,
+      reason,
+      reviewerId,
+      entry.timestamp,
+    );
   else
     finishDocumentApproval(
       db,
@@ -378,6 +397,10 @@ export function reviewDocument(
       entry.timestamp,
     );
   document.status = status;
+  if (status === "Pending") {
+    document.submittedBy = actorId;
+    document.submittedAt = entry.timestamp;
+  }
   document.workflowVersion = 1;
   document.reviewState =
     status === "Pending"

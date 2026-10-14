@@ -48,3 +48,16 @@ At 1440/1024/768/390px, inspect real browser output, keyboard traversal, named d
 Before each integration step, record the current commit and keep committed checkpoints. If a merge conflicts before resolution, use `git merge --abort` only in this coordinator's integration worktree after checking its state. Never reset/delete/clean another agent's worktree. After committed integration, rollback uses new revert commits on this branch, preserving audit history. Preserve any test database exports used for migration evidence; do not downgrade owner storage.
 
 Integration is local and disposable relative to source branches. No push, deployment, production database migration or automatic merge to main. The owner approves a concrete tested combined revision before main changes.
+
+## Executed checkpoints in authorized corrective cycle
+
+- 7223620: clean coordination checkpoint after owner authorization.
+- Operational pinned 8b79921 merged with a merge commit; inspect git log for its full SHA.
+- e136489: A2 pinned dd220df merged with deliberate per-hunk shared-file reconciliation.
+- a539358: A3 pinned11da925 merged; retained workforce-aware delivery actions and configurable target URL.
+- 8d7a277: coordinator protected loading, exact-original backup, canonical document/approval writes and lossless compatibility adapters.
+- A2 corrective c95a1cf/report94c568b reviewed and merged; only shared modal app code changed.
+- f6f7e04: pre-freeze 25-case recovery/rollback browser evidence and visual review.
+- A1 corrective a4620eb and A3 prep b88191b discovered; final source handoffs/review required before merging them.
+
+Agent2 independently reviewed coordinator source/probes. Unknown optional legacy states, requester self-review and orphan approval targets were confirmed; all three now have guards and ordinary regression cases. Application source currently passes 198 unit cases, TypeScript and lint. This is a checkpoint, not final QA; the integration branch is not frozen.

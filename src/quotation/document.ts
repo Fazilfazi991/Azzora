@@ -1,14 +1,15 @@
 import fonts from "./fonts.json";
 import { jsPDF } from "jspdf";
 import type { Quotation, QuotationLineItem } from "./model";
+import { displayBoqCategoryNumber, isBoqParentDescription } from "./hierarchy";
 import {
   amountInWords,
   displayAmount,
+  displayRate,
   formatMoney,
   paymentAmount,
   sectionAmount,
   totals,
-  cents,
   discountAmount,
 } from "./calculations";
 export type Draw =
@@ -256,12 +257,7 @@ export function layoutQuotation(q: Quotation): DocumentPage[] {
   const cellLines = (r: QuotationLineItem) => [
     wrap(r.quantity, 30),
     wrap(r.unit, 30),
-    wrap(
-      r.pricingType === "Normal Rate"
-        ? formatMoney(cents(r.rate))
-        : r.pricingType,
-      45,
-    ),
+    wrap(displayRate(r), 45),
     wrap(displayAmount(r), 78),
   ];
   const tableHeader = () => {
@@ -284,7 +280,7 @@ export function layoutQuotation(q: Quotation): DocumentPage[] {
       r.description + (r.location ? "\n" + r.location : ""),
       descriptionWidth,
       8.2,
-      r.pricingType === "Heading" ? "bold" : "italic",
+      isBoqParentDescription(r) ? "bold" : "italic",
     );
   const rowHeight = (r: QuotationLineItem) => {
     const count = Math.max(
@@ -317,17 +313,18 @@ export function layoutQuotation(q: Quotation): DocumentPage[] {
     y += h;
   };
   for (const section of q.sections) {
+    const headingNumber = displayBoqCategoryNumber(q, section);
     const first = section.rows[0],
       second = section.rows[1];
     let preparedBreakRowId: string | undefined;
     if (
       (first?.pageBreakBefore ||
-        (first?.pricingType === "Heading" && second?.pageBreakBefore)) &&
+        (first && isBoqParentDescription(first) && second?.pageBreakBefore)) &&
       y > 95
     ) {
       newPage(section.rows[0].pageLogo !== false);
       tableHeader();
-      if (first?.pricingType === "Heading" && second?.pageBreakBefore)
+      if (first && isBoqParentDescription(first) && second?.pageBreakBefore)
         preparedBreakRowId = second.id;
     }
     const openingHeight =
@@ -337,17 +334,17 @@ export function layoutQuotation(q: Quotation): DocumentPage[] {
       ) +
       2 +
       (first ? Math.min(rowHeight(first), BOTTOM - 140) : 0) +
-      (first?.pricingType === "Heading" && second
+      (first && isBoqParentDescription(first) && second
         ? Math.min(rowHeight(second), BOTTOM - 180)
         : 0);
     if (ensure(openingHeight)) tableHeader();
-    sectionHeader(section.number, section.title);
+    sectionHeader(headingNumber, section.title);
     for (let i = 0; i < section.rows.length; i++) {
       const r = section.rows[i],
         ls = rowLines(r),
         h = rowHeight(r);
       const nextBreak =
-        r.pricingType === "Heading" && section.rows[i + 1]?.pageBreakBefore;
+        isBoqParentDescription(r) && section.rows[i + 1]?.pageBreakBefore;
       if (
         i > 0 &&
         ((r.pageBreakBefore && r.id !== preparedBreakRowId) || nextBreak) &&
@@ -355,18 +352,18 @@ export function layoutQuotation(q: Quotation): DocumentPage[] {
       ) {
         newPage(r.pageLogo !== false);
         tableHeader();
-        sectionHeader(section.number, section.title + " (continued)");
+        sectionHeader(headingNumber, section.title + " (continued)");
         if (nextBreak) preparedBreakRowId = section.rows[i + 1].id;
       }
       const keep =
         (h > BOTTOM - 120 ? 40 : h) +
-        (r.pricingType === "Heading" && section.rows[i + 1]
+        (isBoqParentDescription(r) && section.rows[i + 1]
           ? Math.min(rowHeight(section.rows[i + 1]), 40)
           : 0) +
         (i === section.rows.length - 1 ? 18 : 0);
       if (ensure(keep)) {
         tableHeader();
-        sectionHeader(section.number, section.title + " (continued)");
+        sectionHeader(headingNumber, section.title + " (continued)");
       }
       // Keep ordinary rows intact. Oversized descriptions continue in deliberate chunks.
       let offset = 0;
@@ -390,7 +387,7 @@ export function layoutQuotation(q: Quotation): DocumentPage[] {
         const segment = ls.slice(offset, offset + count);
         const segmentHeight =
           offset === 0 && count === totalLines ? h : count * 10.2 + 4;
-        if (r.pricingType === "Heading")
+        if (isBoqParentDescription(r))
           rect(LEFT, y, WIDTH, segmentHeight, "#f2f2f2");
         else if (section.number !== "1")
           for (const x of [320, 356, 443]) line(x, y, x, y + segmentHeight);
@@ -399,7 +396,7 @@ export function layoutQuotation(q: Quotation): DocumentPage[] {
           96,
           y + 2,
           8.2,
-          r.pricingType === "Heading" ? "bold" : "italic",
+          isBoqParentDescription(r) ? "bold" : "italic",
           "center",
         );
         segment.forEach((s, j) =>
@@ -408,7 +405,7 @@ export function layoutQuotation(q: Quotation): DocumentPage[] {
             descriptionX,
             y + 2 + j * 10.2,
             8.2,
-            r.pricingType === "Heading" ? "bold" : "italic",
+            isBoqParentDescription(r) ? "bold" : "italic",
           ),
         );
         if (r.pricingType !== "Heading" && r.pricingType !== "Included") {
@@ -445,7 +442,7 @@ export function layoutQuotation(q: Quotation): DocumentPage[] {
         if (offset < totalLines) {
           newPage();
           tableHeader();
-          sectionHeader(section.number, section.title + " (continued)");
+          sectionHeader(headingNumber, section.title + " (continued)");
         }
       }
     }
@@ -458,7 +455,7 @@ export function layoutQuotation(q: Quotation): DocumentPage[] {
     const subtotalHeight = Math.max(13, subtotalLines.length * 10.2 + 4);
     if (ensure(subtotalHeight)) {
       tableHeader();
-      sectionHeader(section.number, section.title + " (continued)");
+      sectionHeader(headingNumber, section.title + " (continued)");
     }
     rect(LEFT, y, WIDTH, subtotalHeight);
     subtotalLines.forEach((value, i) =>

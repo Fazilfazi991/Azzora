@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Quotation } from "./model";
 import { blankQuotation, referenceQuotation } from "./seed";
-import { blankLine, saveQuotation } from "./repository";
+import { blankLine, saveQuotation, validationErrors } from "./repository";
 import { lineAmount, totals } from "./calculations";
 import { layoutQuotation } from "./document";
 import { seed } from "../domain/seed";
@@ -16,8 +16,10 @@ import {
   deleteBoqRow,
   duplicateBoqCategory,
   duplicateBoqRow,
+  displayBoqCategoryNumber,
   moveBoqCategory,
   moveBoqRow,
+  isBoqParentDescription,
   numberingMode,
   renumberBoq,
   setBoqCategoryParent,
@@ -74,6 +76,31 @@ const numbers = (q: Quotation) =>
   q.sections.flatMap((s) => [s.number, ...s.rows.map((r) => r.number)]);
 
 describe("BOQ hierarchy commands and pricing integrity", () => {
+  it("displays new top-level categories as 3.00 without changing stored paths", () => {
+    let q = blankQuotation("QA-CATEGORY-NUMBER");
+    const first = addBoqCategory(q, { title: "Preliminaries" });
+    q = first.quotation;
+    const second = addBoqCategory(q, { title: "Demolition" });
+    q = second.quotation;
+    const third = addBoqCategory(q, { title: "Tiling" });
+    q = third.quotation;
+    const nested = addBoqCategory(q, {
+      title: "Wet Areas",
+      parentId: third.categoryId,
+    });
+    q = nested.quotation;
+    expect(q.sections.map((s) => s.number)).toEqual(["1", "2", "3", "3.1"]);
+    expect(q.sections.map((s) => displayBoqCategoryNumber(q, s))).toEqual([
+      "1.00",
+      "2.00",
+      "3.00",
+      "3.1",
+    ]);
+    const reference = referenceQuotation();
+    expect(
+      reference.sections.map((s) => displayBoqCategoryNumber(reference, s)),
+    ).toEqual(reference.sections.map((s) => s.number));
+  });
   it("creates the requested 2.1.1–2.1.3 and 2.2.1 hierarchy with non-priced parents", () => {
     const { q, categoryId, parentId, childIds } = scene();
     expect(rows(q, categoryId).map((r) => r.number)).toEqual([
@@ -86,7 +113,8 @@ describe("BOQ hierarchy commands and pricing integrity", () => {
     ]);
     expect(rows(q, categoryId)[0]).toMatchObject({
       id: parentId,
-      pricingType: "Heading",
+      pricingType: "By Client",
+      boqRole: "parent",
       quantity: "",
       rate: "",
     });
@@ -97,7 +125,117 @@ describe("BOQ hierarchy commands and pricing integrity", () => {
       1, 1, 1,
     ]);
   });
-  it("charges quantities×rates once, excluding heading parent values and overrides", () => {
+  it("keeps a new By Client parent distinct from a direct By Client row after persistence", () => {
+    const q = blankQuotation("QA-PARENT-ROLE");
+    const category = addBoqCategory(q, { title: "Demolition" });
+    const parent = addBoqRow(category.quotation, category.categoryId, {
+      kind: "heading",
+    });
+    const direct = addBoqRow(parent.quotation, category.categoryId, {
+      kind: "priced",
+    });
+    const parentRow = rows(direct.quotation, category.categoryId).find(
+      (r) => r.id === parent.rowId,
+    )!;
+    const directRow = rows(direct.quotation, category.categoryId).find(
+      (r) => r.id === direct.rowId,
+    )!;
+    directRow.pricingType = "By Client";
+    expect(parentRow).toMatchObject({
+      pricingType: "By Client",
+      boqRole: "parent",
+    });
+    expect(isBoqParentDescription(parentRow)).toBe(true);
+    expect(isBoqParentDescription(directRow)).toBe(false);
+    const db = seed();
+    saveQuotation(db, direct.quotation);
+    const loaded = decodeSavedData(JSON.stringify(db)).quotations.find(
+      (saved) => saved.id === q.id,
+    )!;
+    expect(isBoqParentDescription(rows(loaded, category.categoryId)[0])).toBe(
+      true,
+    );
+    const child = addBoqRow(loaded, category.categoryId, {
+      kind: "priced",
+      parentId: parent.rowId,
+    });
+    expect(
+      rows(child.quotation, category.categoryId).find(
+        (r) => r.id === child.rowId,
+      ),
+    ).toMatchObject({ parentId: parent.rowId, pricingType: "Normal Rate" });
+  });
+  it.each(["By Client", "FOC", "Excluded", "Heading"] as const)(
+    "allows a %s parent with Normal Rate children but no parent charge",
+    (pricingType) => {
+      const q = blankQuotation("QA-CHILD-PRICE");
+      const category = addBoqCategory(q, { title: "Works" });
+      const parent = addBoqRow(category.quotation, category.categoryId, {
+        kind: "heading",
+      });
+      const parentRow = rows(parent.quotation, category.categoryId)[0];
+      Object.assign(parentRow, {
+        pricingType,
+        quantity: "10",
+        unit: "M2",
+        rate: "999",
+        amountOverride: "9999",
+      });
+      const child = addBoqRow(parent.quotation, category.categoryId, {
+        kind: "priced",
+        parentId: parent.rowId,
+      });
+      const childRow = rows(child.quotation, category.categoryId).find(
+        (r) => r.id === child.rowId,
+      )!;
+      Object.assign(childRow, { quantity: "8.4", unit: "M2", rate: "90" });
+      expect(lineAmount(parentRow)).toBe(0n);
+      expect(lineAmount(childRow)).toBe(75600n);
+      expect(boqGroupAmount(child.quotation.sections[0], parent.rowId)).toBe(
+        75600n,
+      );
+      expect(totals(child.quotation).subtotal).toBe(75600n);
+    },
+  );
+  it("permits an intentional priced parent only while it has no children", () => {
+    const q = blankQuotation("QA-PARENT-RATE");
+    const category = addBoqCategory(q, { title: "Works" });
+    const parent = addBoqRow(category.quotation, category.categoryId, {
+      kind: "heading",
+    });
+    const parentRow = rows(parent.quotation, category.categoryId)[0];
+    Object.assign(parentRow, {
+      pricingType: "Normal Rate",
+      quantity: "2",
+      unit: "LS",
+      rate: "100",
+      description: "Direct work",
+    });
+    expect(lineAmount(parentRow)).toBe(20000n);
+    expect(validationErrors(parent.quotation)).not.toContain(
+      "Item 1.1: a priced parent cannot also contain child items.",
+    );
+    expect(() =>
+      addBoqRow(parent.quotation, category.categoryId, {
+        kind: "priced",
+        parentId: parent.rowId,
+      }),
+    ).toThrow(/billable parent/);
+    const child = addBoqRow(category.quotation, category.categoryId, {
+      kind: "heading",
+    });
+    const pricedChild = addBoqRow(child.quotation, category.categoryId, {
+      kind: "priced",
+      parentId: child.rowId,
+    });
+    rows(pricedChild.quotation, category.categoryId).find(
+      (r) => r.id === child.rowId,
+    )!.pricingType = "Normal Rate";
+    expect(validationErrors(pricedChild.quotation)).toContain(
+      "Item 1.1: a priced parent cannot also contain child items.",
+    );
+  });
+  it("charges quantities×rates once, excluding By Client parent values and overrides", () => {
     const { q, categoryId, parentId } = scene();
     const parent = rows(q, categoryId)[0];
     Object.assign(parent, {
@@ -238,7 +376,7 @@ describe("BOQ hierarchy commands and pricing integrity", () => {
       /descendants/,
     );
     expect(() => setBoqRowParent(q, categoryId, secondId, childIds[0])).toThrow(
-      /Heading/,
+      /billable parent/,
     );
     const lifted = setBoqRowParent(q, categoryId, childIds[0]);
     expect(

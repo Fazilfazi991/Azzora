@@ -20,6 +20,7 @@ import {
   paymentPercentage,
   amountInWords,
   displayAmount,
+  displayRate,
 } from "./calculations";
 import { layoutQuotation } from "./document";
 describe("quotation financial and lifecycle rules", () => {
@@ -32,9 +33,16 @@ describe("quotation financial and lifecycle rules", () => {
   it.each(["FOC", "By Client", "Excluded"] as const)(
     "%s preserves text pricing without numeric rates",
     (pricingType) => {
-      const r = { ...blankLine(), pricingType, rate: "" };
+      const r = {
+        ...blankLine(),
+        pricingType,
+        quantity: "1",
+        unit: "LS",
+        rate: "999",
+      };
       expect(lineAmount(r)).toBe(0n);
       expect(displayAmount(r)).toBe(pricingType);
+      expect(displayRate(r)).toBe(pricingType);
     },
   );
   it("calculates every reference section and the exact totals", () => {
@@ -185,7 +193,8 @@ describe("quotation financial and lifecycle rules", () => {
       "Expired",
       "Revised",
     ] as const) {
-      const db = seed(), q = db.quotations[0];
+      const db = seed(),
+        q = db.quotations[0];
       changeQuotationStatus(db, q.id, "Finalized");
       changeQuotationStatus(db, q.id, status);
       expect(() =>

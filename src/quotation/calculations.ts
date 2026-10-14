@@ -125,3 +125,12 @@ export function displayAmount(row: QuotationLineItem) {
       ? ""
       : row.pricingType;
 }
+
+/** Rate labels are presentation only; saved legacy numeric rates remain untouched. */
+export function displayRate(row: QuotationLineItem) {
+  return row.pricingType === "Normal Rate"
+    ? formatMoney(cents(row.rate))
+    : ["Heading", "Included"].includes(row.pricingType)
+      ? ""
+      : row.pricingType;
+}

@@ -40,6 +40,8 @@ export interface QuotationCompanyDetails {
 export interface QuotationLineItem {
   id: string;
   parentId?: string;
+  /** Persisted work-description intent, independent of the pricing label. */
+  boqRole?: "parent";
   number: string;
   description: string;
   location: string;

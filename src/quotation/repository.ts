@@ -115,11 +115,22 @@ export function validationErrors(q: Quotation): string[] {
   for (const s of q.sections) {
     if (!s.title.trim()) errors.push("Section description is required.");
     if (!s.rows.length) errors.push("Each section needs at least one item.");
+    const parentIds = new Set(s.rows.map((r) => r.parentId).filter(Boolean));
     for (const r of s.rows) {
       if (!r.description.trim())
         errors.push("Item " + r.number + ": description is required.");
       if (!pricingTypes.includes(r.pricingType))
         errors.push("Unsupported pricing type.");
+      if (
+        r.boqRole === "parent" &&
+        r.pricingType === "Normal Rate" &&
+        parentIds.has(r.id)
+      )
+        errors.push(
+          "Item " +
+            r.number +
+            ": a priced parent cannot also contain child items.",
+        );
       try {
         if (r.pricingType === "Normal Rate") {
           decimal(r.quantity);

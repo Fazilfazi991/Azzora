@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { jsPDF } from "jspdf";
 import fonts from "./fonts.json";
 import { layoutQuotation, type Draw } from "./document";
-import { referenceQuotation } from "./seed";
+import { blankQuotation, referenceQuotation } from "./seed";
 import { blankLine } from "./repository";
 import { totals } from "./calculations";
 
@@ -60,6 +60,127 @@ function sample() {
 }
 
 describe("approved quotation alignment and pagination", () => {
+  it("uses .00 category display for new drafts and repeats headers through long parent text", () => {
+    const q = blankQuotation("QTN-LONG-BOQ");
+    q.sections = [
+      {
+        id: "s",
+        number: "3",
+        title: "Demolition Work",
+        rows: [
+          {
+            ...blankLine(),
+            id: "parent",
+            number: "3.1",
+            boqRole: "parent",
+            pricingType: "By Client",
+            quantity: "1",
+            unit: "LS",
+            rate: "",
+            description:
+              "Demolition and careful cart away of existing block walls. ".repeat(
+                100,
+              ),
+          },
+          {
+            ...blankLine(),
+            id: "child",
+            parentId: "parent",
+            number: "3.1.1",
+            description: "Kitchen",
+            quantity: "8.4",
+            unit: "M2",
+            rate: "90",
+          },
+        ],
+      },
+    ];
+    q.terms = [];
+    q.payments = [];
+    const pages = layoutQuotation(q);
+    expect(pages.length).toBeGreaterThan(2);
+    expect(q.sections[0].number).toBe("3");
+    for (const page of pages.slice(1)) {
+      const texts = textOf(page.commands);
+      if (texts.some((c) => c.text === "3.1" || c.text === "3.1.1")) {
+        expect(texts.some((c) => c.text === "Sl.No")).toBe(true);
+        expect(texts.some((c) => c.text === "3.00")).toBe(true);
+      }
+    }
+  });
+  it("prints client-paid and no-charge labels while keeping parent and child row fills", () => {
+    const q = sample();
+    q.sections[0].rows = [
+      {
+        ...blankLine(),
+        id: "parent",
+        number: "2.1",
+        boqRole: "parent",
+        description: "Demolition and cart away",
+        pricingType: "By Client",
+        quantity: "1",
+        unit: "LS",
+        rate: "1200",
+      },
+      {
+        ...blankLine(),
+        id: "child",
+        parentId: "parent",
+        number: "2.1.1",
+        description: "Kitchen",
+        quantity: "8.4",
+        unit: "M2",
+        rate: "90",
+      },
+      {
+        ...blankLine(),
+        id: "foc",
+        number: "2.2",
+        description: "Free sample",
+        pricingType: "FOC",
+        quantity: "1",
+        unit: "LS",
+        rate: "500",
+      },
+      {
+        ...blankLine(),
+        id: "excluded",
+        number: "2.3",
+        description: "Not in scope",
+        pricingType: "Excluded",
+        quantity: "1",
+        unit: "LS",
+        rate: "500",
+      },
+    ];
+    expect(totals(q).subtotal).toBe(75600n);
+    const commands = layoutQuotation(q)[1].commands;
+    const texts = textOf(commands);
+    const parent = texts.find((c) => c.text === "Demolition and cart away")!;
+    const child = texts.find((c) => c.text === "Kitchen")!;
+    expect(parent.style).toBe("bold");
+    expect(child.style).toBe("italic");
+    expect(
+      commands.some(
+        (c) =>
+          c.kind === "rect" &&
+          c.fill === "#f2f2f2" &&
+          c.y < parent.y &&
+          c.y + c.height > parent.y,
+      ),
+    ).toBe(true);
+    expect(texts.filter((c) => c.text === "By Client").map((c) => c.x)).toEqual(
+      [440, 526],
+    );
+    expect(texts.filter((c) => c.text === "FOC").map((c) => c.x)).toEqual([
+      440, 526,
+    ]);
+    expect(texts.filter((c) => c.text === "Excluded").map((c) => c.x)).toEqual([
+      440, 526,
+    ]);
+    expect(texts.some((c) => c.text === "756.00" && c.x === 526)).toBe(true);
+    expect(texts.some((c) => c.text === "1,200.00")).toBe(false);
+  });
   it("retains stationery geometry and immutable quotation content and figures", () => {
     const q = referenceQuotation();
     const before = JSON.stringify(q);

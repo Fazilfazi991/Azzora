@@ -10,6 +10,13 @@ export interface BoqNode {
 }
 export type BoqCreation<T> = { quotation: Quotation } & T;
 
+/** Legacy Heading rows remain parents; new parent descriptions use an explicit role. */
+export const isBoqParentDescription = (row: QuotationLineItem) =>
+  row.boqRole === "parent" || row.pricingType === "Heading";
+
+const canContainPricedChildren = (row: QuotationLineItem) =>
+  row.pricingType !== "Normal Rate";
+
 /** Presentation traversal only: never infer identity or parentage from visible numbers. */
 export function boqTree(section: QuotationSection): BoqNode[] {
   const ids = new Set(section.rows.map((row) => row.id));
@@ -73,6 +80,17 @@ export function numberingMode(q: Quotation): "automatic" | "preserve" {
     !q.history.some((h) => h.action === "Reference imported" || h.snapshot)
     ? "automatic"
     : "preserve";
+}
+/** Client-facing category notation only; hierarchy IDs and number paths stay stable. */
+export function displayBoqCategoryNumber(
+  q: Quotation,
+  section: QuotationSection,
+): string {
+  return numberingMode(q) === "automatic" &&
+    !section.parentId &&
+    /^\d+$/.test(section.number)
+    ? section.number + ".00"
+    : section.number;
 }
 function validate(q: Quotation) {
   const ids = new Set<string>();
@@ -227,10 +245,11 @@ export function addBoqRow(
   const next = draftCopy(q),
     section = sectionAt(next, sectionId),
     parent = options.parentId ? nodeAt(section, options.parentId) : undefined;
-  if (parent && parent.row.pricingType !== "Heading")
+  if (parent && !canContainPricedChildren(parent.row))
     throw Error(
-      "Use a Heading (No Price) parent before adding child items; an existing billable parent must be changed explicitly.",
+      "A billable parent must be changed to a nonbillable pricing type before adding child items.",
     );
+  if (parent) parent.row.boqRole = "parent";
   const row = blankLine(
     nextNumber(
       parent?.row.number || section.number.replace(/\.00$/, ""),
@@ -241,7 +260,8 @@ export function addBoqRow(
   row.id = newId(next);
   if (options.kind === "heading")
     Object.assign(row, {
-      pricingType: "Heading",
+      boqRole: "parent",
+      pricingType: "By Client",
       quantity: "",
       rate: "",
       unit: "",
@@ -412,10 +432,11 @@ export function setBoqRowParent(
   if (parentId && ids.has(parentId))
     throw Error("An item cannot be parented to itself or its descendants.");
   const parent = parentId ? nodeAt(section, parentId) : undefined;
-  if (parent && parent.row.pricingType !== "Heading")
+  if (parent && !canContainPricedChildren(parent.row))
     throw Error(
-      "Use a Heading (No Price) parent before attaching child items.",
+      "A billable parent must be changed to a nonbillable pricing type before attaching child items.",
     );
+  if (parent) parent.row.boqRole = "parent";
   section.rows = section.rows.filter((r) => !ids.has(r.id));
   if (parentId) node.row.parentId = parentId;
   else delete node.row.parentId;

@@ -631,7 +631,7 @@ export function printQuotation(q: Quotation) {
       escape(q.number) +
       '</title><base href="' +
       escape(location.origin) +
-      '/"><style>@page{size:A4;margin:0}body{margin:0}.sheet{width:210mm;height:297mm;break-after:page}.sheet:last-child{break-after:auto}svg{width:100%;height:100%}</style></head><body>' +
+      '/"><style>@page{size:A4;margin:0}body{margin:0}.sheet{width:210mm;height:297mm;break-after:page}.sheet:last-child{break-after:auto}.sheet svg{display:block;width:100%;height:100%}</style></head><body>' +
       layoutQuotation(q)
         .map((p) => '<div class="sheet">' + pageSvg(p) + "</div>")
         .join("") +

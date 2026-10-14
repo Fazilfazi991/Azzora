@@ -1,8 +1,16 @@
 import { chromium, expect } from "@playwright/test";
 import fs from "node:fs";
-import { browserOptions } from "./browser-runtime.mjs";
-const url = process.env.AZZORA_URL || "http://127.0.0.1:5173",
-  out = "docs/operational-evidence";
+import { browserOptions, auditUrl } from "./browser-runtime.mjs";
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+const url = auditUrl,
+  out = process.env.QA_OPERATIONAL_EVIDENCE_DIR || "docs/operational-evidence";
+const sourceSha = execFileSync("git", ["rev-parse", "HEAD"], {
+  encoding: "utf8",
+}).trim();
+const sourceTree = execFileSync("git", ["rev-parse", "HEAD:src"], {
+  encoding: "utf8",
+}).trim();
 fs.mkdirSync(out, { recursive: true });
 const browser = await chromium.launch(browserOptions),
   checks = [],
@@ -14,6 +22,7 @@ try {
         viewport: { width, height: 1000 },
       }),
       page = await context.newPage();
+    page.setDefaultTimeout(15000);
     page.on("pageerror", (e) => errors.push(e.message));
     page.on("console", (m) => {
       if (m.type() === "error") errors.push(m.text());
@@ -275,11 +284,13 @@ try {
       "original budget, actual costs, extinguished commitments and forecast overrun reconcile",
     );
     await go("team");
-    await button("Add Employee").click();
+    await button("+ Add Employee").click();
     const employeeName = "Phase 3 Site Employee " + width;
     await dlabel("Employee name").fill(employeeName);
-    await dlabel("Employee role").selectOption("Site Engineer");
-    await dlabel("Employee email").fill(`site${width}@example.com`);
+    await dlabel("Role").fill("Site Engineer");
+    await dlabel("Department").fill("Site Operations");
+    await dlabel("Demo actor").selectOption("person-0");
+    await dlabel("Email").fill(`site${width}@example.com`);
     await dbutton("Save Employee").click();
     data = await saved();
     const employeeId = data.people.find((p) => p.name === employeeName).id;
@@ -287,6 +298,7 @@ try {
     await dlabel("Project").selectOption(projectId);
     await dlabel("Person").selectOption(employeeId);
     await dlabel("Project role").selectOption("Site Engineer");
+    await dlabel("Demo actor").selectOption("person-0");
     await dbutton("Save Assignment").click();
     await go(`projects/${projectId}/tasks`);
     await button("+ Create Task").click();
@@ -295,7 +307,13 @@ try {
     await dbutton("Save Changes").click();
     await go("team");
     await page.locator(".team-card").filter({ hasText: employeeName }).click();
-    await dbutton("Archive Employee").click();
+    await dbutton("Deactivate Employee").click();
+    await dlabel("Demo actor").selectOption("person-0");
+    await dlabel("Reason").fill(
+      "QA employee deactivation preserves historical ownership",
+    );
+    await dbutton("Deactivate").click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     data = await saved();
     expect(
       data.tasks.find((t) => t.name === "Employee ownership check").assigneeId,
@@ -313,20 +331,83 @@ try {
     await go(`projects/${projectId}/documents`);
     await button("+ Add Document").click();
     await dlabel("Document name").fill("Phase 3 drawing");
-    await dlabel("Review comments").fill("Initial drawing submission");
-    await dbutton("Save Document").click();
-    await button("Submit Drawing for Review").click();
-    await decide("Revise dimensions", false);
-    await button("New Document Revision").click();
-    await dlabel("Review comments").fill("Revised dimensions");
-    await dbutton("Save Document").click();
-    await button("Submit Drawing for Review").last().click();
+    await dlabel("Revision description").fill("Initial drawing submission");
+    await dlabel("Demo submitter").selectOption("person-3");
+    await dlabel("Assigned document reviewer").selectOption("person-0");
+    await dlabel("Review note / reason").fill(
+      "Initial drawing submitted for independent review",
+    );
+    await dbutton("Submit Revision").click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    data = await saved();
+    const firstDocument = data.documents.find((d) => d.projectId === projectId);
+    expect(
+      data.operations.approvals.filter(
+        (a) =>
+          a.kind === "Document" &&
+          a.entityId === firstDocument.id &&
+          a.status === "Pending Approval",
+      ),
+    ).toHaveLength(1);
+    await button("Review Phase 3 drawing v1").click();
+    await dlabel("Demo reviewer").selectOption("person-0");
+    await dlabel("Review note / reason").fill("Revise dimensions");
+    await dbutton("Reject Revision").click();
+    data = await saved();
+    const rejectedDocument = JSON.stringify(
+      data.documents.find((d) => d.id === firstDocument.id),
+    );
+    const rejectedApproval = JSON.stringify(
+      data.operations.approvals.find(
+        (a) => a.kind === "Document" && a.entityId === firstDocument.id,
+      ),
+    );
+    await button("Review Phase 3 drawing v1").click();
+    await dlabel("Demo reviewer").selectOption("person-3");
+    await dlabel("Review note / reason").fill("Revised dimensions");
+    await dbutton("Create Revision").click();
+    await dlabel("Revision description").fill("Revised dimensions");
+    await dlabel("Demo submitter").selectOption("person-3");
+    await dlabel("Assigned document reviewer").selectOption("person-0");
+    await dlabel("Review note / reason").fill(
+      "Corrected dimensions resubmitted",
+    );
+    await dbutton("Submit Revision").click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await go("approvals");
+    await label("Demo actor").selectOption("person-0");
     await decide("Revised dimensions verified");
     data = await saved();
     const docs = data.documents.filter((d) => d.projectId === projectId);
     expect(docs).toHaveLength(2);
     expect(docs[0].reviewState).toBe("Revise & Resubmit");
     expect(docs[1].reviewState).toBe("Approved");
+    expect(docs[0].status).toBe("Rejected");
+    expect(docs[1].status).toBe("Approved");
+    expect(
+      JSON.stringify(data.documents.find((d) => d.id === firstDocument.id)),
+    ).toBe(rejectedDocument);
+    expect(
+      JSON.stringify(
+        data.operations.approvals.find(
+          (a) => a.kind === "Document" && a.entityId === firstDocument.id,
+        ),
+      ),
+    ).toBe(rejectedApproval);
+    expect(
+      data.operations.approvals.filter(
+        (a) =>
+          a.kind === "Document" &&
+          a.projectId === projectId &&
+          a.status === "Pending Approval" &&
+          !a.supersededBy,
+      ),
+    ).toHaveLength(0);
+    check(
+      width,
+      "canonical document submission/workspace rejection/shared-inbox approval agree atomically and preserve v1 history",
+    );
+    await go(`projects/${projectId}/documents`);
     await shot("documents");
     check(
       width,
@@ -343,11 +424,38 @@ try {
       await dbutton("Mark Complete").click();
       await expect(dialog()).toHaveCount(0);
     }
+    await go(`projects/${projectId}/site-updates`);
+    await button("+ Post Site Update").click();
+    await dlabel("Work completed").fill(
+      "QA completed fit-out and independent site inspection",
+    );
+    await dlabel("Manpower count").fill("12");
+    await dlabel("Demo site author").selectOption("person-3");
+    await dbutton("Post Update").click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await button("Supervisory review / history").click();
+    await dlabel("Demo supervisor").selectOption("person-0");
+    await dlabel("Supervision note / reason").fill(
+      "Site completion independently verified",
+    );
+    await dbutton("Approve Site Record").click();
+    expect(
+      (await saved()).updates.find((u) => u.projectId === projectId)
+        .reviewStatus,
+    ).toBe("Approved");
+    check(
+      width,
+      "site record is submitted by an active author and independently supervised before handover",
+    );
     await go(`projects/${projectId}/handover`);
     const boxes = page.locator("main input[type=checkbox]:not([disabled])");
     for (let i = 0; i < (await boxes.count()); i++) await boxes.nth(i).check();
     await expect(button("Complete Project")).toBeEnabled();
     await button("Complete Project").click();
+    await dlabel("Demo handover reviewer").selectOption("person-0");
+    await dlabel("Handover confirmation note").fill(
+      "Operational criteria verified; commercial obligations remain separate",
+    );
     await dbutton("Confirm").click();
     await expect(button("Record Commercial Closure")).toBeDisabled();
     const closureCsv = page.waitForEvent("download");
@@ -427,7 +535,23 @@ try {
       check(width, "responsive " + route);
     }
     const final = await saved();
-    fs.writeFileSync(`${out}/qa-data-${width}.json`, JSON.stringify(final));
+    const fixtureRaw = JSON.stringify(final);
+    fs.writeFileSync(`${out}/qa-data-${width}.json`, fixtureRaw);
+    fs.writeFileSync(
+      `${out}/fixture-manifest-${width}.json`,
+      JSON.stringify(
+        {
+          sourceSha,
+          sourceTree,
+          url,
+          width,
+          fixtureSha256: createHash("sha256").update(fixtureRaw).digest("hex"),
+          createdAt: new Date().toISOString(),
+        },
+        null,
+        2,
+      ),
+    );
     await page.reload();
     expect(await saved()).toEqual(final);
     check(width, "operational persistence after reload");
@@ -436,7 +560,7 @@ try {
   if (errors.length) throw Error(errors.join("\n"));
   fs.writeFileSync(
     `${out}/browser-results.json`,
-    JSON.stringify({ checks, errors }, null, 2),
+    JSON.stringify({ sourceSha, sourceTree, url, checks, errors }, null, 2),
   );
   console.log(
     `PASS: ${checks.length} operational journey/responsive checks; no browser errors.`,
@@ -444,7 +568,11 @@ try {
 } catch (error) {
   fs.writeFileSync(
     `${out}/browser-results.json`,
-    JSON.stringify({ checks, errors, failure: String(error) }, null, 2),
+    JSON.stringify(
+      { sourceSha, sourceTree, url, checks, errors, failure: String(error) },
+      null,
+      2,
+    ),
   );
   throw error;
 } finally {

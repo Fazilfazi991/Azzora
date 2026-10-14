@@ -1,10 +1,33 @@
 import { chromium, expect } from "@playwright/test";
 import fs from "node:fs";
-import { browserOptions } from "./browser-runtime.mjs";
-const url = process.env.AZZORA_URL || "http://127.0.0.1:5173";
-const out = "docs/operational-evidence";
+import { browserOptions, auditUrl } from "./browser-runtime.mjs";
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+const url = auditUrl;
+const out =
+  process.env.QA_OPERATIONAL_EVIDENCE_DIR || "docs/operational-evidence";
+const sourceSha = execFileSync("git", ["rev-parse", "HEAD"], {
+  encoding: "utf8",
+}).trim();
+const sourceTree = execFileSync("git", ["rev-parse", "HEAD:src"], {
+  encoding: "utf8",
+}).trim();
 // The journey produces a complete isolated fixture through the public UI.
-const fixture = JSON.parse(fs.readFileSync(`${out}/qa-data-1440.json`, "utf8"));
+const fixtureRaw = fs.readFileSync(`${out}/qa-data-1440.json`, "utf8");
+const fixture = JSON.parse(fixtureRaw);
+const fixtureManifest = JSON.parse(
+  fs.readFileSync(`${out}/fixture-manifest-1440.json`, "utf8"),
+);
+expect(
+  fixtureManifest.sourceTree,
+  "fixture must come from this application's current committed source tree",
+).toBe(sourceTree);
+expect(fixtureManifest.url).toBe(url);
+expect(fixtureManifest.fixtureSha256).toBe(
+  createHash("sha256").update(fixtureRaw).digest("hex"),
+);
+if (process.env.QA_RUN_KIND === "final")
+  expect(fixtureManifest.sourceSha).toBe(sourceSha);
 const browser = await chromium.launch(browserOptions),
   checks = [],
   errors = [];
@@ -14,6 +37,7 @@ try {
   const page = await browser.newPage({
     viewport: { width: 1440, height: 1000 },
   });
+  page.setDefaultTimeout(15000);
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => {
     if (m.type() === "error") errors.push(m.text());
@@ -113,39 +137,59 @@ try {
     "Refund reversal retains history and restores customer credit independently of receipts",
   );
   // Set up an assigned review that loses its reviewer, then recover through the UI.
-  await page.evaluate(async () => {
-    const commands = await import("/src/operations/repository.ts");
-    const db = JSON.parse(localStorage.getItem("azzora-demo-v1"));
-    const prior = db.operations.requests[0];
-    const material = commands.saveMaterial(
-      db,
-      { ...db.operations.materials[0], id: crypto.randomUUID(), number: "" },
-      "person-0",
-    );
-    const pr = commands.saveRequest(
-      db,
-      {
-        ...prior,
-        id: crypto.randomUUID(),
-        number: "",
-        materialIds: [material.id],
-        status: "Draft",
-        notes: "Reassignment QA",
-      },
-      "person-0",
-    );
-    commands.submitApproval(
-      db,
-      "Purchase Request",
-      pr.id,
-      "Internal",
-      "person-0",
-      "person-1",
-    );
-    db.people.find((p) => p.id === "person-1").status = "Inactive";
-    localStorage.setItem("azzora-demo-v1", JSON.stringify(db));
-  });
-  await page.reload();
+  const projectId = fixture.operations.orders[0].projectId;
+  await go(`projects/${projectId}/procurement/materials`);
+  await button("New Material Requirement").click();
+  await dialog()
+    .getByLabel("Procurement project", { exact: true })
+    .selectOption(projectId);
+  await dialog()
+    .getByLabel("Material/service name", { exact: true })
+    .fill("QA approver-reassignment material");
+  await dialog()
+    .getByLabel("Material specification", { exact: true })
+    .fill("QA independent approval route");
+  await dialog().getByLabel("Material unit", { exact: true }).fill("Nos");
+  await dialog().getByLabel("Quantity required", { exact: true }).fill("1");
+  await dialog()
+    .getByRole("button", { name: "Save Material Requirement", exact: true })
+    .click();
+  const materialId = (await saved()).operations.materials.find(
+    (m) => m.name === "QA approver-reassignment material",
+  ).id;
+  await go(`projects/${projectId}/procurement/requests`);
+  await button("New Purchase Request").click();
+  await dialog()
+    .getByLabel("Material requirements", { exact: true })
+    .selectOption(materialId);
+  await dialog()
+    .getByRole("button", { name: "Save Purchase Request", exact: true })
+    .click();
+  await label("Assigned demo approver").selectOption("person-1");
+  await button("Submit Purchase Request").click();
+  await go("team");
+  await page
+    .locator(".team-card")
+    .filter({
+      has: page.getByRole("heading", {
+        name: fixture.people.find((p) => p.id === "person-1").name,
+        exact: true,
+      }),
+    })
+    .click();
+  await dialog()
+    .getByRole("button", { name: "Deactivate Employee", exact: true })
+    .click();
+  await dialog()
+    .getByLabel("Demo actor", { exact: true })
+    .selectOption("person-0");
+  await dialog()
+    .getByLabel("Reason", { exact: true })
+    .fill("QA assigned reviewer left before approval");
+  await dialog()
+    .getByRole("button", { name: "Deactivate", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await go("approvals");
   await label("Decision comments").fill(
     "Original reviewer left; owner assumes review",
@@ -232,12 +276,29 @@ try {
   record(
     "Explicit financial blocking policy is surfaced in operational handover",
   );
-  await page.evaluate(() => {
-    const db = JSON.parse(localStorage.getItem("azzora-demo-v1"));
-    db.people.find((p) => p.id === "person-0").status = "Inactive";
-    localStorage.setItem("azzora-demo-v1", JSON.stringify(db));
-  });
-  await page.reload();
+  await go("team");
+  await page
+    .locator(".team-card")
+    .filter({
+      has: page.getByRole("heading", {
+        name: fixture.people.find((p) => p.id === "person-0").name,
+        exact: true,
+      }),
+    })
+    .click();
+  await dialog()
+    .getByRole("button", { name: "Deactivate Employee", exact: true })
+    .click();
+  await dialog()
+    .getByLabel("Demo actor", { exact: true })
+    .selectOption("person-2");
+  await dialog()
+    .getByLabel("Reason", { exact: true })
+    .fill("QA replacement actor retains company settings access");
+  await dialog()
+    .getByRole("button", { name: "Deactivate", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await go("settings");
   await label("Company phone").fill("+971 50 123 4567");
   await button("Save Company & Financial Settings").click();
@@ -257,7 +318,11 @@ try {
 } finally {
   fs.writeFileSync(
     `${out}/boundary-results.json`,
-    JSON.stringify({ checks, errors, failure }, null, 2),
+    JSON.stringify(
+      { sourceSha, sourceTree, url, fixtureManifest, checks, errors, failure },
+      null,
+      2,
+    ),
   );
   await browser.close();
 }

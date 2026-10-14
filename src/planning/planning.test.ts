@@ -256,6 +256,17 @@ describe("planning graph and proposals", () => {
     missing.planning![0].links.push(link(missing.planning![0].projectId, "missing", "a"));
     expect(() => decodeSavedData(JSON.stringify(missing))).toThrow();
   });
+  it("round-trips two planning-enabled projects without treating project-keyed rows as duplicate IDs", () => {
+    const db = seed();
+    const first = db.projects[0], second = db.projects[1];
+    const originalTasks = db.tasks.map((task) => [task.id, task.projectId, task.start, task.due]);
+    captureScheduleBaseline(db, first.id, first.managerId, "First project baseline");
+    captureScheduleBaseline(db, second.id, second.managerId, "Second project baseline");
+    const loaded = decodeSavedData(JSON.stringify(db));
+    expect(loaded.planning?.map((row) => row.projectId)).toEqual([first.id, second.id]);
+    expect(loaded.tasks.map((task) => [task.id, task.projectId, task.start, task.due])).toEqual(originalTasks);
+    expect(loaded.planning?.every((row) => row.baselineStatus === "Captured")).toBe(true);
+  });
   it("instantiates edited twelve-phase preview exactly once with parallel links", () => {
     const db = seed(), project = db.projects[0];
     db.tasks = db.tasks.filter((row) => row.projectId !== project.id);

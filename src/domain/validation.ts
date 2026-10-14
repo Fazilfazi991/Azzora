@@ -652,7 +652,9 @@ export function validateRelationships(db: Database) {
   const all = { ...db, ...db.operations };
   const index = new Map<string, Set<string>>();
   for (const [key, value] of Object.entries(all)) {
-    if (!Array.isArray(value) || key === "closures") continue;
+    // Planning rows are keyed by projectId, not id; validatePlanningData checks
+    // their uniqueness and nested references after this generic entity pass.
+    if (!Array.isArray(value) || key === "closures" || key === "planning") continue;
     const ids = (value as { id: string }[]).map((v) => v.id);
     if (new Set(ids).size !== ids.length)
       throw Error(`Duplicate record IDs in ${key}.`);

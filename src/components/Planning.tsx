@@ -7,6 +7,7 @@ import { Header, Badge, Progress, personName, Empty, Modal } from "./ui";
 import {
   approveScheduleProposal,
   captureScheduleBaseline,
+  completeManualMilestone,
   draftMilestoneCreation,
   draftScheduleProposal,
   getPlanningView,
@@ -53,6 +54,7 @@ export function Planning({ projectId, onTask, filteredIds }: {
   const [calendarDraft, setCalendarDraft] = useState<ProjectCalendar | null>(null);
   const [templatePreview, setTemplatePreview] = useState<FitOutTemplatePreview | null>(null);
   const [selectedMilestoneId, setSelectedMilestoneId] = useState("");
+  const [manualMilestoneReason, setManualMilestoneReason] = useState("");
   const [paths, setPaths] = useState<{ id: string; d: string }[]>([]);
   const chartRef = useRef<HTMLDivElement>(null);
   const barRefs = useRef(new Map<string, HTMLButtonElement>());
@@ -275,13 +277,21 @@ export function Planning({ projectId, onTask, filteredIds }: {
       const projection = nodeView.get("milestone:" + milestone.id);
       const condition = projectPlanning?.milestonePlanning.find((item) => item.milestoneId === milestone.id)?.completionCondition;
       const linkedTask = db.tasks.find((item) => item.id === milestone.taskId);
-      return <Modal title={`Milestone: ${milestone.name}`} onClose={() => setSelectedMilestoneId("")}>
+      return <Modal title={`Milestone: ${milestone.name}`} onClose={() => { setSelectedMilestoneId(""); setManualMilestoneReason(""); }}>
         <p><strong>Approved event:</strong> {dateLabel(milestone.due)}</p>
         <p><strong>Baseline:</strong> {projection?.baseline ? dateLabel(projection.baseline.start) : "Not captured"}</p>
         <p><strong>Proposed:</strong> {projection?.proposed ? dateLabel(projection.proposed.start) : "None"}</p>
         <p><strong>Completion condition:</strong> {condition?.kind || "Manual"}</p>
+        <p><strong>Condition state:</strong> {projection?.completionSatisfied ? "Satisfied" : "Pending"}. An event date alone does not complete this milestone.</p>
         {planning?.blockers.filter((item) => item.node?.kind === "milestone" && item.node.id === milestone.id).map((item, index) => <p key={index} role="status">{item.detail}</p>)}
-        {linkedTask && <button type="button" onClick={() => { setSelectedMilestoneId(""); onTask(linkedTask); }}>Open linked task</button>}
+        {condition?.kind === "Manual" && !projection?.completionSatisfied && <div className="planning-manual-completion">
+          <label>Project Manager confirmation reason<input value={manualMilestoneReason} minLength={3} onChange={(event) => setManualMilestoneReason(event.target.value)} placeholder="Record the explicit condition check" /></label>
+          <button type="button" disabled={manualMilestoneReason.trim().length < 3} onClick={() => {
+            const saved = mutate((next) => { completeManualMilestone(next, milestone.id, actorId, manualMilestoneReason); }, "Manual milestone condition confirmed");
+            if (saved) { setSelectedMilestoneId(""); setManualMilestoneReason(""); }
+          }}>Confirm manual milestone condition</button>
+        </div>}
+        {linkedTask && <button type="button" onClick={() => { setSelectedMilestoneId(""); setManualMilestoneReason(""); onTask(linkedTask); }}>Open linked task</button>}
       </Modal>;
     })()}
     <section className="planning-review" id="planning-review" aria-label="Schedule proposal review">

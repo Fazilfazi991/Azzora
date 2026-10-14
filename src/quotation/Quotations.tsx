@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
+import { ChevronDown } from "lucide-react";
 import { useStore } from "../store";
 import { Header, Field, Badge, Confirm, Modal, Empty } from "../components/ui";
 import type { Quotation, QuotationLineItem } from "./model";
 import { pricingTypes, quotationStatuses } from "./model";
 import {
-  blankLine,
   newQuotation,
   saveQuotation,
   copyQuotation,
@@ -37,6 +37,22 @@ import type { Project, Client } from "../domain/model";
 import { discountAmount } from "./calculations";
 import { QuotationGuide } from "./QuotationGuide";
 import { QuotationLivePreview } from "./QuotationLivePreview";
+import {
+  addBoqCategory,
+  addBoqRow,
+  deleteBoqCategory,
+  duplicateBoqCategory,
+  moveBoqCategory,
+  deleteBoqRow,
+  duplicateBoqRow,
+  moveBoqRow,
+  setBoqRowParent,
+  setBoqCategoryParent,
+  numberingMode,
+  boqTree,
+  boqGroupAmount,
+} from "./hierarchy";
+import "./quotation-hierarchy.css";
 const open = (id: string, mode = "edit") => {
   location.hash = "/quotations/" + id + "/" + mode;
 };
@@ -47,6 +63,25 @@ const safe = <T,>(fn: () => T, fallback: T): T => {
     return fallback;
   }
 };
+function visibleBoqRows(
+  nodes: ReturnType<typeof boqTree>,
+  ancestors: string[] = [],
+): {
+  row: QuotationLineItem;
+  depth: number;
+  ancestors: string[];
+  childCount: number;
+}[] {
+  return nodes.flatMap((node) => [
+    {
+      row: node.row,
+      depth: node.depth,
+      ancestors,
+      childCount: node.children.length,
+    },
+    ...visibleBoqRows(node.children, [...ancestors, node.row.id]),
+  ]);
+}
 function Order({
   index,
   length,
@@ -106,6 +141,7 @@ export function Quotations({
   const [showLivePreview, setShowLivePreview] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
+  const [collapsedParents, setCollapsedParents] = useState<string[]>([]);
   const [scopeSearch, setScopeSearch] = useState("");
   const [addCustomer, setAddCustomer] = useState(false),
     [addProject, setAddProject] = useState(false),
@@ -155,32 +191,31 @@ export function Quotations({
   }
   function update(fn: (copy: Quotation) => void) {
     if (!q) return false;
-    const next = structuredClone(q);
-    fn(next);
-    return mutate((d) => saveQuotation(d, next), "");
+    try {
+      const next = structuredClone(q);
+      fn(next);
+      setError("");
+      return mutate((d) => saveQuotation(d, next), "");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : String(error));
+      return false;
+    }
   }
   function addCategory(parentIndex?: number) {
     if (!q) return;
-    const parent =
-      parentIndex === undefined ? undefined : q.sections[parentIndex];
-    const category = {
-      id: uid(),
-      number: parent ? parent.number + ".1" : String(q.sections.length + 1),
-      title: parent ? "New subcategory" : "New work category",
-      parentId: parent?.id,
-      rows: [],
-    };
+    let categoryId = "";
     if (
       update((n) => {
-        n.sections.splice(
-          parentIndex === undefined ? n.sections.length : parentIndex + 1,
-          0,
-          category,
-        );
+        const result = addBoqCategory(n, {
+          parentId:
+            parentIndex === undefined ? undefined : q.sections[parentIndex].id,
+        });
+        categoryId = result.categoryId;
+        Object.assign(n, result.quotation);
       })
     ) {
       setScopeSearch("");
-      setSelectedCategory(category.id);
+      setSelectedCategory(categoryId);
       setSelectedItem(null);
     }
   }
@@ -193,24 +228,27 @@ export function Quotations({
     const section = q.sections[sectionIndex];
     const parent =
       parentIndex === undefined ? undefined : section.rows[parentIndex];
-    const row = blankLine(
-      parent
-        ? parent.number + ".1"
-        : section.number.replace(/\.00$/, "") + "." + (section.rows.length + 1),
-      parent?.id,
-    );
-    if (heading)
-      Object.assign(row, { pricingType: "Heading", quantity: "", rate: "" });
+    let rowId = "";
     if (
       update((n) => {
-        n.sections[sectionIndex].rows.splice(
-          parentIndex === undefined ? section.rows.length : parentIndex + 1,
-          0,
-          row,
-        );
+        const result = addBoqRow(n, section.id, {
+          kind: heading ? "heading" : "priced",
+          parentId: parent?.id,
+        });
+        rowId = result.rowId;
+        Object.assign(n, result.quotation);
       })
     ) {
-      setSelectedItem(row.id);
+      setSelectedItem(rowId);
+      if (parent) {
+        const ancestors =
+          visibleBoqRows(boqTree(section)).find(
+            (node) => node.row.id === parent.id,
+          )?.ancestors || [];
+        setCollapsedParents((collapsed) =>
+          collapsed.filter((id) => id !== parent.id && !ancestors.includes(id)),
+        );
+      }
     }
   }
   function duplicate(id: string, rev = false) {
@@ -642,16 +680,10 @@ export function Quotations({
   );
   const activeStep = step < 0 ? 0 : step;
   const complexScope = q.sections.some(
-    (s) =>
-      s.parentId ||
-      s.rows.some(
-        (r) =>
-          r.parentId ||
-          r.pricingType === "Heading" ||
-          r.amountOverride !== undefined,
-      ),
+    (s) => s.parentId || s.rows.some((r) => r.amountOverride !== undefined),
   );
   const advanced = advancedChoice ?? complexScope;
+  const automaticNumbering = numberingMode(q) === "automatic";
   const scopeNeedle = scopeSearch.trim().toLowerCase();
   const matchesScope = (section: Quotation["sections"][number]) =>
     !scopeNeedle ||
@@ -879,8 +911,8 @@ export function Quotations({
                     <div>
                       <h2>Build your scope of work</h2>
                       <p>
-                        Add a work category, then priced items with quantity and
-                        rate.
+                        Add a work category, then a priced item or a parent
+                        description with child items.
                       </p>
                     </div>
                     <button onClick={() => setShowExample(true)}>
@@ -904,8 +936,8 @@ export function Quotations({
                     <summary>Advanced scope explained</summary>
                     <p className="muted">
                       Simple mode follows work category → priced item. Advanced
-                      controls add subcategories, headings without prices and
-                      item breakdowns for a detailed BOQ (bill of quantities).
+                      controls add subcategories and document layout settings.
+                      Parent descriptions and child items are always available.
                       Switching modes keeps every category, item and amount.
                     </p>
                   </details>
@@ -918,6 +950,7 @@ export function Quotations({
                         setScopeSearch(e.target.value);
                         setSelectedCategory(null);
                         setSelectedItem(null);
+                        setCollapsedParents([]);
                       }}
                     />
                   </Field>
@@ -1254,9 +1287,14 @@ export function Quotations({
                       </button>
                     </div>
                     <p className="muted">
-                      A work category groups related work. Each priced item
-                      calculates quantity × rate. A heading only groups items
-                      and creates no charge.
+                      Each priced item calculates quantity × rate. Use a parent
+                      work description to group child items without a parent
+                      charge.
+                    </p>
+                    <p className="quotation-numbering-note">
+                      {automaticNumbering
+                        ? "Numbers follow category, parent and child order automatically. Moving or duplicating a parent includes its children."
+                        : "Original/manual numbering is preserved for this quotation. New items receive unused numbers; existing numbers and issued history stay unchanged."}
                     </p>
                     {!q.sections.length && (
                       <Empty>
@@ -1327,6 +1365,7 @@ export function Quotations({
                                   <Field label="Category No.">
                                     <input
                                       value={s.number}
+                                      readOnly={automaticNumbering}
                                       onChange={(e) =>
                                         update((n) => {
                                           n.sections[si].number =
@@ -1351,8 +1390,14 @@ export function Quotations({
                                         value={s.parentId || ""}
                                         onChange={(e) =>
                                           update((n) => {
-                                            n.sections[si].parentId =
-                                              e.target.value || undefined;
+                                            Object.assign(
+                                              n,
+                                              setBoqCategoryParent(
+                                                n,
+                                                s.id,
+                                                e.target.value || undefined,
+                                              ),
+                                            );
                                           })
                                         }
                                       >
@@ -1374,11 +1419,32 @@ export function Quotations({
                                 <div className="boq-section-controls">
                                   <Order
                                     label={"section " + s.number}
-                                    index={si}
-                                    length={q.sections.length}
+                                    index={q.sections
+                                      .filter(
+                                        (category) =>
+                                          (category.parentId || "") ===
+                                          (s.parentId || ""),
+                                      )
+                                      .findIndex(
+                                        (category) => category.id === s.id,
+                                      )}
+                                    length={
+                                      q.sections.filter(
+                                        (category) =>
+                                          (category.parentId || "") ===
+                                          (s.parentId || ""),
+                                      ).length
+                                    }
                                     move={(d) =>
                                       update((n) => {
-                                        n.sections = reorder(n.sections, si, d);
+                                        Object.assign(
+                                          n,
+                                          moveBoqCategory(
+                                            n,
+                                            s.id,
+                                            d < 0 ? -1 : 1,
+                                          ),
+                                        );
                                       })
                                     }
                                   />
@@ -1417,22 +1483,15 @@ export function Quotations({
                                       <button
                                         onClick={() =>
                                           update((n) => {
-                                            const copy = structuredClone(s);
-                                            copy.id = uid();
-                                            const ids = new Map(
-                                              copy.rows.map((r) => [
-                                                r.id,
-                                                uid(),
-                                              ]),
+                                            const result = duplicateBoqCategory(
+                                              n,
+                                              s.id,
                                             );
-                                            copy.rows = copy.rows.map((r) => ({
-                                              ...r,
-                                              id: ids.get(r.id)!,
-                                              parentId: r.parentId
-                                                ? ids.get(r.parentId)
-                                                : undefined,
-                                            }));
-                                            n.sections.splice(si + 1, 0, copy);
+                                            Object.assign(n, result.quotation);
+                                            setSelectedCategory(
+                                              result.categoryId,
+                                            );
+                                            setSelectedItem(null);
                                           })
                                         }
                                       >
@@ -1440,13 +1499,18 @@ export function Quotations({
                                       </button>
                                       <button
                                         onClick={() =>
-                                          update((n) => {
-                                            n.sections.splice(si, 1);
-                                            n.sections.forEach((x) => {
-                                              if (x.parentId === s.id)
-                                                delete x.parentId;
-                                            });
-                                          })
+                                          confirm(
+                                            "Delete category " +
+                                              s.number +
+                                              ", its subcategories and all items?",
+                                            () =>
+                                              update((n) =>
+                                                Object.assign(
+                                                  n,
+                                                  deleteBoqCategory(n, s.id),
+                                                ),
+                                              ),
+                                          )
                                         }
                                       >
                                         Delete section
@@ -1457,20 +1521,15 @@ export function Quotations({
                               </div>
                               <div className="boq-section-toolbar">
                                 {advanced && (
-                                  <>
-                                    <button onClick={() => addCategory(si)}>
-                                      <span aria-hidden="true">+ </span>Add
-                                      Subcategory
-                                    </button>
-                                    <button
-                                      className="primary boq-add-main"
-                                      onClick={() => addItem(si, true)}
-                                    >
-                                      <span aria-hidden="true">+ </span>Add
-                                      Heading (No Price)
-                                    </button>
-                                  </>
+                                  <button onClick={() => addCategory(si)}>
+                                    <span aria-hidden="true">+ </span>Add
+                                    Subcategory
+                                  </button>
                                 )}
+                                <button onClick={() => addItem(si, true)}>
+                                  <span aria-hidden="true">+ </span>Add Parent
+                                  Work Description
+                                </button>
                                 <button
                                   className="primary"
                                   onClick={() => addItem(si)}
@@ -1479,15 +1538,6 @@ export function Quotations({
                                   Item
                                 </button>
                               </div>
-                              {advanced && (
-                                <p className="quotation-context-help">
-                                  Item breakdowns are separately priced. A
-                                  priced parent and its priced children all
-                                  contribute to the total. Use a Heading (No
-                                  Price) to group children without adding a
-                                  parent charge.
-                                </p>
-                              )}
                               {!s.rows.length && (
                                 <p className="quotation-guide-help">
                                   No items yet. Add a priced item to describe
@@ -1495,348 +1545,568 @@ export function Quotations({
                                   quantity and rate.
                                 </p>
                               )}
-                              {s.rows.map((r, ri) => {
-                                const edit = <
-                                  K extends keyof QuotationLineItem,
-                                >(
-                                  key: K,
-                                  value: QuotationLineItem[K],
-                                ) =>
-                                  update((n) => {
-                                    const row = n.sections[si].rows[ri];
-                                    row[key] = value;
-                                    if (key === "quantity" || key === "rate") {
-                                      delete row.amountOverride;
-                                      delete row.overrideReason;
-                                    }
-                                  });
-                                return (
-                                  <details
-                                    open={
-                                      selectedItem !== "closed" &&
-                                      r.id ===
-                                        (s.rows.find(
-                                          (item) => item.id === selectedItem,
-                                        )?.id ||
-                                          s.rows.find(
-                                            (item) =>
-                                              scopeNeedle &&
-                                              (
-                                                item.number +
-                                                " " +
-                                                item.description +
-                                                " " +
-                                                item.location
-                                              )
-                                                .toLowerCase()
-                                                .includes(scopeNeedle),
-                                          )?.id ||
-                                          s.rows[0]?.id)
-                                    }
-                                    className={
-                                      "quote-line " +
-                                      (r.pricingType === "Heading"
-                                        ? "heading-line"
-                                        : "") +
-                                      (r.parentId
-                                        ? " quotation-item-breakdown"
-                                        : "")
-                                    }
-                                    key={r.id}
-                                    data-testid="quote-line"
-                                  >
-                                    <summary
-                                      className="quotation-item-summary"
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        setSelectedItem(
-                                          e.currentTarget.parentElement?.hasAttribute(
-                                            "open",
-                                          )
-                                            ? "closed"
-                                            : r.id,
+                              {visibleBoqRows(boqTree(s)).map(
+                                (
+                                  { row: r, depth, ancestors, childCount },
+                                  _index,
+                                  treeRows,
+                                ) => {
+                                  const siblings = s.rows.filter(
+                                    (item) =>
+                                      (item.parentId || "") ===
+                                      (r.parentId || ""),
+                                  );
+                                  const siblingIndex = siblings.findIndex(
+                                    (item) => item.id === r.id,
+                                  );
+                                  const descendants = treeRows.filter((node) =>
+                                    node.ancestors.includes(r.id),
+                                  );
+                                  const parentDescription =
+                                    r.pricingType === "Heading";
+                                  const grouped =
+                                    parentDescription || childCount > 0;
+                                  const collapsed = collapsedParents.includes(
+                                    r.id,
+                                  );
+                                  const ri = s.rows.findIndex(
+                                    (item) => item.id === r.id,
+                                  );
+                                  const edit = <
+                                    K extends keyof QuotationLineItem,
+                                  >(
+                                    key: K,
+                                    value: QuotationLineItem[K],
+                                  ) =>
+                                    update((n) => {
+                                      if (key === "parentId") {
+                                        Object.assign(
+                                          n,
+                                          setBoqRowParent(
+                                            n,
+                                            s.id,
+                                            r.id,
+                                            value as string | undefined,
+                                          ),
                                         );
-                                      }}
-                                    >
-                                      <span>
-                                        {r.number} ·{" "}
-                                        {r.description ||
-                                          (r.pricingType === "Heading"
-                                            ? "New heading · No price"
-                                            : "New priced item")}
-                                      </span>
-                                      <span>
-                                        {" · "}
-                                        {r.pricingType === "Heading"
-                                          ? "No price"
-                                          : safe(
-                                              () => displayAmount(r),
-                                              "Check values",
-                                            )}
-                                      </span>
-                                    </summary>
-                                    {r.parentId && (
-                                      <p className="muted">
-                                        Item breakdown of{" "}
-                                        {s.rows.find(
-                                          (parent) => parent.id === r.parentId,
-                                        )?.number || "parent item"}
-                                      </p>
-                                    )}
-                                    <div className="quote-line-fields">
-                                      <Field label="Item No.">
-                                        <input
-                                          value={r.number}
-                                          onChange={(e) =>
-                                            edit("number", e.target.value)
+                                        return;
+                                      }
+                                      const row = n.sections
+                                        .find((section) => section.id === s.id)!
+                                        .rows.find((item) => item.id === r.id)!;
+                                      row[key] = value;
+                                      if (
+                                        key === "quantity" ||
+                                        key === "rate"
+                                      ) {
+                                        delete row.amountOverride;
+                                        delete row.overrideReason;
+                                      }
+                                    });
+                                  const itemExpanded =
+                                    selectedItem !== "closed" &&
+                                    r.id ===
+                                      (s.rows.find(
+                                        (item) => item.id === selectedItem,
+                                      )?.id ||
+                                        s.rows.find(
+                                          (item) =>
+                                            scopeNeedle &&
+                                            (
+                                              item.number +
+                                              " " +
+                                              item.description +
+                                              " " +
+                                              item.location
+                                            )
+                                              .toLowerCase()
+                                              .includes(scopeNeedle),
+                                        )?.id ||
+                                        s.rows[0]?.id);
+                                  const parentActions = grouped ? (
+                                    <div className="quotation-parent-actions">
+                                      {parentDescription && (
+                                        <button
+                                          onClick={() => addItem(si, false, ri)}
+                                        >
+                                          <span aria-hidden="true">+ </span>
+                                          Add Child Item
+                                        </button>
+                                      )}
+                                      {childCount > 0 && (
+                                        <button
+                                          className="quotation-children-toggle"
+                                          aria-label={
+                                            "Children of item " + r.number
                                           }
-                                        />
-                                      </Field>
-                                      <Field label="Description">
-                                        <textarea
-                                          rows={Math.min(
-                                            6,
-                                            Math.max(
-                                              2,
-                                              r.description.split("\n").length,
-                                            ),
-                                          )}
-                                          value={r.description}
-                                          onChange={(e) =>
-                                            edit("description", e.target.value)
-                                          }
-                                        />
-                                      </Field>
-                                      <Field label="Quantity">
-                                        <input
-                                          inputMode="decimal"
-                                          value={r.quantity}
-                                          onChange={(e) =>
-                                            edit("quantity", e.target.value)
-                                          }
-                                          disabled={[
-                                            "Heading",
-                                            "Included",
-                                          ].includes(r.pricingType)}
-                                        />
-                                      </Field>
-                                      <Field label="Unit">
-                                        <input
-                                          list="quotation-units"
-                                          value={r.unit}
-                                          onChange={(e) =>
-                                            edit("unit", e.target.value)
-                                          }
-                                          disabled={[
-                                            "Heading",
-                                            "Included",
-                                          ].includes(r.pricingType)}
-                                        />
-                                      </Field>
-                                      <Field label="Rate / Unit">
-                                        <input
-                                          inputMode="decimal"
-                                          value={r.rate}
-                                          onChange={(e) =>
-                                            edit("rate", e.target.value)
-                                          }
-                                          disabled={
-                                            r.pricingType !== "Normal Rate"
-                                          }
-                                        />
-                                      </Field>
-                                      <Field label="Pricing Type">
-                                        <select
-                                          value={r.pricingType}
-                                          onChange={(e) =>
-                                            edit(
-                                              "pricingType",
-                                              e.target
-                                                .value as QuotationLineItem["pricingType"],
+                                          aria-expanded={!collapsed}
+                                          aria-controls={descendants
+                                            .map(
+                                              (node) =>
+                                                "boq-node-" + node.row.id,
+                                            )
+                                            .join(" ")}
+                                          onClick={() =>
+                                            setCollapsedParents((parents) =>
+                                              collapsed
+                                                ? parents.filter(
+                                                    (id) => id !== r.id,
+                                                  )
+                                                : [...parents, r.id],
                                             )
                                           }
                                         >
-                                          {pricingTypes.map((p) => (
-                                            <option key={p}>{p}</option>
-                                          ))}
-                                        </select>
-                                      </Field>
-                                    </div>
-                                    <div className="between">
+                                          <ChevronDown
+                                            size={16}
+                                            aria-hidden="true"
+                                          />
+                                          {childCount} child item
+                                          {childCount === 1 ? "" : "s"}
+                                        </button>
+                                      )}
                                       <output
-                                        aria-label="Line amount"
-                                        className="quotation-calculated"
+                                        aria-label={
+                                          parentDescription
+                                            ? "Children subtotal"
+                                            : "Group total"
+                                        }
                                       >
-                                        <span className="muted">
-                                          {r.pricingType === "Heading"
-                                            ? "Heading · No price"
-                                            : r.pricingType === "Normal Rate"
-                                              ? r.amountOverride
-                                                ? "Line amount · Manual override: "
-                                                : "Line amount · Quantity × rate: "
-                                              : "Pricing: "}
-                                        </span>
+                                        {parentDescription
+                                          ? "Children subtotal: "
+                                          : "Group total: "}
                                         {safe(
-                                          () => displayAmount(r),
-                                          "Check quantity / rate",
+                                          () =>
+                                            formatMoney(
+                                              boqGroupAmount(s, r.id),
+                                              true,
+                                            ),
+                                          "Check values",
                                         )}
                                       </output>
-                                      <div className="actions">
-                                        <Order
-                                          label={"row " + r.number}
-                                          index={ri}
-                                          length={s.rows.length}
-                                          move={(d) =>
-                                            update((n) => {
-                                              n.sections[si].rows = reorder(
-                                                n.sections[si].rows,
-                                                ri,
-                                                d,
-                                              );
-                                            })
-                                          }
-                                        />
-                                        {advanced && (
-                                          <button
-                                            onClick={() =>
-                                              addItem(si, false, ri)
-                                            }
-                                          >
-                                            Add Item Breakdown
-                                          </button>
-                                        )}
-                                        <button
-                                          onClick={() =>
-                                            update((n) => {
-                                              n.sections[si].rows.splice(
-                                                ri + 1,
-                                                0,
-                                                {
-                                                  ...structuredClone(r),
-                                                  id: uid(),
-                                                },
-                                              );
-                                            })
-                                          }
-                                        >
-                                          Duplicate row
-                                        </button>
-                                        <button
-                                          onClick={() =>
-                                            update((n) => {
-                                              n.sections[si].rows.splice(ri, 1);
-                                              n.sections[si].rows.forEach(
-                                                (x) => {
-                                                  if (x.parentId === r.id)
-                                                    delete x.parentId;
-                                                },
-                                              );
-                                            })
-                                          }
-                                        >
-                                          Delete row
-                                        </button>
-                                      </div>
+                                      {!parentDescription && (
+                                        <span className="muted">
+                                          Existing priced parent. Use a new
+                                          non-priced parent for new child work.
+                                        </span>
+                                      )}
                                     </div>
-                                    <details>
-                                      <summary>
-                                        Area, notes & document layout
-                                      </summary>
-                                      <div className="form-grid">
-                                        <Field label="Location / Area">
-                                          <input
-                                            value={r.location}
-                                            onChange={(e) =>
-                                              edit("location", e.target.value)
-                                            }
-                                          />
-                                        </Field>
-                                        <Field label="Notes">
-                                          <textarea
-                                            value={r.notes}
-                                            onChange={(e) =>
-                                              edit("notes", e.target.value)
-                                            }
-                                          />
-                                        </Field>
-                                        <Field label="Parent item">
-                                          <select
-                                            value={r.parentId || ""}
-                                            onChange={(e) =>
-                                              edit(
-                                                "parentId",
-                                                e.target.value || undefined,
+                                  ) : null;
+                                  return (
+                                    <div
+                                      key={r.id}
+                                      id={"boq-node-" + r.id}
+                                      className={
+                                        "quotation-boq-node" +
+                                        (r.parentId ? " is-child" : "")
+                                      }
+                                      hidden={ancestors.some((id) =>
+                                        collapsedParents.includes(id),
+                                      )}
+                                      style={
+                                        {
+                                          "--boq-depth": Math.min(depth, 4),
+                                        } as CSSProperties
+                                      }
+                                      data-row-id={r.id}
+                                      data-parent-id={r.parentId || ""}
+                                      data-row-number={r.number}
+                                    >
+                                      <details
+                                        open={itemExpanded}
+                                        className={
+                                          "quote-line " +
+                                          (r.pricingType === "Heading"
+                                            ? "heading-line"
+                                            : "") +
+                                          (r.parentId
+                                            ? " quotation-item-breakdown"
+                                            : "")
+                                        }
+                                        data-testid="quote-line"
+                                        data-row-id={r.id}
+                                        data-parent-id={r.parentId || ""}
+                                      >
+                                        <summary
+                                          className="quotation-item-summary"
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            setSelectedItem(
+                                              e.currentTarget.parentElement?.hasAttribute(
+                                                "open",
                                               )
-                                            }
-                                          >
-                                            <option value="">No parent</option>
-                                            {s.rows
-                                              .slice(0, ri)
-                                              .map((parent) => (
-                                                <option
-                                                  key={parent.id}
-                                                  value={parent.id}
-                                                >
-                                                  {parent.number}{" "}
-                                                  {parent.description.slice(
-                                                    0,
-                                                    40,
-                                                  )}
-                                                </option>
+                                                ? "closed"
+                                                : r.id,
+                                            );
+                                          }}
+                                        >
+                                          <span>
+                                            {r.number} ·{" "}
+                                            {r.description ||
+                                              (r.pricingType === "Heading"
+                                                ? "New parent work description"
+                                                : "New priced item")}
+                                            <span className="quotation-row-kind">
+                                              {parentDescription
+                                                ? "Parent description · Not billable"
+                                                : r.parentId
+                                                  ? "Child item · " +
+                                                    (r.pricingType ===
+                                                    "Normal Rate"
+                                                      ? "Billable"
+                                                      : r.pricingType)
+                                                  : "Direct item · " +
+                                                    (r.pricingType ===
+                                                    "Normal Rate"
+                                                      ? "Billable"
+                                                      : r.pricingType)}
+                                            </span>
+                                          </span>
+                                          <span>
+                                            {" · "}
+                                            {r.pricingType === "Heading"
+                                              ? "No parent charge"
+                                              : safe(
+                                                  () => displayAmount(r),
+                                                  "Check values",
+                                                )}
+                                          </span>
+                                        </summary>
+                                        {itemExpanded && parentActions}
+                                        {r.parentId && (
+                                          <p className="muted">
+                                            Child of{" "}
+                                            {s.rows.find(
+                                              (parent) =>
+                                                parent.id === r.parentId,
+                                            )?.number || "parent item"}
+                                          </p>
+                                        )}
+                                        <div className="quote-line-fields">
+                                          <Field label="Item No.">
+                                            <input
+                                              value={r.number}
+                                              readOnly={automaticNumbering}
+                                              onChange={(e) =>
+                                                edit("number", e.target.value)
+                                              }
+                                            />
+                                          </Field>
+                                          <Field label="Description">
+                                            <textarea
+                                              rows={Math.min(
+                                                6,
+                                                Math.max(
+                                                  2,
+                                                  r.description.split("\n")
+                                                    .length,
+                                                ),
+                                              )}
+                                              value={r.description}
+                                              onChange={(e) =>
+                                                edit(
+                                                  "description",
+                                                  e.target.value,
+                                                )
+                                              }
+                                            />
+                                          </Field>
+                                          <Field label="Quantity">
+                                            <input
+                                              inputMode="decimal"
+                                              value={r.quantity}
+                                              onChange={(e) =>
+                                                edit("quantity", e.target.value)
+                                              }
+                                              disabled={[
+                                                "Heading",
+                                                "Included",
+                                              ].includes(r.pricingType)}
+                                            />
+                                          </Field>
+                                          <Field label="Unit">
+                                            <input
+                                              list="quotation-units"
+                                              value={r.unit}
+                                              onChange={(e) =>
+                                                edit("unit", e.target.value)
+                                              }
+                                              disabled={[
+                                                "Heading",
+                                                "Included",
+                                              ].includes(r.pricingType)}
+                                            />
+                                          </Field>
+                                          <Field label="Rate / Unit">
+                                            <input
+                                              inputMode="decimal"
+                                              value={r.rate}
+                                              onChange={(e) =>
+                                                edit("rate", e.target.value)
+                                              }
+                                              disabled={
+                                                r.pricingType !== "Normal Rate"
+                                              }
+                                            />
+                                          </Field>
+                                          <Field label="Pricing Type">
+                                            <select
+                                              value={r.pricingType}
+                                              disabled={
+                                                parentDescription &&
+                                                childCount > 0
+                                              }
+                                              onChange={(e) =>
+                                                edit(
+                                                  "pricingType",
+                                                  e.target
+                                                    .value as QuotationLineItem["pricingType"],
+                                                )
+                                              }
+                                            >
+                                              {pricingTypes.map((p) => (
+                                                <option key={p}>{p}</option>
                                               ))}
-                                          </select>
-                                        </Field>
-                                        <Field label="Start on a new document page">
-                                          <input
-                                            type="checkbox"
-                                            checked={!!r.pageBreakBefore}
-                                            onChange={(e) =>
-                                              edit(
-                                                "pageBreakBefore",
-                                                e.target.checked,
-                                              )
-                                            }
-                                          />
-                                        </Field>
-                                        {r.pricingType === "Normal Rate" && (
-                                          <>
-                                            <Field label="Source amount override (optional)">
+                                            </select>
+                                          </Field>
+                                        </div>
+                                        {r.parentId && (
+                                          <div className="quotation-row-area">
+                                            <Field label="Location / Area">
                                               <input
-                                                inputMode="decimal"
-                                                value={r.amountOverride || ""}
+                                                value={r.location}
                                                 onChange={(e) =>
                                                   edit(
-                                                    "amountOverride",
-                                                    e.target.value || undefined,
-                                                  )
-                                                }
-                                              />
-                                            </Field>
-                                            <Field label="Override reason">
-                                              <textarea
-                                                value={r.overrideReason || ""}
-                                                onChange={(e) =>
-                                                  edit(
-                                                    "overrideReason",
+                                                    "location",
                                                     e.target.value,
                                                   )
                                                 }
                                               />
                                             </Field>
-                                          </>
+                                          </div>
                                         )}
-                                      </div>
-                                    </details>
-                                    {r.amountOverride && (
-                                      <p className="muted">
-                                        Source amount override: AED{" "}
-                                        {r.amountOverride}. {r.overrideReason}{" "}
-                                        Changing quantity or rate clears it.
-                                      </p>
-                                    )}
-                                  </details>
-                                );
-                              })}
+                                        <div className="between">
+                                          <output
+                                            aria-label="Line amount"
+                                            className="quotation-calculated"
+                                          >
+                                            <span className="muted">
+                                              {r.pricingType === "Heading"
+                                                ? "Heading · No price"
+                                                : r.pricingType ===
+                                                    "Normal Rate"
+                                                  ? r.amountOverride
+                                                    ? "Line amount · Manual override: "
+                                                    : "Line amount · Quantity × rate: "
+                                                  : "Pricing: "}
+                                            </span>
+                                            {safe(
+                                              () => displayAmount(r),
+                                              "Check quantity / rate",
+                                            )}
+                                          </output>
+                                          <div className="actions">
+                                            <Order
+                                              label={"row " + r.number}
+                                              index={siblingIndex}
+                                              length={siblings.length}
+                                              move={(d) =>
+                                                update((n) => {
+                                                  Object.assign(
+                                                    n,
+                                                    moveBoqRow(
+                                                      n,
+                                                      s.id,
+                                                      r.id,
+                                                      d < 0 ? -1 : 1,
+                                                    ),
+                                                  );
+                                                })
+                                              }
+                                            />
+                                            <button
+                                              onClick={() =>
+                                                update((n) => {
+                                                  const result =
+                                                    duplicateBoqRow(
+                                                      n,
+                                                      s.id,
+                                                      r.id,
+                                                    );
+                                                  Object.assign(
+                                                    n,
+                                                    result.quotation,
+                                                  );
+                                                  setSelectedItem(result.rowId);
+                                                })
+                                              }
+                                            >
+                                              {childCount
+                                                ? "Duplicate parent & children"
+                                                : "Duplicate row"}
+                                            </button>
+                                            <button
+                                              onClick={() => {
+                                                const remove = () => {
+                                                  if (
+                                                    update((n) =>
+                                                      Object.assign(
+                                                        n,
+                                                        deleteBoqRow(
+                                                          n,
+                                                          s.id,
+                                                          r.id,
+                                                        ),
+                                                      ),
+                                                    )
+                                                  )
+                                                    setSelectedItem(null);
+                                                };
+                                                if (childCount)
+                                                  confirm(
+                                                    "Delete parent " +
+                                                      r.number +
+                                                      " and its " +
+                                                      descendants.length +
+                                                      " child item(s)?",
+                                                    remove,
+                                                  );
+                                                else remove();
+                                              }}
+                                            >
+                                              {childCount
+                                                ? "Delete parent & children"
+                                                : "Delete row"}
+                                            </button>
+                                          </div>
+                                        </div>
+                                        <details>
+                                          <summary>
+                                            Area, notes & document layout
+                                          </summary>
+                                          <div className="form-grid">
+                                            {!r.parentId && (
+                                              <Field label="Location / Area">
+                                                <input
+                                                  value={r.location}
+                                                  onChange={(e) =>
+                                                    edit(
+                                                      "location",
+                                                      e.target.value,
+                                                    )
+                                                  }
+                                                />
+                                              </Field>
+                                            )}
+                                            <Field label="Notes">
+                                              <textarea
+                                                value={r.notes}
+                                                onChange={(e) =>
+                                                  edit("notes", e.target.value)
+                                                }
+                                              />
+                                            </Field>
+                                            <Field label="Parent item">
+                                              <select
+                                                value={r.parentId || ""}
+                                                onChange={(e) =>
+                                                  edit(
+                                                    "parentId",
+                                                    e.target.value || undefined,
+                                                  )
+                                                }
+                                              >
+                                                <option value="">
+                                                  No parent
+                                                </option>
+                                                {s.rows
+                                                  .filter(
+                                                    (parent) =>
+                                                      parent.id ===
+                                                        r.parentId ||
+                                                      (parent.pricingType ===
+                                                        "Heading" &&
+                                                        parent.id !== r.id &&
+                                                        !descendants.some(
+                                                          (node) =>
+                                                            node.row.id ===
+                                                            parent.id,
+                                                        )),
+                                                  )
+                                                  .map((parent) => (
+                                                    <option
+                                                      key={parent.id}
+                                                      value={parent.id}
+                                                    >
+                                                      {parent.number}{" "}
+                                                      {parent.description.slice(
+                                                        0,
+                                                        40,
+                                                      )}
+                                                    </option>
+                                                  ))}
+                                              </select>
+                                            </Field>
+                                            <Field label="Start on a new document page">
+                                              <input
+                                                type="checkbox"
+                                                checked={!!r.pageBreakBefore}
+                                                onChange={(e) =>
+                                                  edit(
+                                                    "pageBreakBefore",
+                                                    e.target.checked,
+                                                  )
+                                                }
+                                              />
+                                            </Field>
+                                            {r.pricingType ===
+                                              "Normal Rate" && (
+                                              <>
+                                                <Field label="Source amount override (optional)">
+                                                  <input
+                                                    inputMode="decimal"
+                                                    value={
+                                                      r.amountOverride || ""
+                                                    }
+                                                    onChange={(e) =>
+                                                      edit(
+                                                        "amountOverride",
+                                                        e.target.value ||
+                                                          undefined,
+                                                      )
+                                                    }
+                                                  />
+                                                </Field>
+                                                <Field label="Override reason">
+                                                  <textarea
+                                                    value={
+                                                      r.overrideReason || ""
+                                                    }
+                                                    onChange={(e) =>
+                                                      edit(
+                                                        "overrideReason",
+                                                        e.target.value,
+                                                      )
+                                                    }
+                                                  />
+                                                </Field>
+                                              </>
+                                            )}
+                                          </div>
+                                        </details>
+                                        {r.amountOverride && (
+                                          <p className="muted">
+                                            Source amount override: AED{" "}
+                                            {r.amountOverride}.{" "}
+                                            {r.overrideReason} Changing quantity
+                                            or rate clears it.
+                                          </p>
+                                        )}
+                                      </details>
+                                      {!itemExpanded && parentActions}
+                                    </div>
+                                  );
+                                },
+                              )}
                             </>
                           )}
                         </details>
@@ -2349,38 +2619,42 @@ export function Quotations({
             </div>
           </dl>
           <p>
-            For a longer scope, add a subcategory (for example Internal
-            finishes), a heading without a price, or an item breakdown using
-            advanced controls. Each normally priced breakdown is charged
-            separately.
+            For a detailed scope, add a parent work description and use Add
+            Child Item for each room or area. The parent carries no charge;
+            priced children carry their own quantity × rate amounts.
           </p>
           <button
             disabled={locked}
             className="primary"
             onClick={() => {
-              const categoryId = uid();
-              const item = {
-                ...blankLine(),
-                description:
-                  "Prepare and paint living-room walls · Fictional example",
-                quantity: "40",
-                unit: "M2",
-                rate: "35",
-              };
+              let categoryId = "",
+                itemId = "";
               if (
                 update((n) => {
-                  const number = String(n.sections.length + 1);
-                  n.sections.push({
-                    id: categoryId,
-                    number,
+                  const category = addBoqCategory(n, {
                     title: "Painting · Fictional example",
-                    rows: [{ ...item, number: number + ".1" }],
+                  });
+                  categoryId = category.categoryId;
+                  const item = addBoqRow(category.quotation, categoryId, {
+                    kind: "priced",
+                  });
+                  itemId = item.rowId;
+                  Object.assign(n, item.quotation);
+                  const row = n.sections
+                    .find((section) => section.id === categoryId)!
+                    .rows.find((row) => row.id === itemId)!;
+                  Object.assign(row, {
+                    description:
+                      "Prepare and paint living-room walls · Fictional example",
+                    quantity: "40",
+                    unit: "M2",
+                    rate: "35",
                   });
                 })
               ) {
                 setScopeSearch("");
                 setSelectedCategory(categoryId);
-                setSelectedItem(item.id);
+                setSelectedItem(itemId);
                 setShowExample(false);
               }
             }}

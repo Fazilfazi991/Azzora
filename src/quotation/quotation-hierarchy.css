@@ -1,0 +1,90 @@
+.quotation-module .quotation-boq-node {
+  margin-left: calc(var(--boq-depth, 0) * 20px);
+  min-width: 0;
+}
+.quotation-module .quotation-boq-node.is-child {
+  padding-left: 12px;
+  border-left: 1px solid var(--quotation-edge, var(--line));
+}
+.quotation-module .quotation-boq-node > .quote-line {
+  margin-bottom: 0;
+}
+.quotation-module .quotation-parent-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 12px;
+  margin-bottom: 16px;
+  background: var(--quotation-canvas, #fdf8f6);
+  border: 1px solid var(--quotation-edge, var(--line));
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
+}
+.quotation-module .quotation-parent-actions button {
+  min-height: 44px;
+  font-size: 12px;
+}
+.quotation-module .quotation-parent-actions output {
+  font-size: 12px;
+  font-family: "Space Grotesk", Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--quotation-muted, var(--muted));
+}
+.quotation-module .quotation-children-toggle {
+  background: transparent;
+  border-color: transparent;
+  color: var(--quotation-muted, var(--muted));
+}
+.quotation-module .quotation-children-toggle svg {
+  flex-shrink: 0;
+}
+.quotation-module .quotation-children-toggle[aria-expanded="false"] svg {
+  transform: rotate(-90deg);
+}
+.quotation-module .quotation-row-kind {
+  display: block;
+  color: var(--quotation-muted, var(--muted));
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+  margin-top: 4px;
+}
+.quotation-module .quote-line .quotation-parent-actions {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--quotation-edge, var(--line));
+  border-radius: 0;
+  padding: 0 0 12px;
+}
+.quotation-module .quotation-row-area {
+  max-width: 600px;
+}
+.quotation-module .quotation-row-area .field {
+  margin-bottom: 16px;
+}
+.quotation-module .quotation-numbering-note {
+  padding: 12px 0;
+  margin: 0 0 16px;
+  font-size: 12px;
+  color: var(--quotation-muted, var(--muted));
+  border-bottom: 1px solid var(--quotation-edge, var(--line));
+}
+.quotation-module .quotation-boq-node input[readonly] {
+  color: var(--quotation-muted, var(--muted));
+  background: var(--quotation-canvas, #fdf8f6);
+}
+@media (max-width: 767px) {
+  .quotation-module .quotation-boq-node {
+    margin-left: calc(var(--boq-depth, 0) * 8px);
+  }
+  .quotation-module .quotation-boq-node.is-child {
+    padding-left: 8px;
+  }
+  .quotation-module .quotation-parent-actions {
+    padding: 12px 8px;
+  }
+  .quotation-module .quotation-parent-actions output {
+    flex-basis: 100%;
+  }
+}

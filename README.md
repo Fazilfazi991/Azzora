@@ -1,6 +1,8 @@
 # AZZORA — Interior Fit-Out Project Control
 
-A functional, browser-local demo adapted from the supplied Google Stitch screens. Original HTML, screenshots, ZIP and logo PDF are retained unchanged.
+A functional, browser-local demo adapted from the supplied Google Stitch screens. Supplied HTML, design screenshots and logo PDF are retained. The redundant ZIP and generated QA/browser database exports are excluded from GitHub publication.
+
+See the [complete CRM GitHub delivery and verification record](docs/coordination/GITHUB-DELIVERY.md) and [client demo walkthrough](docs/coordination/CLIENT-DEMO-WALKTHROUGH.md).
 
 ## Run
 

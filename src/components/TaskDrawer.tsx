@@ -6,6 +6,7 @@ import { saveTask } from "../domain/repository";
 import { uid } from "../domain/logic";
 import { Modal, Field, Empty, personName } from "./ui";
 import { Attachments } from "./uploads";
+import { WorkflowError } from "../workforce/ui";
 export function TaskDrawer({
   task,
   onClose,
@@ -129,11 +130,20 @@ export function TaskDrawer({
             onChange={(e) => set("assigneeId", e.target.value)}
           >
             <option value="">Unassigned</option>
-            {db.people.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} · {p.role}
-              </option>
-            ))}
+            {db.people
+              .filter(
+                (p) => p.status !== "Inactive" || p.id === draft.assigneeId,
+              )
+              .map((p) => (
+                <option
+                  disabled={p.status === "Inactive"}
+                  key={p.id}
+                  value={p.id}
+                >
+                  {p.name} · {p.role}
+                  {p.status === "Inactive" ? " · Inactive" : ""}
+                </option>
+              ))}
           </select>
         </Field>
         <div className="form-grid">
@@ -274,6 +284,7 @@ export function TaskDrawer({
         {!db.activities.some((a) => a.entityId === task.id) && (
           <Empty>No activity recorded yet.</Empty>
         )}
+        <WorkflowError />
         <div className="sticky-actions">
           <button type="button" onClick={() => save(true)}>
             Mark Complete

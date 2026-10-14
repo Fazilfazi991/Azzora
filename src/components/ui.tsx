@@ -93,6 +93,7 @@ export function Modal({
   drawer?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
   useEffect(() => {
     const dialog = ref.current;
     dialog?.showModal();
@@ -101,14 +102,31 @@ export function Modal({
   return (
     <dialog
       ref={ref}
+      aria-labelledby={titleId}
       className={drawer ? "drawer" : ""}
       onCancel={onClose}
+      onKeyDown={(e) => {
+        if (e.key !== "Tab") return;
+        const controls = [
+          ...e.currentTarget.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex="0"]',
+          ),
+        ].filter((element) => element.getClientRects().length > 0);
+        const target = e.shiftKey ? controls.at(-1) : controls[0];
+        if (
+          (e.shiftKey && document.activeElement === controls[0]) ||
+          (!e.shiftKey && document.activeElement === controls.at(-1))
+        ) {
+          e.preventDefault();
+          target?.focus();
+        }
+      }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div className="modal-head">
-        <h2>{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         <button onClick={onClose} aria-label="Close dialog">
           <X size={20} />
         </button>
@@ -130,7 +148,7 @@ export function Confirm({
 }) {
   return (
     <Modal title={title} onClose={onClose}>
-      <p>{children}</p>
+      <div>{children}</div>
       <div className="actions">
         <button onClick={onClose}>Cancel</button>
         <button className="primary" onClick={onConfirm}>

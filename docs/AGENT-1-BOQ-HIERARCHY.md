@@ -8,23 +8,22 @@ Worktree: `C:/Users/USER/Desktop/Projects/Azzora/azzora-accounts-navigation`; br
 
 All commands return a new quotation and leave their argument unchanged. Call inside the existing editor update callback, for example `const result = addBoqRow(n, sectionId, {kind:"heading"}); Object.assign(n, result.quotation);`, then select `result.rowId` after a successful save. Deletion/movement/reparenting return the quotation directly. Commands reject every non-Draft quotation.
 
-| Export | Return |
-| --- | --- |
-| `addBoqCategory(q,{title?,parentId?})` | `{quotation,categoryId}` |
-| `addBoqRow(q,sectionId,{kind:"heading"|"priced",parentId?})` | `{quotation,rowId}` |
-| `duplicateBoqRow(q,sectionId,rowId)` | `{quotation,rowId}` |
-| `deleteBoqRow(q,sectionId,rowId)` | `Quotation` |
-| `moveBoqRow(q,sectionId,rowId,-1|1)` | `Quotation` |
-| `duplicateBoqCategory(q,categoryId)` | `{quotation,categoryId}` |
-| `deleteBoqCategory(q,categoryId)` | `Quotation` |
-| `moveBoqCategory(q,categoryId,-1|1)` | `Quotation` |
-| `setBoqRowParent(q,sectionId,rowId,parentId?)` | `Quotation` |
-| `setBoqCategoryParent(q,categoryId,parentId?)` | `Quotation` |
-| `renumberBoq(q)` | `Quotation` |
-| 
-umberingMode(q)` | `"automatic"|"preserve"` |
-| `boqTree(section)` | `{row,children,depth}[]` |
-| `boqGroupAmount(section,rowId)` | `bigint` |
+| Export                                         | Return                   |
+| ---------------------------------------------- | ------------------------ |
+| `addBoqCategory(q,{title?,parentId?})`         | `{quotation,categoryId}` |
+| `addBoqRow(q,sectionId,options)`               | `{quotation,rowId}`      |
+| `duplicateBoqRow(q,sectionId,rowId)`           | `{quotation,rowId}`      |
+| `deleteBoqRow(q,sectionId,rowId)`              | `Quotation`              |
+| `moveBoqRow(q,sectionId,rowId,direction)`      | `Quotation`              |
+| `duplicateBoqCategory(q,categoryId)`           | `{quotation,categoryId}` |
+| `deleteBoqCategory(q,categoryId)`              | `Quotation`              |
+| `moveBoqCategory(q,categoryId,direction)`      | `Quotation`              |
+| `setBoqRowParent(q,sectionId,rowId,parentId?)` | `Quotation`              |
+| `setBoqCategoryParent(q,categoryId,parentId?)` | `Quotation`              |
+| `renumberBoq(q)`                               | `Quotation`              |
+| `numberingMode(q)`                             | automatic or preserve    |
+| `boqTree(section)`                             | `{row,children,depth}[]` |
+| `boqGroupAmount(section,rowId)`                | `bigint`                 |
 
 Moves are among siblings and carry the complete descendant subtree. Reparenting carries the complete group, accepts `undefined` to lift to the root, and rejects cycles/unknown parents; row targets must be Heading. Category duplicate/move/delete include subcategories and their complete row hierarchies. Duplicates remap every copied row/category ID and internal parent link; original IDs are retained. Missing parents, duplicate stable IDs and cycles reject without changing the source object.
 
@@ -47,3 +46,5 @@ Full unit rerun: **328 passed, 0 failed, 14 test files** (304 retained tests plu
 ## Nested-category correction
 
 Automatic numbering now follows category parentId recursively. Empty root1 → subcategory1.1 → nestedsubcategory1.1.1. Direct row roots occupy the first child ordinal slots; child categories follow them, so a category with rows1.1 and1.2 gives its first subcategory1.3. This shared namespace prevents row/category number collisions. Each subcategory applies the same rule recursively. Flattened section storage follows the resulting preorder, with all stable IDs, parent links and financial calculations unchanged. Four additional focused tests cover nested category numbers, mixed row/category uniqueness, complete nested category move/duplicate and reparenting. **28 focused tests pass.** API signatures and preserve-mode behavior are unchanged.
+
+Preview dependency integration now clears full TypeScript and scoped ESLint; Agent2 preview source was imported unchanged as local6c188f9e4f0bdb1b9f2b0af05bd4fe887bf04cac (originalb19e0f152165fbb22c56344c9d193dab410807d0).

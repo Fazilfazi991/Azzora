@@ -1,7 +1,7 @@
 import { chromium } from "@playwright/test";
 import fs from "node:fs";
-import { browserOptions } from "./browser-runtime.mjs";
-const base = process.env.AZZORA_TEST_URL || "http://127.0.0.1:5173";
+import { browserOptions, auditUrl } from "./browser-runtime.mjs";
+const base = process.env.AZZORA_TEST_URL || auditUrl;
 const browser = await chromium.launch(browserOptions);
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const errors = [];

@@ -97,6 +97,7 @@ export function Attachments({
             </span>
             <button
               type="button"
+              disabled={busy}
               onClick={() => onChange(files.filter((x) => x.id !== f.id))}
             >
               Remove

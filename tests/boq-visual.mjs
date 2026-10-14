@@ -1,11 +1,11 @@
 import { chromium, expect } from "@playwright/test";
 import fs from "node:fs";
-import { browserOptions } from "./browser-runtime.mjs";
+import { browserOptions, auditUrl } from "./browser-runtime.mjs";
 const browser = await chromium.launch(browserOptions);
 fs.mkdirSync("docs/boq", { recursive: true });
 for (const width of [1440, 1024, 768, 390]) {
   const page = await browser.newPage({ viewport: { width, height: 1000 } });
-  await page.goto("http://127.0.0.1:5173/#/quotations");
+  await page.goto(auditUrl + "/#/quotations");
   await page
     .getByRole("button", { name: "New quotation", exact: true })
     .click();

@@ -1,6 +1,7 @@
 import { chromium, expect } from "@playwright/test";
 import fs from "node:fs";
-import { browserOptions } from "./browser-runtime.mjs";
+import { browserOptions, auditUrl } from "./browser-runtime.mjs";
+fs.mkdirSync("docs/commercial-evidence", { recursive: true });
 const browser = await chromium.launch(browserOptions);
 const errors = [],
   checks = [];
@@ -14,9 +15,7 @@ try {
     if (m.type() === "error") errors.push(m.text());
   });
   const button = (name) => page.getByRole("button", { name, exact: true });
-  await page.goto(
-    "http://127.0.0.1:5173/#/quotations/quotation-reference/edit",
-  );
+  await page.goto(auditUrl + "/#/quotations/quotation-reference/edit");
   await page.getByLabel("Linked Project", { exact: true }).selectOption("");
   await button("Finalize").click();
   await page
@@ -45,12 +44,12 @@ try {
   record(
     "accepted quotation creates new project atomically with plan/team/handover and preserved quote",
   );
-  await page.goto("http://127.0.0.1:5173/#/accounts/invoices");
+  await page.goto(auditUrl + "/#/accounts/invoices");
   await expect(page.locator("main")).toContainText("one fils");
   await button("Generate Milestone Invoice").last().click();
   await expect(page.locator(".invoice-paper")).toContainText("AED 10,516.85");
   record("reference quotation final milestone explicitly reconciles one fils");
-  await page.goto("http://127.0.0.1:5173/#/projects");
+  await page.goto(auditUrl + "/#/projects");
   const before = await page.evaluate(
     () => JSON.parse(localStorage.getItem("azzora-demo-v1")).clients.length,
   );
@@ -86,7 +85,7 @@ try {
     ),
   ).toBe(before);
   record("New Project selects existing customer without inserting a duplicate");
-  await page.goto("http://127.0.0.1:5173/#/customers");
+  await page.goto(auditUrl + "/#/customers");
   await button("Add New Customer").click();
   dialog = page.getByRole("dialog").last();
   await dialog

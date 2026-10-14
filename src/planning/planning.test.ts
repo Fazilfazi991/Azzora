@@ -162,6 +162,19 @@ describe("planning graph and proposals", () => {
     expect(() => approveScheduleProposal(db, row.id, managerId)).toThrow(/stale/);
     expect(db.tasks.find((task) => task.id === "a")?.start).toBe("2026-11-02");
   });
+  it("preserves revision history while preventing an older submitted proposal from approval", () => {
+    const { db, project, managerId } = fixture([["a", "2026-11-02", "2026-11-03", 0]]);
+    const first = draftScheduleProposal(db, { projectId: project.id, initiatingNode: n("a"),
+      actorId: managerId, reason: "First timing", edit: { start: "2026-11-04" } });
+    submitScheduleProposal(db, first.id, managerId);
+    const second = draftScheduleProposal(db, { projectId: project.id, initiatingNode: n("a"),
+      actorId: managerId, reason: "Revised timing", edit: { start: "2026-11-05" } });
+    expect(first.revisedByProposalId).toBe(second.id);
+    expect(first.history.some((item) => item.action === "Revised")).toBe(true);
+    expect(() => approveScheduleProposal(db, first.id, managerId)).toThrow(/revised/);
+    expect(getPlanningView(db, project.id).activeProposal?.id).toBe(second.id);
+    expect(() => decodeSavedData(JSON.stringify(db))).not.toThrow();
+  });
   it("allows non-schedule save but blocks TaskDrawer-style date/link bypass after activation", () => {
     const { db } = fixture([["a", "2026-11-02", "2026-11-03", 0], ["b", "2026-11-04", "2026-11-05", 0]]);
     const task = db.tasks.find((row) => row.id === "b")!;

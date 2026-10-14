@@ -187,6 +187,10 @@ export function validatePlanningData(db: Database): void {
       if (proposal.proposedMilestone && proposal.proposedMilestone.projectId !== planning.projectId)
         throw Error("Saved proposed milestone points outside its project.");
     }
+    for (const item of planning.proposals)
+      if (item.revisedByProposalId && !planning.proposals.some((later) =>
+        later.id === item.revisedByProposalId && later.revision > item.revision))
+        throw Error("Saved proposal revision history is incompatible.");
   }
   for (const project of db.projects) getProjectPlanning(db, project.id);
 }

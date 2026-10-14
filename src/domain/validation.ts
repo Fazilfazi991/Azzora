@@ -78,6 +78,7 @@ const planningSnapshot = z.object({ id, revision: z.number().int().positive(), c
   actorId: id, reason: text, calendar: planningCalendar,
   nodes: z.array(z.object({ node: planningNode }).merge(planningDates)), links: z.array(planningLink), finish: localDate });
 const planningProposal = z.object({ id, projectId: id, revision: z.number().int().positive(),
+  revisedByProposalId: id.optional(),
   status: z.enum(["Draft", "Submitted", "Approved", "Rejected"]),
   sourceApprovedRevision: z.number().int().nonnegative(), sourceFingerprint: id,
   initiatingNode: planningNode, reason: text, initiatedBy: id,

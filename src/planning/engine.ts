@@ -313,7 +313,8 @@ export function getPlanningView(db: Database, projectId: string, asOf?: LocalDat
   const planning = getProjectPlanning(db, projectId);
   const dates = approvedNodeDates(db, planning);
   const path = cpm(db, planning, dates);
-  const activeProposal = [...planning.proposals].reverse().find((row) => row.status === "Draft" || row.status === "Submitted");
+  const activeProposal = [...planning.proposals].reverse().find((row) =>
+    !row.revisedByProposalId && (row.status === "Draft" || row.status === "Submitted"));
   const baseline = planning.baselineHistory.at(-1);
   const baselineMap = new Map(baseline?.nodes.map((row) => [nodeKey(row.node), row]) ?? []);
   const proposedMap = new Map(activeProposal?.changes.map((row) => [nodeKey(row.node), row.after]) ?? []);

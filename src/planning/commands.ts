@@ -38,6 +38,14 @@ function event(action: string, actorId: string, reason: string) {
 function nextRevision(planning: ProjectPlanning): number {
   return Math.max(0, ...planning.proposals.map((item) => item.revision)) + 1;
 }
+function appendDraft(planning: ProjectPlanning, row: ScheduleProposal, actorId: string): void {
+  for (const earlier of planning.proposals.filter((item) =>
+    !item.revisedByProposalId && (item.status === "Draft" || item.status === "Submitted"))) {
+    earlier.revisedByProposalId = row.id;
+    earlier.history.push(event("Revised", actorId, `Superseded by proposal ${row.id}.`));
+  }
+  planning.proposals.push(row);
+}
 function changed(a: { start: string; finish: string; durationWorkingDays: number }, b: typeof a): boolean {
   return a.start !== b.start || a.finish !== b.finish || a.durationWorkingDays !== b.durationWorkingDays;
 }
@@ -72,7 +80,7 @@ export function draftScheduleProposal(db: Database, input: DraftScheduleInput): 
     warnings: result.warnings, conflicts: result.conflicts,
     history: [event("Drafted", input.actorId, reason)],
   };
-  planning.proposals.push(row);
+  appendDraft(planning, row, input.actorId);
   return row;
 }
 export function draftTaskCreation(db: Database, task: Task, reason: string, actorId: string): ScheduleProposal {
@@ -95,7 +103,7 @@ export function draftTaskCreation(db: Database, task: Task, reason: string, acto
     changes: [], unchangedSuccessors: [], proposedTask: structuredClone(task),
     warnings: [], conflicts: [], history: [event("Drafted", actorId, reason)],
   };
-  enabled.proposals.push(row);
+  appendDraft(enabled, row, actorId);
   return row;
 }
 export function draftMilestoneCreation(db: Database, milestone: Milestone, reason: string, actorId: string): ScheduleProposal {
@@ -113,12 +121,13 @@ export function draftMilestoneCreation(db: Database, milestone: Milestone, reaso
     changes: [], unchangedSuccessors: [], proposedMilestone: structuredClone(milestone),
     warnings: [], conflicts: [], history: [event("Drafted", actorId, reason)],
   };
-  planning.proposals.push(row); return row;
+  appendDraft(planning, row, actorId); return row;
 }
 export function submitScheduleProposal(db: Database, proposalId: string, actorId: string, confirmLeadOverlap = false): void {
   actor(db, actorId);
   const [planning, row] = proposal(db, proposalId);
   if (row.status !== "Draft") throw Error("Only a draft schedule proposal can be submitted.");
+  if (row.revisedByProposalId) throw Error("This schedule proposal was revised; submit its latest draft instead.");
   if (row.conflicts.length) throw Error("Resolve all schedule conflicts before submission.");
   if (row.warnings.some((warning) => warning.code === "LeadOverlap") && !confirmLeadOverlap)
     throw Error("Confirm the negative-lag overlap before submitting this proposal.");
@@ -132,6 +141,7 @@ export function approveScheduleProposal(db: Database, proposalId: string, actorI
   const [planning, row] = proposal(db, proposalId);
   manager(db, planning.projectId, actorId);
   if (row.status !== "Submitted") throw Error("Only a submitted schedule proposal can be approved.");
+  if (row.revisedByProposalId) throw Error("This schedule proposal was revised; review the latest draft instead.");
   if (row.conflicts.length) throw Error("Conflicted schedule proposal cannot be approved.");
   if (row.sourceFingerprint !== sourceFingerprint(db, planning.projectId) || row.sourceApprovedRevision !== planning.approvedRevision)
     throw Error("Schedule proposal is stale; recalculate and resubmit.");
@@ -199,6 +209,7 @@ export function rejectScheduleProposal(db: Database, proposalId: string, actorId
   manager(db, planning.projectId, actorId);
   reason = reasonRequired(reason);
   if (row.status !== "Submitted") throw Error("Only a submitted schedule proposal can be rejected.");
+  if (row.revisedByProposalId) throw Error("This schedule proposal was revised; decide the latest draft instead.");
   row.status = "Rejected"; row.decidedAt = new Date().toISOString(); row.decidedBy = actorId;
   row.decisionReason = reason; row.history.push(event("Rejected", actorId, reason));
 }

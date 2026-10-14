@@ -89,6 +89,7 @@ export interface ScheduleProposal {
   id: string;
   projectId: string;
   revision: number;
+  revisedByProposalId?: string;
   status: "Draft" | "Submitted" | "Approved" | "Rejected";
   sourceApprovedRevision: number;
   sourceFingerprint: string;

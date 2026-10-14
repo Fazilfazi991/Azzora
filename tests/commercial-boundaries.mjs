@@ -1,7 +1,10 @@
 import { chromium, expect } from "@playwright/test";
 import fs from "node:fs";
 import { browserOptions, auditUrl } from "./browser-runtime.mjs";
-fs.mkdirSync("docs/commercial-evidence", { recursive: true });
+import { quotationStep } from "./quotation-ux-helpers.mjs";
+const output =
+  process.env.QA_COMMERCIAL_EVIDENCE_DIR || "docs/commercial-evidence";
+fs.mkdirSync(output, { recursive: true });
 const browser = await chromium.launch(browserOptions);
 const errors = [],
   checks = [];
@@ -16,7 +19,9 @@ try {
   });
   const button = (name) => page.getByRole("button", { name, exact: true });
   await page.goto(auditUrl + "/#/quotations/quotation-reference/edit");
+  await quotationStep(page, 0);
   await page.getByLabel("Linked Project", { exact: true }).selectOption("");
+  await quotationStep(page, 4);
   await button("Finalize").click();
   await page
     .getByRole("dialog")
@@ -156,7 +161,7 @@ try {
   );
   if (errors.length) throw Error(errors.join("\n"));
   fs.writeFileSync(
-    "docs/commercial-evidence/boundary-results.json",
+    `${output}/boundary-results.json`,
     JSON.stringify({ checks, errors }, null, 2),
   );
   console.log(

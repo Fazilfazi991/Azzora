@@ -1,9 +1,15 @@
 import { chromium, expect } from "@playwright/test";
 import fs from "node:fs";
 import { browserOptions, auditUrl } from "./browser-runtime.mjs";
+import {
+  quotationStep,
+  openQuotationCategory,
+  openQuotationItem,
+} from "./quotation-ux-helpers.mjs";
 
 const url = auditUrl;
-const output = "docs/commercial-evidence";
+const output =
+  process.env.QA_COMMERCIAL_EVIDENCE_DIR || "docs/commercial-evidence";
 fs.mkdirSync(output, { recursive: true });
 const browser = await chromium.launch(browserOptions);
 const checks = [],
@@ -67,31 +73,40 @@ try {
     check(width, "customer search and duplicate warning");
     await goto("quotations");
     await button("New quotation").click();
+    await quotationStep(page, 0);
     const quotationId = await page.evaluate(() => location.hash.split("/")[2]);
     await label("Linked Customer").selectOption(customerId);
-    await button("Add section").click();
+    await quotationStep(page, 1);
+    await button("Add Work Category").click();
     let section = page.getByTestId("quote-section").first();
+    await openQuotationCategory(section);
     await section
-      .getByLabel("Section description", { exact: true })
+      .getByLabel("Work category name", { exact: true })
       .fill("Commercial fit-out");
     await section
-      .getByRole("button", { name: "Add line", exact: true })
+      .getByRole("button", { name: "Add Priced Item", exact: true })
       .click();
+    await openQuotationItem(section.getByTestId("quote-line").first());
     await section
       .getByLabel("Description", { exact: true })
       .fill("Supply and installation");
     await section.getByLabel("Quantity", { exact: true }).fill("2.5");
     await section.getByLabel("Rate / Unit", { exact: true }).fill("400");
+    await quotationStep(page, 2);
     await expect(page.getByTestId("grand-total")).toHaveText("AED 1,050.00");
     // Add another customer inside the populated quotation. BOQ must survive.
+    await quotationStep(page, 0);
     await button("+ Add Customer").click();
     await dlabel("Customer/company name").fill("Quotation inline " + width);
     await dlabel("Email").fill(`inline${width}@example.com`);
     await dbutton("Save Customer").click();
     const inlineCustomerId = await label("Linked Customer").inputValue();
+    await quotationStep(page, 2);
     await expect(page.getByTestId("grand-total")).toHaveText("AED 1,050.00");
+    await quotationStep(page, 1);
     await expect(page.getByTestId("quote-line")).toHaveCount(1);
     check(width, "quotation inline customer creation preserves BOQ");
+    await quotationStep(page, 0);
     await button("+ Create Project").click();
     await expect(dlabel("Select Existing Customer")).toHaveValue(
       inlineCustomerId,
@@ -107,6 +122,7 @@ try {
     await expect(dialog()).toHaveCount(0);
     const projectId = await label("Linked Project").inputValue();
     expect(projectId).toBeTruthy();
+    await quotationStep(page, 2);
     await expect(page.getByTestId("grand-total")).toHaveText("AED 1,050.00");
     check(
       width,
@@ -114,9 +130,12 @@ try {
     );
     await button("Save Draft").click();
     await page.reload();
+    await quotationStep(page, 0);
     await expect(label("Linked Customer")).toHaveValue(inlineCustomerId);
     await expect(label("Linked Project")).toHaveValue(projectId);
+    await quotationStep(page, 2);
     await expect(page.getByTestId("grand-total")).toHaveText("AED 1,050.00");
+    await quotationStep(page, 4);
     await button("Finalize").click();
     await dbutton("Confirm").click();
     await label("Issued quotation status").selectOption("Accepted");
@@ -143,6 +162,7 @@ try {
       "issue, immutable acceptance, existing-project conversion and no automatic invoices",
     );
     await goto(`quotations/${quotationId}/edit`);
+    await quotationStep(page, 4);
     await expect(
       page.getByRole("link", { name: "Open Contract Project", exact: true }),
     ).toBeVisible();

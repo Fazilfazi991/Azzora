@@ -1,6 +1,7 @@
 import { chromium, expect } from "@playwright/test";
 import fs from "node:fs";
 import { browserOptions, auditUrl } from "./browser-runtime.mjs";
+import { quotationStep } from "./quotation-ux-helpers.mjs";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 const url = auditUrl,
@@ -75,8 +76,10 @@ try {
     ).toBeVisible();
     const projectId = await page.evaluate(() => location.hash.split("/")[2]);
     await go("quotations/quotation-reference/edit");
+    await quotationStep(page, 0);
     await label("Linked Customer").selectOption("client-0");
     await label("Linked Project").selectOption(projectId);
+    await quotationStep(page, 4);
     await button("Finalize").click();
     await dbutton("Confirm").click();
     await label("Issued quotation status").selectOption("Accepted");

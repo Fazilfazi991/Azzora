@@ -7,7 +7,7 @@ import {
   cents,
   paidAmount,
   round,
-  invoiceLineTotals,
+  invoiceCreditLines,
 } from "../commercial/calculations";
 import { decimal } from "../quotation/calculations";
 import { today } from "../domain/logic";
@@ -188,5 +188,5 @@ export function proportionalVat(
 export function invoiceItemTotals(i: Invoice, itemId: string) {
   const index = i.lines.findIndex((line) => line.id === itemId);
   if (index < 0) throw Error("Invoice item not found.");
-  return invoiceLineTotals(i)[index];
+  return invoiceCreditLines(i)[index];
 }

@@ -105,6 +105,93 @@ export function invoiceTotals(i: Invoice) {
     { subtotal: 0n, discount: 0n, net: 0n, vat: 0n, grand: 0n },
   );
 }
+/** Credit eligibility must use the posted line basis, never a new tax allocation. */
+export function invoiceCreditLines(i: Invoice) {
+  const review = () => {
+    throw Error(
+      "Original invoice allocation requires explicit review before credit adjustments.",
+    );
+  };
+  if (i.status === "Draft")
+    return invoiceLineTotals(i).map((line, index) => ({
+      ...line,
+      itemId: i.lines[index].id,
+    }));
+  const snapshot = i.snapshot;
+  if (!snapshot) return review();
+  if (new Set(i.lines.map((line) => line.id)).size !== i.lines.length)
+    return review();
+  let rows;
+  if (
+    snapshot.allocationVersion !== undefined ||
+    snapshot.lineAllocations !== undefined
+  ) {
+    if (
+      snapshot.allocationVersion !== 1 ||
+      !Array.isArray(snapshot.lineAllocations) ||
+      snapshot.lineAllocations.length !== i.lines.length
+    )
+      return review();
+    const ids = new Set<string>();
+    rows = snapshot.lineAllocations.map((line) => {
+      if (
+        ids.has(line.itemId) ||
+        !i.lines.some((item) => item.id === line.itemId) ||
+        !["Inclusive", "Exclusive", "Exempt", "Zero Rated"].includes(line.tax)
+      )
+        return review();
+      ids.add(line.itemId);
+      const money = (value: string) =>
+        /^\d+$/.test(value) ? BigInt(value) : review();
+      const row = {
+        itemId: line.itemId,
+        subtotal: money(line.subtotal),
+        discount: money(line.discount),
+        net: money(line.net),
+        vat: money(line.vat),
+        grand: money(line.grand),
+      };
+      const entered = row.subtotal - row.discount;
+      if (
+        entered < 0n ||
+        row.net + row.vat !== row.grand ||
+        (line.tax === "Inclusive" ? row.grand : row.net) !== entered ||
+        (["Exempt", "Zero Rated"].includes(line.tax) && row.vat !== 0n)
+      )
+        return review();
+      return row;
+    });
+  } else {
+    // A legacy invoice was issued with the old final-row remainder policy.
+    // Its allocation is reconstructible only when that policy had valid capacity.
+    const values = i.lines.map(lineGross),
+      subtotal = values.reduce((s, n) => s + n, 0n),
+      discount = cents(i.discount || "0");
+    let last = -1,
+      assigned = 0n;
+    values.forEach((n, index) => {
+      if (n > 0n) last = index;
+    });
+    values.forEach((n, index) => {
+      const share =
+        index === last
+          ? discount - assigned
+          : subtotal
+            ? (discount * n) / subtotal
+            : 0n;
+      if (share < 0n || share > n) review();
+      assigned += share;
+    });
+    rows = invoiceLineTotals(i).map((line, index) => ({
+      ...line,
+      itemId: i.lines[index].id,
+    }));
+  }
+  for (const key of ["subtotal", "discount", "net", "vat", "grand"] as const)
+    if (rows.reduce((sum, row) => sum + row[key], 0n) !== BigInt(snapshot[key]))
+      return review();
+  return i.lines.map((item) => rows.find((row) => row.itemId === item.id)!);
+}
 export function paidAmount(db: Database, id: string, asOf = today()) {
   return db.payments
     .filter(

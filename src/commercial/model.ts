@@ -19,6 +19,15 @@ export interface InvoiceLine {
   rate: string;
   tax: TaxTreatment;
 }
+export interface InvoiceLineAllocation {
+  itemId: string;
+  tax: TaxTreatment;
+  subtotal: string;
+  discount: string;
+  net: string;
+  vat: string;
+  grand: string;
+}
 export interface InvoiceSnapshot {
   customer: QuotationCustomerSnapshot & { trn: string };
   company: QuotationCompanyDetails;
@@ -29,6 +38,8 @@ export interface InvoiceSnapshot {
   net: string;
   vat: string;
   grand: string;
+  allocationVersion?: 1;
+  lineAllocations?: InvoiceLineAllocation[];
 }
 export interface Invoice {
   id: string;

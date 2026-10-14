@@ -1,8 +1,9 @@
 import { chromium, expect } from "@playwright/test";
 import fs from "node:fs";
+import { qaOutput, assertWhitespaceSiteRejected } from "./agent-3-helpers.mjs";
 import { browserOptions, auditUrl } from "./browser-runtime.mjs";
 
-const output = "docs/agent-3-evidence";
+const output = `${qaOutput}/interactions`;
 fs.mkdirSync(output, { recursive: true });
 const browser = await chromium.launch(browserOptions);
 const checks = [],
@@ -160,27 +161,10 @@ try {
     .click({ position: { x: 350, y: 10 } });
   await expect(page.locator(".sidebar")).not.toHaveClass(/open/);
   passed("mobile sidebar opens and closes using its backdrop");
-  // Owned operational form: whitespace currently passes native required validation.
-  await page.goto(`${auditUrl}/#/site-updates`);
-  await page
-    .getByRole("button", { name: "+ Post Site Update", exact: true })
-    .click();
-  await page
-    .getByRole("dialog")
-    .getByLabel("Work completed", { exact: true })
-    .fill("   ");
-  await page.getByRole("button", { name: "Post Update", exact: true }).click();
-  const whitespaceSaved = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("azzora-demo-v1"))?.updates.some(
-      (u) => u.completed === "   ",
-    ),
+  await assertWhitespaceSiteRejected(page);
+  passed(
+    "Whitespace-only site update is rejected by the validated write boundary",
   );
-  if (whitespaceSaved)
-    knownDefects.push({
-      id: "A3-008",
-      name: "Whitespace-only site update persists",
-      actual: "completed is three spaces",
-    });
   await context.close();
 } catch (error) {
   checks.push({
@@ -196,6 +180,7 @@ try {
   );
   await browser.close();
 }
+expect(knownDefects).toEqual([]);
 console.log(
-  `PASS: ${checks.length} interaction checks; ${new Set(knownDefects.map(d => d.id)).size} open defects (${knownDefects.length} observations).`,
+  `PASS: ${checks.length} interaction checks; ${new Set(knownDefects.map((d) => d.id)).size} open defects (${knownDefects.length} observations).`,
 );

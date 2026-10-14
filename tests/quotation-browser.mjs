@@ -1,7 +1,7 @@
 import { chromium, expect } from "@playwright/test";
 import fs from "node:fs";
-import { browserOptions } from "./browser-runtime.mjs";
-const url = process.env.QUOTATION_URL || "http://127.0.0.1:5173";
+import { browserOptions, auditUrl } from "./browser-runtime.mjs";
+const url = auditUrl;
 const browser = await chromium.launch(browserOptions);
 const failures = [],
   checks = [];

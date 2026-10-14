@@ -51,3 +51,9 @@ This is a browser-local demonstration, ready for owner acceptance review. Demo i
 Production work still requires separately scoped authentication/RBAC, transactional database and API, concurrency controls, secure file storage, audit/security review, backups, deployment and CI. No production readiness or backend implementation is asserted.
 
 See `CLIENT-DEMO-WALKTHROUGH.md`, `QUOTATION-UX-DELIVERY.md`, `FINAL-INTEGRATION-REPORT.md` and `../BACKEND-READINESS.md`.
+
+## Subsequent final client-review update
+
+The original publication details above describe the initial pushed `aebd0688853e3fff416939ae8227946d690c211e`; that commit remains an ancestor and local fallback. The reviewed follow-up application/test freeze is **`176acdc285670feffb6047cb71ec6f72900a7b3c`**. It adds only the client-requested PDF alignment, sidebar/Dashboard correction, current-draft preview, explicit BOQ hierarchy, and related ordinary regression tests. `src` tree `7940eccfdbda7d49769e388ec53ba8f3c7147291` and `tests` tree `97cfffa99bd5d532b7ba32f61472236c0372b715` bind the independent 338-unit, 25/25 development and 25/25 production certification. Reporting commits after that freeze must preserve both trees.
+
+The update advances `codex/azzora-final-crm` by a non-force fast-forward for existing PR #1. Remote `main` and earlier Git history stay intact. New history adds no exported browser database, generated screenshots/PDFs, build folder, dependency folder, credential or private historical fixture. The authentic old-issued QA fixture and raw review images remain ignored local evidence. The updated [client-acceptance report](FINAL-CLIENT-ACCEPTANCE-REPORT.md) and [independent certificate](../AGENT-3-FINAL-UI-QA.md) describe the source commits, exact results, failed-attempt handling and local evidence. No GitHub CI workflow is configured in this repository revision; the local independent gate is the reported verification.

@@ -1,5 +1,18 @@
 # Task board
 
+## Current client-acceptance cycle — verified review revision
+
+The historical board below records the original local integration. The current review-branch cycle is frozen at **`176acdc285670feffb6047cb71ec6f72900a7b3c`** and passed independent 25/25 development plus 25/25 production browser suites, 338/338 units, TypeScript, ESLint and cold build. Owner acceptance remains pending; main has not been merged.
+
+| ID | Scope / owner | Status | Evidence |
+| --- | --- | --- | --- |
+| UX-FINAL-01 | Sidebar grouping, Accounts prominence, Dashboard — Agent 2; Accounts audit — Agent 1 | Verified | Original `33114ca`, Accounts audit `881a6a7`; 113 independent navigation and Accounts visibility/data checks, four widths and short heights |
+| QUOTE-LIVE-01 | Current-draft quotation preview — Agents 1 and 2 | Verified | Wiring `f0b5abe`, preview `b19e0f1`; all five steps, PDF/print, error recovery, focus and saved-byte preservation |
+| BOQ-HIER-01 | Stable parent/child commands, numbering, no double charge — Agent 1; editor — Agent 2 | Verified | `e79173e` + `82fd68f` + `425ce99`; 28 domain tests and four-width independent hierarchy/browser/PDF checks |
+| PDF-ALIGN-01 | Client-approved quotation alignment — Coordinator | Verified | `d450885`; five rendered before/after examples, seven-page reference unchanged, six geometry/pagination regressions |
+| QA-FINAL-01 | Full independent combined gate — Agent 3 | Verified | Frozen `176acdc`; 25/25 dev and 25/25 fresh-production suites; 338/338 unit tests; PDF/image and source/hash guards; two earlier stopped attempts retained separately |
+| DELIVERY-PR-01 | Safe fast-forward review branch and PR #1 update — Coordinator | In Review | Publish only after the completed independent certificate and final documentation; no main merge or deployment |
+
 Current state at freeze **`f72e6c1dd7c5914e97c509a635b64de8c6aa9750`**,14 October 2026. Integrated means source is composed locally; QA-FINAL now verifies this frozen combined revision. Owner acceptance remains separate. Earlier checkpoints and reproductions remain in Git history and the preserved failed-gate report.
 
 Statuses: Backlog, Ready, Assigned, In Progress, Blocked, In Review, Verified, Integrated. A1=operational-completion; A2=workforce-approvals; A3=qa-stabilization; I=integration. All branches have `codex/azzora-` prefix.

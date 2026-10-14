@@ -1,5 +1,11 @@
 # AZZORA MASTER STATUS
 
+## Current review-branch acceptance checkpoint — 14 October 2026
+
+The final sidebar/Dashboard, live quotation preview, parent/child BOQ editor and approved-PDF alignment cycle is **independently verified and ready for owner/client acceptance review**. Frozen application/test SHA: **`176acdc285670feffb6047cb71ec6f72900a7b3c`**; source tree `7940eccfdbda7d49769e388ec53ba8f3c7147291`; test tree `97cfffa99bd5d532b7ba32f61472236c0372b715`. TypeScript, ESLint, 338/338 unit tests, cold production build, 25/25 development and 25/25 production browser suites passed. The 52 boundary guards per environment, production served-file matches and final evidence inventory passed. Earlier stopped gate attempts are recorded separately in the [current acceptance report](FINAL-CLIENT-ACCEPTANCE-REPORT.md) and [independent QA certificate](../AGENT-3-FINAL-UI-QA.md). The original 304-test quotation UX checkpoint below is preserved as historical provenance.
+
+Accounts visibility was a clipped flat-sidebar entry, not a missing route. Five grouped navigation sections place Accounts fourth in CRM & Commercial; all modules remain reachable. The Dashboard uses the same real operational/financial records. Live preview renders the current draft with the approved document engine and no issue/save side effect. BOQ parents are visibly nonbillable with persistent Add Child Item actions; stable IDs, automatic numbering and immutable historical snapshots remain intact. The approved QTN-AF-26049 PDF remains seven pages with original styling and values. No backend, deployment, production data change or main merge occurred. Owner visual acceptance and explicit main-merge approval remain separate.
+
 14 October 2026 · Asia/Dubai. **Ready for owner/client browser-local demo acceptance.** Quotation usability and the fictional client walkthrough are complete. Owner visual/usability signoff and explicit approval remain required before any merge into main.
 
 Full tested quotation UX SHA: **`861db54bcbb171fe3ac4f8a36b604333b4595e67`** on `codex/azzora-quotation-ux`. Source tree `8439141b90e0d2e6c8f7dd6dab701073480d6d37`; test tree `4afbd991131652d1b7548e6ffcb1580e04195b4e`. Completion documentation/evidence follows this revision without changing tested application/test/configuration trees.

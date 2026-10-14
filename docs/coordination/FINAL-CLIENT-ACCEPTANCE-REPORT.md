@@ -1,0 +1,37 @@
+# AZZORA final client-acceptance review cycle
+
+14 October 2026. Tested application and regression revision: **`176acdc285670feffb6047cb71ec6f72900a7b3c`**. Its source tree is `7940eccfdbda7d49769e388ec53ba8f3c7147291`; its test tree is `97cfffa99bd5d532b7ba32f61472236c0372b715`. The prior published review head `aebd0688853e3fff416939ae8227946d690c211e` remains an ancestor and local fallback. GitHub `main` is unchanged.
+
+This cycle corrects the client-approved quotation PDF's alignment without changing its design or calculations, groups the complete CRM navigation so Accounts is immediately visible, refines the Dashboard's fit-out hierarchy, adds live draft PDF preview, and makes parent/child BOQ creation explicit. The canonical commercial, procurement, workforce, approval, recovery, and historical issued-document behavior remains in place. No backend, deployment, production database change, or main merge is included.
+
+## Reviewed source integration
+
+| Scope | Original owner checkpoint | Integrated checkpoint |
+| --- | --- | --- |
+| Approved quotation PDF alignment, wrapping, repeating headers, totals and pagination | Coordinator `d4508854845c61fbd6c0ad9f8758b9531eddf342` | same |
+| Grouped sidebar and Dashboard polish | Agent 2 `33114ca2d19eb272a9e1138f4144fd5da55ee942` | `f7202d271a7fb219efc6ec73bbe11163b8b150a3` |
+| Current-draft preview wiring | Agent 1 `f0b5abec01a86a33168952483d02fe3f1cbebd91` | `159bdfff9f9f70f74efd283f27ee404a2eb0e3fd` |
+| Responsive preview component | Agent 2 `b19e0f152165fbb22c56344c9d193dab410807d0` | `3efa895d2f0e779e195b0bedf2746de8e908df2d` |
+| BOQ hierarchy commands and financial guards | Agent 1 `e79173e7ecdac718482698e7a4572024c8e5458e` | `58216f84993f43ed84cca81d8dc54593272ed75d` |
+| Nested-category numbering correction | Agent 1 `82fd68f207003986b16277cfca4ef2dd2edfa53b` | `e236934d07d1fbbd8c4ee22d5632ef8269819852` |
+| Parent/child editor controls | Agent 2 `425ce992e6827f8f60b5e658289f68ea4bd05530` | `a16d4ac0f0bdef6a51063f67674e3ca2e39c29e1` |
+| Independent final regression suite | Agent 3 `565c9cded250855ae7c0b39b0eba8bae8d1dded5` | `11d4e5d32be9d629b2f8941128b1be563676125c` |
+| Exact short-PDF page expectation and deterministic first-Tab setup | Agent 3 `c53198663b55bf2818b37181a4a34a342956c5ac`, `4d4639f7860beefd0ade500454cf44246ccbacc2` | `8bd519c995e03bfc95684ec72f7da346e15c2233`, `176acdc285670feffb6047cb71ec6f72900a7b3c` |
+
+Accounts existed and its six URLs worked before this cycle. A flat 19-link sidebar put it eleventh in an inner scroll region: at 1440×768 and 390×667 its entry was completely clipped before scrolling, and at 1024/768×768 only 8px of a 41.5px entry was visible. The corrected five groups are Overview; CRM & Commercial; Project Execution; Procurement & Controls; Management. Accounts is fourth in CRM & Commercial. Groups retain every route and keyboard/mobile access, while the sidebar itself is the only scroll surface.
+
+The Dashboard now prioritizes active fit-outs and attention items under compact real operational metrics. Existing linked records and calculations are unchanged. The preview uses the existing document renderer for current in-memory draft data at all five editing steps, keeps **View Example** separate, labels incomplete work **DRAFT / NOT ISSUED** outside the PDF, and offers zoom, scrolling, Download PDF, Print, error recovery and focus return. Parent descriptions are nonbillable, with a visible Add Child Item action even when their fields are closed. Child rows use stable IDs and deterministic `2.1.1` numbering; whole groups can move/duplicate/delete without double charging. Historical issued/manual numbering remains untouched.
+
+The PDF fix preserves the approved logo, placement, fonts, sizes, colors, grey fills, borders, content and column order. The supplied QTN-AF-26049 remains seven A4 pages with the same totals/manual numbering. Five disposable short/long/oversized/summary/reference examples were rendered before and after. Short quotations have the approved cover plus one complete BOQ page (two total); the earlier three-page short-print expectation represented surplus space. All five cover images are pixel-identical, and their subtotal/VAT/grand-total values match before and after. The ignored local comparison PNGs are in `tmp/pdf-alignment/review/*-before-after.png`; they are not GitHub content.
+
+Principal changed source files: `src/App.tsx`, `src/components/Dashboard.tsx`, `src/styles.css`, `src/quotation/Quotations.tsx`, `src/quotation/QuotationLivePreview.tsx`, `src/quotation/quotation-live-preview.css`, `src/quotation/quotation-hierarchy.css`, `src/quotation/hierarchy.ts` and `src/quotation/document.ts`. Focused unit files and browser scripts were added or updated; the complete path list is the Git diff from `aebd068` to the tested SHA. The quotation model, repository, financial engine, storage key and reference JSON were not changed.
+
+Local actual before/after browser captures are in `C:/Users/USER/Desktop/Projects/Azzora/azzora-sidebar-dashboard/tmp/ui-review/before-{viewport,dashboard,sidebar,accounts}-{1440,1024,768,390}.png` and matching `after-*.png`; the final independent baseline and frozen-phase screenshots are indexed in `docs/integration-evidence/final-ui-qa/before/manifest.json` and `docs/integration-evidence/final-ui-qa/final/176acdc285670feffb6047cb71ec6f72900a7b3c/`. The PDF-only side-by-side comparisons are `short-before-after.png`, `long-before-after.png`, `oversized-before-after.png`, `summary-before-after.png` and `reference-before-after.png` in the ignored `tmp/pdf-alignment/review/` directory of the coordinator worktree. They are local review artifacts, deliberately excluded from GitHub.
+
+## Independent gate and delivery
+
+The final freeze passed TypeScript, ESLint, **338 ordinary unit tests across 15 files**, a cold production build, and **25/25 independent development plus 25/25 fresh-production browser suites**. All 52 source/test/served-file boundary guards passed in each environment with no source drift; all 15 production served files matched the cold build. Each phase generated **61 PDFs / 191 pages** and **472 PNG evidence images**, with zero evidence-inventory issues. Agent 3 visually reviewed the requested desktop/mobile and PDF pages and confirmed the closing checkout/source/test hashes. The first freeze stopped on an obsolete three-page short-print assertion; the second stopped on a headless first-Tab activation race. Both failed attempts and targeted investigations are retained separately, not counted as passes. The final freeze keeps strict page/content parity and keyboard-visible-focus assertions.
+
+The [independent certificate](../AGENT-3-FINAL-UI-QA.md) lists every suite, the 113 navigation groups, 29 preview groups, 28 hierarchy groups, 113 Accounts checks, old-issued fixture hash, exact screenshot/PDF review scope and the two stopped attempts. The final result is **ready for owner/client acceptance review** within the browser-local demonstration scope. No critical defect remains in the executed gate.
+
+Browser-local demo limits remain: localStorage identity/persistence and quota, no secure authentication or concurrent server storage, no cloud backup, and no physical-device/printer or multi-browser certification. The existing >500kB Vite bundle advisory remains. The historical reference's manually entered number wording/rounded milestones remain source exceptions; they were not rewritten. Owner visual acceptance is still required before any explicitly approved merge to `main`.

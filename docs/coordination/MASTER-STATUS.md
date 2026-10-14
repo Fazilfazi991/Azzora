@@ -1,6 +1,6 @@
 # AZZORA MASTER STATUS
 
-14 October 2026 · Asia/Dubai · Consolidated revision ready for independent final gate.
+14 October 2026 · Asia/Dubai · Final gate withheld; valid customer-only credit reload correction required.
 
 Common commercial foundation: ada782a21232b3072850889e3796c3bc5c8d5dd4. All three original pinned deliveries and reviewed corrective/test commits are integrated locally on codex/azzora-integration. Main remains c1914984021a20a9e83f5e60ee4f93ef035659dc; no remotes, push, deployment or backend work.
 
@@ -16,6 +16,8 @@ Completed scope: customers/projects/quotation BOQ/contracts/accounts/receipts/ex
 Corrections composed: nonnegative bounded discounts, immutable posted line allocations, capacity-bounded cumulative item/amount credits, modal padding/focus/nested Escape, mobile sidebar focus, warning contrast, sticky invalid-field visibility, upload/harness fixes, complete required saved-shape/relationship checks and reachable exact-original backup/read-only recovery. Unknown workflow states, actual requester self-review, orphan approvals and contradictory decisions are guarded with ordinary regressions. Legacy metadata/history is retained; inconsistent historical financial postings require explicit review, never automatic rebasing.
 
 Pre-freeze evidence:303 ordinary unit passes with zero failed/pending;25 coordinator recovery/rollback browser cases at four widths;136 operational,18 boundary,9 atomic preparatory checks. These are not final combined certification. The strict final gate must run against the frozen full SHA and add production/browser/PDF/source-binding evidence. Original delivery counts overlap and are not summed.
+
+Confirmed final-gate defect: operations.approvals.projectId required a nonempty ID, rejecting legitimate customer-only Credit Note approvals after reload. Original raw data remains preserved. Coordinator prepared a one-field schema correction in ignored scratch; actual frozen source19051cc is unchanged until Agent3 returns a safe correction checkpoint. Financial modal rejection feedback is also assigned for focused verification/correction on Agent1 own branch.
 
 Remaining gate: independent full regression, representative rendered PDFs, four-width visual/keyboard inspection, migration/recovery/closure matrix and production build. Source is held for that gate; any source/test change requires a new freeze. No owner approval is required for these local checks. Main merge requires owner approval after a verified combined revision is ready.
 

@@ -74,3 +74,13 @@ Original QA details: sibling `azzora-qa-stabilization/docs/AGENT-3-ISSUES.md`. A
 ## Final freeze readiness
 
 All original source deliveries, both Agent1 corrective stages, Agent2 modal fixes, QA preparation and canonical test composition are integrated. Combined preflight:303 ordinary passes,0 failures/pending,13 files; TypeScript and lint pass. QA-FINAL is Ready for dispatch after this checkpoint. Any earlier Blocked/Assigned cycle entries above are historical; independent combined verification remains pending.
+
+## Final gate dispatched
+
+QA-FINAL dispatched through supported messaging to existing Agent3 on frozen full SHA19051cc1f5f70770142f116ecc4edb239099e708. Status: In Progress, acknowledged by supported status. First final unit run incomplete (runner stack errors/absent files); serial diagnostic rerun pending. Root holds HEAD/application/tests fixed; only reports/evidence may be written.
+
+## Final-gate corrections required
+
+- FIX-RECOVERY-02 (P0, Coordinator): valid customer-only Credit Note approvals with empty project ID are rejected after reload. Confirmed from final financial diagnostic and in-memory original/corrected probes; scratch correction prepared, frozen app untouched. Add ordinary valid-unlinked-credit reload and mismatched-source protection tests before refreeze.
+- FIX-A1-03 (P1, Agent1): focused financial-modal rejection feedback verification/correction, owned Credits.tsx only. Dispatched on separate source branch; shared modal/store/schema/math stay untouched.
+- QA-FINAL19051cc cannot certify acceptance. Preserve failed run evidence; repeat full required gate after reviewed corrections and new full frozen SHA.

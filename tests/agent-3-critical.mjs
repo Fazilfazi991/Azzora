@@ -156,6 +156,7 @@ try {
           .getByRole("button", { name: "Quick Add", exact: true })
           .click();
         await page
+          .getByRole("dialog", { name: "Quick Add", exact: true })
           .getByRole("button", { name: "+ New Project", exact: true })
           .click();
         const parent = page.getByRole("dialog");

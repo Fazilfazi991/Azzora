@@ -384,7 +384,11 @@ try {
   await page
     .getByRole("button", { name: "Save Customer", exact: true })
     .click();
-  await expect(page.getByRole("alert")).toContainText("Writes are disabled");
+  await expect(
+    page
+      .getByRole("region", { name: "Saved data recovery", exact: true })
+      .getByRole("alert"),
+  ).toContainText("Writes are disabled");
   expect(
     await page.evaluate(() => localStorage.getItem("azzora-demo-v1")),
   ).toBe("{broken data");

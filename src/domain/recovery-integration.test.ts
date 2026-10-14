@@ -11,6 +11,7 @@ import {
   blankInvoice,
   saveInvoice,
   issueInvoice,
+  postPayment,
 } from "../commercial/repository";
 import {
   reviewDocument,
@@ -22,9 +23,13 @@ import {
   submitApproval,
   decideApproval,
   reassignApproval,
+  saveCredit,
+  issueCredit,
+  postRefund,
 } from "../operations/repository";
 import { closureSummary } from "../operations/closure-domain";
 import { handoverState } from "./logic";
+import { invoicePosition } from "../operations/calculations";
 const ready = () => {
   const db = seed();
   initializeCommercial(db);
@@ -33,6 +38,97 @@ const ready = () => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("protected loading and additive migration", () => {
+  it("reloads customer-only approved credits and refunds losslessly while rejecting cross-project approvals", () => {
+    const db = ready(),
+      draft = blankInvoice(db.clients[0].id, "");
+    draft.lines[0].description = "Customer-only invoice";
+    draft.lines[0].rate = "1";
+    saveInvoice(db, draft);
+    issueInvoice(db, draft.id);
+    const invoice = db.invoices.find((row) => row.id === draft.id)!;
+    postPayment(db, {
+      id: "receipt-customer-only",
+      number: "",
+      invoiceId: invoice.id,
+      customerId: invoice.customerId,
+      projectId: "",
+      date: "2026-10-14",
+      amount: "1.05",
+      method: "Cash",
+      reference: "customer-only-receipt",
+      bank: "",
+      notes: "",
+      attachments: [],
+      postingKey: "customer-only-post",
+      createdAt: "2026-10-14T00:00:00.000Z",
+    });
+    const credit = saveCredit(
+      db,
+      {
+        id: "credit-customer-only",
+        number: "",
+        invoiceId: invoice.id,
+        customerId: invoice.customerId,
+        projectId: "",
+        date: "2026-10-14",
+        reason: "Customer-only credit",
+        gross: "0.11",
+        itemId: "",
+        status: "Draft",
+      },
+      "person-0",
+    );
+    const approval = submitApproval(
+      db,
+      "Credit Note",
+      credit.id,
+      "Internal",
+      "person-0",
+      "person-1",
+    );
+    decideApproval(db, approval.id, true, "Independent review", "person-1");
+    issueCredit(db, credit.id, "person-1");
+    postRefund(
+      db,
+      {
+        id: "refund-customer-only",
+        number: "",
+        invoiceId: invoice.id,
+        customerId: invoice.customerId,
+        projectId: "",
+        date: "2026-10-14",
+        amount: "0.11",
+        reference: "customer-only-refund",
+        method: "Cash",
+        reason: "Return credit",
+      },
+      "person-1",
+    );
+    const raw = JSON.stringify(db),
+      write = vi.fn();
+    vi.stubGlobal("localStorage", { getItem: () => raw, setItem: write });
+    const loaded = localRepository.load();
+    expect(loaded).toEqual(db);
+    expect(
+      loaded.operations!.approvals.find((row) => row.id === approval.id)!
+        .projectId,
+    ).toBe("");
+    expect(
+      invoicePosition(
+        loaded,
+        loaded.invoices.find((row) => row.id === invoice.id)!,
+      ),
+    ).toBe(0n);
+    expect(write).not.toHaveBeenCalled();
+    const incompatible = JSON.parse(raw);
+    incompatible.operations.approvals.find(
+      (row: { id: string }) => row.id === approval.id,
+    ).projectId = db.projects[0].id;
+    expect(() => decodeSavedData(JSON.stringify(incompatible))).toThrow(
+      /approval/i,
+    );
+    expect(write).not.toHaveBeenCalled();
+  });
   it("validates posted allocation metadata before rendering while retaining original records", () => {
     const db = ready(),
       draft = blankInvoice(db.clients[0].id, db.projects[0].id);

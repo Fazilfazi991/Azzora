@@ -457,7 +457,7 @@ const opSchemas = {
       "Document",
     ]),
     entityId: id,
-    projectId: id,
+    projectId: text,
     stage: text,
     requesterId: id,
     approverId: id,

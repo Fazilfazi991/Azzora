@@ -84,9 +84,9 @@ REL-01 is Ready for owner acceptance. No main merge, push, deployment, backend o
 
 | ID | Scope / owner | Status | Dependencies / evidence |
 | --- | --- | --- | --- |
-| QUOT-UX-01 |Guidedworkflow/simpleadvancedBOQ/helpercopy — Agent1|In Progress|NewUXworktree,Quotationstsx only;acknowledged,capacityretryrecovered|
-| QUOT-UX-02 |Accessible responsive guide/scopedstyles/usability — Agent2|In Progress|NewQuotationGuide.tsx/quotation-ux.css;acknowledged|
-| QUOT-UX-03 |Actualbefore/after,independentquotUX/retainedregressions — Agent3|In Progress|Pinnedbefore5210;acknowledged;finalwaitsconsolidatedSHA|
-| QUOT-UX-04 |Integration/demo walkthrough/report — Coordinator|In Progress|Baseline/tag/worktree/filecontractscomplete|
-| QUOT-UX-FINAL |Freshfullqualitygate — Agent3|Blocked|Dependsreviewedfinishedsource/tests andfrozenfullSHA;old304/20notnewproof|
-| QUOT-UX-ACCEPT |Owner/clientacceptance — Owner|Blocked|No main/push/deploy untilownerapprovalafterverifieddelivery|
+| QUOT-UX-01 | Guided workflow, progressive simple/advanced scope and help — Agent 1 | Implemented; final QA pending | Reviewed `c53f08e62c86f46e64bd4cfce7c7162aab6362a8`; includes all three review refinements |
+| QUOT-UX-02 | Accessible responsive guide, scoped styles and usability review — Agent 2 | Implemented; final QA pending | Reviewed `efc8670061d5bfef01d6396d748c8b029da03acd`; composed desktop/mobile review passed |
+| QUOT-UX-03 | Actual before/after, independent UX and retained regressions — Agent 3 | In progress | 32 baseline screenshots complete; test implementation/adaptations underway |
+| QUOT-UX-04 | Integration, demo walkthrough and report — Coordinator | In progress | Baseline/tag/worktree/ownership and reviewed source commits complete |
+| QUOT-UX-FINAL | Fresh full quality gate — Agent 3 | Waiting for test checkpoint | Requires reviewed source/tests and frozen full SHA; prior 304/20 results are baseline only |
+| QUOT-UX-ACCEPT | Owner/client acceptance — Owner | Waiting for final gate | Main/push/deployment remain prohibited without explicit authorization |

@@ -49,3 +49,24 @@ Completed coordinator-requested content corrections in `Quotations.tsx` only:
 Follow-up verification: scoped TypeScript, ESLint and Prettier passed; diff whitespace check passed. A disposable390px browser check verified both new help/wording disclosures start closed, calculated words are visible, original reference override is retained, and opening/closing disclosures leaves saved bytes unchanged. Another check opened category pricing, found quantity×unit-rate and calculated line output (sample1LS×AED1100.00→1100.00), asserted no editable controls in the review, followed the scope-edit link, and confirmed unchanged saved data and no horizontal overflow. Coordinator's preflight304unit/build results preceded these bounded edits; final frozen-source regression remains pending.
 
 **Workflow source is complete again and ready for coordinator review/freeze.** No staging/commits by Agent1. Agent3 should adapt the new disclosure selectors above before the final run.
+## Assigned commercial/operational harness adaptation — completed
+
+Exclusive Agent1 test paths for this follow-up:
+
+- `tests/commercial-browser.mjs`
+- `tests/commercial-boundaries.mjs`
+- `tests/operational-browser.mjs`
+
+These now use the public `quotationStep` helper to reach customer/project controls (Step1), scope controls/counts (Step2), grand-total review (Step3), and issuance/status/conversion (Step5). The commercial journey uses `openQuotationCategory`/`openQuotationItem` before editing, and the renamed **Add Work Category**, **Work category name**, **Add Priced Item** controls. Its inline customer/project preservation checks revisit the correct steps without changing their expected amounts or row counts. All existing invoice/payment/expense, customer snapshot, history, count, operational approval/ownership, CSV/PDF, storage-failure, persistence and responsive assertions remain intact; no assertions were skipped or weakened. Reviewed diff and unchanged original `expect` call counts:57 commercial, 17 boundary, 41 operational. Public navigation helpers add their own UI-contract assertions.
+
+Commercial scripts gained optional `QA_COMMERCIAL_EVIDENCE_DIR`, retaining `docs/commercial-evidence` as the unchanged default. Operational already supported `QA_OPERATIONAL_EVIDENCE_DIR`. These optional directories let the preparatory runs avoid overwriting existing durable evidence.
+
+Preparatory execution used **all three** URL variables consistently set to `http://127.0.0.1:5216`: `AZZORA_URL`, `AZZORA_TEST_URL`, `QUOTATION_URL`. Disposable browser profiles preserved fixture semantics and never accessed an owner profile. Application source stayed identical to source commit **c53f08e62c86f46e64bd4cfce7c7162aab6362a8**, source tree **8439141b90e0d2e6c8f7dd6dab701073480d6d37**, above guide checkpoint **efc8670061d5bfef01d6396d748c8b029da03acd**.
+
+| Suite | Exact result | Preparatory result file |
+| --- | --- | --- |
+| Commercial journey/responsive | 129 passed; 0 browser errors; exit 0 |`tmp/quotation-agent1/commercial-browser/browser-results.json` |
+| Conversion/storage/quick-action/keyboard boundaries | 6 passed; 0 browser errors; exit 0 |`tmp/quotation-agent1/commercial-boundaries/boundary-results.json` |
+| Operational journey/responsive | 136 passed; 0 browser errors; exit 0 |`tmp/quotation-agent1/operational-browser/browser-results.json` |
+
+**Total: 271 passed preparatory checks.** Commercial and operational journeys exercised1440/1024/768/390 widths; boundary suite retained 1440. All three assigned scripts passed Node syntax checks and Prettier; diff whitespace check passed. No application source edits, staging or commits by Agent1 during this harness assignment. Coordinator owns review/commit of these three paths plus this report; Agent3 still owns the independent final frozen-SHA run. These are preparatory results against stable application source with pending harness commits, not final release certification.

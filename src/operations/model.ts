@@ -21,6 +21,7 @@ export interface Approval {
   actorId?: string;
   comments?: string;
   snapshot: string;
+  supersededBy?: string;
 }
 export interface Supplier {
   id: string;

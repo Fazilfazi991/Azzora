@@ -9,6 +9,11 @@ import type {
   WorkflowEvent,
 } from "../domain/model";
 import { uid } from "../domain/logic";
+import {
+  latestDocument,
+  submitDocumentApproval,
+  finishDocumentApproval,
+} from "./document-approvals";
 
 export function activePerson(db: Database, id: string) {
   const person = db.people.find((p) => p.id === id);
@@ -250,6 +255,8 @@ export function saveDocumentDraft(
     ...input,
     familyId: old?.familyId || input.id,
     status: "Draft" as const,
+    reviewState: "Draft" as const,
+    workflowVersion: 1 as const,
     uploadedBy: actorId,
     uploadedAt: entry.timestamp.slice(0, 10),
     history: [...(old?.history || []), entry],
@@ -263,9 +270,12 @@ export function reviseDocument(
   id: string,
   actorId: string,
   reason: string,
+  nextId: string = uid(),
 ) {
+  if (db.documents.some((d) => d.id === nextId))
+    throw Error("Revision ID must be unique.");
   const old = db.documents.find((d) => d.id === id);
-  if (!old || !["Approved", "Rejected"].includes(old.status))
+  if (!old || !["Approved", "Rejected", "Pending"].includes(old.status))
     throw Error("Review the current revision before creating another.");
   const familyId = old.familyId || old.id;
   const siblings = db.documents.filter(
@@ -276,11 +286,16 @@ export function reviseDocument(
   const entry = event(db, actorId, "Revision created", reason);
   const next: DocumentRecord = {
     ...old,
-    id: uid(),
+    id: nextId,
     familyId,
     previousRevisionId: old.id,
     version: Math.max(...siblings.map((d) => d.version)) + 1,
     status: "Draft",
+    reviewState: "Draft",
+    workflowVersion: 1,
+    reviewerId: undefined,
+    reviewComments: undefined,
+    decisionAt: undefined,
     attachment: undefined,
     uploadedBy: actorId,
     uploadedAt: entry.timestamp.slice(0, 10),
@@ -288,6 +303,17 @@ export function reviseDocument(
     history: [entry],
   };
   db.documents.push(next);
+  // Supersession is explicit metadata, not an invented rejection or approval.
+  db.operations?.approvals
+    .filter(
+      (a) =>
+        a.kind === "Document" &&
+        a.entityId === old.id &&
+        a.status === "Pending Approval",
+    )
+    .forEach((a) => {
+      a.supersededBy = next.id;
+    });
   audit(db, next.projectId, "Document", next.id, entry);
   return next;
 }
@@ -300,6 +326,9 @@ export function reviewDocument(
 ) {
   const document = db.documents.find((d) => d.id === id);
   if (!document) throw Error("Document not found.");
+  activePerson(db, actorId);
+  if (!latestDocument(db, document))
+    throw Error("Review the latest document revision.");
   if (
     !(document.status === "Draft" && status === "Pending") &&
     !(
@@ -312,6 +341,22 @@ export function reviewDocument(
     );
   if (status !== "Pending" && document.uploadedBy === actorId)
     throw Error("Choose a reviewer different from the submitter.");
+  if (
+    status !== "Pending" &&
+    document.reviewerId &&
+    document.reviewerId !== actorId
+  )
+    throw Error("Select the assigned document reviewer.");
+  const pending =
+    db.operations?.approvals.filter(
+      (a) =>
+        a.kind === "Document" &&
+        a.entityId === id &&
+        a.status === "Pending Approval" &&
+        !a.supersededBy,
+    ) || [];
+  if (status !== "Pending" && pending.some((a) => a.approverId !== actorId))
+    throw Error("Select the assigned document reviewer.");
   const entry = event(
     db,
     actorId,
@@ -321,7 +366,29 @@ export function reviewDocument(
     reason,
     { status: document.status, version: document.version },
   );
+  if (status === "Pending")
+    submitDocumentApproval(db, document, actorId, reason);
+  else
+    finishDocumentApproval(
+      db,
+      document,
+      status === "Approved",
+      actorId,
+      reason,
+      entry.timestamp,
+    );
   document.status = status;
+  document.workflowVersion = 1;
+  document.reviewState =
+    status === "Pending"
+      ? "Submitted"
+      : status === "Rejected"
+        ? "Revise & Resubmit"
+        : "Approved";
+  if (status !== "Pending") {
+    document.reviewComments = reason.trim();
+    document.decisionAt = entry.timestamp;
+  }
   document.history = [...(document.history || []), entry];
   audit(db, document.projectId, "Document", id, entry);
 }

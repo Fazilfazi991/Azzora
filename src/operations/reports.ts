@@ -1,3 +1,4 @@
+import { activeApprovals } from "../workforce/document-approvals";
 import type { Database } from "../domain/model";
 import type { CommercialFilter } from "../commercial/model";
 import type { ReportData } from "../commercial/reports-data";
@@ -336,7 +337,7 @@ export function operationalReport(
       "Submitted",
       "Status",
     ],
-    rows: op.approvals
+    rows: activeApprovals(db)
       .filter(
         (a) =>
           a.status === "Pending Approval" &&

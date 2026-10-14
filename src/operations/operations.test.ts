@@ -91,13 +91,14 @@ function approve(
   id: string,
   stage = "Internal",
 ) {
-  const a = commands.submitApproval(db, kind, id, stage, actor, actor);
+  const reviewer = kind === "Document" ? "person-1" : actor;
+  const a = commands.submitApproval(db, kind, id, stage, actor, reviewer);
   commands.decideApproval(
     db,
     a.id,
     true,
     "Reviewed scope and commercial basis",
-    actor,
+    reviewer,
   );
   return a;
 }
@@ -906,7 +907,15 @@ describe("budgets, documents, workforce and closure", () => {
   it("uses an active demo actor for supplier edits after the initial actor leaves", () => {
     const db = ready(),
       s = supplier(db);
-    commands.saveEmployee(db, { ...db.people[0], status: "Inactive" }, actor);
+    commands.saveEmployee(
+      db,
+      {
+        ...db.people[0],
+        status: "Inactive",
+        notes: "Employee left the project",
+      },
+      actor,
+    );
     commands.saveSupplier(db, { ...s, notes: "Updated by replacement actor" });
     expect(db.activities[0].actorId).toBe(db.people[1].id);
   });
@@ -921,7 +930,15 @@ describe("budgets, documents, workforce and closure", () => {
         actor,
         "person-1",
       );
-    commands.saveEmployee(db, { ...db.people[1], status: "Inactive" }, actor);
+    commands.saveEmployee(
+      db,
+      {
+        ...db.people[1],
+        status: "Inactive",
+        notes: "Employee left the project",
+      },
+      actor,
+    );
     commands.reassignApproval(db, a.id, actor, "Reviewer left project", actor);
     commands.decideApproval(db, a.id, true, "Reassigned review checked", actor);
     expect(a.actorId).toBe(actor);
@@ -951,7 +968,7 @@ describe("budgets, documents, workforce and closure", () => {
       doc.id,
       "Drawing review",
       actor,
-      actor,
+      "person-1",
     );
     commands.saveControlledDocument(
       db,
@@ -965,7 +982,7 @@ describe("budgets, documents, workforce and closure", () => {
       },
       actor,
     );
-    expect(a.status).toBe("Rejected");
+    expect(a.supersededBy).toBeTruthy();
     expect(() =>
       commands.submitApproval(
         db,
@@ -1056,24 +1073,42 @@ describe("budgets, documents, workforce and closure", () => {
       rev.id,
       "Drawing review",
       actor,
+      "person-1",
+    );
+    commands.decideApproval(db, a.id, false, "Revise dimensions", "person-1");
+    expect(rev.reviewState).toBe("Revise & Resubmit");
+    const corrected = commands.saveControlledDocument(
+      db,
+      {
+        ...rev,
+        id: uid(),
+        revisionOf: rev.id,
+        version: 3,
+        revisionNote: "Corrected dimensions",
+      },
       actor,
     );
-    commands.decideApproval(db, a.id, false, "Revise dimensions", actor);
-    expect(rev.reviewState).toBe("Revise & Resubmit");
     commands.submitApproval(
       db,
       "Document",
-      rev.id,
+      corrected.id,
       "Drawing review",
       actor,
-      actor,
+      "person-1",
     );
     const pending = db.operations!.approvals.find(
-      (a) => a.entityId === rev.id && a.status === "Pending Approval",
+      (a) => a.entityId === corrected.id && a.status === "Pending Approval",
     )!;
-    commands.decideApproval(db, pending.id, true, "Dimensions verified", actor);
+    commands.decideApproval(
+      db,
+      pending.id,
+      true,
+      "Dimensions verified",
+      "person-1",
+    );
+    expect(rev.status).toBe("Rejected");
+    expect(corrected.status).toBe("Approved");
     expect(JSON.stringify(doc)).toBe(original);
-    expect(rev.status).toBe("Approved");
   });
   it("preserves employee task/project IDs and blocks new inactive assignments", () => {
     const db = ready();
@@ -1093,7 +1128,11 @@ describe("budgets, documents, workforce and closure", () => {
       name: "Employee task",
     };
     saveTask(db, task);
-    commands.saveEmployee(db, { ...p, status: "Inactive" }, actor);
+    commands.saveEmployee(
+      db,
+      { ...p, status: "Inactive", notes: "Employee left the project" },
+      actor,
+    );
     expect(db.tasks.find((t) => t.id === task.id)?.assigneeId).toBe(p.id);
     expect(() =>
       saveTask(db, {
@@ -1118,6 +1157,16 @@ describe("budgets, documents, workforce and closure", () => {
     db.handover
       .filter((h) => h.projectId === id)
       .forEach((h) => (h.complete = true));
+    db.documents
+      .filter((d) => d.projectId === id)
+      .forEach((d) => {
+        d.status = "Approved";
+      });
+    db.updates
+      .filter((u) => u.projectId === id)
+      .forEach((u) => {
+        u.reviewStatus = "Approved";
+      });
     expect(handoverState(db, id).ready).toBe(true);
     expect(closureSummary(db, id).commercialClear).toBe(false);
     completeProject(db, id);

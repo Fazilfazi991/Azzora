@@ -1,3 +1,4 @@
+import { activeApprovals } from "../workforce/document-approvals";
 import { useState } from "react";
 import { useStore } from "../store";
 import { Header, Field, Modal, Badge } from "../components/ui";
@@ -301,7 +302,8 @@ export function OperationalDashboard() {
           ],
           [
             "Pending Approvals",
-            op.approvals.filter((a) => a.status === "Pending Approval").length,
+            activeApprovals(db).filter((a) => a.status === "Pending Approval")
+              .length,
             "#/approvals",
           ],
         ].map(([label, value, href]) => (

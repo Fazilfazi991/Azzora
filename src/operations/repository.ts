@@ -18,6 +18,17 @@ import type {
   OperationalSettings,
 } from "./model";
 import { initializeOperations } from "./migration";
+import {
+  saveEmployee as saveCanonicalEmployee,
+  setEmployeeActive,
+  saveDocumentDraft,
+  reviseDocument,
+  reviewDocument,
+} from "../workforce/commands";
+import {
+  latestDocument,
+  activeApprovals,
+} from "../workforce/document-approvals";
 import { uid, today } from "../domain/logic";
 import { record } from "../domain/repository";
 import { cents, amountString, invoiceTotals } from "../commercial/calculations";
@@ -433,6 +444,20 @@ export function submitApproval(
 ) {
   const op = initializeOperations(db),
     e = approvalEntity(db, kind, id);
+  if (kind === "Document") {
+    const d = e as DocumentRecord;
+    if (!latestDocument(db, d))
+      throw Error("Submit the latest document revision.");
+    if (requesterId === approverId)
+      throw Error("Choose an independent assigned reviewer.");
+    demoActor(db, approverId);
+    d.reviewerId = approverId;
+    reviewDocument(db, id, "Pending", requesterId, stage);
+    return initializeOperations(db).approvals.find(
+      (a) =>
+        a.entityId === id && a.status === "Pending Approval" && !a.supersededBy,
+    )!;
+  }
   demoActor(db, requesterId);
   demoActor(db, approverId);
   if (
@@ -451,22 +476,6 @@ export function submitApproval(
     )
       throw Error("Follow internal approval before sending to client.");
     v.status = stage === "Client" ? "Sent to Client" : "Submitted";
-  } else if (kind === "Document") {
-    const d = e as DocumentRecord;
-    if (
-      db.documents.some(
-        (x) =>
-          (x.familyId || x.id) === (d.familyId || d.id) &&
-          x.version > d.version,
-      )
-    )
-      throw Error(
-        "Submit the latest document revision instead of a superseded version.",
-      );
-    if (d.reviewState === "Approved" || d.status === "Approved")
-      throw Error("Approved document versions are immutable.");
-    d.reviewState = "Submitted";
-    d.reviewerId = approverId;
   } else {
     if (!["Draft", "Received", "Rejected"].includes(e.status))
       throw Error("Record is not eligible for submission.");
@@ -506,13 +515,29 @@ export function decideApproval(
 ) {
   const op = initializeOperations(db),
     a = op.approvals.find((a) => a.id === id);
-  if (!a || a.status !== "Pending Approval")
+  if (
+    !a ||
+    a.status !== "Pending Approval" ||
+    !activeApprovals(db).some(
+      (v) => v.id === id && v.status === "Pending Approval",
+    )
+  )
     throw Error("Approval has already been decided.");
   demoActor(db, actor);
   if (a.approverId !== actor)
     throw Error("Select the assigned demo approver to record this decision.");
   required(comments, "Approval/rejection comments");
   const e = approvalEntity(db, a.kind, a.entityId);
+  if (a.kind === "Document") {
+    reviewDocument(
+      db,
+      a.entityId,
+      approved ? "Approved" : "Rejected",
+      actor,
+      comments,
+    );
+    return a;
+  }
   if (a.kind === "Variation" && approved && a.stage === "Client") {
     const v = e as Variation;
     if (
@@ -556,18 +581,11 @@ export function decideApproval(
     po.snapshot = JSON.stringify({ ...po, status: "Approved" });
   }
   if (a.kind === "Credit Note" && approved) validateCredit(db, e as CreditNote);
-  if (a.kind === "Document") {
-    const d = e as DocumentRecord;
-    d.status = approved ? "Approved" : "Pending";
-    d.reviewState = approved ? "Approved" : "Revise & Resubmit";
-    d.reviewComments = comments;
-    d.decisionAt = new Date().toISOString();
-  } else
-    e.status = approved
-      ? a.kind === "Variation" && a.stage !== "Client"
-        ? "Internally Approved"
-        : "Approved"
-      : "Rejected";
+  e.status = approved
+    ? a.kind === "Variation" && a.stage !== "Client"
+      ? "Internally Approved"
+      : "Approved"
+    : "Rejected";
   a.status = approved ? "Approved" : "Rejected";
   a.actorId = actor;
   a.decisionAt = new Date().toISOString();
@@ -596,6 +614,16 @@ export function reassignApproval(
   );
   if (!a) throw Error("Only pending approvals can be reassigned.");
   demoActor(db, approverId);
+  if (
+    a.kind === "Document" &&
+    (!activeApprovals(db).some(
+      (v) => v.id === id && v.status === "Pending Approval",
+    ) ||
+      db.documents.find((d) => d.id === a.entityId)?.uploadedBy === approverId)
+  )
+    throw Error(
+      "Assign an independent active reviewer to the current revision.",
+    );
   required(reason, "Reassignment reason");
   audit(
     db,
@@ -1287,114 +1315,44 @@ export function saveBudget(db: Database, b: Budget, actor: string) {
   else op.budgets.push(next);
   return next;
 }
+// Legacy API adapters delegate every mutation to the canonical workforce commands.
 export function saveEmployee(db: Database, p: Person, actor: string) {
-  required(p.name, "Employee name");
-  required(p.role, "Employee role");
-  if (p.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email))
-    throw Error("Enter a valid employee email.");
-  if (!Number.isFinite(p.capacity) || p.capacity <= 0)
-    throw Error("Capacity must be positive.");
   const old = db.people.find((x) => x.id === p.id);
-  audit(
-    db,
-    "",
-    "Employee",
-    p.id,
-    old ? "Employee updated" : "Employee created",
-    p.name + " · " + p.status,
-    actor,
-    old ? JSON.stringify(old) : undefined,
-  );
-  if (old) Object.assign(old, p);
-  else db.people.push(structuredClone(p));
+  if (old && (old.status === "Inactive") !== (p.status === "Inactive")) {
+    if (!p.notes?.trim())
+      throw Error("Record a reason for employee status changes.");
+    return setEmployeeActive(db, p.id, p.status !== "Inactive", actor, p.notes);
+  }
+  return saveCanonicalEmployee(db, p, actor);
 }
 export function saveControlledDocument(
   db: Database,
   doc: DocumentRecord,
   actor: string,
 ) {
-  project(db, doc.projectId);
-  required(doc.name, "Document name");
-  const old = db.documents.find((d) => d.id === doc.id);
-  if (
-    doc.revisionOf &&
-    !db.documents.some(
-      (d) => d.id === doc.revisionOf && d.projectId === doc.projectId,
-    )
-  )
+  const existing = db.documents.find((d) => d.id === doc.id);
+  if (existing && existing.status !== "Draft")
     throw Error(
-      "Document revisions must reference a version in the same project.",
+      "Submitted/approved revisions are immutable; create a revision.",
     );
-  if (doc.reviewerId) demoActor(db, doc.reviewerId);
-  if (old?.status === "Approved" || old?.reviewState === "Submitted")
-    throw Error(
-      "Submitted/approved versions are immutable; create a new revision.",
+  let input = { ...doc, status: "Draft" as const };
+  if (!existing && doc.revisionOf) {
+    const next = reviseDocument(
+      db,
+      doc.revisionOf,
+      actor,
+      doc.revisionNote || "Requested document revision",
+      doc.id,
     );
-  if (!Number.isInteger(doc.version) || doc.version < 1)
-    throw Error("Version must be a positive whole number.");
-  const next = structuredClone(doc);
-  next.familyId ||=
-    old?.familyId ||
-    (doc.revisionOf &&
-      (db.documents.find((d) => d.id === doc.revisionOf)?.familyId ||
-        doc.revisionOf)) ||
-    doc.id;
-  if (
-    db.documents.some(
-      (d) =>
-        d.id !== doc.id &&
-        (d.familyId || d.id) === next.familyId &&
-        d.version === doc.version,
-    )
-  )
-    throw Error("Document family version must be unique.");
-  next.status = "Pending";
-  next.reviewState = "Draft";
-  next.uploadedBy = actor;
-  next.uploadedAt = today();
-  if (doc.revisionOf) {
-    const source = db.documents.find((d) => d.id === doc.revisionOf)!;
-    initializeOperations(db)
-      .approvals.filter(
-        (a) =>
-          a.kind === "Document" &&
-          a.entityId === source.id &&
-          a.status === "Pending Approval",
-      )
-      .forEach((a) => {
-        a.status = "Rejected";
-        a.actorId = actor;
-        a.comments = "Superseded by document revision v" + doc.version;
-        a.decisionAt = new Date().toISOString();
-      });
-    if (source.reviewState === "Submitted") {
-      audit(
-        db,
-        source.projectId,
-        "Document",
-        source.id,
-        "Document review superseded",
-        "New revision v" + doc.version,
-        actor,
-        JSON.stringify(source),
-      );
-      source.reviewState = "Revise & Resubmit";
-      source.reviewComments = "Superseded by revision v" + doc.version;
-    }
+    input = {
+      ...input,
+      familyId: next.familyId,
+      previousRevisionId: next.previousRevisionId,
+      version: next.version,
+    };
   }
-  audit(
-    db,
-    doc.projectId,
-    "Document",
-    doc.id,
-    "Document version saved",
-    doc.name + " v" + doc.version,
-    actor,
-    old ? JSON.stringify(old) : undefined,
-  );
-  if (old) Object.assign(old, next);
-  else db.documents.push(next);
-  return next;
+  saveDocumentDraft(db, input, actor);
+  return db.documents.find((d) => d.id === doc.id)!;
 }
 export function saveSettings(
   db: Database,

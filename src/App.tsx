@@ -77,7 +77,7 @@ function exportData(data: string, name: string, type: string) {
   URL.revokeObjectURL(url);
 }
 export default function App() {
-  const { db, toast, error, clear, mutate, reset } = useStore();
+  const { db, toast, error, clear, mutate, reset, exportOriginal } = useStore();
   const [route, setRoute] = useState(location.hash.slice(2) || "dashboard");
   const [menu, setMenu] = useState(false);
   const [wizard, setWizard] = useState(false);
@@ -327,17 +327,7 @@ export default function App() {
             server authorization, multi-user sync or backup is configured.
           </p>
           <div className="actions">
-            <button
-              onClick={() =>
-                exportData(
-                  localStorage.getItem("azzora-demo-v1") || "{}",
-                  "azzora-original-saved-data.json",
-                  "application/json",
-                )
-              }
-            >
-              Export original saved data
-            </button>
+            <button onClick={exportOriginal}>Export original saved data</button>
             <button
               onClick={() =>
                 exportData(

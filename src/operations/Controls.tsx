@@ -1,8 +1,8 @@
+import { activeApprovals, approvalView } from "../workforce/document-approvals";
 import { useState } from "react";
 import { useStore } from "../store";
 import { Field, Empty, Badge, Header } from "../components/ui";
 import { DataTable } from "../commercial/Registers";
-import { getOperations } from "./migration";
 import { decideApproval, reassignApproval } from "./repository";
 import type { PricedItem } from "./model";
 import { uid } from "../domain/logic";
@@ -69,7 +69,7 @@ export function Decision({
 }) {
   const { db, mutate } = useStore();
   const [comments, setComments] = useState("");
-  const a = getOperations(db).approvals.find(
+  const a = activeApprovals(db).find(
     (a) => a.entityId === entityId && a.status === "Pending Approval",
   );
   if (!a) return null;
@@ -250,10 +250,10 @@ export function Approvals({ projectId }: { projectId?: string }) {
   const { db } = useStore(),
     actors = useActors();
   const [state, setState] = useState("Pending Approval");
-  const list = getOperations(db).approvals.filter(
+  const list = approvalView(db).filter(
     (a) =>
       (!projectId || a.projectId === projectId) &&
-      (!state || a.status === state),
+      (!state || (!a.supersededBy && a.status === state)),
   );
   return (
     <>
@@ -299,11 +299,11 @@ export function Approvals({ projectId }: { projectId?: string }) {
           db.people.find((p) => p.id === a.requesterId)?.name,
           db.people.find((p) => p.id === a.approverId)?.name,
           a.submittedAt,
-          <Badge>{a.status}</Badge>,
+          <Badge>{a.supersededBy ? "Superseded review" : a.status}</Badge>,
         ])}
       />
       {list
-        .filter((a) => a.status === "Pending Approval")
+        .filter((a) => !a.supersededBy && a.status === "Pending Approval")
         .map((a) => (
           <section className="panel" key={a.id}>
             <h3>

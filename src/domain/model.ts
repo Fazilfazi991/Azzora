@@ -190,6 +190,8 @@ export interface DocumentRecord {
   previousRevisionId?: string;
   revisionNote?: string;
   history?: WorkflowEvent[];
+  workflowVersion?: 1;
+  legacyWorkflowSnapshot?: string;
 }
 export interface HandoverItem {
   id: string;

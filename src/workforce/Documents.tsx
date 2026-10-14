@@ -49,7 +49,18 @@ export function Documents({ projectId }: { projectId?: string }) {
     if (
       mutate((d) => {
         if (status === "Pending")
-          saveDocumentDraft(d, { ...draft, attachment: files[0] }, actor);
+          saveDocumentDraft(
+            d,
+            {
+              ...draft,
+              attachment: files[0],
+              reviewerId:
+                draft.reviewerId ||
+                db.people.find((p) => p.status !== "Inactive" && p.id !== actor)
+                  ?.id,
+            },
+            actor,
+          );
         reviewDocument(d, draft.id, status, actor, note);
       }, "Review action recorded")
     )
@@ -246,6 +257,28 @@ export function Documents({ projectId }: { projectId?: string }) {
                   value={actor}
                   onChange={setActor}
                 />
+                <Field label="Assigned document reviewer">
+                  <select
+                    value={
+                      draft.reviewerId ||
+                      db.people.find(
+                        (p) => p.status !== "Inactive" && p.id !== actor,
+                      )?.id ||
+                      ""
+                    }
+                    onChange={(e) =>
+                      setDraft({ ...draft, reviewerId: e.target.value })
+                    }
+                  >
+                    {db.people
+                      .filter((p) => p.status !== "Inactive" && p.id !== actor)
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                  </select>
+                </Field>
                 <div className="workflow-actions">
                   <button className="primary" disabled={files.length > 1}>
                     Save Draft

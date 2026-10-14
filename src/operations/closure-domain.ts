@@ -1,3 +1,4 @@
+import { activeApprovals } from "../workforce/document-approvals";
 import type { Database } from "../domain/model";
 import { getOperations, initializeOperations } from "./migration";
 import {
@@ -12,7 +13,7 @@ import { audit } from "./repository";
 export function closureSummary(db: Database, projectId: string) {
   const op = getOperations(db),
     costs = projectCosts(db, projectId);
-  const pendingApprovals = op.approvals.filter(
+  const pendingApprovals = activeApprovals(db).filter(
     (a) => a.projectId === projectId && a.status === "Pending Approval",
   ).length;
   const families = new Map<string, (typeof db.documents)[number]>();

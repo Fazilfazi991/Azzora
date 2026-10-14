@@ -3,6 +3,8 @@ import { initializeCommercial } from "../commercial/migration";
 import { closureSummary } from "../operations/closure-domain";
 import { activePerson, saveSnag } from "../workforce/commands";
 import { z } from "zod";
+import { validateSavedShape, validateRelationships } from "./validation";
+import { initializeDocumentCompatibility } from "../workforce/document-approvals";
 import type { Database, Task, Project, SnagStatus, Activity } from "./model";
 import { seed, generatePlan } from "./seed";
 import { uid, validDependency, handoverState, taskProgress } from "./logic";
@@ -11,32 +13,36 @@ export interface Repository {
   load(): Database;
   save(db: Database): void;
 }
+export function decodeSavedData(raw: string | null): Database {
+  if (raw === null) {
+    const db = seed();
+    initializeCommercial(db);
+    return db;
+  }
+  const value: unknown = JSON.parse(raw);
+  validateSavedShape(value);
+  if (
+    value.version !== 1 ||
+    !Array.isArray(value.projects) ||
+    !Array.isArray(value.tasks) ||
+    !Array.isArray(value.clients) ||
+    (value.commercialVersion !== undefined && value.commercialVersion !== 1) ||
+    [value.invoices, value.payments, value.expenses, value.contracts].some(
+      (collection) => collection !== undefined && !Array.isArray(collection),
+    )
+  )
+    throw Error(
+      "Saved demo data is incompatible. Export it or reset from Settings.",
+    );
+  initializeQuotations(value);
+  initializeCommercial(value);
+  initializeDocumentCompatibility(value);
+  validateRelationships(value);
+  return value;
+}
 export const localRepository: Repository = {
   load() {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) {
-      const db = seed();
-      initializeCommercial(db);
-      return db;
-    }
-    const value = JSON.parse(raw) as Database;
-    if (
-      value.version !== 1 ||
-      !Array.isArray(value.projects) ||
-      !Array.isArray(value.tasks) ||
-      !Array.isArray(value.clients) ||
-      (value.commercialVersion !== undefined &&
-        value.commercialVersion !== 1) ||
-      [value.invoices, value.payments, value.expenses, value.contracts].some(
-        (collection) => collection !== undefined && !Array.isArray(collection),
-      )
-    )
-      throw Error(
-        "Saved demo data is incompatible. Export it or reset from Settings.",
-      );
-    initializeQuotations(value);
-    initializeCommercial(value);
-    return value;
+    return decodeSavedData(localStorage.getItem(KEY));
   },
   save(db) {
     localStorage.setItem(KEY, JSON.stringify(db));

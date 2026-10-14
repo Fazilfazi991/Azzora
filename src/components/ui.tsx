@@ -96,17 +96,33 @@ export function Modal({
   const titleId = useId();
   useEffect(() => {
     const dialog = ref.current;
+    const opener =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     dialog?.showModal();
-    return () => dialog?.close();
+    return () => {
+      dialog?.close();
+      if (opener?.isConnected) opener.focus();
+    };
   }, []);
   return (
     <dialog
       ref={ref}
       aria-labelledby={titleId}
       className={drawer ? "drawer" : ""}
-      onCancel={onClose}
+      onCancel={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }}
       onKeyDown={(e) => {
-        if (e.key !== "Tab") return;
+        if (
+          e.key !== "Tab" ||
+          (e.target as HTMLElement).closest("dialog") !== e.currentTarget
+        )
+          return;
+        e.stopPropagation();
         const controls = [
           ...e.currentTarget.querySelectorAll<HTMLElement>(
             'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex="0"]',
@@ -122,7 +138,15 @@ export function Modal({
         }
       }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target !== e.currentTarget) return;
+        const bounds = e.currentTarget.getBoundingClientRect();
+        if (
+          e.clientX < bounds.left ||
+          e.clientX > bounds.right ||
+          e.clientY < bounds.top ||
+          e.clientY > bounds.bottom
+        )
+          onClose();
       }}
     >
       <div className="modal-head">

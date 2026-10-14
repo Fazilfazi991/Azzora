@@ -14,3 +14,5 @@ export {
   captureScheduleBaseline, reportTaskProgress,
 } from "./commands";
 export type { DraftScheduleInput } from "./commands";
+export { previewFitOutTemplate, instantiateFitOutTemplate } from "./template";
+export type { FitOutTemplatePreview, TemplatePhase, TemplateActivity } from "./template";

@@ -214,6 +214,7 @@ export function createProject(
   contact: string,
   team: Record<string, string>,
   standard: boolean,
+  planMode: "legacy" | "empty" = "legacy",
 ) {
   projectSchema.parse(p);
   Object.values({ ...team, manager: p.managerId })
@@ -244,7 +245,7 @@ export function createProject(
     initializeCommercial(db);
   }
   db.projects.push(p);
-  generatePlan(db, p, standard);
+  if (planMode === "legacy") generatePlan(db, p, standard);
   const selected = { ...team, "Project Manager": p.managerId };
   Object.entries(selected)
     .filter(([, personId]) => personId)

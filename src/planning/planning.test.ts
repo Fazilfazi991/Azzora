@@ -9,6 +9,7 @@ import { calculateSchedule, getPlanningView, linkFirstPermittedDate } from "./en
 import { approveScheduleProposal, captureScheduleBaseline, draftScheduleProposal,
   draftTaskCreation, rejectScheduleProposal, submitScheduleProposal } from "./commands";
 import type { DependencyLink, NodeRef } from "./model";
+import { instantiateFitOutTemplate, previewFitOutTemplate } from "./template";
 
 const n = (id: string): NodeRef => ({ kind: "task", id });
 const link = (projectId: string, from: string, to: string, type: DependencyLink["type"] = "FS", lagWorkingDays = 0): DependencyLink => ({
@@ -82,6 +83,35 @@ describe("planning graph and proposals", () => {
       actorId: managerId, reason: "Move first task", edit: { start: "2026-11-04" } });
     expect(getPlanningView(db, project.id).proposedFinish).toBe("2026-11-20");
   });
+  it("recalculates a new dependency outside the initiating node's old reachable set", () => {
+    const { db, project, managerId } = fixture([
+      ["a", "2026-11-02", "2026-11-03", 0],
+      ["b", "2026-11-02", "2026-11-02", 0],
+      ["c", "2026-11-04", "2026-11-04", 0],
+    ]);
+    const row = draftScheduleProposal(db, { projectId: project.id, initiatingNode: n("a"),
+      actorId: managerId, reason: "Add cross-branch predecessor", edit: {
+        links: [link(project.id, "c", "b")],
+      } });
+    expect(row.changes.find((change) => change.node.id === "b")?.after.start).toBe("2026-11-05");
+    expect(row.conflicts).toEqual([]);
+  });
+  it("computes one-day float on a feasible parallel branch and suppresses infeasible CPM", () => {
+    const { db, project } = fixture([
+      ["a", "2026-11-02", "2026-11-03", 0],
+      ["b", "2026-11-04", "2026-11-06", 0],
+      ["c", "2026-11-04", "2026-11-05", 0],
+      ["d", "2026-11-09", "2026-11-09", 0],
+    ], [["a", "b"], ["a", "c"], ["b", "d"], ["c", "d"]]);
+    const view = getPlanningView(db, project.id);
+    expect(view.criticalPathFeasible).toBe(true);
+    expect(view.nodes.find((row) => row.node.id === "c")?.totalFloatWorkingDays).toBe(1);
+    expect(["a", "b", "d"].every((id) => view.nodes.find((row) => row.node.id === id)?.critical)).toBe(true);
+    db.planning![0].taskPlanning.find((row) => row.taskId === "d")!.lockedStart = "2026-11-06";
+    const infeasible = getPlanningView(db, project.id);
+    expect(infeasible.criticalPathFeasible).toBe(false);
+    expect(infeasible.nodes.some((row) => row.critical)).toBe(false);
+  });
   it("keeps approved dates and baseline untouched until a submitted PM approval", () => {
     const { db, project, managerId } = fixture([
       ["a", "2026-11-02", "2026-11-03", 0], ["b", "2026-11-04", "2026-11-06", 0],
@@ -150,5 +180,22 @@ describe("planning graph and proposals", () => {
     const missing = structuredClone(activated);
     missing.planning![0].links.push(link(missing.planning![0].projectId, "missing", "a"));
     expect(() => decodeSavedData(JSON.stringify(missing))).toThrow();
+  });
+  it("instantiates edited twelve-phase preview exactly once with parallel links", () => {
+    const db = seed(), project = db.projects[0];
+    db.tasks = db.tasks.filter((row) => row.projectId !== project.id);
+    db.milestones = db.milestones.filter((row) => row.projectId !== project.id);
+    db.phases = db.phases.filter((row) => row.projectId !== project.id);
+    const preview = previewFitOutTemplate();
+    expect(preview).toHaveLength(12);
+    preview[0].activities[0].name = "Confirmed client scope";
+    instantiateFitOutTemplate(db, project.id, preview, project.managerId);
+    const tasks = db.tasks.filter((row) => row.projectId === project.id);
+    expect(tasks.some((row) => row.name === "Confirmed client scope")).toBe(true);
+    expect(new Set(tasks.map((row) => row.id)).size).toBe(tasks.length);
+    expect(db.planning?.find((row) => row.projectId === project.id)?.baselineStatus).toBe("Unset");
+    expect(db.planning?.find((row) => row.projectId === project.id)?.links.some((row) => row.successor.id ===
+      tasks.find((task) => task.name === "Close ceiling after first-fix inspection")?.id)).toBe(true);
+    expect(() => instantiateFitOutTemplate(db, project.id, preview, project.managerId)).toThrow(/already has a plan/);
   });
 });

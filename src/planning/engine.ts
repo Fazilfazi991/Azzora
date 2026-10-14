@@ -123,7 +123,43 @@ export function calculateSchedule(
   const initiatingKey = nodeKey(initiatingNode);
   const affected = reachableSuccessors(links, initiatingNode);
   affected.add(initiatingKey);
+  if (edit.calendar) for (const node of order) affected.add(nodeKey(node));
+  if (edit.links) {
+    const oldById = new Map(planning.links.map((link) => [link.id, link]));
+    for (const link of edit.links) {
+      if (JSON.stringify(oldById.get(link.id)) !== JSON.stringify(link)) {
+        affected.add(nodeKey(link.successor));
+        for (const key of reachableSuccessors(links, link.successor)) affected.add(key);
+      }
+    }
+  }
+  if (edit.taskPlanning)
+    for (const metadata of edit.taskPlanning) {
+      const old = planning.taskPlanning.find((row) => row.taskId === metadata.taskId);
+      if (JSON.stringify(old) !== JSON.stringify(metadata)) {
+        const node: NodeRef = { kind: "task", id: metadata.taskId };
+        affected.add(nodeKey(node));
+        for (const key of reachableSuccessors(links, node)) affected.add(key);
+      }
+    }
+  if (edit.milestonePlanning)
+    for (const metadata of edit.milestonePlanning) {
+      const old = planning.milestonePlanning.find((row) => row.milestoneId === metadata.milestoneId);
+      if (JSON.stringify(old) !== JSON.stringify(metadata)) {
+        const node: NodeRef = { kind: "milestone", id: metadata.milestoneId };
+        affected.add(nodeKey(node));
+        for (const key of reachableSuccessors(links, node)) affected.add(key);
+      }
+    }
   const warnings: ScheduleIssue[] = [], conflicts: ScheduleIssue[] = [];
+  if (edit.taskPlanning)
+    for (const metadata of edit.taskPlanning) {
+      const entry = dates.get(`task:${metadata.taskId}`);
+      if (entry && affected.has(`task:${metadata.taskId}`)) {
+        entry.durationWorkingDays = metadata.durationWorkingDays;
+        if (isWorkingDate(calendar, entry.start)) entry.finish = finishFor(calendar, entry.start, entry.durationWorkingDays);
+      }
+    }
   const direct = dates.get(initiatingKey)!;
   if (initiatingNode.kind === "milestone") {
     if (edit.durationWorkingDays !== undefined && edit.durationWorkingDays !== 0)
@@ -193,6 +229,16 @@ export function calculateSchedule(
     }
   }
   actualAndConstraintConflicts(db, effectivePlanning, dates, calendar, affected, conflicts);
+  for (const link of links) {
+    const predecessor = dates.get(nodeKey(link.predecessor))!;
+    const successor = dates.get(nodeKey(link.successor))!;
+    try {
+      if (successor.start < bound(calendar, link, predecessor, successor.durationWorkingDays))
+        conflicts.push(issue("ProposedDependencyConflict", `Proposed dates violate ${link.type} dependency ${link.id}.`, link.successor));
+    } catch {
+      conflicts.push(issue("InvalidProposedLink", `Dependency ${link.id} cannot be evaluated on the project calendar.`, link.successor));
+    }
+  }
   const finishes = [...dates.values()].map((row) => row.finish);
   return { dates, links, calendar, taskPlanning, milestonePlanning, affected,
     warnings, conflicts, finish: finishes.length ? finishes.sort().at(-1) : undefined };

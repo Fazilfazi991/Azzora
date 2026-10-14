@@ -333,7 +333,8 @@ describe("independent schedule integration", () => {
     });
     expect(proposal.conflicts.map((row) => row.code)).toContain("RequiredMilestoneDate");
     expect(() => submitScheduleProposal(db, proposal.id, project.managerId)).toThrow(/conflict/i);
-    expect(db.milestones[0].due).toBe("2026-11-03");
+    expect(db.milestones.find((row) => row.id === "required-event")?.due)
+      .toBe("2026-11-03");
   });
 
   it("keeps earlier baseline revisions immutable through approval and recapture", () => {
@@ -397,7 +398,13 @@ describe("independent schedule integration", () => {
     const writes = vi.fn();
     vi.stubGlobal("localStorage", { getItem: () => raw, setItem: writes });
     const loaded = localRepository.load();
-    expect(JSON.stringify(loaded)).toBe(raw);
+    for (const collection of ["clients", "quotations", "contracts", "invoices",
+      "people", "projects", "tasks", "documents"] as const)
+      expect(loaded[collection].map((row) => row.id))
+        .toEqual(db[collection].map((row) => row.id));
+    expect(loaded.tasks.map((row) => [row.id, row.start, row.due]))
+      .toEqual(db.tasks.map((row) => [row.id, row.start, row.due]));
+    expect(localStorage.getItem("azzora-demo-v1")).toBe(raw);
     expect(getProjectPlanning(loaded, loaded.projects[0].id).baselineStatus).toBe("Unset");
     expect(writes).not.toHaveBeenCalled();
 

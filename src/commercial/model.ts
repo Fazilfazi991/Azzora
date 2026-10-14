@@ -37,6 +37,7 @@ export interface Invoice {
   projectId: string;
   quotationId: string;
   milestoneId: string;
+  variationId?: string;
   date: string;
   due: string;
   description: string;
@@ -100,6 +101,8 @@ export interface Expense {
   attachmentReference: string;
   attachments: Attachment[];
   createdAt: string;
+  supplierBillId?: string;
+  cancelledAt?: string;
 }
 export interface Contract {
   id: string;
@@ -116,6 +119,7 @@ export interface Contract {
   paymentTerms: string;
 }
 export interface CommercialFilter {
+  supplierId?: string;
   from: string;
   to: string;
   customerId: string;

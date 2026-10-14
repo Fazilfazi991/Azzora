@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useStore } from "../store";
 import { Field, Modal, Badge, Empty } from "../components/ui";
 import { Attachments } from "../components/uploads";
-import { today, uid } from "../domain/logic";
+import { today, uid, addDays } from "../domain/logic";
 import type {
   CommercialFilter,
   Invoice,
@@ -18,6 +18,7 @@ import {
   cents,
   invoiceTotals,
   balanceDue,
+  paidAmount,
   invoiceStatus,
 } from "./calculations";
 import {
@@ -128,7 +129,7 @@ export function DataTable({
               <th
                 key={h}
                 className={
-                  /AED|Amount|Balance|Total|VAT|Cost|Collected|Contract|Profit|Margin|Debit|Credit|Paid/.test(
+                  /AED$|Margin %$|Progress %$|^(Quantity|Ordered|Delivered|Pending|Billed)$/.test(
                     h,
                   )
                     ? "numeric"
@@ -147,7 +148,7 @@ export function DataTable({
                 <td
                   key={j}
                   className={
-                    /AED|Amount|Balance|Total|VAT|Cost|Collected|Contract|Profit|Margin|Debit|Credit|Paid/.test(
+                    /AED$|Margin %$|Progress %$|^(Quantity|Ordered|Delivered|Pending|Billed)$/.test(
                       headers[j],
                     )
                       ? "numeric"
@@ -195,11 +196,7 @@ export function InvoiceTable({ invoices }: { invoices: Invoice[] }) {
           <small>Due {i.due}</small>
         </>,
         aed(invoiceTotals(i).grand),
-        aed(
-          i.status === "Issued"
-            ? invoiceTotals(i).grand - balanceDue(db, i)
-            : 0n,
-        ),
+        aed(i.status === "Issued" ? paidAmount(db, i.id) : 0n),
         aed(balanceDue(db, i)),
         <>
           <Badge>{invoiceStatus(db, i)}</Badge>
@@ -303,11 +300,19 @@ export function InvoiceForm({
   onSaved: (id: string) => void;
 }) {
   const { db, mutate } = useStore();
-  const [i, setI] = useState(() =>
-    structuredClone(
+  const [i, setI] = useState(() => {
+    const result = structuredClone(
       invoice || blankInvoice(initialCustomerId, initialProjectId),
-    ),
-  );
+    );
+    if (!invoice && db.operations) {
+      const settings = db.operations.settings;
+      result.vatPercentage = settings.vatPercentage;
+      result.lines.forEach((l) => (l.tax = settings.tax));
+      result.due = addDays(today(), settings.paymentDays);
+      result.terms = settings.company.invoiceTerms;
+    }
+    return result;
+  });
   const [source, setSource] = useState(invoice?.quotationId || ""),
     [milestone, setMilestone] = useState(invoice?.milestoneId || "");
   const [sourceError, setSourceError] = useState("");

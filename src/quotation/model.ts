@@ -33,6 +33,9 @@ export interface QuotationCompanyDetails {
   location: string;
   email: string;
   phone: string;
+  trn?: string;
+  bank?: string;
+  logo?: string;
 }
 export interface QuotationLineItem {
   id: string;

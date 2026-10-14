@@ -1646,16 +1646,16 @@ dialog::backdrop {
 }
 
 /* Commercial additions use the incumbent AZZORA controls, surfaces and density. */
-.commercial-dashboard {
+.commercial-dashboard, .operational-dashboard {
   margin: 24px 0 32px;
 }
-.kpis.commercial-kpis {
+.kpis.commercial-kpis, .kpis.budget-kpis {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
-.commercial-kpis .kpi {
+.commercial-kpis .kpi, .budget-kpis .kpi {
   min-width: 0;
 }
-.commercial-kpis .kpi strong {
+.commercial-kpis .kpi strong, .budget-kpis .kpi strong {
   font-size: clamp(18px, 1.8vw, 26px);
   overflow-wrap: anywhere;
   font-variant-numeric: tabular-nums;
@@ -1740,6 +1740,10 @@ dialog::backdrop {
   padding: 12px 0;
   border-bottom: 1px solid var(--line);
 }
+.company-logo-preview { display: block; max-width: 96px; max-height: 96px; object-fit: contain; margin: 16px 0; }
+.approval-decision { border-left: 2px solid var(--bronze); margin: 16px 0; padding: 12px 16px; background: #faf8f5; }
+.approval-decision .field { max-width: 560px; }
+details > summary { overflow-wrap: anywhere; }
 .quick-action-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1750,21 +1754,21 @@ dialog::backdrop {
   min-width: 0;
 }
 @media (max-width: 1100px) {
-  .kpis.commercial-kpis {
+  .kpis.commercial-kpis, .kpis.budget-kpis {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (max-width: 480px) {
-  .kpis.commercial-kpis {
+  .kpis.commercial-kpis, .kpis.budget-kpis {
     gap: 10px;
   }
-  .commercial-kpis .kpi {
+  .commercial-kpis .kpi, .budget-kpis .kpi {
     padding: 14px;
   }
-  .commercial-kpis .kpi strong {
+  .commercial-kpis .kpi strong, .budget-kpis .kpi strong {
     font-size: 18px;
   }
-  .commercial-kpis .kpi p {
+  .commercial-kpis .kpi p, .budget-kpis .kpi p {
     font-size: 11px;
   }
   .commercial-filters .field {

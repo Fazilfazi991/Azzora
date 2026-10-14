@@ -5,6 +5,7 @@ import {
   aed,
   amountString,
   balanceDue,
+  paidAmount,
   cents,
   effectiveProject,
   financials,
@@ -16,6 +17,8 @@ import {
 } from "./calculations";
 import { discountAmount, totals } from "../quotation/calculations";
 import { today, projectProgress, health } from "../domain/logic";
+import { operationalReports, operationalReport } from "../operations/reports";
+import { getOperations } from "../operations/migration";
 export interface ReportData {
   headers: string[];
   rows: string[][];
@@ -31,6 +34,7 @@ export const reportNames = [
   "Project Financial Summary",
   "Customer-wise Outstanding Report",
   "Portfolio Delivery",
+  ...operationalReports,
 ] as const;
 export type ReportName = (typeof reportNames)[number];
 export function statementData(db: Database, f: CommercialFilter): ReportData {
@@ -89,6 +93,39 @@ export function statementData(db: Database, f: CommercialFilter): ReportData {
         order: 2,
       });
   }
+  const op = getOperations(db);
+  for (const c of op.credits.filter(
+    (c) => c.status === "Issued" && related.some((i) => i.id === c.invoiceId),
+  ))
+    entries.push({
+      date: c.date,
+      ref: c.number,
+      details: "Credit note · " + c.reason,
+      debit: 0n,
+      credit: cents(c.gross),
+      order: 1,
+    });
+  for (const r of op.refunds.filter((r) =>
+    related.some((i) => i.id === r.invoiceId),
+  )) {
+    entries.push({
+      date: r.date,
+      ref: r.number,
+      details: "Customer refund · " + r.reference,
+      debit: cents(r.amount),
+      credit: 0n,
+      order: 2,
+    });
+    if (r.reversalDate)
+      entries.push({
+        date: r.reversalDate,
+        ref: r.number,
+        details: "Refund reversal",
+        debit: 0n,
+        credit: cents(r.amount),
+        order: 3,
+      });
+  }
   entries.sort(
     (a, b) =>
       a.date.localeCompare(b.date) ||
@@ -138,6 +175,8 @@ export function reportData(
   name: ReportName,
   f: CommercialFilter,
 ): ReportData {
+  if ((operationalReports as readonly string[]).includes(name))
+    return operationalReport(db, name, f);
   const cName = (id: string) =>
     db.clients.find((c) => c.id === id)?.name || "Unlinked";
   const pName = (id: string) =>
@@ -224,11 +263,7 @@ export function reportData(
         pName(i.projectId),
         invoiceStatus(db, i),
         amountString(invoiceTotals(i).grand),
-        amountString(
-          i.status === "Issued"
-            ? invoiceTotals(i).grand - balanceDue(db, i)
-            : 0n,
-        ),
+        amountString(i.status === "Issued" ? paidAmount(db, i.id) : 0n),
         amountString(balanceDue(db, i)),
       ]),
     };

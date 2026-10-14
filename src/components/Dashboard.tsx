@@ -13,6 +13,7 @@ import {
 import { Header, Badge, Progress, Empty, personName } from "./ui";
 import { ProjectCard } from "./Projects";
 import { CommercialDashboard } from "../commercial/Accounts";
+import { OperationalDashboard } from "../operations/Budgets";
 export function Dashboard({
   onOpen,
   onTask,
@@ -80,6 +81,7 @@ export function Dashboard({
         ))}
       </div>
       <CommercialDashboard />
+      <OperationalDashboard />
       <div className="dashboard-grid">
         <section>
           <div className="between">

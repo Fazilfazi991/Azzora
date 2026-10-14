@@ -3,11 +3,16 @@ import { useStore } from "../store";
 import { handoverState } from "../domain/logic";
 import { record, completeProject } from "../domain/repository";
 import { Header, Progress, Badge, Confirm } from "./ui";
+import { CommercialClosure } from "../operations/Closure";
+import { closureSummary } from "../operations/closure-domain";
 export function Handover({ projectId }: { projectId?: string }) {
   const { db, mutate } = useStore();
   const [selected, setSelected] = useState(projectId || db.projects[0].id);
   const [confirm, setConfirm] = useState(false);
   const state = handoverState(db, selected);
+  const financialBlock =
+    !!db.operations?.settings.blockOperationalForFinance &&
+    !closureSummary(db, selected).commercialClear;
   const p = db.projects.find((p) => p.id === selected)!;
   return (
     <>
@@ -46,13 +51,7 @@ export function Handover({ projectId }: { projectId?: string }) {
         </p>
       </div>
       <div className="project-grid">
-        {[
-          "Site Completion",
-          "Quality",
-          "Documents",
-          "Client",
-          "Commercial",
-        ].map((group) => (
+        {["Site Completion", "Quality", "Documents", "Client"].map((group) => (
           <section className="panel" key={group}>
             <h3>{group}</h3>
             {state.items
@@ -103,11 +102,18 @@ export function Handover({ projectId }: { projectId?: string }) {
       </div>
       <button
         className="primary"
-        disabled={!state.ready || p.status === "Completed"}
+        disabled={!state.ready || financialBlock || p.status === "Completed"}
         onClick={() => setConfirm(true)}
       >
         Complete Project
       </button>
+      {financialBlock && (
+        <p className="notice">
+          The configured financial blocking policy requires commercial
+          obligations to be cleared before operational handover.
+        </p>
+      )}
+      <CommercialClosure projectId={selected} />
       {confirm && (
         <Confirm
           title="Complete this project?"

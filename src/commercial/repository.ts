@@ -18,6 +18,7 @@ import {
 } from "./calculations";
 import { customerSnapshot } from "./customer-domain";
 import { initializeCommercial } from "./migration";
+import { getOperations } from "../operations/migration";
 
 export function validDate(value: string) {
   if (
@@ -264,6 +265,31 @@ function validateInvoice(db: Database, i: Invoice) {
     throw Error("Add invoice items with descriptions and valid tax treatment.");
   const t = invoiceTotals({ ...i, snapshot: undefined, status: "Draft" });
   if (t.grand <= 0n) throw Error("Invoice total must be positive.");
+  if (i.variationId) {
+    const v = getOperations(db).variations.find(
+      (v) => v.id === i.variationId && v.status === "Approved",
+    );
+    if (
+      !v ||
+      v.customerId !== i.customerId ||
+      v.projectId !== i.projectId ||
+      BigInt(v.gross!) !== t.grand ||
+      i.quotationId ||
+      i.milestoneId
+    )
+      throw Error(
+        "Variation invoice must match its approved value/customer/project.",
+      );
+    if (
+      db.invoices.some(
+        (x) =>
+          x.id !== i.id &&
+          x.variationId === i.variationId &&
+          x.status !== "Cancelled",
+      )
+    )
+      throw Error("Variation already invoiced or reserved.");
+  }
   if (
     db.invoices.some(
       (x) =>
@@ -332,7 +358,8 @@ export function saveInvoice(db: Database, draft: Invoice) {
   if (!next.number) {
     do {
       next.number =
-        "INV-" + String(db.commercialNumbering.invoice++).padStart(5, "0");
+        (db.operations?.settings.invoicePrefix || "INV-") +
+        String(db.commercialNumbering.invoice++).padStart(5, "0");
     } while (db.invoices.some((i) => i.number === next.number));
   }
   if (old) Object.assign(old, next);
@@ -359,7 +386,9 @@ export function issueInvoice(db: Database, id: string) {
   const q = db.quotations.find((q) => q.id === i.quotationId);
   i.snapshot = {
     customer: customerSnapshot(c),
-    company: structuredClone(q?.company || defaultCompany),
+    company: structuredClone(
+      db.operations?.settings.company || q?.company || defaultCompany,
+    ),
     project: db.projects.find((p) => p.id === i.projectId)?.name || "",
     quotation: q ? q.number + " Rev " + q.revision : "",
     subtotal: t.subtotal.toString(),
@@ -386,6 +415,15 @@ export function cancelInvoice(db: Database, id: string, reason: string) {
     throw Error("Enter a reason for cancellation.");
   if (db.payments.some((p) => p.invoiceId === id && !p.reversedAt))
     throw Error("Reverse allocated receipts before cancelling this invoice.");
+  if (
+    getOperations(db).credits.some(
+      (c) => c.invoiceId === id && c.status !== "Rejected",
+    ) ||
+    getOperations(db).refunds.some((r) => r.invoiceId === id && !r.reversedAt)
+  )
+    throw Error(
+      "Invoices with credit notes/refunds must be corrected through the credit workflow.",
+    );
   record(
     db,
     i.projectId,
@@ -494,6 +532,10 @@ export function saveExpense(db: Database, expense: Expense) {
       "Expense must be positive; paid amount cannot exceed gross expense.",
     );
   const old = db.expenses.find((e) => e.id === expense.id);
+  if (old?.supplierBillId || expense.supplierBillId)
+    throw Error(
+      "Correct supplier-bill costs through Procurement to preserve quantity and payment controls.",
+    );
   const next = structuredClone(expense);
   if (!next.reference) {
     do {

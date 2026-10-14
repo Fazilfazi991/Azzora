@@ -21,7 +21,8 @@ All commands return a new quotation and leave their argument unchanged. Call ins
 | `setBoqRowParent(q,sectionId,rowId,parentId?)` | `Quotation` |
 | `setBoqCategoryParent(q,categoryId,parentId?)` | `Quotation` |
 | `renumberBoq(q)` | `Quotation` |
-| `numberingMode(q)` | `"automatic"|"preserve"` |
+| 
+umberingMode(q)` | `"automatic"|"preserve"` |
 | `boqTree(section)` | `{row,children,depth}[]` |
 | `boqGroupAmount(section,rowId)` | `bigint` |
 
@@ -37,7 +38,12 @@ Preserve mode applies to the authoritative reference (ID/family or Reference imp
 
 ## Verification
 
-24 focused tests pass in `src/quotation/hierarchy.test.ts`: requested Painting 2.1.1–2.1.3/2.2.1, exact AED2975 subtotal/AED3123.75 grand total, all special pricing types, sibling insert/delete/reorder, nested headings, complete row/category subtree duplication/move/delete, safe reparenting, cycle/orphan/ID guards, immutable issued/history/reference data, unique manual insertions/duplicates, save/decode round trip and multi-page renderer number mapping. Reference Demolition/Tiling/Gypsum Ceiling/Plumbing trees and reference renderer commands remain intact. Tests use the actual existing financial and PDF engine.
+28 focused tests pass in `src/quotation/hierarchy.test.ts`: requested Painting 2.1.1–2.1.3/2.2.1, exact AED2975 subtotal/AED3123.75 grand total, all special pricing types, sibling insert/delete/reorder, nested headings, complete row/category subtree duplication/move/delete, safe reparenting, cycle/orphan/ID guards, immutable issued/history/reference data, unique manual insertions/duplicates, save/decode round trip and multi-page renderer number mapping. Reference Demolition/Tiling/Gypsum Ceiling/Plumbing trees and reference renderer commands remain intact. Tests use the actual existing financial and PDF engine.
 
 ESLint and Prettier pass for the new module/tests. Full TypeScript remains dependent on Agent2's `QuotationLivePreview` component integration: the known missing-module diagnostic from the preceding wiring commit must be cleared during combined integration. Agent1 does not claim a combined application build before that dependency lands. Full unit rerun result will be recorded separately after completion. Coordinator/Agent3 own final browser, alignment and pushed-source certification.
-`nFull unit rerun: **328 passed, 0 failed, 14 test files** (304 retained tests plus24focused hierarchy tests). The only TypeScript diagnostic is the previously reported missing preview component dependency.
+
+Full unit rerun: **328 passed, 0 failed, 14 test files** (304 retained tests plus24focused hierarchy tests). The only TypeScript diagnostic is the previously reported missing preview component dependency.
+
+## Nested-category correction
+
+Automatic numbering now follows category parentId recursively. Empty root1 → subcategory1.1 → nestedsubcategory1.1.1. Direct row roots occupy the first child ordinal slots; child categories follow them, so a category with rows1.1 and1.2 gives its first subcategory1.3. This shared namespace prevents row/category number collisions. Each subcategory applies the same rule recursively. Flattened section storage follows the resulting preorder, with all stable IDs, parent links and financial calculations unchanged. Four additional focused tests cover nested category numbers, mixed row/category uniqueness, complete nested category move/duplicate and reparenting. **28 focused tests pass.** API signatures and preserve-mode behavior are unchanged.

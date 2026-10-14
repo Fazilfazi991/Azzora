@@ -430,3 +430,85 @@ describe("historical numbering, persistence and PDF mapping", () => {
     expect(JSON.stringify(q)).toBe(before);
   });
 });
+
+describe("nested work-category numbering", () => {
+  it("numbers empty nested categories 1,1.1,1.1.1 instead of separate roots", () => {
+    let q = blankQuotation("NESTED");
+    const root = addBoqCategory(q);
+    q = root.quotation;
+    const child = addBoqCategory(q, { parentId: root.categoryId });
+    q = child.quotation;
+    const nested = addBoqCategory(q, { parentId: child.categoryId });
+    expect(nested.quotation.sections.map((s) => s.number)).toEqual([
+      "1",
+      "1.1",
+      "1.1.1",
+    ]);
+    expect(nested.quotation.sections.map((s) => s.id)).toEqual([
+      root.categoryId,
+      child.categoryId,
+      nested.categoryId,
+    ]);
+  });
+  it("shares ordinal slots between rows and subcategories without generated collisions", () => {
+    let q = blankQuotation("MIXED");
+    const root = addBoqCategory(q);
+    q = root.quotation;
+    const child = addBoqCategory(q, { parentId: root.categoryId });
+    q = child.quotation;
+    const row = addBoqRow(q, root.categoryId, { kind: "priced" });
+    q = row.quotation;
+    const childRow = addBoqRow(q, child.categoryId, { kind: "priced" });
+    q = childRow.quotation;
+    const nested = addBoqCategory(q, { parentId: child.categoryId });
+    q = nested.quotation;
+    expect(q.sections.map((s) => s.number)).toEqual(["1", "1.2", "1.2.2"]);
+    expect(q.sections[0].rows[0].number).toBe("1.1");
+    expect(q.sections[1].rows[0].number).toBe("1.2.1");
+    expect(new Set(numbers(q)).size).toBe(numbers(q).length);
+  });
+  it("moves and duplicates nested category numbers with complete stable-ID subtrees", () => {
+    let q = blankQuotation("MOVE-CATEGORIES");
+    const first = addBoqCategory(q);
+    q = first.quotation;
+    const second = addBoqCategory(q);
+    q = second.quotation;
+    const child = addBoqCategory(q, { parentId: second.categoryId });
+    q = child.quotation;
+    const item = addBoqRow(q, child.categoryId, { kind: "priced" });
+    q = item.quotation;
+    q = moveBoqCategory(q, second.categoryId, -1);
+    expect(q.sections.map((s) => s.number)).toEqual(["1", "1.1", "2"]);
+    expect(q.sections[1].rows[0]).toMatchObject({
+      id: item.rowId,
+      number: "1.1.1",
+    });
+    const copy = duplicateBoqCategory(q, second.categoryId);
+    expect(copy.quotation.sections.map((s) => s.number)).toEqual([
+      "1",
+      "1.1",
+      "2",
+      "2.1",
+      "3",
+    ]);
+    expect(copy.quotation.sections[3].rows[0].number).toBe("2.1.1");
+    expect(copy.quotation.sections[3].rows[0].id).not.toBe(item.rowId);
+    expect(new Set(numbers(copy.quotation)).size).toBe(
+      numbers(copy.quotation).length,
+    );
+  });
+  it("reparents a category subtree into the correct shared namespace", () => {
+    let q = blankQuotation("REPARENT-CATEGORY");
+    const first = addBoqCategory(q);
+    q = first.quotation;
+    q = addBoqRow(q, first.categoryId, { kind: "priced" }).quotation;
+    const second = addBoqCategory(q);
+    q = second.quotation;
+    const child = addBoqCategory(q, { parentId: second.categoryId });
+    q = child.quotation;
+    q = setBoqCategoryParent(q, second.categoryId, first.categoryId);
+    expect(q.sections.map((s) => s.number)).toEqual(["1", "1.2", "1.2.1"]);
+    expect(q.sections[0].rows[0].number).toBe("1.1");
+    expect(new Set(numbers(q)).size).toBe(numbers(q).length);
+  });
+});

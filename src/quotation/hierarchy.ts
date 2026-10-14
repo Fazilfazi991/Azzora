@@ -130,22 +130,39 @@ function nextNumber(prefix: string, used: Set<string>): string {
   used.add(number);
   return number;
 }
-/** New-draft categories follow displayed order; rows follow sibling order recursively. */
+/** Rows and subcategories share their parent's child slots, so numbers never collide. */
 export function renumberBoq(q: Quotation): Quotation {
   const next = structuredClone(q);
   if (numberingMode(q) === "preserve") return next;
   validate(next);
-  next.sections.forEach((section, index) => {
-    section.number = String(index + 1);
-    const tree = boqTree(section);
-    const numberRows = (nodes: BoqNode[], prefix: string) =>
-      nodes.forEach((node, i) => {
-        node.row.number = prefix + "." + String(i + 1);
-        numberRows(node.children, node.row.number);
-      });
-    numberRows(tree, section.number);
-    section.rows = flatten(tree);
-  });
+  const categories = new Map<string | undefined, QuotationSection[]>();
+  for (const section of next.sections) {
+    const parent = section.parentId || undefined;
+    categories.set(parent, [...(categories.get(parent) || []), section]);
+  }
+  const ordered: QuotationSection[] = [];
+  const numberCategories = (
+    parentId: string | undefined,
+    prefix: string,
+    rowSlots = 0,
+  ) =>
+    (categories.get(parentId) || []).forEach((section, index) => {
+      section.number = prefix
+        ? prefix + "." + String(rowSlots + index + 1)
+        : String(index + 1);
+      const tree = boqTree(section);
+      const numberRows = (nodes: BoqNode[], prefix: string) =>
+        nodes.forEach((node, i) => {
+          node.row.number = prefix + "." + String(i + 1);
+          numberRows(node.children, node.row.number);
+        });
+      numberRows(tree, section.number);
+      section.rows = flatten(tree);
+      ordered.push(section);
+      numberCategories(section.id, section.number, tree.length);
+    });
+  numberCategories(undefined, "");
+  next.sections = ordered;
   return next;
 }
 function finish(q: Quotation) {

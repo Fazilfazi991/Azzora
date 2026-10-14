@@ -7,7 +7,7 @@ import {
   displayAmount,
   displayRate,
   formatMoney,
-  paymentAmount,
+  paymentScheduleAmounts,
   sectionAmount,
   totals,
   discountAmount,
@@ -564,7 +564,8 @@ export function layoutQuotation(q: Quotation): DocumentPage[] {
     ensure(14 + Math.min(Math.max(21.2, firstLines.length * 11.2 + 7), 80));
   }
   bar("PAYMENT TERMS & CONDITION");
-  for (const p of q.payments) {
+  const scheduledAmounts = paymentScheduleAmounts(q, t.grand);
+  for (const [paymentIndex, p] of q.payments.entries()) {
     const ls = wrap(
       "Term " +
         p.number +
@@ -587,7 +588,7 @@ export function layoutQuotation(q: Quotation): DocumentPage[] {
       if (offset === 0) {
         text(p.percentage + "%", 369, y + 4, 8.2, "italic", "center");
         text(
-          formatMoney(paymentAmount(p, t.grand), true),
+          formatMoney(scheduledAmounts[paymentIndex], true),
           526,
           y + 4,
           8.2,

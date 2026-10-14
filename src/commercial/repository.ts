@@ -8,6 +8,8 @@ import {
   discountAmount,
   totals,
   paymentAmount,
+  paymentPercentage,
+  paymentScheduleAmounts,
 } from "../quotation/calculations";
 import {
   amountString,
@@ -196,12 +198,21 @@ export function milestoneAmounts(db: Database, quotationId: string) {
   const grand = totals(q).grand;
   const values = q.payments.map((p) => paymentAmount(p, grand));
   const difference = grand - values.reduce((s, n) => s + n, 0n);
-  if (difference < -1n || difference > 1n)
+  const automatic =
+    q.paymentRoundingPolicy === "reconcile-final" &&
+    paymentPercentage(q) === 100000000n &&
+    q.payments.every(
+      (term) => term.amountOverride === undefined || term.amountOverride === "",
+    );
+  if (!automatic && (difference < -1n || difference > 1n))
     throw Error(
       "Payment schedule amounts must equal quotation total within one fils before invoicing. Create a corrected revision.",
     );
-  // Explicit last-milestone reconciliation, leaving the accepted schedule immutable.
-  if (values.length) values[values.length - 1] += difference;
+  // New automatic schedules use the same displayed allocation as the PDF.
+  // Existing accepted schedules keep their historical one-fils treatment.
+  if (automatic)
+    values.splice(0, values.length, ...paymentScheduleAmounts(q, grand));
+  else if (values.length) values[values.length - 1] += difference;
   if (values.some((v) => v <= 0n))
     throw Error("All invoice milestones must have a positive amount.");
   return { values, difference };
@@ -225,9 +236,8 @@ export function invoiceFromQuotation(
   const term = q.payments.find((p) => p.id === milestoneId);
   const t = totals(q);
   if (milestoneId && !term) throw Error("Payment milestone not found.");
-  const amount = term
-    ? milestoneAmounts(db, q.id).values[q.payments.indexOf(term)]
-    : t.grand;
+  const schedule = term ? milestoneAmounts(db, q.id) : undefined;
+  const amount = term ? schedule!.values[q.payments.indexOf(term)] : t.grand;
   i.lines = [
     {
       id: uid(),
@@ -245,9 +255,21 @@ export function invoiceFromQuotation(
     : q.payments
         .map((p) => p.description + ": " + p.percentage + "% " + p.notes)
         .join("\n");
-  if (term && milestoneAmounts(db, q.id).difference !== 0n)
-    i.notes =
-      "Final milestone reconciles the accepted schedule by one fils to the quotation total.";
+  if (term && schedule?.difference !== 0n) {
+    const automatic =
+      q.paymentRoundingPolicy === "reconcile-final" &&
+      q.payments.every(
+        (payment) =>
+          payment.amountOverride === undefined || payment.amountOverride === "",
+      );
+    i.notes = automatic
+      ? "Automatic payment schedule reconciles " +
+        (schedule!.difference < 0n
+          ? -schedule!.difference
+          : schedule!.difference) +
+        " fils of rounding to the quotation total."
+      : "Final milestone reconciles the accepted schedule by one fils to the quotation total.";
+  }
   return i;
 }
 function validateInvoice(db: Database, i: Invoice) {

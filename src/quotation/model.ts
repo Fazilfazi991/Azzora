@@ -101,6 +101,8 @@ export interface Quotation {
   validity: string;
   vatEnabled: boolean;
   vatPercentage: string;
+  /** Opt-in on quotations created after schedule reconciliation was introduced. */
+  paymentRoundingPolicy?: "reconcile-final";
   discount?: string;
   acceptedAt?: string;
   introduction: {

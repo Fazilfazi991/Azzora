@@ -7,6 +7,8 @@ import {
   changeQuotationStatus,
   saveQuotation,
   copyQuotation,
+  newQuotation,
+  blankLine,
 } from "../quotation/repository";
 import { totals } from "../quotation/calculations";
 import { initializeCommercial } from "./migration";
@@ -433,6 +435,9 @@ describe("invoice calculations, snapshots and provenance", () => {
       amounts = milestoneAmounts(db, q.id);
     expect(amounts.difference).toBe(1n);
     expect(amounts.values.reduce((s, n) => s + n, 0n)).toBe(totals(q).grand);
+    expect(invoiceFromQuotation(db, q.id, q.payments[0].id).notes).toContain(
+      "Final milestone reconciles the accepted schedule by one fils",
+    );
     for (const term of q.payments) {
       const i = saveInvoice(db, invoiceFromQuotation(db, q.id, term.id));
       issueInvoice(db, i.id);
@@ -445,6 +450,48 @@ describe("invoice calculations, snapshots and provenance", () => {
     ).toThrow("already");
     expect(() => saveInvoice(db, invoiceFromQuotation(db, q.id))).toThrow(
       "already",
+    );
+  });
+  it("invoices marked future quotations using the same positive tiny milestones shown in the PDF", () => {
+    const db = dbReady();
+    const q = newQuotation(db);
+    q.customerId = db.clients[0].id;
+    q.projectId = db.projects.find(
+      (project) => project.clientId === q.customerId,
+    )!.id;
+    q.customer.name = db.clients[0].name;
+    q.project.name = "Tiny works";
+    q.project.location = "Dubai";
+    q.vatEnabled = false;
+    q.sections = [
+      {
+        id: "tiny",
+        number: "1",
+        title: "Works",
+        rows: [
+          {
+            ...blankLine(),
+            description: "Tiny works",
+            quantity: "1",
+            unit: "LS",
+            rate: "0.10",
+          },
+        ],
+      },
+    ];
+    changeQuotationStatus(db, q.id, "Finalized");
+    changeQuotationStatus(db, q.id, "Accepted");
+    const amounts = milestoneAmounts(db, q.id);
+    expect(amounts.values).toEqual([5n, 4n, 1n]);
+    expect(amounts.difference).toBe(-1n);
+    expect(amounts.values.reduce((sum, amount) => sum + amount, 0n)).toBe(10n);
+    expect(
+      q.payments.map(
+        (term) => invoiceFromQuotation(db, q.id, term.id).lines[0].rate,
+      ),
+    ).toEqual(["0.05", "0.04", "0.01"]);
+    expect(invoiceFromQuotation(db, q.id, q.payments[1].id).notes).toContain(
+      "Automatic payment schedule reconciles 1 fils",
     );
   });
   it("blocks milestone tampering and releases reservations after draft cancellation", () => {

@@ -45,6 +45,50 @@ export function paymentAmount(term: QuotationPaymentTerm, grand: bigint) {
   const p = decimal(term.percentage || "0");
   return round(grand * p.n, p.d * 100n);
 }
+/**
+ * Align future automatic schedules with the document total without editing any
+ * saved term. Legacy/issued records without the opt-in and explicit source
+ * overrides retain their recorded payment amounts exactly.
+ */
+export function paymentScheduleAmounts(q: Quotation, grand: bigint): bigint[] {
+  const amounts = q.payments.map((term) => paymentAmount(term, grand));
+  if (
+    q.paymentRoundingPolicy !== "reconcile-final" ||
+    !amounts.length ||
+    q.payments.some(
+      (term) => term.amountOverride !== undefined && term.amountOverride !== "",
+    ) ||
+    paymentPercentage(q) !== 100000000n
+  )
+    return amounts;
+
+  const positive = q.payments.map((term) => decimal(term.percentage).n > 0n);
+  const positiveCount = positive.filter(Boolean).length;
+  const minimum = grand >= BigInt(positiveCount) ? 1n : 0n;
+  for (let index = 0; index < amounts.length; index++)
+    if (positive[index] && amounts[index] < minimum) amounts[index] = minimum;
+
+  let difference = grand - amounts.reduce((sum, amount) => sum + amount, 0n);
+  const lastPositive = positive.lastIndexOf(true);
+  if (difference > 0n && lastPositive >= 0) {
+    amounts[lastPositive] += difference;
+  } else if (difference < 0n) {
+    // Reduce the last rounded line first, but retain one fils per positive
+    // milestone whenever the total can fund that many milestones.
+    for (
+      let index = amounts.length - 1;
+      index >= 0 && difference < 0n;
+      index--
+    ) {
+      const floor = positive[index] ? minimum : 0n;
+      const available = amounts[index] - floor;
+      const reduction = available < -difference ? available : -difference;
+      amounts[index] -= reduction;
+      difference += reduction;
+    }
+  }
+  return amounts;
+}
 export function paymentPercentage(q: Quotation) {
   return q.payments.reduce((sum, term) => {
     const p = decimal(term.percentage || "0");

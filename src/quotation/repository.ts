@@ -7,6 +7,7 @@ import {
   totals,
   paymentPercentage,
   paymentAmount,
+  paymentScheduleAmounts,
 } from "./calculations";
 import { today, uid } from "../domain/logic";
 import { getOperations } from "../operations/migration";
@@ -62,6 +63,7 @@ export function newQuotation(db: Database): Quotation {
   let n = next;
   while (db.quotations.some((q) => q.number === prefix + n)) n++;
   const q = blankQuotation(prefix + n);
+  q.paymentRoundingPolicy = "reconcile-final";
   if (db.operations) {
     const s = getOperations(db).settings;
     q.company = structuredClone(s.company);
@@ -166,6 +168,18 @@ export function validationErrors(q: Quotation): string[] {
     }
     if (paymentPercentage(q) !== 100000000n)
       errors.push("Payment percentages must total 100%.");
+    if (
+      q.paymentRoundingPolicy === "reconcile-final" &&
+      q.payments.every(
+        (term) =>
+          term.amountOverride === undefined || term.amountOverride === "",
+      ) &&
+      paymentPercentage(q) === 100000000n &&
+      paymentScheduleAmounts(q, t.grand).some((amount) => amount <= 0n)
+    )
+      errors.push(
+        "Each payment milestone needs at least one fils; reduce the number of milestones or increase the quotation total.",
+      );
   } catch {
     errors.push("Check payment percentages and financial values.");
   }
@@ -276,6 +290,7 @@ export function copyQuotation(
   const q = structuredClone(source);
   q.id = uid();
   q.status = "Draft";
+  q.paymentRoundingPolicy = "reconcile-final";
   delete q.finalizedAt;
   delete q.acceptedAt;
   q.createdAt = q.updatedAt = new Date().toISOString();

@@ -17,6 +17,7 @@ import {
   sectionAmount,
   totals,
   paymentAmount,
+  paymentScheduleAmounts,
   paymentPercentage,
   amountInWords,
   displayAmount,
@@ -97,6 +98,154 @@ describe("quotation financial and lifecycle rules", () => {
     expect(paymentPercentage(q)).toBe(100000000n);
     q.payments[0].percentage = "49.999999";
     expect(paymentPercentage(q)).not.toBe(100000000n);
+  });
+  it("reconciles a new automatic 50/45/5 schedule by one fils through finalization", () => {
+    const db = seed();
+    const q = newQuotation(db);
+    q.customerId = db.clients[0].id;
+    q.customer.name = db.clients[0].name;
+    q.project.name = "Apartment Renovation";
+    q.project.location = "Dubai";
+    q.vatEnabled = false;
+    q.sections = [
+      {
+        id: "rounding-section",
+        number: "1",
+        title: "Works",
+        rows: [
+          {
+            ...blankLine(),
+            description: "Works",
+            quantity: "1",
+            unit: "LS",
+            rate: "3333.75",
+          },
+        ],
+      },
+    ];
+    const grand = totals(q).grand;
+    expect(grand).toBe(333375n);
+    expect(q.payments.map((term) => paymentAmount(term, grand))).toEqual([
+      166688n,
+      150019n,
+      16669n,
+    ]);
+    expect(paymentScheduleAmounts(q, grand)).toEqual([
+      166688n,
+      150019n,
+      16668n,
+    ]);
+    expect(
+      paymentScheduleAmounts(q, grand).reduce((sum, value) => sum + value, 0n),
+    ).toBe(grand);
+    const before = JSON.stringify(q.payments);
+    changeQuotationStatus(db, q.id, "Finalized");
+    expect(q.paymentRoundingPolicy).toBe("reconcile-final");
+    expect(paymentScheduleAmounts(q, grand)).toEqual([
+      166688n,
+      150019n,
+      16668n,
+    ]);
+    expect(JSON.stringify(q.payments)).toBe(before);
+  });
+  it("preserves original and manual payment amounts while new copies opt in safely", () => {
+    const db = seed();
+    const original = db.quotations[0];
+    const originalBytes = JSON.stringify(original);
+    const grand = totals(original).grand;
+    expect(original.paymentRoundingPolicy).toBeUndefined();
+    expect(paymentScheduleAmounts(original, grand)).toEqual([
+      10516839n,
+      9465155n,
+      1051684n,
+    ]);
+    expect(
+      paymentScheduleAmounts(original, grand).reduce(
+        (sum, value) => sum + value,
+        0n,
+      ),
+    ).toBe(grand - 1n);
+    const copy = copyQuotation(db, original.id);
+    expect(copy.paymentRoundingPolicy).toBe("reconcile-final");
+    expect(paymentScheduleAmounts(copy, grand)).toEqual([
+      10516839n,
+      9465155n,
+      1051684n,
+    ]);
+    delete copy.payments[0].amountOverride;
+    delete copy.payments[1].amountOverride;
+    expect(
+      paymentScheduleAmounts(copy, grand).reduce(
+        (sum, value) => sum + value,
+        0n,
+      ),
+    ).toBe(grand);
+    expect(JSON.stringify(original)).toBe(originalBytes);
+  });
+  it("never produces negative schedule lines when tiny totals over-round", () => {
+    const q = blankQuotation("SMALL");
+    q.paymentRoundingPolicy = "reconcile-final";
+    q.payments = ["25", "25", "25", "25"].map((percentage, index) => ({
+      id: String(index),
+      number: String(index + 1),
+      description: "Stage",
+      percentage,
+      notes: "",
+    }));
+    expect(paymentScheduleAmounts(q, 2n)).toEqual([1n, 1n, 0n, 0n]);
+    q.payments = ["50", "45", "5"].map((percentage, index) => ({
+      id: String(index),
+      number: String(index + 1),
+      description: "Stage",
+      percentage,
+      notes: "",
+    }));
+    expect(paymentScheduleAmounts(q, 10n)).toEqual([5n, 4n, 1n]);
+    q.payments[0].amountOverride = "0.01";
+    expect(paymentScheduleAmounts(q, 10n)).toEqual([1n, 5n, 1n]);
+    q.payments[0].amountOverride = "";
+    q.payments = [
+      ...q.payments,
+      {
+        id: "zero",
+        number: "4",
+        description: "Zero",
+        percentage: "0",
+        notes: "",
+      },
+    ];
+    expect(paymentScheduleAmounts(q, 10n)).toEqual([5n, 4n, 1n, 0n]);
+  });
+  it("rejects a future schedule whose positive milestones cannot each receive one fils", () => {
+    const db = seed();
+    const q = newQuotation(db);
+    q.sections = [
+      {
+        id: "tiny",
+        number: "1",
+        title: "Works",
+        rows: [
+          {
+            ...blankLine(),
+            description: "Tiny work",
+            quantity: "1",
+            unit: "LS",
+            rate: "0.02",
+          },
+        ],
+      },
+    ];
+    q.vatEnabled = false;
+    q.payments = ["25", "25", "25", "25"].map((percentage, index) => ({
+      id: String(index),
+      number: String(index + 1),
+      description: "Stage",
+      percentage,
+      notes: "",
+    }));
+    expect(validationErrors(q)).toContain(
+      "Each payment milestone needs at least one fils; reduce the number of milestones or increase the quotation total.",
+    );
   });
   it("preserves historical words and generates new words including fils", () => {
     expect(referenceQuotation().amountWordsOverride).toContain(

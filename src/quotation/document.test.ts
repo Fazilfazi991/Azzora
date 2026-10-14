@@ -60,6 +60,51 @@ function sample() {
 }
 
 describe("approved quotation alignment and pagination", () => {
+  it("prints reconciled future payment lines and preserves the client source schedule", () => {
+    const draft = blankQuotation("QTN-ROUNDING");
+    draft.paymentRoundingPolicy = "reconcile-final";
+    draft.vatEnabled = false;
+    draft.sections = [
+      {
+        id: "s",
+        number: "1",
+        title: "Works",
+        rows: [
+          {
+            ...blankLine(),
+            description: "Works",
+            quantity: "1",
+            unit: "LS",
+            rate: "3333.75",
+          },
+        ],
+      },
+    ];
+    const before = JSON.stringify(draft);
+    const draftTexts = layoutQuotation(draft).flatMap((page) =>
+      textOf(page.commands).map((c) => c.text),
+    );
+    for (const amount of ["AED 1,666.88", "AED 1,500.19", "AED 166.68"])
+      expect(draftTexts).toContain(amount);
+    expect(draftTexts).not.toContain("AED 166.69");
+    expect(JSON.stringify(draft)).toBe(before);
+    draft.status = "Finalized";
+    expect(
+      layoutQuotation(draft).flatMap((page) =>
+        textOf(page.commands).map((c) => c.text),
+      ),
+    ).toContain("AED 166.68");
+
+    const source = referenceQuotation();
+    const sourceBytes = JSON.stringify(source);
+    const sourceTexts = layoutQuotation(source).flatMap((page) =>
+      textOf(page.commands).map((c) => c.text),
+    );
+    expect(sourceTexts).toContain("AED 105,168.39");
+    expect(sourceTexts).toContain("AED 94,651.55");
+    expect(sourceTexts).toContain("AED 10,516.84");
+    expect(JSON.stringify(source)).toBe(sourceBytes);
+  });
   it("uses .00 category display for new drafts and repeats headers through long parent text", () => {
     const q = blankQuotation("QTN-LONG-BOQ");
     q.sections = [

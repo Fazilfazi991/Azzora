@@ -126,6 +126,7 @@ describe("planning graph and proposals", () => {
     expect(db.tasks.find((task) => task.id === "b")!.start).toBe("2026-11-05");
     expect(db.planning![0].baselineHistory[0]).toEqual(baseline);
     expect(db.planning![0].approvedRevision).toBe(1);
+    expect(() => decodeSavedData(JSON.stringify(db))).not.toThrow();
   });
   it("rejects stale approval and preserves all approved records", () => {
     const { db, project, managerId } = fixture([["a", "2026-11-02", "2026-11-03", 0]]);
@@ -155,6 +156,28 @@ describe("planning graph and proposals", () => {
     submitScheduleProposal(db, row.id, managerId);
     rejectScheduleProposal(db, row.id, managerId, "Not yet approved");
     expect(db.tasks.some((task) => task.id === "new")).toBe(false);
+    expect(() => decodeSavedData(JSON.stringify(db))).not.toThrow();
+  });
+  it("adds a reviewed new task only on approval and round-trips the result", () => {
+    const { db, project, managerId } = fixture([["a", "2026-11-02", "2026-11-03", 0]]);
+    const original = db.tasks.find((row) => row.id === "a")!;
+    const row = draftTaskCreation(db, { ...original, id: "new-task", name: "New task",
+      start: "2026-11-04", due: "2026-11-05", dependencies: [] }, "Add follow-on work", managerId);
+    submitScheduleProposal(db, row.id, managerId);
+    approveScheduleProposal(db, row.id, managerId);
+    expect(db.tasks.filter((task) => task.projectId === project.id && task.id === "new-task")).toHaveLength(1);
+    expect(() => decodeSavedData(JSON.stringify(db))).not.toThrow();
+  });
+  it("requires explicit negative-lag acknowledgement before submission", () => {
+    const { db, project, managerId } = fixture([
+      ["a", "2026-11-02", "2026-11-03", 0], ["b", "2026-11-03", "2026-11-04", 0],
+    ]);
+    const row = draftScheduleProposal(db, { projectId: project.id, initiatingNode: n("a"),
+      actorId: managerId, reason: "Allow one-day overlap", edit: { links: [link(project.id, "a", "b", "FS", -1)] } });
+    expect(row.warnings.some((warning) => warning.code === "LeadOverlap")).toBe(true);
+    expect(() => submitScheduleProposal(db, row.id, managerId)).toThrow(/Confirm/);
+    submitScheduleProposal(db, row.id, managerId, true);
+    expect(row.history.some((item) => item.action === "LeadOverlapConfirmed")).toBe(true);
   });
   it("loads legacy records without baseline or storage writes and preserves all IDs", () => {
     const db = seed();
@@ -196,6 +219,7 @@ describe("planning graph and proposals", () => {
     expect(db.planning?.find((row) => row.projectId === project.id)?.baselineStatus).toBe("Unset");
     expect(db.planning?.find((row) => row.projectId === project.id)?.links.some((row) => row.successor.id ===
       tasks.find((task) => task.name === "Close ceiling after first-fix inspection")?.id)).toBe(true);
+    expect(() => decodeSavedData(JSON.stringify(db))).not.toThrow();
     expect(() => instantiateFitOutTemplate(db, project.id, preview, project.managerId)).toThrow(/already has a plan/);
   });
 });

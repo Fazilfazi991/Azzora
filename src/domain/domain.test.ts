@@ -130,6 +130,9 @@ describe("connected delivery rules", () => {
     db.handover
       .filter((h) => h.projectId === id)
       .forEach((h) => (h.complete = true));
+    db.updates
+      .filter((u) => u.projectId === id)
+      .forEach((u) => (u.reviewStatus = "Approved"));
     expect(handoverState(db, id).percent).toBe(100);
     completeProject(db, id);
     expect(db.projects[0].status).toBe("Completed");

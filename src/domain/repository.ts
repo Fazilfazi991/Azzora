@@ -1,16 +1,11 @@
 import { initializeQuotations } from "../quotation/repository";
 import { initializeCommercial } from "../commercial/migration";
 import { closureSummary } from "../operations/closure-domain";
+import { activePerson, saveSnag } from "../workforce/commands";
 import { z } from "zod";
 import type { Database, Task, Project, SnagStatus, Activity } from "./model";
 import { seed, generatePlan } from "./seed";
-import {
-  uid,
-  validDependency,
-  handoverState,
-  canTransition,
-  taskProgress,
-} from "./logic";
+import { uid, validDependency, handoverState, taskProgress } from "./logic";
 const KEY = "azzora-demo-v1";
 export interface Repository {
   load(): Database;
@@ -80,10 +75,11 @@ export function record(
   action: string,
   summary: string,
   previous?: string,
+  actorId = "person-0",
 ) {
   db.activities.unshift({
     id: uid(),
-    actorId: "person-0",
+    actorId,
     action,
     entityType,
     entityId,
@@ -112,11 +108,19 @@ export function saveTask(db: Database, task: Task) {
     );
   const old = db.tasks.find((t) => t.id === task.id);
   if (
-    task.assigneeId &&
-    task.assigneeId !== old?.assigneeId &&
-    !db.people.some((p) => p.id === task.assigneeId && p.status !== "Inactive")
+    !db.projects.some((p) => p.id === task.projectId) ||
+    !db.phases.some(
+      (p) => p.id === task.phaseId && p.projectId === task.projectId,
+    )
   )
-    throw Error("New task assignments require an active employee.");
+    throw Error("Choose a phase in the task's project.");
+  if (
+    task.assigneeId &&
+    (!old ||
+      task.assigneeId !== old.assigneeId ||
+      task.projectId !== old.projectId)
+  )
+    activePerson(db, task.assigneeId);
   if (task.parentId) {
     const parent = db.tasks.find((t) => t.id === task.parentId);
     if (
@@ -137,6 +141,29 @@ export function saveTask(db: Database, task: Task) {
       ? task.completedAt || new Date().toISOString()
       : undefined;
   task.updatedAt = new Date().toISOString();
+  if (
+    task.assigneeId &&
+    (!old ||
+      task.assigneeId !== old.assigneeId ||
+      task.projectId !== old.projectId) &&
+    !db.assignments.some(
+      (a) =>
+        a.projectId === task.projectId &&
+        a.personId === task.assigneeId &&
+        a.status === "Active",
+    )
+  ) {
+    db.assignments.push({
+      id: uid(),
+      projectId: task.projectId,
+      personId: task.assigneeId,
+      role: db.people.find((p) => p.id === task.assigneeId)!.role,
+      start: task.start,
+      end: task.due,
+      responsibility: "Task delivery",
+      status: "Active",
+    });
+  }
   db.tasks = old
     ? db.tasks.map((t) => (t.id === task.id ? task : t))
     : [...db.tasks, task];
@@ -174,8 +201,9 @@ export function createProject(
   standard: boolean,
 ) {
   projectSchema.parse(p);
-  if (!db.people.some((x) => x.id === p.managerId && x.status !== "Inactive"))
-    throw Error("Choose an active project manager.");
+  Object.values({ ...team, manager: p.managerId })
+    .filter(Boolean)
+    .forEach((id) => activePerson(db, id));
   if (db.projects.some((x) => x.code.toLowerCase() === p.code.toLowerCase()))
     throw Error("Project code must be unique.");
   if (!clientName.trim()) throw Error("Client name is required.");
@@ -219,26 +247,25 @@ export function createProject(
     );
   record(db, p.id, "Project", p.id, "Project created", p.name);
 }
-export function transitionSnag(db: Database, id: string, status: SnagStatus) {
-  const snag = db.snags.find((s) => s.id === id)!;
-  if (!canTransition(snag.status, status))
-    throw Error("Move the snag one step at a time so inspection is recorded.");
-  if (status === "Closed" && !snag.inspection.trim())
-    throw Error("Inspection notes are required before closing.");
-  record(
-    db,
-    snag.projectId,
-    "Snag",
-    id,
-    "Snag status changed",
-    `${snag.reference}: ${snag.status} → ${status}`,
-    JSON.stringify(snag),
-  );
-  snag.status = status;
-  snag.closedAt = status === "Closed" ? new Date().toISOString() : undefined;
-  snag.closedBy = status === "Closed" ? "person-0" : undefined;
+export function transitionSnag(
+  db: Database,
+  id: string,
+  status: SnagStatus,
+  actorId = "person-0",
+  reason = "Legacy snag transition",
+) {
+  const snag = db.snags.find((s) => s.id === id);
+  if (!snag) throw Error("Snag not found.");
+  saveSnag(db, snag, status, actorId, reason);
 }
-export function completeProject(db: Database, id: string) {
+export function completeProject(
+  db: Database,
+  id: string,
+  actorId = "person-0",
+  reason = "Required handover criteria confirmed.",
+) {
+  activePerson(db, actorId);
+  if (!reason.trim()) throw Error("Record a handover confirmation note.");
   if (
     db.operations?.settings.blockOperationalForFinance &&
     !closureSummary(db, id).commercialClear
@@ -255,6 +282,8 @@ export function completeProject(db: Database, id: string) {
     "Project",
     id,
     "Project completed",
-    "Required handover criteria confirmed.",
+    reason.trim(),
+    undefined,
+    actorId,
   );
 }

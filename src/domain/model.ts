@@ -19,9 +19,13 @@ export interface Person {
   email: string;
   phone: string;
   status: "Active" | "Away" | "Inactive";
-  department?: string;
   demoRole?: string;
   capacity: number;
+  department?: string;
+  employeeCode?: string;
+  notes?: string;
+  deactivatedAt?: string;
+  history?: WorkflowEvent[];
 }
 export interface Client {
   id: string;
@@ -136,6 +140,8 @@ export interface SiteUpdate {
   notes: string;
   authorId: string;
   photos: Attachment[];
+  reviewStatus?: "Pending" | "Changes Requested" | "Approved";
+  history?: WorkflowEvent[];
 }
 export interface Snag {
   id: string;
@@ -154,13 +160,23 @@ export interface Snag {
   createdBy: string;
   closedBy?: string;
   closedAt?: string;
+  history?: WorkflowEvent[];
+}
+export interface WorkflowEvent {
+  id: string;
+  action: string;
+  actorId: string;
+  actorName: string;
+  timestamp: string;
+  reason: string;
+  previous?: string;
 }
 export interface DocumentRecord {
   id: string;
   projectId: string;
   name: string;
   category: string;
-  status: "Pending" | "Approved";
+  status: "Draft" | "Pending" | "Rejected" | "Approved";
   version: number;
   uploadedAt: string;
   uploadedBy: string;
@@ -171,6 +187,9 @@ export interface DocumentRecord {
   reviewState?: "Draft" | "Submitted" | "Approved" | "Revise & Resubmit";
   reviewComments?: string;
   decisionAt?: string;
+  previousRevisionId?: string;
+  revisionNote?: string;
+  history?: WorkflowEvent[];
 }
 export interface HandoverItem {
   id: string;

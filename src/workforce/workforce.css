@@ -1,0 +1,52 @@
+.workflow-history article {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.workflow-history p {
+  margin: 8px 0;
+}
+.workflow-history pre {
+  max-height: 240px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 12px;
+}
+.workflow-history summary {
+  color: var(--rust);
+  cursor: pointer;
+  padding: 8px 0;
+}
+.workflow-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+.workflow-revision {
+  border-left: 3px solid var(--rust);
+  padding-left: 16px;
+  margin: 16px 0;
+}
+.workflow-review {
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+.workflow-review .field {
+  max-width: 100%;
+}
+.workflow-gates {
+  margin: 24px 0;
+}
+.workflow-gates .list-row {
+  align-items: start;
+}
+.workflow-gates a {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .workflow-actions > button {
+    flex: 1 1 140px;
+  }
+}

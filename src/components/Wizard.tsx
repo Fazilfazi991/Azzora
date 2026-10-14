@@ -58,7 +58,8 @@ export function Wizard({
     value: 0,
     start: today(),
     due: addDays(today(), 90),
-    managerId: db.people[0]?.id || "",
+    managerId:
+      db.people.find((person) => person.status !== "Inactive")?.id || "",
     priority: "Normal",
     status: "Active",
   });
@@ -217,11 +218,13 @@ export function Wizard({
                 value={p.managerId}
                 onChange={(e) => set("managerId", e.target.value)}
               >
-                {db.people.map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {x.name} · {x.role}
-                  </option>
-                ))}
+                {db.people
+                  .filter((x) => x.status !== "Inactive")
+                  .map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.name} · {x.role}
+                    </option>
+                  ))}
               </select>
             </Field>
             <Field label="Priority">
@@ -324,18 +327,20 @@ export function Wizard({
                   {role !== "Project Manager" && (
                     <option value="">Assign later</option>
                   )}
-                  {db.people.map((x) => (
-                    <option key={x.id} value={x.id}>
-                      {x.name} · {x.role} ·{" "}
-                      {
-                        db.assignments.filter(
-                          (a) => a.personId === x.id && a.status === "Active",
-                        ).length
-                      }{" "}
-                      projects · {workload(db, x.id)}% ·{" "}
-                      {availability(workload(db, x.id))}
-                    </option>
-                  ))}
+                  {db.people
+                    .filter((x) => x.status !== "Inactive")
+                    .map((x) => (
+                      <option key={x.id} value={x.id}>
+                        {x.name} · {x.role} ·{" "}
+                        {
+                          db.assignments.filter(
+                            (a) => a.personId === x.id && a.status === "Active",
+                          ).length
+                        }{" "}
+                        projects · {workload(db, x.id)}% ·{" "}
+                        {availability(workload(db, x.id))}
+                      </option>
+                    ))}
                 </select>
               </Field>
             ))}

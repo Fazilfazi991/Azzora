@@ -1,9 +1,15 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useStore } from "../store";
 import type { SiteUpdate, Snag, SnagStatus } from "../domain/model";
 import { priorities, snagStatuses } from "../domain/model";
 import { uid, today, addDays, dateLabel } from "../domain/logic";
-import { record, transitionSnag } from "../domain/repository";
+import {
+  reviewSiteUpdate,
+  saveSiteUpdate,
+  saveSnag,
+} from "../workforce/commands";
+import { ActorField, History, WorkflowError } from "../workforce/ui";
+import "../workforce/workforce.css";
 import { Modal, Header, Field, Badge, Empty, personName } from "./ui";
 import { Attachments } from "./uploads";
 function ProjectSelect({
@@ -30,7 +36,11 @@ export function SiteUpdates({ projectId }: { projectId?: string }) {
   const { db, mutate } = useStore();
   const [filter, setFilter] = useState(projectId || "");
   const [draft, setDraft] = useState<SiteUpdate | null>(null);
+  const [actor, setActor] = useState("");
+  const [review, setReview] = useState<SiteUpdate | null>(null);
+  const [reason, setReason] = useState("");
   function create() {
+    setActor("");
     setDraft({
       id: uid(),
       projectId: filter || db.projects[0].id,
@@ -106,6 +116,28 @@ export function SiteUpdates({ projectId }: { projectId?: string }) {
               </div>
             </div>
             <p>{u.notes}</p>
+            <Badge>{u.reviewStatus || "Pending"}</Badge>
+            <div className="workflow-actions">
+              <button
+                onClick={() => {
+                  setReview(u);
+                  setActor("");
+                  setReason("");
+                }}
+              >
+                Supervisory review / history
+              </button>
+              {u.reviewStatus === "Changes Requested" && (
+                <button
+                  onClick={() => {
+                    setDraft(structuredClone(u));
+                    setActor("");
+                  }}
+                >
+                  Correct & resubmit
+                </button>
+              )}
+            </div>
             <div className="photo-grid">
               {u.photos.map((f) => (
                 <figure key={f.id}>
@@ -123,6 +155,74 @@ export function SiteUpdates({ projectId }: { projectId?: string }) {
         ))}
       </div>
       {!list.length && <Empty>No site updates yet.</Empty>}
+      {review && (
+        <Modal
+          drawer
+          title="Supervisory Site Review"
+          onClose={() => setReview(null)}
+        >
+          <p>{review.completed}</p>
+          <p>{review.issue || "No issues reported"}</p>
+          <Badge>{review.reviewStatus || "Pending"}</Badge>
+          {(!review.reviewStatus || review.reviewStatus === "Pending") && (
+            <>
+              <ActorField
+                label="Demo supervisor"
+                value={actor}
+                onChange={setActor}
+              />
+              <Field label="Supervision note / reason">
+                <textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                />
+              </Field>
+              <div className="workflow-actions">
+                <button
+                  className="primary"
+                  onClick={() => {
+                    if (
+                      mutate((d) =>
+                        reviewSiteUpdate(
+                          d,
+                          review.id,
+                          "Approved",
+                          actor,
+                          reason,
+                        ),
+                      )
+                    )
+                      setReview(null);
+                  }}
+                >
+                  Approve Site Record
+                </button>
+                <button
+                  onClick={() => {
+                    if (
+                      mutate((d) =>
+                        reviewSiteUpdate(
+                          d,
+                          review.id,
+                          "Changes Requested",
+                          actor,
+                          reason,
+                        ),
+                      )
+                    )
+                      setReview(null);
+                  }}
+                >
+                  Request Site Corrections
+                </button>
+              </div>
+            </>
+          )}
+          <WorkflowError />
+          <History entries={review.history} />
+        </Modal>
+      )}
+
       {draft && (
         <Modal title="Daily Site Update" onClose={() => setDraft(null)}>
           <form
@@ -130,15 +230,7 @@ export function SiteUpdates({ projectId }: { projectId?: string }) {
               e.preventDefault();
               if (
                 mutate((d) => {
-                  d.updates.push(draft);
-                  record(
-                    d,
-                    draft.projectId,
-                    "SiteUpdate",
-                    draft.id,
-                    "Site update posted",
-                    draft.completed,
-                  );
+                  saveSiteUpdate(d, draft, actor);
                 }, "Site update posted")
               )
                 setDraft(null);
@@ -193,7 +285,17 @@ export function SiteUpdates({ projectId }: { projectId?: string }) {
               files={draft.photos}
               onChange={(photos) => setDraft({ ...draft, photos })}
             />
-            <button className="primary">Post Update</button>
+            <ActorField
+              label="Demo site author"
+              value={actor}
+              onChange={setActor}
+            />
+            <WorkflowError />
+            <button className="primary">
+              {db.updates.some((u) => u.id === draft.id)
+                ? "Resubmit Update"
+                : "Post Update"}
+            </button>
           </form>
         </Modal>
       )}
@@ -206,11 +308,15 @@ export function Snags({ projectId }: { projectId?: string }) {
   const [status, setStatus] = useState("");
   const [draft, setDraft] = useState<Snag | null>(null);
   const [nextStatus, setNextStatus] = useState<SnagStatus>("Open");
+  const [actor, setActor] = useState("");
+  const [reason, setReason] = useState("");
   const list = db.snags.filter(
     (s) =>
       (!filter || s.projectId === filter) && (!status || s.status === status),
   );
   function open(s: Snag) {
+    setActor("");
+    setReason("");
     setDraft(structuredClone(s));
     setNextStatus(s.status);
   }
@@ -318,33 +424,7 @@ export function Snags({ projectId }: { projectId?: string }) {
               }
               if (
                 mutate((d) => {
-                  const old = d.snags.find((s) => s.id === draft.id);
-                  if (old) {
-                    const originalStatus = old.status;
-                    record(
-                      d,
-                      draft.projectId,
-                      "Snag",
-                      draft.id,
-                      "Snag updated",
-                      draft.description,
-                      JSON.stringify(old),
-                    );
-                    Object.assign(old, draft, { status: originalStatus });
-                    transitionSnag(d, draft.id, nextStatus);
-                  } else {
-                    d.snags.push(draft);
-                    record(
-                      d,
-                      draft.projectId,
-                      "Snag",
-                      draft.id,
-                      "Snag created",
-                      draft.reference,
-                    );
-                    if (nextStatus !== "Open")
-                      transitionSnag(d, draft.id, nextStatus);
-                  }
+                  saveSnag(d, draft, nextStatus, actor, reason);
                 })
               )
                 setDraft(null);
@@ -378,11 +458,15 @@ export function Snags({ projectId }: { projectId?: string }) {
                 }
               >
                 <option value="">Unassigned</option>
-                {db.people.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
+                {db.people
+                  .filter(
+                    (p) => p.status !== "Inactive" || p.id === draft.assigneeId,
+                  )
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
               </select>
             </Field>
             <div className="form-grid">
@@ -421,7 +505,9 @@ export function Snags({ projectId }: { projectId?: string }) {
               </select>
             </Field>
             <p className="muted">
-              Advance one step at a time. Closure requires inspection notes.
+              Advance one step at a time. Closure requires inspection notes and
+              a demo inspector different from the responsible person. Return
+              failed inspections to Rectification.
             </p>
             <h3>Before photos</h3>
             <Attachments
@@ -443,15 +529,35 @@ export function Snags({ projectId }: { projectId?: string }) {
                 }
               />
             </Field>
-            <h3>History</h3>
-            {db.activities
-              .filter((a) => a.entityId === draft.id)
-              .map((a) => (
-                <p key={a.id}>
-                  {a.summary}
-                  <small>{a.timestamp}</small>
-                </p>
-              ))}
+            <ActorField
+              label="Demo QA actor"
+              value={actor}
+              onChange={setActor}
+            />
+            <Field label="Action reason">
+              <textarea
+                required
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+              />
+            </Field>
+            <History
+              entries={db.snags.find((s) => s.id === draft.id)?.history}
+            />
+            <details>
+              <summary>Legacy activity history</summary>
+              {db.activities
+                .filter((a) => a.entityId === draft.id)
+                .map((a) => (
+                  <p key={a.id}>
+                    {a.action} · {a.summary}
+                    <small>
+                      {personName(db, a.actorId)} · {a.timestamp}
+                    </small>
+                  </p>
+                ))}
+            </details>
+            <WorkflowError />
             <button className="primary">Save Snag</button>
           </form>
         </Modal>
@@ -459,4 +565,15 @@ export function Snags({ projectId }: { projectId?: string }) {
     </>
   );
 }
-export { DocumentControl as Documents } from "../operations/DocumentControl";
+const DocumentRegister = lazy(() =>
+  import("../workforce/Documents").then((module) => ({
+    default: module.Documents,
+  })),
+);
+export function Documents(props: { projectId?: string }) {
+  return (
+    <Suspense fallback={<p role="status">Loading document register…</p>}>
+      <DocumentRegister {...props} />
+    </Suspense>
+  );
+}

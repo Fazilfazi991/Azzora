@@ -137,6 +137,7 @@ export default function App() {
     [quickForm, setQuickForm] = useState("");
   const [task, setTask] = useState<Task | null>(null);
   const [query, setQuery] = useState("");
+  const queryLocation = useRef(location.hash);
   const [notifications, setNotifications] = useState(false);
   const [profile, setProfile] = useState(false);
   const [resetConfirm, setResetConfirm] = useState(false);
@@ -144,9 +145,14 @@ export default function App() {
   const [weightProject, setWeightProject] = useState(db.projects[0]?.id || "");
   useEffect(() => {
     const fn = () => {
-      setRoute(location.hash.slice(2) || "dashboard");
+      const hash = location.hash;
+      setRoute(hash.slice(2) || "dashboard");
       setMenu(false);
-      setQuery("");
+      // An older queued event must not erase input typed for the current URL.
+      if (queryLocation.current !== hash) {
+        queryLocation.current = hash;
+        setQuery("");
+      }
     };
     window.addEventListener("hashchange", fn);
     return () => window.removeEventListener("hashchange", fn);
@@ -617,7 +623,10 @@ export default function App() {
               aria-label="Global search"
               placeholder="Search customers, projects, invoices…"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                queryLocation.current = location.hash;
+                setQuery(e.target.value);
+              }}
             />
             {q && (
               <div className="search-results">
@@ -626,6 +635,7 @@ export default function App() {
                     key={r.type + r.id}
                     onClick={() => {
                       r.open();
+                      queryLocation.current = location.hash;
                       setQuery("");
                     }}
                   >

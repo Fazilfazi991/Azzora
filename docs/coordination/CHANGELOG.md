@@ -20,3 +20,7 @@
 | Independent baseline QA and isolated fixes | `7b9c26d03146a58dd5d602e37c708abf0c148d60` | `11da92566fe5bbb524e36a3128937756ce506204` | A3 report/issue register/evidence; ten open baseline issues; not consolidated |
 
 This changelog describes committed deliveries and coordination events, not approval of combined behavior. Retrieve coordination commit identities with `git log --oneline -- docs/coordination`; a commit cannot contain its own SHA.
+
+## Authorized corrective integration cycle
+
+Pinned A1/A2/A3 deliveries merged with checkpoints; per-hunk reconciliation preserved both sets of necessary guards. A1 corrective a4620eb/report647762d and A2 c95a1cf/report94c568b reviewed/merged. QA strict prep b88191b merged. Coordinator 8d7a277/562a819 provides protected loading, exact original export, canonical workforce/document writes, atomic shared approvals, explicit supersession and lossless legacy metadata. Independent Agent2 review findings corrected. Pre-freeze combined unit inventory:267 ordinary passes,0 failed/pending,11 files; production build succeeds with612.89kB main warning. Final independent gate still pending harness composition/freeze.

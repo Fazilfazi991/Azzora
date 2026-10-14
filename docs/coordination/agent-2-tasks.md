@@ -11,3 +11,7 @@
 - Deliverables: concise handoff file and response in the existing chat. No feature edits, other coordinator-file edits, merges, resets, pushes, backend or deployment.
 
 Next proposed work, not dispatched for implementation: modal padding/focus/nested-cancel corrections and operational validation gaps after reassessment; migration shape validation with Coordinator/A1; preserve operational gates during integration.
+
+## FIX-A2-01 — complete and integrated
+
+Owner-authorized modal correction c95a1cf/report94c568b reviewed and merged; 64 strict branch browser checks. Additional INT-REVIEW-A2 source/probe review completed: unknown legacy state, requester self-review and orphan approvals were confirmed and corrected by Coordinator with ordinary tests. Agent2 idle; final independent combined checks remain Agent3 scope.

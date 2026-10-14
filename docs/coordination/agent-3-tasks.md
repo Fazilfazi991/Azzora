@@ -11,3 +11,7 @@
 - Deliverables: concise handoff file and response in existing chat. No feature source changes, other coordination-file edits, merges, pushes, backend or deployment.
 
 QA-FINAL is Blocked until a frozen combined SHA exists. Its gate includes TypeScript, lint, all meaningful unit/BOQ/financial/procurement/workforce tests, complete browser journeys at four widths, representative PDF rendering/inspection, migration/failure cases, and production build. Confirmed fixes must replace expected-failure tests with ordinary assertions.
+
+## QA-PREP-02 — complete and integrated; QA-COMPOSE-03 active
+
+Prep b88191b reviewed/merged, tests only. Its baseline failures were deliberately ordinary failures, not successful requirement tests. QA-COMPOSE-03 is dispatched and acknowledged: Agent3 operates in the integration worktree, owns test-only adaptations of old operational browser/boundary fixtures and independent combined checks; no app-source edits. Commit exact test paths and return composition SHA. Coordinator then reviews/refreezes and dispatches QA-FINAL against the full immutable combined SHA. No final certification against a moving source tree.

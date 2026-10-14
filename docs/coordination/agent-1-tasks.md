@@ -11,3 +11,7 @@
 - Deliverables: concise handoff file and completion response in the existing chat. No feature edits, other coordinator-file edits, merges, resets, pushes, backend or deployment.
 
 Next proposed work, not dispatched for implementation: bounded invoice discount allocation; shared shell/contrast/validation CSS fixes after reassessment; support combined financial/migration review. Confirm continued defect applicability before scheduling.
+
+## FIX-A1-01 — complete and integrated
+
+Owner-authorized financial/shell correction: implementation a4620eb, report647762d. Reviewed and merged. 160 source-branch unit passes,35 corrective browser checks plus retained suites. Agent1 now acknowledged active on INT-REVIEW-A1, a read-only targeted legacy financial/closure compatibility review; findings only, no source ownership change.

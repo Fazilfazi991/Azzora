@@ -17,6 +17,12 @@ import {
   Bell,
   Menu,
   X,
+  ChevronDown,
+  FileText,
+  Wallet,
+  Package,
+  ShoppingCart,
+  GitBranch,
 } from "lucide-react";
 import type { Task } from "./domain/model";
 import { useStore } from "./store";
@@ -47,26 +53,54 @@ import { Approvals } from "./operations/Controls";
 import { Budgets } from "./operations/Budgets";
 import { CompanySettings } from "./operations/CompanySettings";
 import { getOperations } from "./operations/migration";
-const navigation = [
-  ["dashboard", "Dashboard", LayoutDashboard],
-  ["projects", "Projects", Building2],
-  ["customers", "Customers", Users],
-  ["planning", "Planning", CalendarRange],
-  ["tasks", "Tasks", ListChecks],
-  ["team", "Team", Users],
-  ["site-updates", "Site Updates", HardHat],
-  ["snags-qa", "Snags & QA", ClipboardCheck],
-  ["documents", "Documents", Files],
-  ["quotations", "Quotations", Files],
-  ["accounts", "Accounts", ChartNoAxesCombined],
-  ["variations", "Variations", Files],
-  ["suppliers", "Suppliers", Users],
-  ["procurement", "Procurement", Building2],
-  ["approvals", "Approvals", ClipboardCheck],
-  ["budgets", "Budgets & Forecast", ChartNoAxesCombined],
-  ["handover", "Handover", KeyRound],
-  ["reports", "Reports", ChartNoAxesCombined],
-  ["settings", "Settings", Settings],
+const navigationGroups = [
+  {
+    key: "overview",
+    label: "Overview",
+    items: [["dashboard", "Dashboard", LayoutDashboard]],
+  },
+  {
+    key: "commercial",
+    label: "CRM & Commercial",
+    items: [
+      ["customers", "Customers", Users],
+      ["projects", "Projects", Building2],
+      ["quotations", "Quotations", FileText],
+      ["accounts", "Accounts", Wallet],
+    ],
+  },
+  {
+    key: "execution",
+    label: "Project Execution",
+    items: [
+      ["planning", "Planning", CalendarRange],
+      ["tasks", "Tasks", ListChecks],
+      ["team", "Team", Users],
+      ["site-updates", "Site Updates", HardHat],
+      ["snags-qa", "Snags & QA", ClipboardCheck],
+      ["documents", "Documents", Files],
+    ],
+  },
+  {
+    key: "controls",
+    label: "Procurement & Controls",
+    items: [
+      ["variations", "Variations", GitBranch],
+      ["suppliers", "Suppliers", Package],
+      ["procurement", "Procurement", ShoppingCart],
+      ["approvals", "Approvals", ClipboardCheck],
+      ["budgets", "Budgets", ChartNoAxesCombined],
+    ],
+  },
+  {
+    key: "management",
+    label: "Management",
+    items: [
+      ["handover", "Handover", KeyRound],
+      ["reports", "Reports", ChartNoAxesCombined],
+      ["settings", "Settings", Settings],
+    ],
+  },
 ] as const;
 function exportData(data: string, name: string, type: string) {
   const url = URL.createObjectURL(new Blob([data], { type }));
@@ -79,6 +113,16 @@ function exportData(data: string, name: string, type: string) {
 export default function App() {
   const { db, toast, error, clear, mutate, reset, exportOriginal } = useStore();
   const [route, setRoute] = useState(location.hash.slice(2) || "dashboard");
+  const [collapsedGroups, setCollapsedGroups] = useState<string[]>(() =>
+    navigationGroups
+      .filter(
+        (group) =>
+          group.key !== "overview" &&
+          group.key !== "commercial" &&
+          !group.items.some(([key]) => key === route.split("/")[0]),
+      )
+      .map((group) => group.key),
+  );
   const [menu, setMenu] = useState(false);
   const [mobileNavigation, setMobileNavigation] = useState(
     () => window.matchMedia("(max-width: 767px)").matches,
@@ -108,6 +152,8 @@ export default function App() {
         ) || [],
       ).filter((element) => element.getClientRects().length > 0);
     controls()[0]?.focus();
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -129,6 +175,7 @@ export default function App() {
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
       navigationOpener.current?.focus();
     };
   }, [mobileNavigation, menu]);
@@ -164,6 +211,17 @@ export default function App() {
     }
   }, [toast, clear]);
   const [page, id, tab = "overview"] = route.split("/");
+  useEffect(() => {
+    const group = navigationGroups.find((g) =>
+      g.items.some(([key]) => key === page),
+    );
+    if (group)
+      setCollapsedGroups((collapsed) =>
+        collapsed.includes(group.key)
+          ? collapsed.filter((key) => key !== group.key)
+          : collapsed,
+      );
+  }, [page]);
   const open = (id: string) => {
     location.hash = "/projects/" + id + "/overview";
   };
@@ -535,14 +593,26 @@ export default function App() {
         aria-hidden={mobileNavigation && !menu ? true : undefined}
         className={"sidebar " + (menu ? "open" : "")}
       >
-        <a className="brand" href="#/dashboard">
-          <img src="/assets/azzora-logo.png" alt="AZZORA design . build" />
-          <span>
-            <strong>AZZORA</strong>
-            <small>design . build</small>
-          </span>
-          <Badge>DXB</Badge>
-        </a>
+        <div className="sidebar-brand-row">
+          <a
+            className="brand"
+            href="#/dashboard"
+            onClick={() => setMenu(false)}
+          >
+            <img src="/assets/azzora-logo.png" alt="AZZORA design . build" />
+            <span>
+              <strong>AZZORA</strong>
+              <small>design . build</small>
+            </span>
+          </a>
+          <button
+            className="mobile-only sidebar-close"
+            aria-label="Close menu"
+            onClick={() => setMenu(false)}
+          >
+            <X size={18} />
+          </button>
+        </div>
         <div className="site-select">
           <small>Active project</small>
           <select
@@ -560,21 +630,46 @@ export default function App() {
               ))}
           </select>
         </div>
-        <small className="nav-label">Project Execution</small>
-        <nav>
-          {navigation.map(([key, label, Icon], i) => (
-            <a
-              key={key}
-              href={"#/" + key}
-              aria-current={page === key ? "page" : undefined}
-              className={
-                (page === key ? "active " : "") + (i === 9 ? "governance" : "")
-              }
-            >
-              <Icon size={18} />
-              <span>{label}</span>
-            </a>
-          ))}
+        <nav aria-label="Modules">
+          {navigationGroups.map((group) => {
+            const expanded = !collapsedGroups.includes(group.key);
+            const current = group.items.some(([key]) => key === page);
+            return (
+              <section className="nav-group" key={group.key}>
+                <h2>
+                  <button
+                    className={"nav-group-toggle" + (current ? " current" : "")}
+                    aria-expanded={expanded}
+                    aria-controls={`nav-${group.key}`}
+                    onClick={() =>
+                      setCollapsedGroups((collapsed) =>
+                        expanded
+                          ? [...collapsed, group.key]
+                          : collapsed.filter((key) => key !== group.key),
+                      )
+                    }
+                  >
+                    <span>{group.label}</span>
+                    <ChevronDown size={14} aria-hidden="true" />
+                  </button>
+                </h2>
+                <div id={`nav-${group.key}`} hidden={!expanded}>
+                  {group.items.map(([key, label, Icon]) => (
+                    <a
+                      key={key}
+                      href={"#/" + key}
+                      onClick={() => setMenu(false)}
+                      aria-current={page === key ? "page" : undefined}
+                      className={page === key ? "active" : undefined}
+                    >
+                      <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
+                      <span>{label}</span>
+                    </a>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         </nav>
         <footer>
           <small>Dubai HQ Studio</small>
@@ -667,20 +762,33 @@ export default function App() {
           </footer>
         </main>
       </div>
-      <nav className="mobile-nav" inert={mobileNavigation && menu}>
-        <a href="#/dashboard">
+      <nav
+        className="mobile-nav"
+        aria-label="Mobile navigation"
+        inert={mobileNavigation && menu}
+      >
+        <a
+          href="#/dashboard"
+          aria-current={page === "dashboard" ? "page" : undefined}
+        >
           <LayoutDashboard size={20} />
           Dashboard
         </a>
-        <a href="#/projects">
+        <a
+          href="#/projects"
+          aria-current={page === "projects" ? "page" : undefined}
+        >
           <Building2 size={20} />
           Projects
         </a>
-        <a href="#/tasks">
+        <a href="#/tasks" aria-current={page === "tasks" ? "page" : undefined}>
           <ListChecks size={20} />
           Tasks
         </a>
-        <a href="#/site-updates">
+        <a
+          href="#/site-updates"
+          aria-current={page === "site-updates" ? "page" : undefined}
+        >
           <HardHat size={20} />
           Updates
         </a>

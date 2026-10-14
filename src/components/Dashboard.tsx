@@ -10,7 +10,7 @@ import {
   availability,
   dateLabel,
 } from "../domain/logic";
-import { Header, Badge, Progress, Empty, personName } from "./ui";
+import { Badge, Progress, Empty, personName } from "./ui";
 import { ProjectCard } from "./Projects";
 import { CommercialDashboard } from "../commercial/Accounts";
 import { OperationalDashboard } from "../operations/Budgets";
@@ -47,18 +47,22 @@ export function Dashboard({
     .filter((t, i, a) => a.findIndex((x) => x.id === t.id) === i)
     .slice(0, 6);
   return (
-    <>
-      <Header
-        eyebrow="Directorate control cockpit · UAE portfolio"
-        title="Executive Overview"
-        description="Active fit-out operations, milestone deliverables, and site health across UAE projects."
-        action={
+    <div className="dashboard">
+      <header className="page-header">
+        <div>
+          <h1>Executive Overview</h1>
+          <p>
+            Active fit-out operations, milestone deliverables, and site health
+            across UAE projects.
+          </p>
+        </div>
+        <div className="actions">
           <button className="primary" onClick={onNew}>
             + New Project
           </button>
-        }
-      />
-      <div className="kpis">
+        </div>
+      </header>
+      <div className="kpis dashboard-kpis">
         {[
           [
             "Active Projects",
@@ -80,11 +84,58 @@ export function Dashboard({
           </div>
         ))}
       </div>
-      <CommercialDashboard />
-      <OperationalDashboard />
       <div className="dashboard-grid">
-        <section>
-          <div className="between">
+        <section
+          className="panel dashboard-attention"
+          aria-label="Needs Attention"
+        >
+          <h2>
+            Needs Attention <Badge>{attention.length + pending.length}</Badge>
+          </h2>
+          <p className="dashboard-section-note">
+            Overdue work, dependency risks and pending reviews.
+          </p>
+          {!attention.length && !pending.length && (
+            <p className="muted">No tasks or approvals need attention.</p>
+          )}
+          {attention.map((t) => (
+            <button key={t.id} className="attention" onClick={() => onTask(t)}>
+              <Badge>
+                {overdue(t)
+                  ? "Overdue Task"
+                  : t.status === "Blocked"
+                    ? "Blocked"
+                    : "Dependency Risk"}
+              </Badge>
+              <strong>{t.name}</strong>
+              <small>
+                {db.projects.find((p) => p.id === t.projectId)?.code} ·{" "}
+                {dateLabel(t.due)}
+              </small>
+            </button>
+          ))}
+          {pending.map((d) => (
+            <a
+              className="attention"
+              key={d.id}
+              href={`#/projects/${d.projectId}/documents`}
+            >
+              <Badge>Pending Approval</Badge>
+              <strong>{d.name}</strong>
+              <small>
+                {db.projects.find((p) => p.id === d.projectId)?.code}
+              </small>
+            </a>
+          ))}
+          <a className="attention" href="#/snags-qa">
+            <Badge>
+              {db.snags.filter((s) => s.status !== "Closed").length} open snags
+            </Badge>
+            <strong>Review field rectification →</strong>
+          </a>
+        </section>
+        <section className="dashboard-projects" aria-label="Active Fit-Outs">
+          <div className="between dashboard-section-heading">
             <h2>
               Active Fit-Outs <Badge>{active.length} Active</Badge>
             </h2>
@@ -97,50 +148,8 @@ export function Dashboard({
           </div>
           {!active.length && <Empty>No active projects.</Empty>}
         </section>
-        <aside className="stack">
-          <section className="panel">
-            <h2>
-              Needs Attention <Badge>{attention.length + pending.length}</Badge>
-            </h2>
-            {attention.map((t) => (
-              <button
-                key={t.id}
-                className="attention"
-                onClick={() => onTask(t)}
-              >
-                <Badge>
-                  {overdue(t)
-                    ? "Overdue Task"
-                    : t.status === "Blocked"
-                      ? "Blocked"
-                      : "Dependency Risk"}
-                </Badge>
-                <strong>{t.name}</strong>
-                <small>
-                  {db.projects.find((p) => p.id === t.projectId)?.code} ·{" "}
-                  {dateLabel(t.due)}
-                </small>
-              </button>
-            ))}
-            {pending.map((d) => (
-              <a
-                className="attention"
-                key={d.id}
-                href={`#/projects/${d.projectId}/documents`}
-              >
-                <Badge>Pending Approval</Badge>
-                <strong>{d.name}</strong>
-              </a>
-            ))}
-            <a className="attention" href="#/snags-qa">
-              <Badge>
-                {db.snags.filter((s) => s.status !== "Closed").length} open
-                snags
-              </Badge>
-              <strong>Review field rectification →</strong>
-            </a>
-          </section>
-          <section className="panel">
+        <aside className="stack dashboard-support">
+          <section className="panel dashboard-milestones">
             <h2>Upcoming Milestones</h2>
             {db.milestones
               .filter(
@@ -168,7 +177,7 @@ export function Dashboard({
                 </button>
               ))}
           </section>
-          <section className="panel">
+          <section className="panel dashboard-workload">
             <h2>Team Workload</h2>
             {db.people
               .slice()
@@ -188,6 +197,8 @@ export function Dashboard({
           </section>
         </aside>
       </div>
-    </>
+      <CommercialDashboard />
+      <OperationalDashboard />
+    </div>
   );
 }

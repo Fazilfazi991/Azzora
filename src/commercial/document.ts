@@ -1,17 +1,26 @@
 import type { Database } from "../domain/model";
-import type { Invoice } from "./model";
+import type { Invoice, InvoiceSnapshot } from "./model";
 import type { ReportData } from "./reports-data";
-import { invoiceTotals, aed, balanceDue } from "./calculations";
+import { invoiceTotals, aed, balanceDue, paidAmount } from "./calculations";
 import { customerSnapshot } from "./customer-domain";
 import { defaultCompany } from "../quotation/seed";
+import {
+  credited,
+  refunded,
+  invoicePosition,
+} from "../operations/calculations";
+import type { CompanyProfile } from "../operations/model";
 
-export function invoiceDetails(db: Database, i: Invoice) {
+export function invoiceDetails(
+  db: Database,
+  i: Invoice,
+): Pick<InvoiceSnapshot, "customer" | "company" | "project" | "quotation"> {
   return (
     i.snapshot || {
       customer: customerSnapshot(
         db.clients.find((c) => c.id === i.customerId)!,
       ),
-      company: defaultCompany,
+      company: db.operations?.settings.company || defaultCompany,
       project: db.projects.find((p) => p.id === i.projectId)?.name || "",
       quotation:
         db.quotations.find((q) => q.id === i.quotationId)?.number || "",
@@ -24,13 +33,14 @@ export async function tabularPdf(
   subtitle: string,
   data: ReportData,
   filename?: string,
+  brand?: Pick<CompanyProfile, "name" | "logo"> & { tradingName?: string },
 ) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4", compress: true });
   const ascii = (s: string) => s.replace(/[−–—]/g, "-");
   let logo: string | undefined;
   try {
-    const response = await fetch("/assets/azzora-logo.png");
+    const response = await fetch(brand?.logo || "/assets/azzora-logo.png");
     if (response.ok) {
       const blob = await response.blob();
       logo = await new Promise<string>((resolve, reject) => {
@@ -51,8 +61,16 @@ export async function tabularPdf(
     doc.setTextColor("#9a3c25");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
-    doc.text("AZZORA", left, 42);
-    if (logo) doc.addImage(logo, "PNG", 523, 20, 26, 40);
+    doc.text((brand?.tradingName || "AZZORA").slice(0, 35), left, 42);
+    if (logo)
+      doc.addImage(
+        logo,
+        logo.startsWith("data:image/jpeg") ? "JPEG" : "PNG",
+        523,
+        20,
+        26,
+        40,
+      );
     doc.setFontSize(13);
     doc.text(title, left, 70);
     doc.setTextColor("#6b6661");
@@ -137,20 +155,29 @@ export async function invoicePdf(db: Database, i: Invoice, download = true) {
       "Amount paid",
       "",
       "",
-      aed(i.status === "Issued" ? t.grand - balanceDue(db, i) : 0n),
+      aed(i.status === "Issued" ? paidAmount(db, i.id) : 0n),
     ],
     ["Balance due", "", "", aed(balanceDue(db, i))],
+    ["Issued credits", "", "", aed(credited(db, i.id))],
+    ["Customer refunds", "", "", aed(refunded(db, i.id))],
+    [
+      "Customer credit balance",
+      "",
+      "",
+      aed(invoicePosition(db, i) < 0n ? -invoicePosition(db, i) : 0n),
+    ],
     ["Payment terms", "", "", i.terms],
     ["Notes", "", "", i.notes],
   );
   return tabularPdf(
     `${i.status === "Draft" ? "DRAFT " : i.status === "Cancelled" ? "CANCELLED " : ""}INVOICE ${i.number}`,
-    `${s.company.name} · ${s.company.location}\n${s.company.email} · ${s.company.phone}\nBill to: ${s.customer.name} · ${s.customer.contact}\n${s.customer.address} · TRN: ${s.customer.trn || "Not supplied"}\n${s.customer.email} · ${s.customer.phone}\nDate: ${i.date} · Due: ${i.due}\nProject: ${s.project || "—"} · Quotation: ${s.quotation || "—"}`,
+    `${s.company.name} · ${s.company.location}\n${s.company.email} · ${s.company.phone} · Company TRN: ${s.company.trn || "Not supplied"}\nBill to: ${s.customer.name} · ${s.customer.contact}\n${s.customer.address} · TRN: ${s.customer.trn || "Not supplied"}\n${s.customer.email} · ${s.customer.phone}\nDate: ${i.date} · Due: ${i.due}\nProject: ${s.project || "—"} · Quotation: ${s.quotation || "—"}\nBank: ${s.company.bank || "See payment terms"}`,
     {
       headers: ["Description", "Quantity", "Rate AED", "Tax / Total AED"],
       rows,
     },
     download ? i.number + ".pdf" : undefined,
+    { ...s.company, logo: s.company.logo || "/assets/azzora-logo.png" },
   );
 }
 export function printInvoice(element: HTMLElement | null) {

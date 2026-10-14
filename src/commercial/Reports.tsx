@@ -11,6 +11,7 @@ import {
 } from "./reports-data";
 import type { ReportName } from "./reports-data";
 import { tabularPdf } from "./document";
+import { getOperations } from "../operations/migration";
 
 export function Statement({ customerId }: { customerId: string }) {
   const { db } = useStore();
@@ -78,6 +79,7 @@ export function Reports() {
                     `AZZORA · ${f.from || "All dates"} to ${f.to || "Today"} · Browser demo`,
                     data,
                     "azzora-report.pdf",
+                    getOperations(db).settings.company,
                   );
                 } catch (e) {
                   setError(String(e));
@@ -102,6 +104,23 @@ export function Reports() {
         </select>
       </Field>
       <FinancialFilters value={f} onChange={setF} />
+      {name.startsWith("Supplier") ||
+      name.startsWith("Purchase") ||
+      name === "Material Delivery Status" ? (
+        <Field label="Report supplier">
+          <select
+            value={f.supplierId || ""}
+            onChange={(e) => setF({ ...f, supplierId: e.target.value })}
+          >
+            <option value="">All suppliers</option>
+            {getOperations(db).suppliers.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+      ) : null}
       {name === "Accounts Receivable Ageing" && (
         <p className="notice">
           Ageing is a balance at the To date (or today); From date is ignored so

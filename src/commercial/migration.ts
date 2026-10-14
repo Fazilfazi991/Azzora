@@ -1,7 +1,9 @@
 import type { Database } from "../domain/model";
+import { initializeOperations } from "../operations/migration";
 
 // Additive and idempotent. No joins by guessed name and no replacement seed data.
 export function initializeCommercial(db: Database) {
+  initializeOperations(db);
   db.invoices ??= [];
   db.payments ??= [];
   db.expenses ??= [];

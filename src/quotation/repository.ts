@@ -9,6 +9,7 @@ import {
   paymentAmount,
 } from "./calculations";
 import { today, uid } from "../domain/logic";
+import { getOperations } from "../operations/migration";
 export function initializeQuotations(db: Database, seedReference = false) {
   if (db.quotations && !seedReference) return;
   db.quotations = [referenceQuotation()];
@@ -61,6 +62,11 @@ export function newQuotation(db: Database): Quotation {
   let n = next;
   while (db.quotations.some((q) => q.number === prefix + n)) n++;
   const q = blankQuotation(prefix + n);
+  if (db.operations) {
+    const s = getOperations(db).settings;
+    q.company = structuredClone(s.company);
+    q.vatPercentage = s.vatPercentage;
+  }
   db.quotationNumbering.next = n + 1;
   db.quotations.push(q);
   return q;

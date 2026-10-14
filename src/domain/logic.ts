@@ -106,7 +106,9 @@ export const availability = (n: number) =>
         : "Available";
 export function handoverState(db: Database, id: string) {
   const items = db.handover
-    .filter((h) => h.projectId === id && h.applicable)
+    .filter(
+      (h) => h.projectId === id && h.applicable && h.group !== "Commercial",
+    )
     .map((h) => ({
       ...h,
       complete:

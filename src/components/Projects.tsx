@@ -11,6 +11,7 @@ import {
   today,
 } from "../domain/logic";
 import { Header, Badge, Avatar, Progress, Empty, personName } from "./ui";
+import { variationNet } from "../operations/calculations";
 import { aed } from "../commercial/calculations";
 export function ProjectCard({
   project: p,
@@ -38,11 +39,13 @@ export function ProjectCard({
         <div className="value">
           <small>
             {contract
-              ? "Accepted contract excl. VAT"
+              ? "Revised contract excl. VAT"
               : "Estimated project value"}
           </small>
           <strong>
-            {contract ? aed(BigInt(contract.net)) : money(p.value)}
+            {contract
+              ? aed(BigInt(contract.net) + variationNet(db, p.id))
+              : money(p.value)}
           </strong>
           <small>Target: {dateLabel(p.due)}</small>
         </div>

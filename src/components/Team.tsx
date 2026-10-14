@@ -16,6 +16,8 @@ import {
   Empty,
 } from "./ui";
 import { TaskList } from "./Tasks";
+import { EmployeeForm } from "../operations/EmployeeForm";
+import { saveEmployee } from "../operations/repository";
 export function Team({
   projectId,
   onTask,
@@ -29,6 +31,7 @@ export function Team({
   const [replacement, setReplacement] = useState("");
   const [reassign, setReassign] = useState(false);
   const [remove, setRemove] = useState<Assignment | null>(null);
+  const [employee, setEmployee] = useState<Person | "new" | null>(null);
   const assignments = db.assignments.filter(
     (a) => (!projectId || a.projectId === projectId) && a.status === "Active",
   );
@@ -61,9 +64,14 @@ export function Team({
         title={projectId ? "Project Team" : "Team & Resource Allocation"}
         description="Project roles and task allocations share one resource view."
         action={
-          <button className="primary" onClick={() => edit()}>
-            + Assign Person
-          </button>
+          <>
+            {!projectId && (
+              <button onClick={() => setEmployee("new")}>Add Employee</button>
+            )}
+            <button className="primary" onClick={() => edit()}>
+              + Assign Person
+            </button>
+          </>
         }
       />
       <div className="kpis">
@@ -110,7 +118,11 @@ export function Team({
               }{" "}
               active tasks
             </p>
-            <Badge>{availability(workload(db, p.id))}</Badge>
+            <Badge>
+              {p.status === "Inactive"
+                ? "Inactive"
+                : availability(workload(db, p.id))}
+            </Badge>
             <small>
               {
                 db.assignments.filter(
@@ -141,6 +153,31 @@ export function Team({
       </div>
       {person && (
         <Modal drawer title={person.name} onClose={() => setPerson(null)}>
+          <div className="actions">
+            <button onClick={() => setEmployee(person)}>Edit Employee</button>
+            <button
+              onClick={() => {
+                if (
+                  mutate((d) =>
+                    saveEmployee(
+                      d,
+                      {
+                        ...person,
+                        status:
+                          person.status === "Inactive" ? "Active" : "Inactive",
+                      },
+                      db.people.find((p) => p.status !== "Inactive")!.id,
+                    ),
+                  )
+                )
+                  setPerson(null);
+              }}
+            >
+              {person.status === "Inactive"
+                ? "Restore Employee"
+                : "Archive Employee"}
+            </button>
+          </div>
           <p>
             {person.role} · {person.status}
           </p>
@@ -213,6 +250,14 @@ export function Team({
                 });
               if (
                 mutate((d) => {
+                  if (
+                    !d.people.some(
+                      (p) => p.id === replacement && p.status !== "Inactive",
+                    )
+                  )
+                    throw Error(
+                      "Choose an active employee for new assignments.",
+                    );
                   const old = d.assignments.find((a) => a.id === draft.id);
                   if (old && old.personId !== replacement) {
                     old.status = "Replaced";
@@ -377,6 +422,15 @@ export function Team({
         >
           Task assignments and historical work remain available.
         </Confirm>
+      )}
+      {employee && (
+        <EmployeeForm
+          person={employee === "new" ? undefined : employee}
+          onClose={() => {
+            setEmployee(null);
+            setPerson(null);
+          }}
+        />
       )}
     </>
   );

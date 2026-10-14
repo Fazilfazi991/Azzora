@@ -1,5 +1,6 @@
 import { initializeQuotations } from "../quotation/repository";
 import { initializeCommercial } from "../commercial/migration";
+import { closureSummary } from "../operations/closure-domain";
 import { z } from "zod";
 import type { Database, Task, Project, SnagStatus, Activity } from "./model";
 import { seed, generatePlan } from "./seed";
@@ -110,6 +111,12 @@ export function saveTask(db: Database, task: Task) {
       "Dependencies must be in this project and cannot form a cycle.",
     );
   const old = db.tasks.find((t) => t.id === task.id);
+  if (
+    task.assigneeId &&
+    task.assigneeId !== old?.assigneeId &&
+    !db.people.some((p) => p.id === task.assigneeId && p.status !== "Inactive")
+  )
+    throw Error("New task assignments require an active employee.");
   if (task.parentId) {
     const parent = db.tasks.find((t) => t.id === task.parentId);
     if (
@@ -167,6 +174,8 @@ export function createProject(
   standard: boolean,
 ) {
   projectSchema.parse(p);
+  if (!db.people.some((x) => x.id === p.managerId && x.status !== "Inactive"))
+    throw Error("Choose an active project manager.");
   if (db.projects.some((x) => x.code.toLowerCase() === p.code.toLowerCase()))
     throw Error("Project code must be unique.");
   if (!clientName.trim()) throw Error("Client name is required.");
@@ -230,6 +239,13 @@ export function transitionSnag(db: Database, id: string, status: SnagStatus) {
   snag.closedBy = status === "Closed" ? "person-0" : undefined;
 }
 export function completeProject(db: Database, id: string) {
+  if (
+    db.operations?.settings.blockOperationalForFinance &&
+    !closureSummary(db, id).commercialClear
+  )
+    throw Error(
+      "Configured policy requires commercial obligations to be clear before operational handover.",
+    );
   if (!handoverState(db, id).ready)
     throw Error("Complete all required handover criteria first.");
   db.projects.find((p) => p.id === id)!.status = "Completed";

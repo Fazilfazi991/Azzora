@@ -39,6 +39,14 @@ import { Reports } from "./commercial/Reports";
 import { InvoiceForm, ExpenseForm } from "./commercial/Registers";
 import { newQuotation } from "./quotation/repository";
 import { blankTask } from "./domain/seed";
+import { Suppliers, SupplierForm } from "./operations/Suppliers";
+import { Variations } from "./operations/Variations";
+import { Procurement, ProcurementForm } from "./operations/Procurement";
+import { Credits } from "./operations/Credits";
+import { Approvals } from "./operations/Controls";
+import { Budgets } from "./operations/Budgets";
+import { CompanySettings } from "./operations/CompanySettings";
+import { getOperations } from "./operations/migration";
 const navigation = [
   ["dashboard", "Dashboard", LayoutDashboard],
   ["projects", "Projects", Building2],
@@ -51,6 +59,11 @@ const navigation = [
   ["documents", "Documents", Files],
   ["quotations", "Quotations", Files],
   ["accounts", "Accounts", ChartNoAxesCombined],
+  ["variations", "Variations", Files],
+  ["suppliers", "Suppliers", Users],
+  ["procurement", "Procurement", Building2],
+  ["approvals", "Approvals", ClipboardCheck],
+  ["budgets", "Budgets & Forecast", ChartNoAxesCombined],
   ["handover", "Handover", KeyRound],
   ["reports", "Reports", ChartNoAxesCombined],
   ["settings", "Settings", Settings],
@@ -97,7 +110,59 @@ export default function App() {
     location.hash = "/projects/" + id + "/overview";
   };
   const q = query.toLowerCase().trim();
+  const operations = getOperations(db);
   const search = [
+    ...operations.suppliers.map((s) => ({
+      id: s.id,
+      label: s.code + " · " + s.name + " · " + s.phone,
+      type: "Supplier",
+      open: () => {
+        location.hash = "/suppliers/" + s.id + "/overview";
+      },
+    })),
+    ...operations.variations.map((v) => ({
+      id: v.id,
+      label: v.number + " · " + v.title,
+      type: "Variation",
+      open: () => {
+        location.hash = "/variations/" + v.id;
+      },
+    })),
+    ...operations.requests.map((r) => ({
+      id: r.id,
+      label: r.number + " · " + r.notes,
+      type: "Purchase Request",
+      open: () => {
+        location.hash = "/procurement/requests";
+      },
+    })),
+    ...operations.orders.map((o) => ({
+      id: o.id,
+      label:
+        o.number +
+        " · " +
+        operations.suppliers.find((s) => s.id === o.supplierId)?.name,
+      type: "Purchase Order",
+      open: () => {
+        location.hash = "/procurement/orders";
+      },
+    })),
+    ...operations.bills.map((b) => ({
+      id: b.id,
+      label: b.number + " · " + b.reference,
+      type: "Supplier Bill",
+      open: () => {
+        location.hash = "/procurement/bills";
+      },
+    })),
+    ...operations.credits.map((c) => ({
+      id: c.id,
+      label: c.number + " · " + c.reason,
+      type: "Credit Note",
+      open: () => {
+        location.hash = "/accounts/credit-notes/" + c.id;
+      },
+    })),
     ...db.clients.map((c) => ({
       id: c.id,
       label: [c.code, c.name, c.contact, c.phone, c.email, c.trn]
@@ -194,11 +259,42 @@ export default function App() {
       <Dashboard onOpen={open} onTask={setTask} onNew={() => setWizard(true)} />
     );
   else if (page === "projects" && id)
-    content = <Workspace key={id + tab} id={id} tab={tab} onTask={setTask} />;
+    content = (
+      <Workspace
+        key={route}
+        id={id}
+        tab={tab}
+        subtab={route.split("/")[3]}
+        onTask={setTask}
+      />
+    );
   else if (page === "projects")
     content = <Projects onOpen={open} onNew={() => setWizard(true)} />;
   else if (page === "customers")
     content = <Customers key={id || "directory"} id={id} tab={tab} />;
+  else if (page === "suppliers")
+    content = <Suppliers key={id || "list"} id={id} tab={tab} />;
+  else if (page === "variations")
+    content = (
+      <Variations
+        key={id || "list"}
+        id={id === "new" ? undefined : id}
+        startNew={id === "new"}
+      />
+    );
+  else if (page === "procurement")
+    content = <Procurement key={id || "materials"} section={id} />;
+  else if (page === "approvals") content = <Approvals />;
+  else if (page === "budgets") content = <Budgets />;
+  else if (page === "accounts" && ["credit-notes", "refunds"].includes(id))
+    content = (
+      <Credits
+        key={route}
+        section={id}
+        id={tab === "overview" || tab === "new" ? undefined : tab}
+        startNew={tab === "new"}
+      />
+    );
   else if (page === "accounts")
     content = (
       <Accounts
@@ -266,6 +362,7 @@ export default function App() {
             demo behavior only.
           </p>
         </section>
+        <CompanySettings />
         <section className="panel">
           <h2>Quotation numbering</h2>
           <Field label="Quotation number prefix">
@@ -566,6 +663,11 @@ export default function App() {
               "Invoice",
               "Task",
               "Expense",
+              "Supplier",
+              "Variation",
+              "Purchase Request",
+              "Purchase Order",
+              "Credit Note",
             ].map((action) => (
               <button
                 key={action}
@@ -588,7 +690,11 @@ export default function App() {
                     );
                     if (p && phase)
                       setTask(blankTask(p.id, phase.id, p.managerId));
-                  } else setQuickForm(action);
+                  } else if (action === "Variation")
+                    location.hash = "/variations/new";
+                  else if (action === "Credit Note")
+                    location.hash = "/accounts/credit-notes/new";
+                  else setQuickForm(action);
                 }}
               >
                 + New {action}
@@ -617,6 +723,18 @@ export default function App() {
       )}
       {quickForm === "Expense" && (
         <ExpenseForm onClose={() => setQuickForm("")} />
+      )}
+      {quickForm === "Supplier" && (
+        <SupplierForm onClose={() => setQuickForm("")} />
+      )}
+      {["Purchase Request", "Purchase Order"].includes(quickForm) && (
+        <ProcurementForm
+          type={quickForm === "Purchase Order" ? "order" : "request"}
+          id=""
+          projectId=""
+          actor={db.people.find((p) => p.status !== "Inactive")?.id || ""}
+          onClose={() => setQuickForm("")}
+        />
       )}
       {task && (
         <TaskDrawer key={task.id} task={task} onClose={() => setTask(null)} />

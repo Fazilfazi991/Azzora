@@ -1,4 +1,5 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
+import { initializeOperations } from "../operations/migration";
 import { tabularPdf, invoicePdf } from "./document";
 import { seed } from "../domain/seed";
 import { blankInvoice, saveInvoice, issueInvoice } from "./repository";
@@ -65,4 +66,27 @@ it("generates a snapshotted invoice PDF with VAT, terms and current balance", as
   expect(await pdfText(content)).toContain("Balance due");
   expect(await pdfText(content)).toContain("Due within thirty days");
   expect(db.invoices[0].snapshot?.customer.name).toBe("Apex Capital Holdings");
+});
+it("keeps the original logo fallback for invoices issued before logo snapshots existed", async () => {
+  const db = seed(),
+    draft = blankInvoice(db.clients[0].id, db.projects[0].id);
+  draft.lines[0].description = "Historical scope";
+  draft.lines[0].rate = "100";
+  saveInvoice(db, draft);
+  issueInvoice(db, draft.id);
+  delete db.invoices[0].snapshot!.company.logo;
+  initializeOperations(db).settings.company.logo =
+    "data:image/png;base64,newlogo";
+  const requested: string[] = [];
+  vi.stubGlobal("fetch", async (url: string) => {
+    requested.push(url);
+    return new Response("", { status: 404 });
+  });
+  try {
+    await invoicePdf(db, db.invoices[0], false);
+    expect(requested).toContain("/assets/azzora-logo.png");
+    expect(requested).not.toContain("data:image/png;base64,newlogo");
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });

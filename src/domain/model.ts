@@ -1,4 +1,5 @@
 import type { Quotation } from "../quotation/model";
+import type { OperationalData } from "../operations/model";
 import type {
   Contract,
   Expense,
@@ -17,7 +18,9 @@ export interface Person {
   role: string;
   email: string;
   phone: string;
-  status: "Active" | "Away";
+  status: "Active" | "Away" | "Inactive";
+  department?: string;
+  demoRole?: string;
   capacity: number;
 }
 export interface Client {
@@ -162,6 +165,12 @@ export interface DocumentRecord {
   uploadedAt: string;
   uploadedBy: string;
   attachment?: Attachment;
+  familyId?: string;
+  revisionOf?: string;
+  reviewerId?: string;
+  reviewState?: "Draft" | "Submitted" | "Approved" | "Revise & Resubmit";
+  reviewComments?: string;
+  decisionAt?: string;
 }
 export interface HandoverItem {
   id: string;
@@ -186,6 +195,7 @@ export interface Activity {
 }
 export interface Database {
   version: 1;
+  operations?: OperationalData;
   commercialVersion?: 1;
   invoices: Invoice[];
   payments: Payment[];

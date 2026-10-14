@@ -6,6 +6,7 @@ import { emptyFilter, expenseCategories } from "./model";
 import {
   aed,
   balanceDue,
+  paidAmount,
   cents,
   effectiveProject,
   financials,
@@ -36,6 +37,13 @@ import { reportData } from "./reports-data";
 import { discountAmount, totals } from "../quotation/calculations";
 import { today } from "../domain/logic";
 
+import { Budgets } from "../operations/Budgets";
+import {
+  variationNet,
+  credited,
+  refunded,
+  invoicePosition,
+} from "../operations/calculations";
 export function FinancialCards({
   projectId = "",
   customerId = "",
@@ -48,7 +56,7 @@ export function FinancialCards({
   return (
     <div className="kpis commercial-kpis">
       {[
-        ["Accepted contract excl. VAT", aed(n.contract)],
+        ["Revised contract excl. VAT", aed(n.contract)],
         ["Invoiced incl. VAT", aed(n.invoiced)],
         ["Collected", aed(n.collected)],
         ["Outstanding receivables", aed(n.outstanding)],
@@ -102,8 +110,13 @@ export function ProjectFinancials({ projectId }: { projectId: string }) {
             ? aed(BigInt(contract.net))
             : "No accepted contract converted"}
         </p>
-        <p>Approved variations: No variation module configured.</p>
-        <p>Revised contract: {contract ? aed(BigInt(contract.net)) : "—"}</p>
+        <p>Approved variations: {aed(variationNet(db, projectId))}</p>
+        <p>
+          Revised contract:{" "}
+          {contract
+            ? aed(BigInt(contract.net) + variationNet(db, projectId))
+            : "—"}
+        </p>
         <p className="muted">
           Estimated gross profit = accepted contract excluding VAT − recorded
           costs excluding VAT. Input VAT is assumed recoverable for this
@@ -117,6 +130,7 @@ export function ProjectFinancials({ projectId }: { projectId: string }) {
           </a>
         )}
       </div>
+      <Budgets projectId={projectId} />
       <h3>Related quotations</h3>
       <div className="panel">
         {quotations.map((q) => (
@@ -165,7 +179,8 @@ export function CommercialDashboard() {
       (s, p) =>
         s +
         (db.contracts.find((c) => c.projectId === p.id)
-          ? BigInt(db.contracts.find((c) => c.projectId === p.id)!.net)
+          ? BigInt(db.contracts.find((c) => c.projectId === p.id)!.net) +
+            variationNet(db, p.id)
           : cents(p.value.toFixed(2))),
       0n,
     );
@@ -319,9 +334,8 @@ function InvoiceDetail({ invoice: i }: { invoice: Invoice }) {
       <div className="actions">
         <Badge>{invoiceStatus(db, i)}</Badge>
         <span>
-          Amount paid:{" "}
-          {aed(i.status === "Issued" ? t.grand - balanceDue(db, i) : 0n)} ·
-          Balance due: <strong>{aed(balanceDue(db, i))}</strong>
+          Amount paid: {aed(i.status === "Issued" ? paidAmount(db, i.id) : 0n)}{" "}
+          · Balance due: <strong>{aed(balanceDue(db, i))}</strong>
         </span>
       </div>
       {error && (
@@ -347,7 +361,11 @@ function InvoiceDetail({ invoice: i }: { invoice: Invoice }) {
               </small>
             </p>
           </div>
-          <img src="/assets/azzora-logo.png" alt="AZZORA" width="38" />
+          <img
+            src={s.company.logo || "/assets/azzora-logo.png"}
+            alt="AZZORA"
+            width="38"
+          />
         </div>
         <div className="form-grid">
           <div>
@@ -388,10 +406,9 @@ function InvoiceDetail({ invoice: i }: { invoice: Invoice }) {
             ["Net amount", t.net],
             [`VAT ${i.vatPercentage}%`, t.vat],
             ["Grand total", t.grand],
-            [
-              "Amount paid",
-              i.status === "Issued" ? t.grand - balanceDue(db, i) : 0n,
-            ],
+            ["Issued credits", credited(db, i.id)],
+            ["Customer refunds", refunded(db, i.id)],
+            ["Amount paid", i.status === "Issued" ? paidAmount(db, i.id) : 0n],
             ["Balance due", balanceDue(db, i)],
           ].map(([label, value]) => (
             <p className="between" key={String(label)}>
@@ -405,6 +422,12 @@ function InvoiceDetail({ invoice: i }: { invoice: Invoice }) {
         <h3>Notes</h3>
         <p className="preserve-lines">{i.notes || "—"}</p>
       </article>
+      <p className="notice">
+        Credits: {aed(credited(db, i.id))} · Refunds: {aed(refunded(db, i.id))}{" "}
+        · Customer credit:{" "}
+        {aed(invoicePosition(db, i) < 0n ? -invoicePosition(db, i) : 0n)} ·{" "}
+        <a href="#/accounts/credit-notes">Credit notes / refunds</a>
+      </p>
       <h3>Allocated receipts</h3>
       <PaymentTable
         payments={db.payments.filter((p) => p.invoiceId === i.id)}
@@ -563,6 +586,8 @@ export function Accounts({
           ["expenses", "Expenses"],
           ["receivables", "Receivables"],
           ["project-financials", "Project Financials"],
+          ["credit-notes", "Credit Notes"],
+          ["refunds", "Refunds"],
         ].map(([key, label]) => (
           <a
             className={section === key ? "active" : ""}
@@ -639,6 +664,12 @@ export function Accounts({
             </p>
             <a href="#/accounts/expenses">Open expenses →</a>
           </div>
+          <p className="notice">
+            Issued credits {aed(n.credits)} · Customer refunds {aed(n.refunds)}{" "}
+            · Unrefunded customer credit {aed(n.customerCredit)}. Receivable =
+            billed − credits − receipts + refunds, floored at zero; credit
+            balances are shown separately.
+          </p>
           <h3>Recent invoices</h3>
           <InvoiceTable invoices={invoices.slice(-8)} />
         </>

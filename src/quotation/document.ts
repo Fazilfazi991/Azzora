@@ -141,7 +141,7 @@ export function layoutQuotation(q: Quotation): DocumentPage[] {
     pages.push(page);
     y = 72;
     image("/assets/quotation/watermark.png", 162.6, 195.84, 317.4, 411.6);
-    if (logo) image("/assets/quotation/logo.png", 81, 21.6, 153.84, 32.64);
+    if (logo) image(q.company.logo?.startsWith("data:") ? q.company.logo : "/assets/quotation/logo.png", 81, 21.6, 153.84, 32.64);
   };
   const ensure = (height: number) => {
     if (y + height > BOTTOM && y > 105) {
@@ -558,6 +558,7 @@ export async function generatePdf(q: Quotation): Promise<jsPDF> {
   for (const src of [
     "/assets/quotation/logo.png",
     "/assets/quotation/watermark.png",
+    ...(q.company.logo?.startsWith("data:") ? [q.company.logo] : []),
   ]) {
     const r = await fetch(src);
     if (!r.ok) throw Error("Quotation stationery could not be loaded.");

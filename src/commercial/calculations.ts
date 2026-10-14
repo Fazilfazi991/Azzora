@@ -2,6 +2,12 @@ import type { Database } from "../domain/model";
 import type { CommercialFilter, Invoice, InvoiceLine } from "./model";
 import { cents, decimal, formatMoney } from "../quotation/calculations";
 import { today, days } from "../domain/logic";
+import {
+  credited,
+  refunded,
+  invoicePosition,
+} from "../operations/calculations";
+import { getOperations } from "../operations/migration";
 
 export { cents };
 export const aed = (n: bigint) => formatMoney(n, true);
@@ -81,9 +87,8 @@ export function paidAmount(db: Database, id: string, asOf = today()) {
     .reduce((s, p) => s + cents(p.amount), 0n);
 }
 export function balanceDue(db: Database, i: Invoice, asOf = today()) {
-  return i.status === "Issued"
-    ? invoiceTotals(i).grand - paidAmount(db, i.id, asOf)
-    : 0n;
+  const value = i.status === "Issued" ? invoicePosition(db, i, asOf) : 0n;
+  return value > 0n ? value : 0n;
 }
 export function invoiceStatus(db: Database, i: Invoice, asOf = today()) {
   if (i.status !== "Issued") return i.status;
@@ -131,18 +136,34 @@ export function financials(db: Database, f: CommercialFilter) {
           (i) => i.id === p.invoiceId && invoiceStatus(db, i) === f.status,
         )),
   );
-  const expenses = db.expenses.filter((e) =>
-    matches(
-      db.projects.find((p) => p.id === e.projectId)?.clientId || "",
-      e.projectId,
-      e.date,
-      f,
-    ),
+  const expenses = db.expenses.filter(
+    (e) =>
+      !e.cancelledAt &&
+      matches(
+        db.projects.find((p) => p.id === e.projectId)?.clientId || "",
+        e.projectId,
+        e.date,
+        f,
+      ),
   );
-  const contract = contracts.reduce((s, c) => s + BigInt(c.net), 0n);
+  const approvedVariations = getOperations(db)
+    .variations.filter(
+      (v) =>
+        v.status === "Approved" &&
+        matches(v.customerId, v.projectId, dubaiDate(v.approvedAt!), f),
+    )
+    .reduce((s, v) => s + BigInt(v.net!), 0n);
+  const originalContract = contracts.reduce((s, c) => s + BigInt(c.net), 0n);
+  const contract = originalContract + approvedVariations;
   const invoiced = invoices.reduce((s, i) => s + invoiceTotals(i).grand, 0n);
   const collected = payments.reduce((s, p) => s + cents(p.amount), 0n);
   const outstanding = invoices.reduce((s, i) => s + balanceDue(db, i), 0n);
+  const credits = invoices.reduce((s, i) => s + credited(db, i.id), 0n);
+  const refunds = invoices.reduce((s, i) => s + refunded(db, i.id), 0n);
+  const customerCredit = invoices.reduce((s, i) => {
+    const value = invoicePosition(db, i);
+    return s + (value < 0n ? -value : 0n);
+  }, 0n);
   const overdue = invoices
     .filter((i) => i.due < today())
     .reduce((s, i) => s + balanceDue(db, i), 0n);
@@ -151,6 +172,11 @@ export function financials(db: Database, f: CommercialFilter) {
   const profit = contract - costs;
   return {
     contract,
+    originalContract,
+    approvedVariations,
+    credits,
+    refunds,
+    customerCredit,
     invoiced,
     collected,
     outstanding,

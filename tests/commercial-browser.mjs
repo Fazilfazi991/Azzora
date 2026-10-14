@@ -1,8 +1,8 @@
 import { chromium, expect } from "@playwright/test";
 import fs from "node:fs";
-import { browserOptions } from "./browser-runtime.mjs";
+import { browserOptions, auditUrl } from "./browser-runtime.mjs";
 
-const url = process.env.AZZORA_URL || "http://127.0.0.1:5173";
+const url = auditUrl;
 const output = "docs/commercial-evidence";
 fs.mkdirSync(output, { recursive: true });
 const browser = await chromium.launch(browserOptions);

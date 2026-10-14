@@ -1,9 +1,10 @@
 import { chromium, expect } from "@playwright/test";
 import fs from "node:fs";
+import { qaOutput, selectSiteAuthor } from "./agent-3-helpers.mjs";
 import { browserOptions, auditUrl } from "./browser-runtime.mjs";
 
-const phase = process.env.QA_PHASE || "baseline";
-const output = "docs/agent-3-evidence";
+const phase = "final";
+const output = `${qaOutput}/upload`;
 fs.mkdirSync(output, { recursive: true });
 const browser = await chromium.launch(browserOptions);
 const checks = [];
@@ -19,6 +20,7 @@ try {
       .getByRole("button", { name: "+ Post Site Update", exact: true })
       .click();
     const dialog = page.getByRole("dialog");
+    await selectSiteAuthor(dialog);
     const upload = dialog.getByLabel("Upload photos", { exact: true });
     const image = fs.readFileSync("public/assets/azzora-logo.png");
     await upload.setInputFiles({
@@ -41,16 +43,15 @@ try {
     await expect(dialog.getByRole("status")).toHaveText("Reading files…");
     const remove = dialog.getByRole("button", { name: "Remove", exact: true });
     const removalAllowedDuringRead = await remove.isEnabled();
-    if (phase === "final") await expect(remove).toBeDisabled();
-    else await remove.click();
+    await expect(remove).toBeDisabled();
     await expect(dialog.getByRole("status")).toHaveCount(0);
     await expect(dialog.locator(".photo-grid img")).toHaveCount(2);
     checks.push({
       width,
       removalAllowedDuringRead,
-      removedFileResurrected: phase !== "final",
+      removedFileResurrected: false,
     });
-    if (phase === "final") {
+    {
       await remove.first().click();
       await expect(dialog.locator(".photo-grid img")).toHaveCount(1);
       await expect(dialog.locator(".photo-grid")).not.toContainText(

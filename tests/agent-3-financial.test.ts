@@ -227,38 +227,71 @@ describe("Agent 3 independent UAE fit-out financial integrity", () => {
   });
 });
 
-// Explicit expected failures keep cross-agent defects executable without editing owned code.
-// Remove .fails once the responsible agent fixes the defect; unexpected success fails this suite.
-describe("Agent 3 confirmed open defects (expected failures, not feature passes)", () => {
-  it.fails(
-    "A3-005: discount allocation must never produce negative VAT",
-    () => {
+describe("Agent 3 strict critical financial and persistence requirements", () => {
+  it.each([
+    {
+      rates: ["0.01", "0.01", "0.01"],
+      taxes: ["Inclusive", "Inclusive", "Inclusive"],
+      discount: "0.02",
+      grand: 1n,
+    },
+    {
+      rates: ["100.01", "100.01", "100.01"],
+      taxes: ["Inclusive", "Inclusive", "Inclusive"],
+      discount: "300.02",
+      grand: 1n,
+    },
+    {
+      rates: ["100", "100", "0.01"],
+      taxes: ["Exempt", "Zero Rated", "Inclusive"],
+      discount: "100",
+      grand: 10001n,
+    },
+  ])(
+    "A3-005 bounded discount and conserved gross for $rates / $discount",
+    ({ rates, taxes, discount, grand }) => {
       const db = seed();
       initializeCommercial(db);
       const invoice = blankInvoice(db.clients[0].id, db.projects[0].id);
-      invoice.lines = Array.from({ length: 3 }, () => ({
+      invoice.lines = rates.map((rate, index) => ({
         ...invoice.lines[0],
         id: uid(),
-        description: "QA rounding adjustment",
+        description: "QA bounded allocation",
+        rate,
         quantity: "1",
-        rate: "0.01",
-        tax: "Inclusive" as const,
+        tax: taxes[index] as "Inclusive" | "Exempt" | "Zero Rated",
       }));
-      invoice.discount = "0.02";
-      expect(invoiceTotals(invoice).vat).toBeGreaterThanOrEqual(0n);
+      invoice.discount = discount;
+      const result = invoiceTotals(invoice);
+      expect(result.net).toBeGreaterThanOrEqual(0n);
+      expect(result.vat).toBeGreaterThanOrEqual(0n);
+      expect(result.grand).toBe(grand);
+      expect(result.net + result.vat).toBe(grand);
     },
   );
-  it.fails(
-    "A3-006: incomplete persisted operational collections must be rejected before rendering",
-    () => {
-      const db = seed();
-      initializeCommercial(db);
-      const malformed: Record<string, unknown> = { ...db };
-      delete malformed.people;
-      vi.stubGlobal("localStorage", {
-        getItem: () => JSON.stringify(malformed),
-      });
-      expect(() => localRepository.load()).toThrow();
-    },
-  );
+  it("A3-005: discount allocation must never produce negative VAT", () => {
+    const db = seed();
+    initializeCommercial(db);
+    const invoice = blankInvoice(db.clients[0].id, db.projects[0].id);
+    invoice.lines = Array.from({ length: 3 }, () => ({
+      ...invoice.lines[0],
+      id: uid(),
+      description: "QA rounding adjustment",
+      quantity: "1",
+      rate: "0.01",
+      tax: "Inclusive" as const,
+    }));
+    invoice.discount = "0.02";
+    expect(invoiceTotals(invoice).vat).toBeGreaterThanOrEqual(0n);
+  });
+  it("A3-006: incomplete persisted operational collections must be rejected before rendering", () => {
+    const db = seed();
+    initializeCommercial(db);
+    const malformed: Record<string, unknown> = { ...db };
+    delete malformed.people;
+    vi.stubGlobal("localStorage", {
+      getItem: () => JSON.stringify(malformed),
+    });
+    expect(() => localRepository.load()).toThrow();
+  });
 });

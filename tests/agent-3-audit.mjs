@@ -1,10 +1,11 @@
 import { chromium, expect } from "@playwright/test";
 import fs from "node:fs";
+import { exportDemo, qaOutput } from "./agent-3-helpers.mjs";
 import { browserOptions, auditUrl } from "./browser-runtime.mjs";
 
 // All fixture mutations are in a new, disposable context, never a user profile.
-const phase = process.env.QA_PHASE || "baseline";
-const output = `docs/agent-3-evidence/${phase}`;
+const phase = "strict";
+const output = `${qaOutput}/audit`;
 fs.mkdirSync(output, { recursive: true });
 const browser = await chromium.launch(browserOptions);
 const errors = [],
@@ -96,10 +97,9 @@ try {
       passed: named === 1,
     });
     await page.screenshot({ path: `${output}/quick-add-${width}.png` });
-    if (phase === "final")
-      await expect(
-        page.getByRole("dialog", { name: "Quick Add", exact: true }),
-      ).toBeVisible();
+    await expect(
+      page.getByRole("dialog", { name: "Quick Add", exact: true }),
+    ).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
   }
@@ -119,24 +119,20 @@ try {
     check: "dialog padding retains unsaved form",
     passed: retained,
   });
-  if (phase === "final")
-    await expect(
-      dialog.getByLabel("Customer/company name", { exact: true }),
-    ).toHaveValue("QA Al Quoz Joinery LLC");
+  await expect(
+    dialog.getByLabel("Customer/company name", { exact: true }),
+  ).toHaveValue("QA Al Quoz Joinery LLC");
   if (retained) await page.keyboard.press("Escape");
   // Long but realistic UAE customer/project identities, isolated fixture only.
-  await page.evaluate(async () => {
-    const { seed } = await import("/src/domain/seed.ts");
-    const { initializeCommercial } =
-      await import("/src/commercial/migration.ts");
-    const db = seed();
-    initializeCommercial(db);
-    db.clients[0].name =
-      "QA Emirates Architectural Interiors and Bespoke Joinery Manufacturing LLC - Dubai Branch";
-    db.projects[0].name =
-      "QA Dubai International Financial Centre Executive Office Fit-Out and Bespoke Joinery Phase Two";
-    localStorage.setItem("azzora-demo-v1", JSON.stringify(db));
-  });
+  const fixture = await exportDemo(page);
+  fixture.clients[0].name =
+    "QA Emirates Architectural Interiors and Bespoke Joinery Manufacturing LLC - Dubai Branch";
+  fixture.projects[0].name =
+    "QA Dubai International Financial Centre Executive Office Fit-Out and Bespoke Joinery Phase Two";
+  await page.evaluate(
+    (db) => localStorage.setItem("azzora-demo-v1", JSON.stringify(db)),
+    fixture,
+  );
   for (const width of [1440, 1024, 768, 390]) {
     await page.setViewportSize({ width, height: 900 });
     for (const route of [
@@ -164,6 +160,7 @@ try {
   );
   await browser.close();
 }
+expect(observations.every((c) => c.passed)).toBe(true);
 expect(errors).toEqual([]);
 expect(checks.filter((c) => c.scrollWidth > c.width)).toEqual([]);
 console.log(

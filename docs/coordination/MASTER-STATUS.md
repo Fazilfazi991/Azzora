@@ -2,6 +2,8 @@
 
 ## Authorized corrective cycle — in progress
 
+Current release blocker: independent financial compatibility review reproduced legacy item-credit basis drift and cumulative tiny-credit VAT overrun despite the green267-case unit suite. FIX-A1-02 is assigned to Agent1, finalfreeze held. Agent3 adapts operational harnesses in integration; fresh probes use isolated-cache server5195 after5193 had shared-cache504. No final combined certification exists.
+
 Owner authorized local fixes, controlled integration and independent combined QA. Backend, push, deployment and main changes remain prohibited. Original pinned feature commits are merged in controlled checkpoints: operational baseline, six-file workforce reconciliation, then QA fixes. Coordinator recovery and canonical document/approval adapters are committed; Agent 2 corrective c95a1cf/report94c568b is merged. Agent 1 financial/shell fixes and Agent 3 strict QA preparation are committed on their source branches, with final handoffs still being collected.
 
 Fresh coordinator checks: TypeScript and ESLint pass; 198 application unit tests pass in seven source files; 25 recovery/rollback browser cases pass at four widths with zero page errors. These are pre-freeze checks, not final combined certification. Agent 2 source review found unknown legacy state, actual requester self-review and orphan approval gaps; guards and ordinary tests now cover all three. Final SHA is not frozen yet.

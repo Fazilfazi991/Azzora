@@ -82,7 +82,9 @@ export function Wizard({
       !!p.location.trim(),
   );
   const [team, setTeam] = useState<Record<string, string>>({});
-  const [standard, setStandard] = useState(true);
+  const [planMode, setPlanMode] = useState<"standard" | "custom" | "empty">(
+    "standard",
+  );
   const [error, setError] = useState("");
   const set = <K extends keyof Project>(k: K, v: Project[K]) =>
     setP({ ...p, [k]: v });
@@ -122,12 +124,22 @@ export function Wizard({
     if (
       mutate(
         (d) => {
-          createProject(d, created, client, contact, team, standard);
+          createProject(
+            d,
+            created,
+            client,
+            contact,
+            team,
+            planMode === "standard",
+            planMode === "empty" ? "empty" : "legacy",
+          );
           afterCreate?.(d, created);
         },
         draft
           ? "Project draft saved"
-          : "Project created with connected plan and team",
+          : planMode === "empty"
+            ? "Project created; add its reviewed timeline plan"
+            : "Project created with connected plan and team",
       )
     )
       onCreated(p.id);
@@ -388,8 +400,8 @@ export function Wizard({
             <label className="choice">
               <input
                 type="radio"
-                checked={standard}
-                onChange={() => setStandard(true)}
+                checked={planMode === "standard"}
+                onChange={() => setPlanMode("standard")}
               />{" "}
               Use Standard Fit-Out Template{" "}
               <small>
@@ -400,20 +412,34 @@ export function Wizard({
             <label className="choice">
               <input
                 type="radio"
-                checked={!standard}
-                onChange={() => setStandard(false)}
+                checked={planMode === "custom"}
+                onChange={() => setPlanMode("custom")}
               />{" "}
               Create Custom Plan{" "}
               <small>Eight configurable phases; add tasks yourself.</small>
             </label>
-            <div className="panel">
-              {templates.map((t) => (
-                <p className="between" key={t.name}>
-                  {t.name}
-                  <span>{t.weight}%</span>
-                </p>
-              ))}
-            </div>
+            <label className="choice">
+              <input
+                type="radio"
+                checked={planMode === "empty"}
+                onChange={() => setPlanMode("empty")}
+              />{" "}
+              Start with an empty timeline plan{" "}
+              <small>
+                Creates no phases or tasks. Preview and customize the 12-phase
+                fit-out template in Planning before applying it once.
+              </small>
+            </label>
+            {planMode !== "empty" && (
+              <div className="panel">
+                {templates.map((t) => (
+                  <p className="between" key={t.name}>
+                    {t.name}
+                    <span>{t.weight}%</span>
+                  </p>
+                ))}
+              </div>
+            )}
           </>
         )}
         {step === 4 && (
@@ -444,7 +470,13 @@ export function Wizard({
                   {role}: {personName(db, id)}
                 </p>
               ))}
-            <p>{standard ? "Standard Fit-Out Template" : "Custom Plan"}</p>
+            <p>
+              {planMode === "standard"
+                ? "Standard Fit-Out Template"
+                : planMode === "custom"
+                  ? "Custom Plan"
+                  : "Empty timeline plan; template review follows in Planning"}
+            </p>
           </div>
         )}
         {error && (

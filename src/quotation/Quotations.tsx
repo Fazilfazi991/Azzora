@@ -36,6 +36,7 @@ import { convertQuotation, newProjectDetails } from "../commercial/repository";
 import type { Project, Client } from "../domain/model";
 import { discountAmount } from "./calculations";
 import { QuotationGuide } from "./QuotationGuide";
+import { QuotationLivePreview } from "./QuotationLivePreview";
 const open = (id: string, mode = "edit") => {
   location.hash = "/quotations/" + id + "/" + mode;
 };
@@ -102,6 +103,7 @@ export function Quotations({
   const q = db.quotations.find((q) => q.id === id);
   const [advancedChoice, setAdvancedChoice] = useState<boolean | null>(null);
   const [showExample, setShowExample] = useState(false);
+  const [showLivePreview, setShowLivePreview] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [scopeSearch, setScopeSearch] = useState("");
@@ -694,6 +696,12 @@ export function Quotations({
             <a className="button" href="#/quotations">
               Quotation list
             </a>
+            <button
+              className="primary"
+              onClick={() => setShowLivePreview(true)}
+            >
+              Preview Quotation
+            </button>
             {preview && (
               <>
                 <button onClick={() => open(q.id, "edit")}>Open / Edit</button>
@@ -876,7 +884,7 @@ export function Quotations({
                       </p>
                     </div>
                     <button onClick={() => setShowExample(true)}>
-                      View worked example
+                      View Example
                     </button>
                   </div>
                   <label className="quotation-advanced-toggle">
@@ -2419,6 +2427,12 @@ export function Quotations({
           ))}
         </div>
       </details>
+      {showLivePreview && (
+        <QuotationLivePreview
+          quotation={q}
+          onClose={() => setShowLivePreview(false)}
+        />
+      )}
       {confirmations}
     </div>
   );

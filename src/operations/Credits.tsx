@@ -22,6 +22,7 @@ import {
 } from "./repository";
 import { credited, refunded, invoicePosition } from "./calculations";
 import { ActorFields, Decision, History, useActors } from "./Controls";
+import { FinancialDialogError } from "./FinancialDialogError";
 export function Credits({
   section = "credit-notes",
   id,
@@ -39,7 +40,12 @@ export function Credits({
     ),
     [refund, setRefund] = useState<Refund | null>(null),
     [reverse, setReverse] = useState(""),
+    [failedAttempts, setFailedAttempts] = useState(0),
     [error, setError] = useState("");
+  function openCredit(draft: CreditNote) {
+    setFailedAttempts(0);
+    setCredit(draft);
+  }
   function blank(): CreditNote {
     const i = db.invoices.find((i) => i.status === "Issued");
     return {
@@ -85,11 +91,12 @@ export function Credits({
         description="Credits, receipts and refunds remain separate in the invoice ledger."
         action={
           <>
-            <button className="primary" onClick={() => setCredit(blank())}>
+            <button className="primary" onClick={() => openCredit(blank())}>
               New Credit Note
             </button>
             <button
               onClick={() => {
+                setFailedAttempts(0);
                 const i = db.invoices.find(
                   (i) => i.status === "Issued" && invoicePosition(db, i) < 0n,
                 );
@@ -168,7 +175,7 @@ export function Credits({
                 <div className="actions">
                   {["Draft", "Rejected"].includes(c.status) && (
                     <>
-                      <button onClick={() => setCredit(structuredClone(c))}>
+                      <button onClick={() => openCredit(structuredClone(c))}>
                         Edit Credit Draft
                       </button>
                       <button
@@ -230,7 +237,14 @@ export function Credits({
               r.reference,
               r.reversedAt ? "Reversed" : "Posted",
               !r.reversedAt && (
-                <button onClick={() => setReverse(r.id)}>Reverse Refund</button>
+                <button
+                  onClick={() => {
+                    setFailedAttempts(0);
+                    setReverse(r.id);
+                  }}
+                >
+                  Reverse Refund
+                </button>
               ),
             ])}
           />
@@ -271,6 +285,7 @@ export function Credits({
                 })
               )
                 setCredit(null);
+              else setFailedAttempts((attempt) => attempt + 1);
             }}
           >
             <div className="form-grid">
@@ -381,6 +396,7 @@ export function Credits({
               before issue; existing receipts may then create a refundable
               credit balance.
             </p>
+            <FinancialDialogError attempt={failedAttempts} />
             <button className="primary">Save Credit Note</button>
           </form>
         </Modal>
@@ -396,6 +412,7 @@ export function Credits({
                 })
               )
                 setRefund(null);
+              else setFailedAttempts((attempt) => attempt + 1);
             }}
           >
             <Field label="Refund invoice">
@@ -461,6 +478,7 @@ export function Credits({
                 and issued credits.
               </Empty>
             )}
+            <FinancialDialogError attempt={failedAttempts} />
             <button className="primary" disabled={!refund.invoiceId}>
               Post Customer Refund
             </button>
@@ -484,11 +502,13 @@ export function Credits({
                 )
               )
                 setReverse("");
+              else setFailedAttempts((attempt) => attempt + 1);
             }}
           >
             <Field label="Refund reversal reason">
               <input required name="reason" />
             </Field>
+            <FinancialDialogError attempt={failedAttempts} />
             <button className="primary">Confirm Refund Reversal</button>
           </form>
         </Modal>

@@ -3,7 +3,7 @@ import type { Task } from "../domain/model";
 import { priorities, taskStatuses, trades } from "../domain/model";
 import { useStore } from "../store";
 import { saveTask } from "../domain/repository";
-import { uid } from "../domain/logic";
+import { today, uid } from "../domain/logic";
 import { Modal, Field, Empty, personName } from "./ui";
 import { Attachments } from "./uploads";
 import { WorkflowError } from "../workforce/ui";
@@ -12,7 +12,9 @@ import {
   draftTaskCreation,
   getPlanningView,
   getProjectPlanning,
+  inclusiveWorkingDuration,
   linkFirstPermittedDate,
+  reportTaskProgress,
   type DependencyLink,
   type LinkType,
   type TaskPlanning,
@@ -28,6 +30,8 @@ export function TaskDrawer({
   const [draft, setDraft] = useState(structuredClone(task));
   const [comment, setComment] = useState("");
   const [scheduleReason, setScheduleReason] = useState("");
+  const [progressNote, setProgressNote] = useState("");
+  const [progressDate, setProgressDate] = useState(today());
   const [allowEarlier, setAllowEarlier] = useState(false);
   const [links, setLinks] = useState<DependencyLink[]>(() => structuredClone(getProjectPlanning(db, task.projectId).links));
   const initialPlanning = getProjectPlanning(db, task.projectId);
@@ -52,7 +56,7 @@ export function TaskDrawer({
     const updated = {
       ...draft,
       status: complete ? ("Completed" as const) : draft.status,
-      progress: complete ? 100 : draft.progress,
+      progress: complete || draft.status === "Completed" ? 100 : draft.progress,
     };
     if (comment.trim())
       updated.comments = [
@@ -64,19 +68,27 @@ export function TaskDrawer({
           createdAt: new Date().toISOString(),
         },
       ];
+    const progressChanged = existing && (updated.progress !== task.progress || (complete && task.status !== "Completed"));
     if ((needsProposal || !existing) && scheduleReason.trim().length < 3) return;
+    if (progressChanged && progressNote.trim().length < 3) return;
     const saved = mutate((next) => {
       if (!existing) {
         draftTaskCreation(next, { ...updated, dependencies: [] }, scheduleReason, project?.managerId || "");
         return;
       }
       if (children.length && complete) {
-        next.tasks.filter((item) => item.parentId === task.id).forEach((item) =>
-          saveTask(next, { ...item, status: "Completed", progress: 100 }));
+        next.tasks.filter((item) => item.parentId === task.id).forEach((item) => {
+          if (item.progress < 100) {
+            saveTask(next, { ...item, status: "Completed", progress: 100 });
+            reportTaskProgress(next, item.id, 100, progressDate, project?.managerId || "", progressNote);
+          }
+        });
       }
       saveTask(next, { ...updated, start: task.start, due: task.due, dependencies: task.dependencies });
+      if (progressChanged) reportTaskProgress(next, task.id, updated.progress, progressDate, project?.managerId || "", progressNote);
       if (needsProposal) {
         const projectPlanning = getProjectPlanning(next, task.projectId);
+        const inferredDuration = inclusiveWorkingDuration(projectPlanning.calendar, draft.start, draft.due);
         const nextTaskPlanning = constraint
           ? projectPlanning.taskPlanning.map((item) => item.taskId === task.id ? constraint : item)
           : undefined;
@@ -86,7 +98,9 @@ export function TaskDrawer({
           reason: scheduleReason,
           actorId: project?.managerId || "",
           edit: {
-            ...(dateChanged ? { start: draft.start, finish: draft.due } : {}),
+            ...(draft.start !== task.start ? { start: draft.start } : {}),
+            ...(draft.due !== task.due ? { finish: draft.due } : {}),
+            ...(draft.start !== task.start && draft.due !== task.due && inferredDuration ? { durationWorkingDays: inferredDuration } : {}),
             ...(linksChanged ? { links } : {}),
             ...(constraintsChanged && nextTaskPlanning ? { taskPlanning: nextTaskPlanning } : {}),
           },
@@ -242,6 +256,11 @@ export function TaskDrawer({
               onChange={(e) => set("progress", Number(e.target.value))}
             />
           </Field>
+          {existing && <div className="task-progress-report">
+            <Field label="Progress report date"><input type="date" value={progressDate} onChange={(event) => setProgressDate(event.target.value)} /></Field>
+            <Field label="Progress report note"><textarea minLength={3} value={progressNote} onChange={(event) => setProgressNote(event.target.value)} placeholder="Required when progress changes or marking complete" /></Field>
+            <p className="muted">Reported progress is separate from planned progress and inspection approval.</p>
+          </div>}
           <Field label="Allocation %">
             <input
               type="number"
@@ -350,10 +369,10 @@ export function TaskDrawer({
         )}
         <WorkflowError />
         <div className="sticky-actions">
-          <button type="button" onClick={() => save(true)}>
+          <button type="button" disabled={task.status !== "Completed" && progressNote.trim().length < 3 || (needsProposal && scheduleReason.trim().length < 3)} onClick={() => save(true)}>
             Mark Complete
           </button>
-          <button className="primary">Save Changes</button>
+          <button className="primary" disabled={((needsProposal || !existing) && scheduleReason.trim().length < 3) || (existing && (draft.progress !== task.progress || draft.status === "Completed" && task.status !== "Completed") && progressNote.trim().length < 3)}>Save Changes</button>
         </div>
       </form>
     </Modal>

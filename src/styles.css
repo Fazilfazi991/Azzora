@@ -2427,8 +2427,8 @@ details > summary { overflow-wrap: anywhere; }
 @media (max-width: 767px) {
   .planning-mobile-switch { display: flex; gap: 8px; margin: 0 0 8px; position: sticky; top: 64px; z-index: 11; padding: 6px 0; background: #fdf8f6; }
   .planning-mobile-switch button[aria-pressed="true"] { background: #9a3c25; color: #fff; }
-  .gantt-shell { --gantt-pane: 205px; --gantt-sticky-offset: 174px; margin-bottom: 84px; }
-  .gantt-heading-viewport { top: 112px; }
+  .gantt-shell { --gantt-pane: 205px; --gantt-sticky-offset: 186px; margin-bottom: 84px; }
+  .gantt-heading-viewport { top: 124px; }
   .gantt-row { height: 84px; }
   .gantt-heading { height: 50px; }
   .gantt-row.phase-row { height: 60px; }

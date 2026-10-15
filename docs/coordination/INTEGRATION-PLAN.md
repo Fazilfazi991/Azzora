@@ -1,5 +1,13 @@
 # Controlled integration plan and executed checkpoints
 
+## Gantt visual correction — executed local checkpoints, 15 October 2026
+
+The coordinator branched from the verified timeline documentation commit `53440e5`, kept Agent 1 date audit, Agent 2 visual correction and Agent 3 independent QA in separate worktrees, and replayed reviewed commits into local `codex/azzora-timeline-integration`. The original before captures landed as `0c7abb5`. Agent 2's typed-edge routing, task-label and scroll correction landed as `6fce04f`; the first-click/mobile sticky follow-up as `1ebe965`; final four-width after evidence as `cce694c`. Agent 1's date audit landed in `55618af`, `928342c`, `8980f91`, `9fd7ca7`, with production-portable fixture/rules correction in `5053b9b`. Agent 3's independent browser audit landed in `47a186e`, `2b58ac8`, `cb9f116`.
+
+The full tested application/test freeze is **`5053b9be2c0e20070225a1805e903670270a335a`**. Source tree: `242eb06e9c56c318ac431074b5b5dbb1d3c27520`; tests tree: `49f10c95f5952aaa38b9449106eaad0ecc9a4fc2`. Agent 3's exact-SHA gate passed 384/384 units, TypeScript, ESLint, cold build, 31/31 development and 31/31 fresh-production browser suites. The independent Gantt journey passed 31/31 checks in each environment. Earlier stopped harness/timing/preview-import attempts remain recorded separately in the [Gantt correction report](GANTT-UI-CORRECTION-REPORT.md) and [QA matrix](../planning/evidence/gantt-final-qa-matrix.md); they are not counted as final passes.
+
+Only `src/components/Planning.tsx` and Gantt rules in `src/styles.css` changed in application source. No scheduling-engine rules, approved dates, historical data, storage key, commercial/quotation calculations or backend code changed. No push, deployment, or `main` merge occurred. The revision is ready for owner visual acceptance, with the [before/after four-width evidence](GANTT-UI-CORRECTION-REPORT.md#visual-evidence) committed locally.
+
 ## Approved timeline implementation cycle — 15 October 2026
 
 The owner approved the five planning specifications and six scheduling decisions at specification SHA `6188dda685933abb1e46016bea501238e2b9b54d`. The coordinator replayed that documentation and reviewed Agent 1 engine, Agent 2 interface and Agent 3 independent-test commits in controlled stages onto local `codex/azzora-timeline-integration`, starting from `origin/main` `8f00619d0c7690df07afff8ad7fb0b5eb7fe67ff`. The integration worktree is `C:/Users/USER/Desktop/Projects/Azzora/azzora-timeline-integration`; all three agent worktrees remain intact.

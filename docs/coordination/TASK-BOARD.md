@@ -1,5 +1,17 @@
 # Task board
 
+## Gantt UI correction cycle — 15 October 2026
+
+Full tested local integration SHA: `5053b9be2c0e20070225a1805e903670270a335a`. The [Gantt correction report](GANTT-UI-CORRECTION-REPORT.md) and [independent QA matrix](../planning/evidence/gantt-final-qa-matrix.md) contain the source map and exact evidence.
+
+| ID | Scope / owner | Status | Evidence |
+| --- | --- | --- | --- |
+| GANTT-01 | Typed connector attachment/routing, selected links, task labels and first-click details — Agent 2 | Verified | `6fce04f`, `1ebe965`; independent Gantt 31/31 in dev and production |
+| GANTT-02 | One page vertical scroll, horizontal date rail, sticky header and four-width responsive layout — Agent 2 | Verified | `6fce04f`, `1ebe965`; before/after captures at 1440/1024/768/390 px |
+| GANTT-03 | Approved-date, milestone, FS/SS/FF/SF and calendar positioning audit — Agent 1 | Verified | `8980f91`, `9fd7ca7`, `5053b9b`; Day/Week/Month dev and fresh preview passes |
+| GANTT-QA-01 | Independent browser, accessibility and full CRM/timeline regression — Agent 3 | Verified | Frozen `5053b9b`; 384/384 units, TS, ESLint, build, 31/31 dev and 31/31 production browser suites |
+| GANTT-ACCEPT-01 | Owner visual acceptance of local browser demo | Ready | Combined revision verified; no push, deployment or main merge authorized |
+
 ## Timeline implementation cycle — 15 October 2026
 
 Frozen local integration revision: `b0858807194e13b3fb397fbdd2a50283e0649a3e`. The three feature owners used isolated worktrees; the coordinator reconciled their commits into `codex/azzora-timeline-integration`. The [timeline implementation report](TIMELINE-IMPLEMENTATION-REPORT.md) contains source mapping, evidence and independent results.

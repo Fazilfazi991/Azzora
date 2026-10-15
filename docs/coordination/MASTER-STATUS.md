@@ -1,5 +1,11 @@
 # AZZORA MASTER STATUS
 
+## Gantt timeline UI correction — local verified revision, 15 October 2026
+
+The owner-requested connector, task-label, scroll, date-alignment and responsive Gantt corrections are integrated on local `codex/azzora-timeline-integration`. The full tested application/test SHA is `5053b9be2c0e20070225a1805e903670270a335a`. The scheduling engine, approved dates, storage model/key, and commercial/quotation calculations remain unchanged. Agent 1 verified Day/Week/Month geometry and FS/SS/FF/SF relationship bounds; Agent 2 corrected only Planning UI and chart styles; Agent 3 completed independent browser and full CRM regression.
+
+Independent final QA passed 384/384 unit tests, TypeScript, ESLint, cold build, 31/31 development and 31/31 fresh-production browser suites. The independent Gantt journey passed 31/31 checks in each environment. Four-width before/after charts, tooltip, selected-link, milestone, collapsed-phase and proposal evidence were visually reviewed. The [Gantt correction report](GANTT-UI-CORRECTION-REPORT.md) and [exact per-suite matrix](../planning/evidence/gantt-final-qa-matrix.md) record root causes, commits, stopped diagnostic attempts, results and limitations. This browser-local revision is ready for owner visual acceptance. No push, deployment, backend implementation or merge into `main` occurred.
+
 ## Timeline and dependency planning — local implementation, 15 October 2026
 
 The approved timeline specification at `6188dda685933abb1e46016bea501238e2b9b54d` has been implemented on local branch `codex/azzora-timeline-integration`, based on GitHub `main` merge `8f00619d0c7690df07afff8ad7fb0b5eb7fe67ff`. The frozen application/test revision is `b0858807194e13b3fb397fbdd2a50283e0649a3e`. It adds an additive planning model, working-day calendars, FS/SS/FF/SF links, proposal approval, critical-path analysis, explicit baselines, planning progress, a guarded fit-out template and responsive Gantt view. Existing commercial and operational records remain in their original registers; the browser database key is unchanged.

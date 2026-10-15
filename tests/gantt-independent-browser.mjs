@@ -230,8 +230,9 @@ try {
     assert.ok(measured.cell > 0);
     assert.ok(Math.abs(measured.todayLeft - measured.expectedTodayLeft) <= 2,
       "today line must align with first date cell");
-    assert.ok(Math.abs(measured.milestoneLeft - measured.expectedMilestoneLeft) <= 2,
-      "milestone must align with approved event date");
+    assert.ok(Math.abs(measured.milestoneLeft + measured.milestoneWidth / 2 -
+      (measured.expectedMilestoneLeft + measured.cell / 2)) <= 2,
+      "milestone center must align with approved event date cell");
     assert.ok(measured.milestoneWidth > 0 && measured.milestoneWidth <= Math.max(24, measured.cell) + 2,
       "milestone diamond exceeds its compact date marker width");
     for (const [id, item] of Object.entries(measured.byId)) {
@@ -320,7 +321,8 @@ try {
       assert.ok(measured.chartScrollHeight <= measured.chartClientHeight + 2,
         "chart must not trap a second vertical scrollbar");
       assert.ok(measured.headingTop >= measured.stickyMinimum - 3,
-        "header slipped behind fixed controls: " + JSON.stringify(measured));
+        "header slipped behind fixed controls: top " + measured.headingTop +
+        ", fixed bottom " + measured.stickyMinimum);
       assert.ok(measured.headingBottom < height - 20, "date header left viewport");
       assert.ok(Math.abs(measured.gridOriginDelta - unscrolled.gridOriginDelta) <= 2,
         "date header and task grid desynchronized horizontally");
@@ -378,11 +380,33 @@ try {
       await page.getByRole("button", { name: /01 Client design and handoffs/ }).click();
     }
   });
-  await check("approved bar remains fixed while baseline and proposed overlays differ", async () => {
-    await page.getByLabel("Reason for proposal or baseline capture")
-      .fill("Independent visual baseline");
-    await page.getByRole("button", { name: "Capture baseline", exact: true }).click();
+  await page.getByLabel("Reason for proposal or baseline capture")
+    .fill("Independent visual baseline");
+  await page.getByRole("button", { name: "Capture baseline", exact: true }).click();
+  await check("task bar opens edit drawer after baseline capture", async () => {
     await page.locator('[data-row-id="' + ids.long + '"] .gantt-bar').click();
+    await page.screenshot({ path: out + "/gantt-post-baseline-click-" + evidenceLabel + ".png", fullPage: true });
+    const hit = await page.evaluate(() => {
+      const bar = document.querySelector('[data-row-id="gantt-qa-long"] .gantt-bar');
+      const rect = bar.getBoundingClientRect();
+      const target = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      return { dialogs: document.querySelectorAll('[role="dialog"]').length,
+        hitTag: target?.tagName, hit: target?.outerHTML.slice(0, 250),
+        barRect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } };
+    });
+    const drawer = page.getByRole("dialog");
+    assert.equal(await drawer.count(), 1,
+      "task bar must open the edit drawer after baseline capture: " + JSON.stringify(hit));
+  });
+  if (await page.getByRole("dialog").count() === 0) {
+    const bar = page.locator('[data-row-id="' + ids.long + '"] .gantt-bar');
+    await bar.focus();
+    await bar.click({ position: { x: 18, y: 14 } });
+    if (await page.getByRole("dialog").count() === 0) {
+      await bar.press("Enter");
+    }
+  }
+  await check("approved bar remains fixed while baseline and proposed overlays differ", async () => {
     const drawer = page.getByRole("dialog");
     await drawer.getByLabel("Due", { exact: true }).fill("2026-10-20");
     await drawer.getByLabel("Schedule proposal reason").fill("Independent connector overlay review");
@@ -409,7 +433,7 @@ try {
       "proposed finish extension must be visibly wider than approved bar");
     const saved = JSON.parse(await page.evaluate(() => localStorage.getItem("azzora-demo-v1")));
     assert.equal(saved.tasks.find((task) => task.id === ids.long).due, "2026-10-15");
-    await page.screenshot({ path: out + "/gantt-proposal-1440.png", fullPage: true });
+    await page.screenshot({ path: out + "/gantt-proposal-1440-" + evidenceLabel + ".png", fullPage: true });
   });
   assert.deepEqual(errors, [], "browser page errors");
   console.log("GANTT_INDEPENDENT_RESULTS", JSON.stringify({

@@ -95,8 +95,13 @@ try {
       const eventTrack = document.querySelector('[data-row-id="geom-event"] .gantt-track').getBoundingClientRect();
       const event = document.querySelector('[data-row-id="geom-event"] .gantt-bar').getBoundingClientRect();
       out.event = { center: event.left + event.width / 2 - eventTrack.left, left: event.left - eventTrack.left, width: event.width };
-      out.paths = [...document.querySelectorAll("svg.dependency-lines > path")].map((path, index) => ({
-        id: links[index].id, d: path.getAttribute("d") }));
+      out.paths = [...document.querySelectorAll("svg.dependency-lines > path")].map((path, index) => {
+        const length = path.getTotalLength();
+        const start = path.getPointAtLength(0), end = path.getPointAtLength(length);
+        return { id: links[index].id, start: { x: start.x, y: start.y },
+          end: { x: end.x, y: end.y }, length,
+          markerEnd: path.getAttribute("marker-end") };
+      });
       return out;
     }, { specs, links, scale });
     assert.ok(geometry.scrollWidth > geometry.clientWidth, `${scale} date rail must scroll`);
@@ -114,16 +119,16 @@ try {
 
     // A typed link must visually attach to its predecessor/successor event edge.
     for (const link of links) {
-      const path = geometry.paths.find((item) => item.id === link.id)?.d;
+      const path = geometry.paths.find((item) => item.id === link.id);
       assert.ok(path, `${scale} connector ${link.id} must render`);
-      const match = /^M(-?[\d.]+) (-?[\d.]+) H-?[\d.]+ V-?[\d.]+ H(-?[\d.]+)$/.exec(path);
-      assert.ok(match, `${scale} connector ${link.id} must have measured geometry: ${path}`);
+      assert.ok(path.length > 0, `${scale} connector ${link.id} must have nonzero measured length`);
+      assert.equal(path.markerEnd, "url(#planning-arrow)", `${scale} connector ${link.id} must retain a visible arrowhead`);
       const from = geometry.bars[link.predecessor.id.slice(5)];
       const to = geometry.bars[link.successor.id.slice(5)];
       const expectedFrom = link.type === "SS" || link.type === "SF" ? from.left : from.right;
       const expectedTo = link.type === "FF" || link.type === "SF" ? to.right : to.left;
-      near(Number(match[1]), expectedFrom, `${scale} ${link.type} ${link.id} predecessor endpoint`, 2);
-      near(Number(match[3]), expectedTo, `${scale} ${link.type} ${link.id} successor endpoint`, 2);
+      near(path.start.x, expectedFrom, `${scale} ${link.type} ${link.id} predecessor endpoint`, 2);
+      near(path.end.x, expectedTo, `${scale} ${link.type} ${link.id} successor endpoint`, 2);
     }
     await page.locator(".gantt").evaluate((element) => { element.scrollLeft = 227; });
     const scrolled = await page.evaluate(() => {

@@ -79,48 +79,60 @@ try {
   for (const scale of ["Day", "Week", "Month"]) {
     await page.getByLabel("Timeline scale").selectOption(scale);
     await page.locator(".gantt-date-head span").first().waitFor();
-    const geometry = await page.evaluate(({ specs, links, scale }) => {
+    const geometry = await page.evaluate(({ specs }) => {
       const chart = document.querySelector(".gantt");
-      const firstCell = document.querySelector(".gantt-date-head span");
+      const firstCell = document.querySelector('.gantt-date-head span[data-date="2026-11-02"]');
       const cell = firstCell.getBoundingClientRect().width;
-      const span = { Day: 21, Week: 84, Month: 180 }[scale];
+      const span = document.querySelectorAll(".gantt-date-head span[data-date]").length;
       const out = { cell, span, bars: {}, track: {}, paths: [], headerX: firstCell.getBoundingClientRect().left,
-        scrollWidth: chart.scrollWidth, clientWidth: chart.clientWidth };
+        scrollWidth: chart.scrollWidth, clientWidth: chart.clientWidth,
+        firstCellDate: firstCell.dataset.date };
       for (const [key] of specs) {
-        const track = document.querySelector(`[data-row-id="geom-${key}"] .gantt-track`).getBoundingClientRect();
+        const trackElement = document.querySelector(`[data-row-id="geom-${key}"] .gantt-track`);
+        const track = trackElement.getBoundingClientRect();
         const bar = document.querySelector(`[data-row-id="geom-${key}"] .gantt-bar`).getBoundingClientRect();
         out.bars[key] = { left: bar.left - track.left, right: bar.right - track.left, width: bar.width };
-        out.track[key] = track.left;
+        out.track[key] = { left: track.left,
+          gridOrigin: Number.parseFloat(getComputedStyle(trackElement).backgroundPositionX),
+          gridCell: Number.parseFloat(getComputedStyle(trackElement).backgroundSize) };
       }
       const eventTrack = document.querySelector('[data-row-id="geom-event"] .gantt-track').getBoundingClientRect();
       const event = document.querySelector('[data-row-id="geom-event"] .gantt-bar').getBoundingClientRect();
       out.event = { center: event.left + event.width / 2 - eventTrack.left, left: event.left - eventTrack.left, width: event.width };
-      out.paths = [...document.querySelectorAll("svg.dependency-lines > path")].map((path, index) => {
+      out.paths = [...document.querySelectorAll("svg.dependency-lines > path[data-link-id]")].map((path) => {
         const length = path.getTotalLength();
         const start = path.getPointAtLength(0), end = path.getPointAtLength(length);
-        return { id: links[index].id, start: { x: start.x, y: start.y },
+        return { id: path.dataset.linkId, type: path.dataset.linkType,
+          start: { x: start.x, y: start.y },
           end: { x: end.x, y: end.y }, length,
           markerEnd: path.getAttribute("marker-end") };
       });
       return out;
-    }, { specs, links, scale });
+    }, { specs });
+    assert.equal(geometry.span, { Day: 21, Week: 56, Month: 180 }[scale], `${scale} visible date-cell count`);
     assert.ok(geometry.scrollWidth > geometry.clientWidth, `${scale} date rail must scroll`);
-    near(geometry.headerX, geometry.track.a, `${scale} first header/date-track left`);
+    assert.equal(geometry.firstCellDate, "2026-11-02", `${scale} first date cell is the approved geometry anchor`);
+    const dateOrigin = geometry.headerX - geometry.track.a.left;
+    near(geometry.track.a.gridOrigin, dateOrigin, `${scale} date grid begins at first date cell`);
+    near(geometry.track.a.gridCell, geometry.cell, `${scale} date grid cell width`);
     for (const [key, , start, finish] of specs) {
+      near(geometry.track[key].left, geometry.track.a.left, `${scale} ${key} track aligns with date header`);
+      near(geometry.track[key].gridOrigin, dateOrigin, `${scale} ${key} grid begins at first date cell`);
       const first = delta("2026-11-02", start), last = delta("2026-11-02", finish);
       if (last < 0 || first >= geometry.span) continue;
-      const expectedLeft = Math.max(0, first) * geometry.cell;
+      const expectedLeft = dateOrigin + Math.max(0, first) * geometry.cell;
       const expectedWidth = (Math.min(geometry.span - 1, last) - Math.max(0, first) + 1) * geometry.cell;
       near(geometry.bars[key].left, expectedLeft, `${scale} ${key} approved start`);
       near(geometry.bars[key].right, expectedLeft + expectedWidth, `${scale} ${key} inclusive finish`);
     }
     const eventIndex = delta("2026-11-02", "2026-11-06");
-    near(geometry.event.center, (eventIndex + 0.5) * geometry.cell, `${scale} milestone diamond center`);
+    near(geometry.event.center, dateOrigin + (eventIndex + 0.5) * geometry.cell, `${scale} milestone diamond center`);
 
     // A typed link must visually attach to its predecessor/successor event edge.
     for (const link of links) {
       const path = geometry.paths.find((item) => item.id === link.id);
       assert.ok(path, `${scale} connector ${link.id} must render`);
+      assert.equal(path.type, link.type, `${scale} connector ${link.id} keeps dependency type`);
       assert.ok(path.length > 0, `${scale} connector ${link.id} must have nonzero measured length`);
       assert.equal(path.markerEnd, "url(#planning-arrow)", `${scale} connector ${link.id} must retain a visible arrowhead`);
       const from = geometry.bars[link.predecessor.id.slice(5)];
@@ -134,12 +146,12 @@ try {
     const scrolled = await page.evaluate(() => {
       const track = document.querySelector('[data-row-id="geom-a"] .gantt-track').getBoundingClientRect();
       const bar = document.querySelector('[data-row-id="geom-a"] .gantt-bar').getBoundingClientRect();
-      const header = document.querySelector('.gantt-date-head span').getBoundingClientRect();
+      const header = document.querySelector('.gantt-date-head span[data-date="2026-11-02"]').getBoundingClientRect();
       return { barOffset: bar.left - track.left, headerLeft: header.left,
         trackLeft: track.left, scrollLeft: document.querySelector(".gantt").scrollLeft };
     });
     near(scrolled.barOffset, geometry.bars.a.left, `${scale} bar after horizontal scroll`);
-    near(scrolled.headerLeft, scrolled.trackLeft, `${scale} header after horizontal scroll`);
+    near(scrolled.headerLeft - scrolled.trackLeft, dateOrigin, `${scale} date origin after horizontal scroll`);
     assert.ok(scrolled.scrollLeft > 0, `${scale} scroll position must change`);
     await page.locator(".gantt").evaluate((element) => { element.scrollLeft = 0; });
   }

@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import { chromium } from "@playwright/test";
+import { build } from "esbuild";
 import { auditUrl, browserOptions } from "./browser-runtime.mjs";
 
 const browser = await chromium.launch(browserOptions);
-const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true });
 const page = await context.newPage();
 const failures = [];
 const near = (actual, expected, label, tolerance = 1.1) => {
@@ -13,8 +16,11 @@ const near = (actual, expected, label, tolerance = 1.1) => {
 const delta = (from, to) => Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86400000);
 try {
   await page.clock.install({ time: new Date("2026-11-02T08:00:00Z") });
-  await page.goto(`${auditUrl}/#/planning`);
-  const db = await page.evaluate(async () => (await import("/src/domain/seed.ts")).seed());
+  await page.goto(`${auditUrl}/#/settings`);
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export demo data", exact: true }).click();
+  const download = await downloadPromise;
+  const db = JSON.parse(fs.readFileSync(await download.path(), "utf8"));
   const projectId = "date-geometry-project", phaseId = "date-geometry-phase";
   const project = { ...db.projects[0], id: projectId, code: "AZ-GEOM", name: "Synthetic date geometry",
     start: "2026-10-30", due: "2026-12-31" };
@@ -55,23 +61,26 @@ try {
     milestonePlanning: [{ milestoneId: "geom-event", completionCondition: { kind: "Manual" } }],
     links, proposals: [] });
   await page.evaluate((fixture) => localStorage.setItem("azzora-demo-v1", JSON.stringify(fixture)), db);
+  await page.goto(`${auditUrl}/#/planning`);
   await page.reload();
   await page.getByLabel("Planning project").selectOption(projectId);
   await page.getByRole("heading", { name: "Planning & Timeline" }).waitFor();
   assert.equal(await page.locator(".gantt-bar").count(), specs.length + 1, "fixture must render every approved task and milestone");
-  const rules = await page.evaluate(async () => {
-    const { linkFirstPermittedDate, getProjectPlanning } = await import("/src/planning/index.ts");
-    const { calculateSchedule } = await import("/src/planning/engine.ts");
-    const db = JSON.parse(localStorage.getItem("azzora-demo-v1"));
-    const planning = getProjectPlanning(db, "date-geometry-project");
-    const predecessor = { start: "2026-11-03", finish: "2026-11-05", durationWorkingDays: 3 };
-    const bounds = Object.fromEntries(planning.links.filter((link) => link.predecessor.id === "geom-b")
-      .map((link) => [link.type, linkFirstPermittedDate(planning.calendar, link, predecessor,
-        planning.taskPlanning.find((row) => row.taskId === link.successor.id).durationWorkingDays)]));
-    const result = calculateSchedule(db, planning, { kind: "task", id: "geom-b" }, { start: "2026-11-04" });
-    return { bounds, successor: result.dates.get("task:geom-f")?.start,
-      conflicts: result.conflicts.map((issue) => issue.code) };
+  // Pure rule checks run in Node, independent of the built browser bundle's source URLs.
+  const engineBundle = await build({
+    entryPoints: [path.resolve("src/planning/engine.ts")],
+    bundle: true, platform: "node", format: "esm", write: false, logLevel: "silent",
   });
+  const engineUrl = `data:text/javascript;base64,${Buffer.from(engineBundle.outputFiles[0].contents).toString("base64")}`;
+  const { linkFirstPermittedDate, calculateSchedule } = await import(engineUrl);
+  const planning = db.planning.find((row) => row.projectId === projectId);
+  const predecessor = { start: "2026-11-03", finish: "2026-11-05", durationWorkingDays: 3 };
+  const bounds = Object.fromEntries(planning.links.filter((link) => link.predecessor.id === "geom-b")
+    .map((link) => [link.type, linkFirstPermittedDate(planning.calendar, link, predecessor,
+      planning.taskPlanning.find((row) => row.taskId === link.successor.id).durationWorkingDays)]));
+  const result = calculateSchedule(db, planning, { kind: "task", id: "geom-b" }, { start: "2026-11-04" });
+  const rules = { bounds, successor: result.dates.get("task:geom-f")?.start,
+    conflicts: result.conflicts.map((issue) => issue.code) };
   assert.deepEqual(rules.bounds, { FF: "2026-11-04", SF: "2026-11-02", FS: "2026-11-06" });
   assert.equal(rules.successor, "2026-11-09", "multiple-predecessor FS bound follows delayed latest predecessor");
   assert.deepEqual(rules.conflicts, [], "calculation fixture remains feasible");

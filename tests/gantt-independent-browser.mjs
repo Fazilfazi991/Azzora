@@ -311,6 +311,12 @@ try {
       assertLinks(await geometry()));
     const unscrolled = await geometry();
     await chart.evaluate((element) => { element.scrollLeft = 180; element.scrollTop = 0; });
+    await page.waitForFunction(() => {
+      const heading = document.querySelector(".gantt-heading-viewport") ||
+        document.querySelector(".gantt-heading");
+      const body = document.querySelector(".gantt");
+      return !!heading && !!body && Math.abs(heading.scrollLeft - body.scrollLeft) <= 1;
+    }, null, { timeout: 3000 });
     await page.evaluate(() => {
       const chart = document.querySelector(".gantt");
       window.scrollTo({ top: window.scrollY + chart.getBoundingClientRect().top + 250, behavior: "instant" });

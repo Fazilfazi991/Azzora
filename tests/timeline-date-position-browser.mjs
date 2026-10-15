@@ -143,6 +143,11 @@ try {
       near(path.end.x, expectedTo, `${scale} ${link.type} ${link.id} successor endpoint`, 2);
     }
     await page.locator(".gantt").evaluate((element) => { element.scrollLeft = 227; });
+    await page.waitForFunction(() => {
+      const chart = document.querySelector(".gantt");
+      const heading = document.querySelector(".gantt-heading-viewport");
+      return chart.scrollLeft > 0 && Math.abs(heading.scrollLeft - chart.scrollLeft) < 1;
+    });
     const scrolled = await page.evaluate(() => {
       const track = document.querySelector('[data-row-id="geom-a"] .gantt-track').getBoundingClientRect();
       const bar = document.querySelector('[data-row-id="geom-a"] .gantt-bar').getBoundingClientRect();
@@ -154,6 +159,11 @@ try {
     near(scrolled.headerLeft - scrolled.trackLeft, dateOrigin, `${scale} date origin after horizontal scroll`);
     assert.ok(scrolled.scrollLeft > 0, `${scale} scroll position must change`);
     await page.locator(".gantt").evaluate((element) => { element.scrollLeft = 0; });
+    await page.waitForFunction(() => {
+      const chart = document.querySelector(".gantt");
+      const heading = document.querySelector(".gantt-heading-viewport");
+      return chart.scrollLeft === 0 && heading.scrollLeft === 0;
+    });
   }
   if (failures.length) throw Error(`Gantt date geometry mismatches:\n${failures.join("\n")}`);
   console.log("Gantt approved-date geometry, calendar spans, milestone positions, typed links and horizontal scroll passed at Day/Week/Month.");

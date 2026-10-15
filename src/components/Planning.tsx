@@ -26,9 +26,10 @@ type Row = { phase: Phase } | { task: Task } | { milestone: Milestone };
 type Scale = "Day" | "Week" | "Month";
 const scales: Record<Scale, { span: number; dayWidth: number; step: number }> = {
   Day: { span: 21, dayWidth: 44, step: 14 },
-  Week: { span: 84, dayWidth: 19, step: 28 },
+  Week: { span: 56, dayWidth: 24, step: 14 },
   Month: { span: 180, dayWidth: 10, step: 60 },
 };
+const chartGutter = 16;
 
 export function Planning({ projectId, onTask, filteredIds }: {
   projectId?: string;
@@ -55,14 +56,17 @@ export function Planning({ projectId, onTask, filteredIds }: {
   const [calendarDraft, setCalendarDraft] = useState<ProjectCalendar | null>(null);
   const [templatePreview, setTemplatePreview] = useState<FitOutTemplatePreview | null>(null);
   const [selectedMilestoneId, setSelectedMilestoneId] = useState("");
+  const [selectedTaskId, setSelectedTaskId] = useState("");
   const [manualMilestoneReason, setManualMilestoneReason] = useState("");
   const [paths, setPaths] = useState<{ id: string; d: string }[]>([]);
   const [chartBodyHeight, setChartBodyHeight] = useState(0);
   const chartRef = useRef<HTMLDivElement>(null);
+  const ganttRef = useRef<HTMLDivElement>(null);
+  const headingRef = useRef<HTMLDivElement>(null);
   const barRefs = useRef(new Map<string, HTMLButtonElement>());
   const config = scales[scale];
   const width = Math.round(config.dayWidth * zoom);
-  const chartWidth = config.span * width;
+  const chartWidth = config.span * width + chartGutter;
   const project = db.projects.find((item) => item.id === selected);
   const canApplyTemplate = !!project &&
     !db.phases.some((item) => item.projectId === selected) &&
@@ -93,7 +97,10 @@ export function Planning({ projectId, onTask, filteredIds }: {
   const phaseIds = new Set(phases.map((phase) => phase.id));
   tasks.filter((task) => !seen.has(task.id) && !phaseIds.has(task.phaseId)).forEach(appendTask);
   milestones.forEach((milestone) => rows.push({ milestone }));
-  const linkKey = planning?.links.map((link) => link.id + ":" + link.predecessor.id + ":" + link.successor.id).join("|") || "";
+  const linkKey = planning?.links.map((link) => link.id + ":" + link.type + ":" + link.predecessor.id + ":" + link.successor.id).join("|") || "";
+  const selectedTask = tasks.find((task) => task.id === selectedTaskId);
+  const selectedLinks = planning?.links.filter((link) => link.predecessor.id === selectedTaskId || link.successor.id === selectedTaskId) ?? [];
+  const linkedTaskIds = new Set(selectedLinks.flatMap((link) => [link.predecessor.id, link.successor.id]));
   const approvedFinish = planning?.approvedFinish;
   const riskCount = tasks.filter((task) => overdue(task) || task.status === "Blocked").length;
   const issueCount = (planning?.warnings.length || 0) + (planning?.blockers.length || 0) + (planning?.conflicts.length || 0);
@@ -112,12 +119,28 @@ export function Planning({ projectId, onTask, filteredIds }: {
           if (!from || !to) return;
           const a = from.getBoundingClientRect();
           const b = to.getBoundingClientRect();
-          const x1 = a.right - origin.left - paneWidth();
-          const x2 = b.left - origin.left - paneWidth();
+          const sourceSide = link.type === "FS" || link.type === "FF" ? "right" : "left";
+          const targetSide = link.type === "FS" || link.type === "SS" ? "left" : "right";
+          const x1 = (sourceSide === "right" ? a.right : a.left) - origin.left - paneWidth();
+          const x2 = (targetSide === "right" ? b.right : b.left) - origin.left - paneWidth();
           const y1 = a.top + a.height / 2 - origin.top;
           const y2 = b.top + b.height / 2 - origin.top;
-          const bend = Math.max(x1 + 10, Math.min(x1 + 24, x2 - 10));
-          next.push({ id: link.id, d: `M${x1} ${y1} H${bend} V${y2} H${x2}` });
+          const direction = y2 >= y1 ? 1 : -1;
+          const sourceRow = from.closest(".gantt-row")!.getBoundingClientRect();
+          const targetRow = to.closest(".gantt-row")!.getBoundingClientRect();
+          const sourceExitY = (direction > 0 ? sourceRow.bottom - 2 : sourceRow.top + 2) - origin.top;
+          const targetEntryY = (direction > 0 ? targetRow.top + 2 : targetRow.bottom - 2) - origin.top;
+          const sourceStub = x1 + (sourceSide === "right" ? 9 : -9);
+          const targetStub = x2 + (targetSide === "right" ? 9 : -9);
+          let lane = sourceSide === "right" && targetSide === "left" && x2 - x1 >= 32
+            ? (x1 + x2) / 2
+            : sourceSide === "left" ? Math.max(2, Math.min(x1, x2) - 18) : Math.max(x1, x2) + 18;
+          const between = [...barRefs.current.values()].map((bar) => bar.getBoundingClientRect())
+            .filter((rect) => rect.top > Math.min(a.top, b.top) && rect.top < Math.max(a.top, b.top));
+          if (between.some((rect) => lane >= rect.left - origin.left - paneWidth() - 5 && lane <= rect.right - origin.left - paneWidth() + 5)) {
+            lane = Math.max(x1, x2, ...between.map((rect) => rect.right - origin.left - paneWidth())) + 18;
+          }
+          next.push({ id: link.id, d: `M${x1} ${y1} H${sourceStub} V${sourceExitY} H${lane} V${targetEntryY} H${targetStub} V${y2} H${x2}` });
       });
       setPaths(next);
     };
@@ -126,6 +149,10 @@ export function Planning({ projectId, onTask, filteredIds }: {
     measure();
     return () => observer.disconnect();
   }, [db, selected, linkKey, rows.length, width, scale, anchor, showLinks, mobilePane, collapsed, assignee]);
+
+  useLayoutEffect(() => {
+    if (headingRef.current && ganttRef.current) headingRef.current.scrollLeft = ganttRef.current.scrollLeft;
+  }, [width, scale, selected, mobilePane]);
 
   function paneWidth() {
     return parseFloat(getComputedStyle(chartRef.current!).getPropertyValue("--gantt-pane")) || 0;
@@ -137,6 +164,8 @@ export function Planning({ projectId, onTask, filteredIds }: {
     const last = days(anchor, finish);
     if (last < 0 || first >= config.span) return null;
     const barWidth = isMilestone ? Math.max(18, width) : Math.max(width / 2, (Math.min(config.span - 1, last) - Math.max(0, first) + 1) * width);
+    const barLeft = Math.max(0, first) * width + (isMilestone ? (width - barWidth) / 2 : 0);
+    const shortBar = !isMilestone && barWidth < 100;
     const label = `${isMilestone ? "Milestone" : "Task"} ${node.name}. Approved ${dateLabel(start)} to ${dateLabel(finish)}.${isMilestone ? "" : ` Reported progress ${(node as Task).progress}%.`}`;
     const projection = nodeView.get((isMilestone ? "milestone:" : "task:") + node.id);
     const accessibleDates = `${projection?.baseline ? ` Baseline ${dateLabel(projection.baseline.start)} to ${dateLabel(projection.baseline.finish)}.` : " Baseline not captured."}${projection?.proposed ? ` Proposed ${dateLabel(projection.proposed.start)} to ${dateLabel(projection.proposed.finish)}; not approved.` : " No active proposed date."}`;
@@ -154,11 +183,12 @@ export function Planning({ projectId, onTask, filteredIds }: {
       {taskMetadata?.actualStart && days(anchor, taskMetadata.actualStart) >= 0 && days(anchor, taskMetadata.actualStart) < config.span && <span className="gantt-actual-tick" style={{ left: days(anchor, taskMetadata.actualStart) * width }} title={`Actual start ${dateLabel(taskMetadata.actualStart)}`}>A</span>}
       {taskMetadata?.actualFinish && days(anchor, taskMetadata.actualFinish) >= 0 && days(anchor, taskMetadata.actualFinish) < config.span && <span className="gantt-actual-tick finish" style={{ left: days(anchor, taskMetadata.actualFinish) * width }} title={`Actual finish ${dateLabel(taskMetadata.actualFinish)}`}>F</span>}
       <button key={node.id} ref={(element) => { if (element) barRefs.current.set(node.id, element); else barRefs.current.delete(node.id); }}
-      type="button" className={`gantt-bar ${isMilestone ? "milestone" : ""} ${projection?.critical && planning?.criticalPathFeasible ? "critical" : ""} ${!isMilestone && (overdue(node as Task) || (node as Task).status === "Blocked") ? "risk" : ""}`}
-      style={{ left: Math.max(0, first) * width, width: barWidth }} aria-label={label + accessibleDates + (taskMetadata?.actualStart ? ` Actual start ${dateLabel(taskMetadata.actualStart)}.` : "") + (taskMetadata?.actualFinish ? ` Actual finish ${dateLabel(taskMetadata.actualFinish)}.` : "") + (projection?.critical && planning?.criticalPathFeasible ? " Approved critical path." : "") + (blocking.length ? ` ${blocking.length} operational blockers.` : "")} title={label + accessibleDates}
-      onClick={() => { if (isMilestone) setSelectedMilestoneId(node.id); else onTask(node as Task); }}>
+      type="button" className={`gantt-bar ${isMilestone ? "milestone" : ""} ${shortBar ? "short" : ""} ${!isMilestone && selectedTaskId === node.id ? "selected" : ""} ${!isMilestone && selectedTaskId && linkedTaskIds.has(node.id) && selectedTaskId !== node.id ? "linked" : ""} ${projection?.critical && planning?.criticalPathFeasible ? "critical" : ""} ${!isMilestone && (overdue(node as Task) || (node as Task).status === "Blocked") ? "risk" : ""}`}
+      style={{ left: barLeft, width: barWidth }} data-task-id={!isMilestone ? node.id : undefined} data-full-label={node.name} aria-label={label + accessibleDates + (!isMilestone && selectedTaskId === node.id ? " Selected in timeline." : "") + (taskMetadata?.actualStart ? ` Actual start ${dateLabel(taskMetadata.actualStart)}.` : "") + (taskMetadata?.actualFinish ? ` Actual finish ${dateLabel(taskMetadata.actualFinish)}.` : "") + (projection?.critical && planning?.criticalPathFeasible ? " Approved critical path." : "") + (blocking.length ? ` ${blocking.length} operational blockers.` : "")} title={label + accessibleDates}
+      onFocus={() => { if (!isMilestone) setSelectedTaskId(node.id); }}
+      onClick={() => { if (isMilestone) setSelectedMilestoneId(node.id); else { setSelectedTaskId(node.id); onTask(node as Task); } }}>
       {!isMilestone && <i style={{ width: taskProgress(db, node as Task) + "%" }} />}
-      <span aria-hidden="true">{isMilestone ? "◆" : barWidth >= 70 ? node.name : ""}</span>
+      <span aria-hidden="true">{isMilestone ? "◆" : shortBar ? "" : node.name}</span>
       </button>
       {!isMilestone && (projection?.critical && planning?.criticalPathFeasible || blocking.length > 0) && <span className="gantt-status-text" style={{ left: Math.max(0, first) * width }}>{projection?.critical && planning?.criticalPathFeasible ? "Approved critical" : ""}{blocking.length ? " · Blocked" : ""}</span>}
     </>;
@@ -246,26 +276,33 @@ export function Planning({ projectId, onTask, filteredIds }: {
       {planning?.warnings.map((issue, index) => <li key={"w" + index}><strong>Warning:</strong> {issue.detail}</li>)}
       {planning?.blockers.map((issue, index) => <li key={"b" + index}><strong>{issue.code}:</strong> {issue.detail}</li>)}
     </ul><p className="muted">Operational blockers are separate from schedule links and never move dates automatically.</p></details>}
-    <p className="muted planning-range">{dateLabel(anchor)} – {dateLabel(addDays(anchor, config.span - 1))}. Dates change only after project manager approval.</p>
-    <div className={`gantt ${mobilePane === "Timeline" ? "show-mobile-timeline" : ""}`} aria-label="Project programme" role="region" tabIndex={0}>
-      <div className="gantt-inner" style={{ "--gantt-chart-width": chartWidth + "px" } as CSSProperties}>
+    <p className="muted planning-range">{dateLabel(anchor)} – {dateLabel(addDays(anchor, config.span - 1))}. Dates change only after project manager approval.
+      {selectedTask && <> <strong>Selected: {selectedTask.name}</strong> · {selectedLinks.length} connected handoffs. <button type="button" onClick={() => setSelectedTaskId("")}>Clear chart selection</button></>}
+    </p>
+    <div className={`gantt-shell ${mobilePane === "Timeline" ? "show-mobile-timeline" : ""}`}>
+      <div className="gantt-heading-viewport" ref={headingRef}>
+        <div className="gantt-inner" style={{ "--gantt-chart-width": chartWidth + "px" } as CSSProperties}>
         <div className="gantt-row gantt-heading">
           <div className="gantt-info gantt-table-head"><span>Task / phase</span><span>Assigned</span><span>Approved dates</span><span>Progress</span></div>
           <div className="gantt-date-head" style={{ width: chartWidth }}>
             {Array.from({ length: config.span }, (_, index) => {
               const date = addDays(anchor, index);
               const boundary = scale === "Day" || index === 0 || (scale === "Week" ? new Date(date + "T12:00:00Z").getUTCDay() === 1 : date.slice(8) === "01");
-              return <span key={date} className={boundary ? "group-start" : ""} style={{ width }}><b>{scale === "Day" ? date.slice(8) : boundary ? scale === "Week" ? dateLabel(date).slice(0, 6) : date.slice(0, 7) : ""}</b>{scale === "Day" && <small>{new Date(date + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short" })}</small>}</span>;
+              return <span key={date} data-date={date} className={boundary ? "group-start" : ""} style={{ width }}><b>{scale === "Day" ? date.slice(8) : boundary ? scale === "Week" ? dateLabel(date).slice(0, 6) : date.slice(0, 7) : ""}</b>{scale === "Day" && <small>{new Date(date + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short" })}</small>}</span>;
             })}
           </div>
         </div>
+        </div>
+      </div>
+      <div className={`gantt ${mobilePane === "Timeline" ? "show-mobile-timeline" : ""}`} ref={ganttRef} onScroll={(event) => { if (headingRef.current) headingRef.current.scrollLeft = event.currentTarget.scrollLeft; }} aria-label="Project programme" role="region" tabIndex={0}>
+        <div className="gantt-inner" style={{ "--gantt-chart-width": chartWidth + "px" } as CSSProperties}>
         <div className="gantt-body" ref={chartRef}>
           {rows.map((row) => {
             const key = "phase" in row ? row.phase.id : "task" in row ? row.task.id : row.milestone.id;
-            return <div className={`gantt-row ${"phase" in row ? "phase-row" : ""}`} key={key} data-row-id={key}>
+            return <div className={`gantt-row ${"phase" in row ? "phase-row" : ""} ${"task" in row && selectedTaskId === key ? "selected-row" : ""} ${"task" in row && selectedTaskId && linkedTaskIds.has(key) && selectedTaskId !== key ? "linked-row" : ""}`} key={key} data-row-id={key}>
               <div className="gantt-info">
                 {"phase" in row ? <button className="gantt-phase" type="button" aria-expanded={!collapsed.includes(row.phase.id)} onClick={() => setCollapsed(collapsed.includes(row.phase.id) ? collapsed.filter((id) => id !== row.phase.id) : [...collapsed, row.phase.id])}><span>{collapsed.includes(row.phase.id) ? "▸" : "▾"} {String(row.phase.order + 1).padStart(2, "0")} {row.phase.name}</span><Progress value={phaseProgress(db, row.phase.id)} /></button> :
-                  "task" in row ? <button className="gantt-task" type="button" onClick={() => onTask(row.task)} aria-label={`Open task ${row.task.name}. Approved ${dateLabel(row.task.start)} to ${dateLabel(row.task.due)}. ${planning?.links.filter((link) => link.successor.kind === "task" && link.successor.id === row.task.id).length || 0} predecessors.`}><span className="gantt-name"><strong>{row.task.parentId ? "↳ " : ""}{row.task.name}</strong>{nodeView.get("task:" + row.task.id)?.critical && planning?.criticalPathFeasible && <small className="gantt-inline-status">Approved critical path</small>}<small className="mobile-dates">{dateLabel(row.task.start)} → {dateLabel(row.task.due)} · {personName(db, row.task.assigneeId)}</small></span><span>{personName(db, row.task.assigneeId).split(" ")[0]}</span><span>{row.task.start.slice(5)} → {row.task.due.slice(5)}</span><Progress value={taskProgress(db, row.task)} /></button> :
+                  "task" in row ? <button className="gantt-task" type="button" title={row.task.name} onFocus={() => setSelectedTaskId(row.task.id)} onClick={() => { setSelectedTaskId(row.task.id); onTask(row.task); }} aria-label={`Open task ${row.task.name}. Approved ${dateLabel(row.task.start)} to ${dateLabel(row.task.due)}. ${planning?.links.filter((link) => link.successor.kind === "task" && link.successor.id === row.task.id).length || 0} predecessors.${selectedTaskId === row.task.id ? " Selected in timeline." : ""}`}><span className="gantt-name"><strong>{row.task.parentId ? "↳ " : ""}{row.task.name}</strong>{nodeView.get("task:" + row.task.id)?.critical && planning?.criticalPathFeasible && <small className="gantt-inline-status">Approved critical path</small>}<small className="mobile-dates">{dateLabel(row.task.start)} → {dateLabel(row.task.due)} · {personName(db, row.task.assigneeId)}</small></span><span>{personName(db, row.task.assigneeId).split(" ")[0]}</span><span>{row.task.start.slice(5)} → {row.task.due.slice(5)}</span><Progress value={taskProgress(db, row.task)} /></button> :
                   <button className="gantt-milestone-info" type="button" onClick={() => setSelectedMilestoneId(row.milestone.id)}><span className="gantt-name"><strong>◆ {row.milestone.name}</strong><small>Milestone{row.milestone.taskId ? ` · linked to ${db.tasks.find((task) => task.id === row.milestone.taskId)?.name || "task"}` : ""}</small></span><span>—</span><span>{row.milestone.due.slice(5)}</span><span>Event</span></button>}
               </div>
               <div className="gantt-track" style={{ width: chartWidth, backgroundSize: width + "px 100%" }}>
@@ -274,8 +311,13 @@ export function Planning({ projectId, onTask, filteredIds }: {
               </div>
             </div>;
           })}
-          {showLinks && <svg className="dependency-lines" width={chartWidth} height={chartBodyHeight} style={{ left: "var(--gantt-pane)" }} aria-hidden="true"><defs><marker id="planning-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="#745a37" /></marker></defs>{paths.map((path) => <path key={path.id} d={path.d} fill="none" stroke="#745a37" strokeWidth="1.5" markerEnd="url(#planning-arrow)" />)}</svg>}
+          {showLinks && <svg className="dependency-lines" width={chartWidth} height={chartBodyHeight} style={{ left: "var(--gantt-pane)" }} aria-hidden="true"><defs><marker id="planning-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L7 3.5 L0 7" fill="#745a37" /></marker><marker id="planning-arrow-active" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L8 4 L0 8" fill="#7b2510" /></marker></defs>{paths.map((path) => {
+            const link = planning?.links.find((item) => item.id === path.id);
+            const active = !!selectedTaskId && !!link && (link.predecessor.id === selectedTaskId || link.successor.id === selectedTaskId);
+            return <path key={path.id} d={path.d} className={`dependency-path ${active ? "selected" : selectedTaskId ? "subdued" : ""}`} data-link-id={path.id} data-link-type={link?.type} data-selected={active ? "true" : "false"} data-from={link?.predecessor.id} data-to={link?.successor.id} markerEnd={`url(#${active ? "planning-arrow-active" : "planning-arrow"})`} />;
+          })}</svg>}
         </div>
+      </div>
       </div>
     </div>
     {!tasks.length && <Empty>No tasks in this programme. Add a task to begin.</Empty>}

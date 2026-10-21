@@ -171,7 +171,7 @@ export function AccountantWorkspace({ db, finance, asOf, legacyArAp, demoReports
                 <p>General Ledger, Trial Balance and statements use the same posted synthetic journal lines. Receivable and payable aging reads existing CRM documents separately.</p>
               </div>
             </>
-          ) : <EmptyState title="No report fixture connected" detail="Supply a synthetic posted-journal report set to review this workspace. Existing CRM data is not read or posted here." />}
+          ) : <EmptyState title="No report fixture connected" detail="Journal reports require a synthetic posted-journal fixture. Existing CRM records are not converted into journal entries." />}
         </div>
       )}
 
@@ -229,12 +229,12 @@ export function AccountantWorkspace({ db, finance, asOf, legacyArAp, demoReports
       {view === "receivables" && (
         <div className="accountant-content">
           <div className="accountant-section-heading"><div><p className="accountant-eyebrow">Existing CRM document balances</p><h2>Receivables & Payables</h2></div><span className="accountant-pending-tag">Legacy browser records</span></div>
-          <p className="accountant-legacy-explainer">{db.invoices.length} invoice records and {db.operations?.bills.length ?? 0} supplier bill records are loaded in this browser. The tables below are supplied by the coordinator’s existing document adapters; they are separate from synthetic journal statements.</p>
+          <p className="accountant-legacy-explainer">{db.invoices.length} invoice records and {db.operations?.bills.length ?? 0} supplier bill records are loaded in this browser. Their outstanding balances are shown separately from synthetic journal statements.</p>
           {legacyArAp ? <>
             <p className="accountant-date">As of {legacyArAp.asOf}</p>
             <LegacyOutstandingTable title="Customer receivables" rows={legacyArAp.receivables} />
             <LegacyOutstandingTable title="Supplier payables" rows={legacyArAp.payables} />
-            <div className="accountant-legacy-limitations"><h3>Reading these balances</h3><ul>{legacyArAp.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}</ul></div>
+            {legacyArAp.limitations.length > 0 && <div className="accountant-legacy-limitations"><h3>Reading these balances</h3><ul>{legacyArAp.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}</ul></div>}
           </> : <EmptyState title="Document adapter not connected" detail="Customer and supplier aging requires invoice-specific payment allocations and due dates. This preview does not substitute synthetic journal balances for legacy document aging." />}
         </div>
       )}

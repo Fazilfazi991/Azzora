@@ -1,0 +1,97 @@
+# Accountant Portal authentication and authorization architecture
+
+**Status: proposed for owner review, 21 October 2026.** This document specifies a future trusted boundary; it does not implement sign-in, provision a provider, grant users, migrate data, or authorize production posting. The local portal design may show a branded sign-in screen, but it must say that secure sign-in is unavailable until the identity and backend project is approved and connected. A password field or browser role switch must never be presented as working security.
+
+## Findings in the current repository
+
+- `package.json` defines a React 19/TypeScript/Vite SPA with `jspdf`, `zod`, and no auth, database, API, or server framework dependency. There is no `api/`, `server/`, `supabase/`, or `functions/` source directory in this checkout.
+- `src/store.tsx` bootstraps the whole CRM from browser `localStorage`; `src/domain/repository.ts` reads and writes the single `azzora-demo-v1` key. Saved-data validation and recovery protect original browser bytes, but storage belongs to one browser profile, not a shared company database or authorization boundary.
+- `src/App.tsx` parses `location.hash` into pages. Its Manager navigation includes both `#/accounts/*` under CRM & Commercial and `#/accountant-preview` under Management. Removing the preview menu item alone does not isolate invoices, credits, refunds, company reports, or direct hash routes. `src/App.tsx` also states that no authentication, server authorization, multi-user sync, or backup exists.
+- `src/accounting/permissions.ts` is explicitly a **proposed** matrix, not an enforcement function. `Database.people[].role` and project assignments are operational data, not authenticated user identities. The Accountant preview reads synthetic report fixtures and, on its ordinary route, a read-only adapter of this browser's CRM documents; it has no guarded financial API.
+- Vercel Deployment Protection on the hosted preview protects entry to a deployment for invited Vercel users. It is not an AZZORA session, role policy, or protection against one preview viewer inspecting all browser-local data in that browser. The design must not infer Accountant access from preview protection.
+
+The existing finance calculations, immutable issued-document snapshots, settlement validation, journal model, and recovery behavior remain valuable. The proposal below wraps those contracts in trusted commands and queries; it does not create a second invoice, bill, receipt, or expense store. It is consistent with [the Checkpoint 3 readiness plan](CHECKPOINT-3-PRODUCTION-READINESS.md), [the finance architecture contracts](ARCHITECTURE-CONTRACTS.md), and open [decision B11](DECISION-REGISTER.md).
+
+## Recommended boundary and dedicated login
+
+**Recommendation for approval, not a procurement decision:** retain the Vite frontend and existing Vercel hosting; use Supabase Auth for individual identities, Postgres for shared business records and authorization metadata, private Storage for attachments, and same-origin Vercel Functions as the AZZORA API. Supabase is a candidate because its Auth identity can be used with Postgres row-level security (RLS), while Vercel Functions can host a narrow server-side command/query boundary. Provider selection, data residency, contractual review, cost, and staging/production topology are B11 owner decisions. No provider keys or service credentials belong in a Vite bundle.
+
+```text
+/accountant/login (public shell; no records)
+  -> identity-provider sign-in, invite/recovery, MFA
+  -> AZZORA server session + active membership check
+  -> /accountant/dashboard (separate Accountant shell)
+  -> same-origin /api/accountant/* and permitted shared /api/business/*
+  -> canonical Postgres documents, allocations, journals, audit
+  -> private attachments under per-object authorization
+
+Manager shell -> its own session-aware /api/manager/* and permitted shared APIs
+```
+
+The Accountant login is a dedicated branded route with email, password, sign-in, forgot-password, MFA challenge, and clear errors when connected to the approved provider. An Accountant's successful sign-in opens the Accountant dashboard directly. A Manager opens the operational CRM. An Owner may enter either workspace **only with explicit grants for that workspace**; ownership or a Manager role must not silently grant financial access. Logout is available in both shells. The login screen and Accountant navigation must not reuse the Manager sidebar. A separate subdomain is optional; path-based separation is sufficient when the same trusted API enforces permissions.
+
+For a Vite SPA, use a same-origin backend-for-frontend (BFF) session design: credentials go over HTTPS to the approved auth flow; the browser receives an opaque, high-entropy session identifier in a `Secure`, `HttpOnly`, `SameSite` cookie with an appropriate path/domain and short lifetime. Store only a hash of the identifier and session metadata server-side, including provider user ID, created/last-active/expiry times, revocation, and MFA assurance. Keep any provider refresh token encrypted on the server, rotate it and the application session identifier at privilege changes, and never copy it into localStorage. The API checks the current app session **and current membership/role grant on every financial request**. Protect cookie-authenticated writes with CSRF tokens or equivalent origin-bound defense and verify `Origin`/`Referer` as appropriate. Disable shared caching of financial responses and clear private client state on logout. This is an architecture choice to be threat-modeled and tested, not an assertion that the current Vite app supports server sessions.
+
+Supabase's session documentation notes that a valid unexpired JWT can outlive sign-out or a policy change until refresh. Therefore JWT signature/expiry alone is insufficient for immediate AZZORA revocation: the AZZORA session and current grant must be checked at the trusted boundary, with a deny-all revocation path and short provider access-token lifetime. Provider logout, app-session revocation, password change, inactivity timeout, absolute expiry, and lost-device handling must be exercised together. [Supabase sessions](https://supabase.com/docs/guides/auth/sessions), [server-side Auth guidance](https://supabase.com/docs/guides/auth/server-side/advanced-guide).
+
+Require MFA for Accountant and finance-enabled Owner accounts before any financial data/API access, with step-up MFA for role grants, opening balances, period reopening, journal overrides, and bulk export. Supabase Auth supports TOTP and assurance levels (`aal1`/`aal2`); enforcing the level must occur in API/database policy, not solely on a challenge screen. Owner must approve the required factors, recovery and lockout rules. Invite-only onboarding ties one verified email to one provider user ID; no self-service finance-role assignment. Forgot-password uses provider-verified reset with a generic response that does not reveal whether an email exists, an allowlisted callback, a production email provider, and forced session revocation after recovery. Lost-MFA recovery requires documented identity verification and a separately authorized administrator action with an audit record; a developer or project manager must not bypass it. [Supabase MFA](https://supabase.com/docs/guides/auth/auth-mfa), [password recovery](https://supabase.com/docs/guides/auth/passwords), [invitation flow](https://supabase.com/docs/guides/auth/users), [production SMTP guidance](https://supabase.com/docs/guides/auth/auth-smtp).
+
+## Identity, permission and resource contracts
+
+Use separate tables for `identity_user` (provider ID), `company_membership` (active/suspended and workspace entitlement), `role_grant` (role, scoped capability, effective dates, grantor, policy version), and project/party/custody assignments. Link an identity to an employee record only through an explicit reviewed mapping; matching email or a `people[].role` string must not grant access. Deny by default when a grant is missing, expired, suspended, or ambiguous. Every command/query resolves company, project, party, bank/cash account, document status, amount limit, and approval segregation for the authenticated actor. Persist grant/revoke events and invalidate affected sessions or force re-evaluation immediately. The current `PROPOSED_FINANCE_POLICY` remains a review reference until B01/B02/B07/B11 are approved and translated into server tests.
+
+| Action or data | Accountant | Project Manager / operational user | Owner/Admin |
+| --- | --- | --- | --- |
+| Accountant workspace and financial dashboard | Explicit active finance grant | Deny | Explicit finance grant |
+| Sales/purchase drafts and approved financial document views | Prepare within assigned company/party scope; issue/post per B01 | Only expressly delegated assigned-project operational action | Explicit grant; approval limits still apply |
+| Receipts, supplier payments, bank/cash | Allocations and authorized accounts only; posting limits per B01/B07 | Deny by default | Explicit grant; sensitive overrides audited |
+| AR/AP, journal, Trial Balance, P&L, Balance Sheet, exports | Read within granted company/period scope | No general ledger or statements; optional assigned-project summary per B01 | Explicit finance grant |
+| Expense submissions and review | Review/category per B01/B02; no self-approval | Own assigned-project submit/review only if B02 allows; no unrelated finance records | Explicit policy and segregation |
+| Chart mappings, role grants, opening balances, period reopening, journal reversal/override | Deny unless narrowly delegated B01; no role grants or opening balances | Deny | Explicit privileged grant, MFA step-up, reason and separate approval where policy requires |
+| Project execution, Gantt, workforce administration | Deny by default | Existing assigned-project operational scope | Separate operational grant |
+
+Ordinary accountants should see finance modules, not the Manager dashboard, execution controls, or system settings. A Manager's CRM access must not imply Accountant access, including through `#/accounts/*`, `#/reports`, PDF exports, document downloads, or direct API calls. Conversely, an Accountant may read necessary project/customer identifiers and dimensions for finance without gaining the ability to edit project execution. Site Staff are outside the requested three-role comparison but retain only their own assigned-project submission/custody scope from the existing policy proposal.
+
+## Route, API and database enforcement
+
+The portal can initially use hash routing (`#/accountant/...`) without rewriting the full CRM, or move to path routes when hosting rewrites and direct-refresh behavior are verified. Either way, route guards are presentation only. The unauthenticated login route may render; no financial data, report JSON, PDF, attachment, or record count may be served before backend authentication. Initial session bootstrap must remain in a loading state until `GET /api/session` returns current identity, workspace grants, and policy version; failures deny access rather than falling back to a role selector. Direct navigation, refresh, changed hash/path, stale tab, and browser back must not bypass this. Sensitive data cannot be embedded in static HTML or a public fixture bundle. Development scenarios belong to an isolated, clearly labeled fixture harness excluded from production data routes.
+
+Proposed versioned API surface (exact names can change after schema review):
+
+| Boundary | Purpose and checks |
+| --- | --- |
+| `POST /api/auth/sign-in`, `POST /api/auth/sign-out`, `GET /api/session`, recovery/MFA endpoints | Provider flow, server session, CSRF, rate limiting, audit, revocation; no finance records in login response. |
+| `GET /api/accountant/dashboard`, `/sales`, `/purchases`, `/expenses`, `/banking`, `/ledger`, `/reports/*` | Resolve current grant and row scope before querying; period/type/status filters are validated server-side. Report/export endpoints use the same selector and authorization. |
+| `POST /api/finance/invoices/:id/issue`, `/receipts`, `/supplier-payments`, `/expenses/:id/review`, `/journals/:id/reverse`, `/periods/:id/reopen` | Typed commands; current policy, document version, B01/B02 approval, account mapping, period lock, idempotency key, and balanced journal required. One DB transaction for source document, allocation, journal and audit; no partial success. |
+| `GET/POST /api/attachments/*` | Check owner company, linked document, actor scope and action. Private object access only; no public bucket or permanent bearer URL. |
+| `GET /api/manager/*` and shared project/customer APIs | Operational grants and assigned-project filtering; no privileged finance data leaked through an old Manager component. |
+
+Postgres should hold one canonical record per customer, project, invoice, supplier bill, receipt/payment allocation, expense, bank/cash account, journal, and issued snapshot. Preserve stable IDs and source references. Use foreign keys, unique posting/idempotency keys, optimistic document versions, append-only issue/approval/allocation/reversal events, and period locks. Audited commands are the only write path to posted journals; direct table mutations by frontend components are denied. Reports derive from posted journal and authorized document selectors. One finance command must write its business transition, balanced journal and audit event in one database transaction or roll back. Neither a procurement-linked bill expense nor a second portal should create a duplicate cost posting.
+
+If Supabase Postgres is selected, keep finance tables in an unexposed/private schema where practical; revoke broad `anon`/`authenticated` grants, enable RLS on every exposed table, and test policies for each role and row scope. Views/functions need their own security review because default view ownership can bypass RLS. The service/secret key bypasses RLS and is server-only; even a server using it must apply explicit per-request authorization before queries or commands. Use separate restricted DB roles or carefully reviewed functions for normal user operations. [Supabase RLS and grants](https://supabase.com/docs/guides/database/postgres/row-level-security).
+
+Attachments use private buckets, opaque object keys, a database row linking each object to a document and its company/project scope, allowed file type/size checks, malware review, and an audit of upload/download/delete. Prefer an authenticated download after current permission check when immediate revocation matters. Short-lived signed URLs are bearer links that remain valid until expiry even after an Auth-session change, so use minimal expiry and do not rely on them for instant revocation. [Supabase private buckets](https://supabase.com/docs/guides/storage/buckets/fundamentals), [signed URL behavior](https://supabase.com/docs/guides/storage/serving/downloads).
+
+## Audit, deployment and migration gates
+
+Audit sign-in success/failure, MFA, session creation/revocation, grants, access denials, record views/exports, attachment access, invoice issue, settlement, expense approval, journal posting/reversal and period changes with actor ID, company/scope, action, source ID, UTC time, result, policy version and request correlation ID. Exclude passwords, tokens, full bank details and attachment contents from logs. Finance audit must be append-only to ordinary users, retained under an approved schedule, and independently reviewable; logs alone do not replace immutable document snapshots or DB backups. Establish alerts for unusual access, repeated denial, failed postings and reconciliation exceptions.
+
+Sequence after owner approval:
+
+1. Approve B11 provider, residency/contract, staging and production environments, session/MFA policy, recovery administrator, cost/budget, retention and backup objectives. Existing Vercel preview access is not an authorization to create a new provider, account or secret.
+2. Build isolated staging identity and API with synthetic data; implement the full deny-by-default role matrix, private storage, migration scripts and audit. No real financial record or credential is used in design demos.
+3. Inventory each browser's `azzora-demo-v1` data with explicit owner consent. Export exact original bytes and checksum; validate schema and relationships, preserve immutable quotation/contract/invoice/PO history, and stage a reviewed mapping to canonical IDs. Never auto-upload browser data on login or reset the browser key.
+4. Reconcile opening balances, AR/AP, receipts/payments, VAT state, duplicate parties/documents and attachment inventory with signed owner/accountant approval under B04/B05/B10. Leave unresolved items in a review queue; do not invent journals or rewrite issued history.
+5. Test restore of database **and attachment objects** separately. Supabase's database backup does not include Storage object bodies. Run trial migration, rollback, concurrent posting and permission-denial tests; only then authorize cutover and one authoritative write path. [Supabase backup scope](https://supabase.com/docs/guides/platform/backups).
+
+Production release evidence must include: direct URL/API 401/403 tests for unauthenticated and wrong-role users; Manager attempts to read Accountant reports and vice versa; same-role cross-company/project/party/custody denials; PDF/CSV/export and attachment URL denials; stale JWT, revoked app session, password reset, MFA downgrade, idle/absolute expiry, CSRF and replay tests; separate Owner grants; no self-approval; concurrent duplicate idempotency checks; single-transaction rollback on failed posting; report/document reconciliation; browser-record preservation; and full existing CRM regression. Test grants after they are revoked, not only on initial sign-in. Security review and penetration testing should precede production acceptance.
+
+## Owner decisions required before genuine login
+
+1. **B11 identity/data platform:** approve or reject Supabase Auth/Postgres/private Storage plus Vercel Functions; choose data region, DPA/security review, staging/production isolation, budget and accountable infrastructure owner.
+2. **Roles and finance access:** name who may hold Accountant and finance-enabled Owner grants, whether any Manager receives a limited project-finance summary, who grants/revokes access, and the minimum segregation of duties.
+3. **Session/recovery policy:** MFA factor(s), step-up actions, idle/absolute timeouts, device/session limits, lost-device recovery, invitation and password-reset email provider, and emergency revocation authority.
+4. **Accounting policy:** close B01/B02/B04/B05/B06/B07/B08/B10/B12 before live posting or production financial statements; approve cutover balances and exception handling.
+5. **Data operations:** retention, attachment classification and size, backup/restore targets, audit retention and independent review, migration consent, and production release sign-off.
+
+Until these are answered and implemented, the Accountant Portal can be reviewed visually and against synthetic/domain fixtures, but **genuine Accountant login, protected shared finance data and live posting remain blocked**. The production Manager CRM and existing browser-local records must remain unchanged during this design checkpoint.

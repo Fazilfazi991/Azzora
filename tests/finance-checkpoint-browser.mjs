@@ -14,7 +14,7 @@ try {
     page.on("pageerror", (error) => pageErrors.push(`${width}: ${error.message}`));
     await page.goto(`${auditUrl}/#/accountant-preview`);
     await expect(page.getByRole("heading", { name: "Accountant workspace" })).toBeVisible();
-    await expect(page.getByText("Browser-local synthetic demo")).toBeVisible();
+    await expect(page.getByText("Browser-local finance preview")).toBeVisible();
     await expect(page.getByText(/no secure login, trusted role authorization/)).toBeVisible();
     const raw = await page.evaluate(() => localStorage.getItem("azzora-demo-v1"));
     await page.screenshot({ path: `${output}/accountant-overview-${width}.png`, fullPage: true });

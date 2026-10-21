@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { Database } from "../domain/model";
 import type { AccountingState } from "./model";
+import { buildClientDemoScenario, type ClientDemoScenario } from "./client-demo";
 import {
   buildBalanceSheet,
   buildGeneralLedger,
@@ -33,6 +34,8 @@ export interface AccountantWorkspaceProps {
   readonly legacyArAp?: LegacyArApView;
   /** Optional synthetic reports supplied by a caller; no browser storage is read here. */
   readonly demoReports?: AccountantDemoReports;
+  /** Explicit in-memory review route; never reads or mutates saved CRM data. */
+  readonly showDemo?: boolean;
 }
 
 export interface LegacyOutstandingRow {
@@ -51,7 +54,7 @@ export interface LegacyArApView {
   readonly limitations: readonly string[];
 }
 
-type View = "overview" | "ledger" | "trial" | "profit-loss" | "balance-sheet" | "receivables";
+type View = "scenario" | "overview" | "ledger" | "trial" | "profit-loss" | "balance-sheet" | "receivables";
 const VIEWS: readonly { id: View; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "ledger", label: "General Ledger" },
@@ -114,14 +117,16 @@ function deriveSyntheticReports(
   };
 }
 
-export function AccountantWorkspace({ db, finance, asOf, legacyArAp, demoReports: suppliedReports }: AccountantWorkspaceProps) {
-  const [view, setView] = useState<View>("overview");
+export function AccountantWorkspace({ db, finance, asOf, legacyArAp, demoReports: suppliedReports, showDemo = false }: AccountantWorkspaceProps) {
+  const [view, setView] = useState<View>(showDemo ? "scenario" : "overview");
   const [ledgerId, setLedgerId] = useState("");
-  const reportDate = asOf ?? new Date().toISOString().slice(0, 10);
+  const scenario = useMemo(() => showDemo ? buildClientDemoScenario() : undefined, [showDemo]);
+  const reportDate = scenario?.asOf ?? asOf ?? new Date().toISOString().slice(0, 10);
   const demoReports = useMemo(
-    () => suppliedReports ?? deriveSyntheticReports(finance, reportDate),
-    [suppliedReports, finance, reportDate],
+    () => scenario?.reports ?? suppliedReports ?? deriveSyntheticReports(finance, reportDate),
+    [scenario, suppliedReports, finance, reportDate],
   );
+  const shownArAp = scenario?.arAp ?? legacyArAp;
   const selectedLedger = demoReports?.generalLedgers.find((ledger) => ledger.account.id === ledgerId)
     ?? demoReports?.generalLedgers[0];
 
@@ -133,16 +138,21 @@ export function AccountantWorkspace({ db, finance, asOf, legacyArAp, demoReports
           <h1 id="accountant-title">Accountant workspace</h1>
           <p className="accountant-lede">Review the shape of the ledger and statement workflow.</p>
         </div>
-        <span className="accountant-preview-tag">Local preview</span>
+        <span className="accountant-preview-tag">{showDemo ? "Synthetic scenario" : "Local preview"}</span>
       </div>
 
       <div className="accountant-demo-notice" role="note">
-        <strong>Browser-local synthetic demo</strong>
-        <span>Journal statements use synthetic fixtures; AR/AP reads existing browser records. This preview has no secure login, trusted role authorization, or live accounting posting.</span>
+        <strong>{showDemo ? "DEMO ONLY — Not Secure Login" : "Browser-local finance preview"}</strong>
+        <span>{showDemo ? "This dated scenario is generated in memory. Every name and amount is fictional; no saved CRM record is copied or changed, and no financial posting occurs." : "Journal statements use synthetic fixtures; AR/AP reads existing browser records. This preview has no secure login, trusted role authorization, or live accounting posting."}</span>
+      </div>
+
+      <div className="accountant-demo-entry">
+        {showDemo ? <a href="#/accountant-preview">Return to browser-record preview</a> : <a href="#/accountant-preview/demo">Explore the synthetic Accountant scenario</a>}
+        <span>{showDemo ? "Scenario date: 21 October 2026" : "Opens a separate in-memory example without changing your browser records."}</span>
       </div>
 
       <nav className="accountant-nav" aria-label="Accountant reports">
-        {VIEWS.map((item) => (
+        {(showDemo ? [{ id: "scenario" as const, label: "Scenario" }, ...VIEWS] : VIEWS).map((item) => (
           <button
             key={item.id}
             type="button"
@@ -152,6 +162,8 @@ export function AccountantWorkspace({ db, finance, asOf, legacyArAp, demoReports
           >{item.label}</button>
         ))}
       </nav>
+
+      {view === "scenario" && scenario && <ScenarioOverview scenario={scenario} onOpen={setView} />}
 
       {view === "overview" && (
         <div className="accountant-content" id="accountant-overview">
@@ -168,7 +180,7 @@ export function AccountantWorkspace({ db, finance, asOf, legacyArAp, demoReports
               </div>
               <div className="accountant-note-panel">
                 <h3>Reconciliation basis</h3>
-                <p>General Ledger, Trial Balance and statements use the same posted synthetic journal lines. Receivable and payable aging reads existing CRM documents separately.</p>
+                <p>{showDemo ? "General Ledger, Trial Balance, statements and document aging use one fictional example. The fixture is regenerated in memory and never posted to saved CRM records." : "General Ledger, Trial Balance and statements use the same posted synthetic journal lines. Receivable and payable aging reads existing CRM documents separately."}</p>
               </div>
             </>
           ) : <EmptyState title="No report fixture connected" detail="Journal reports require a synthetic posted-journal fixture. Existing CRM records are not converted into journal entries." />}
@@ -228,13 +240,13 @@ export function AccountantWorkspace({ db, finance, asOf, legacyArAp, demoReports
 
       {view === "receivables" && (
         <div className="accountant-content">
-          <div className="accountant-section-heading"><div><p className="accountant-eyebrow">Existing CRM document balances</p><h2>Receivables & Payables</h2></div><span className="accountant-pending-tag">Legacy browser records</span></div>
-          <p className="accountant-legacy-explainer">{db.invoices.length} invoice records and {db.operations?.bills.length ?? 0} supplier bill records are loaded in this browser. Their outstanding balances are shown separately from synthetic journal statements.</p>
-          {legacyArAp ? <>
-            <p className="accountant-date">As of {legacyArAp.asOf}</p>
-            <LegacyOutstandingTable title="Customer receivables" rows={legacyArAp.receivables} />
-            <LegacyOutstandingTable title="Supplier payables" rows={legacyArAp.payables} />
-            {legacyArAp.limitations.length > 0 && <div className="accountant-legacy-limitations"><h3>Reading these balances</h3><ul>{legacyArAp.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}</ul></div>}
+          <div className="accountant-section-heading"><div><p className="accountant-eyebrow">{showDemo ? "Fictional settlement example" : "Existing CRM document balances"}</p><h2>Receivables & Payables</h2></div><span className="accountant-pending-tag">{showDemo ? "Synthetic fixture" : "Legacy browser records"}</span></div>
+          <p className="accountant-legacy-explainer">{showDemo ? "Two fictional customer invoices and two fictional supplier bills are shown below. The newer customer invoice alone received a payment; the older invoice keeps aging. These amounts reconcile with the synthetic journal example and are never loaded into your CRM." : `${db.invoices.length} invoice records and ${db.operations?.bills.length ?? 0} supplier bill records are loaded in this browser. Their outstanding balances are shown separately from synthetic journal statements.`}</p>
+          {shownArAp ? <>
+            <p className="accountant-date">As of {shownArAp.asOf}</p>
+            <LegacyOutstandingTable title="Customer receivables" rows={shownArAp.receivables} source={showDemo ? "fictional invoices" : "existing CRM documents"} />
+            <LegacyOutstandingTable title="Supplier payables" rows={shownArAp.payables} source={showDemo ? "fictional supplier bills" : "existing CRM documents"} />
+            {shownArAp.limitations.length > 0 && <div className="accountant-legacy-limitations"><h3>Reading these balances</h3><ul>{shownArAp.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}</ul></div>}
           </> : <EmptyState title="Document adapter not connected" detail="Customer and supplier aging requires invoice-specific payment allocations and due dates. This preview does not substitute synthetic journal balances for legacy document aging." />}
         </div>
       )}
@@ -242,11 +254,51 @@ export function AccountantWorkspace({ db, finance, asOf, legacyArAp, demoReports
   );
 }
 
-function LegacyOutstandingTable({ title, rows }: { title: string; rows: readonly LegacyOutstandingRow[] }) {
+function ScenarioOverview({ scenario, onOpen }: { scenario: ClientDemoScenario; onOpen: (view: View) => void }) {
+  const older = scenario.arAp.receivables[0];
+  const newer = scenario.arAp.receivables[1];
+  const supplierOpen = scenario.arAp.payables.reduce((sum, row) => sum + BigInt(row.outstandingFils), 0n);
+  return <div className="accountant-content accountant-scenario" id="accountant-scenario">
+    <div className="accountant-section-heading"><div><p className="accountant-eyebrow">Dated fictional example · 21 October 2026</p><h2>Follow the money</h2></div><span className="accountant-pending-tag">No CRM writes</span></div>
+    <p className="accountant-scenario-intro">Demo Client A has two invoices. A payment of {money(scenario.customerReceipt.amountFils.toString())} is allocated only to the newer one, so the older invoice continues to age. Demo Supplier B has two partially settled bills. All values below are synthetic and in memory.</p>
+    <div className="accountant-scenario-grid">
+      <section className="accountant-scenario-card" aria-label="Customer invoice example">
+        <p className="accountant-eyebrow">Accounts receivable</p><h3>One receipt, one chosen invoice</h3>
+        <div className="accountant-scenario-line"><span>{older.number} · due {older.due}</span><strong>{money(older.outstandingFils)}</strong></div>
+        <p className="accountant-scenario-detail">Unpaid older invoice · {older.bucket} days overdue</p>
+        <div className="accountant-scenario-line"><span>{newer.number} · due {newer.due}</span><strong>{money(newer.outstandingFils)}</strong></div>
+        <p className="accountant-scenario-detail">Newer invoice after {money(scenario.customerReceipt.amountFils.toString())} receipt</p>
+        <button type="button" className="accountant-scenario-link" onClick={() => onOpen("receivables")}>Inspect invoice aging →</button>
+      </section>
+      <section className="accountant-scenario-card" aria-label="Supplier bill example">
+        <p className="accountant-eyebrow">Accounts payable</p><h3>Partial supplier settlement</h3>
+        {scenario.arAp.payables.map((row) => <div className="accountant-scenario-line" key={row.documentId}><span>{row.number} · {row.bucket}</span><strong>{money(row.outstandingFils)}</strong></div>)}
+        <p className="accountant-scenario-detail">{money(supplierOpen.toString())} remains across both bills after two targeted payments.</p>
+        <button type="button" className="accountant-scenario-link" onClick={() => onOpen("receivables")}>Inspect supplier aging →</button>
+      </section>
+      <section className="accountant-scenario-card" aria-label="Expense submission example">
+        <p className="accountant-eyebrow">Project cost review</p><h3>Submitted expenses</h3>
+        {scenario.expenses.map((expense) => <div className="accountant-scenario-line" key={expense.id}><span>{scenario.expenseCategories.find((category) => category.id === expense.categoryId)?.name}<small>{expense.description}</small></span><strong>{money(expense.amountFils)}</strong></div>)}
+        <p className="accountant-scenario-detail">Submitted for review only. No approval, payment or journal posting is simulated.</p>
+      </section>
+      <section className="accountant-scenario-card" aria-label="Purchase price variation example">
+        <p className="accountant-eyebrow">Purchase rate history</p><h3>Same SKU, comparable unit</h3>
+        <div className="accountant-scenario-price"><span>{money(scenario.priceAlert.previous?.netUnitPriceMinor ?? "0")}</span><span aria-hidden="true">→</span><strong>{money(scenario.priceAlert.currentNetUnitPriceMinor)}</strong></div>
+        <p className="accountant-scenario-detail">DEMO-PAINT-01 · each · same supplier · {scenario.priceAlert.changePercent} increase. No tax rule is inferred.</p>
+      </section>
+    </div>
+    <div className="accountant-scenario-reconcile">
+      <div><p className="accountant-eyebrow">Synthetic journal fixture</p><h3>Reports reconcile to the example</h3><p>Trial Balance is {scenario.reports.trialBalance.balanced ? "balanced" : "out of balance"}. Receivables and payables in the journal agree with the open document totals. Expense submissions are excluded until a future approved posting policy exists.</p></div>
+      <button type="button" onClick={() => onOpen("trial")}>Review Trial Balance</button>
+    </div>
+  </div>;
+}
+
+function LegacyOutstandingTable({ title, rows, source }: { title: string; rows: readonly LegacyOutstandingRow[]; source: string }) {
   return <section className="accountant-legacy-section">
     <h3>{title}</h3>
     <div className="accountant-table-wrap"><table className="accountant-table accountant-legacy-table">
-      <caption>{title} from existing CRM documents</caption>
+      <caption>{title} from {source}</caption>
       <thead><tr><th scope="col">Document</th><th scope="col">Party</th><th scope="col">Due</th><th scope="col">Age</th><th scope="col" className="amount">Outstanding</th></tr></thead>
       <tbody>{rows.length ? rows.map((row) => <tr key={row.documentId}><td>{row.number}</td><td>{row.partyName}</td><td>{row.due}</td><td>{row.bucket}</td><td className="amount">{money(row.outstandingFils)}</td></tr>) : <tr><td colSpan={5}>No outstanding documents in this view.</td></tr>}</tbody>
     </table></div>

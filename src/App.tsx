@@ -435,10 +435,12 @@ export default function App() {
   else if (page === "accountant-preview")
     content = (
       <AccountantWorkspace
+        key={id || "records"}
         db={db}
         finance={db.finance}
         asOf={today()}
-        legacyArAp={legacyArApView(db, today())}
+        legacyArAp={id === "demo" ? undefined : legacyArApView(db, today())}
+        showDemo={id === "demo"}
       />
     );
   else if (page === "settings")

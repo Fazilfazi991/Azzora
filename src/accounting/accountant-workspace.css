@@ -89,6 +89,11 @@
 }
 .accountant-demo-notice strong { font-size: 12px; white-space: nowrap; }
 
+.accountant-demo-entry { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 16px; margin: -7px 0 18px; font-size: 12px; }
+.accountant-demo-entry a { color: #7b2510; font-weight: 700; text-underline-offset: 3px; }
+.accountant-demo-entry a:focus-visible { outline: 2px solid var(--accountant-clay); outline-offset: 3px; }
+.accountant-demo-entry span { color: var(--accountant-muted); }
+
 .accountant-nav {
   display: flex;
   gap: 4px;
@@ -178,6 +183,24 @@
 .accountant-reconciliation.is-balanced { color: #294a34; }
 .accountant-reconciliation.is-unbalanced { color: #93000a; }
 
+.accountant-scenario-intro { max-width: 780px; margin-bottom: 20px !important; color: var(--accountant-muted); font-size: 14px; line-height: 1.6; }
+.accountant-scenario-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.accountant-scenario-card { min-width: 0; padding: 22px 24px; border: 1px solid var(--accountant-stone); border-radius: 12px; background: #fff; }
+.accountant-scenario-card h3 { margin: 7px 0 20px; font-size: 18px; }
+.accountant-scenario-line { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; padding: 10px 0; border-top: 1px solid #f2edeb; font-size: 13px; }
+.accountant-scenario-line span { min-width: 0; }
+.accountant-scenario-line small { display: block; margin-top: 4px; color: var(--accountant-muted); font-size: 11px; }
+.accountant-scenario-line strong { flex: 0 0 auto; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.accountant-scenario-detail { margin: 3px 0 11px !important; color: var(--accountant-muted); font-size: 12px; line-height: 1.5; }
+.accountant-workspace .accountant-scenario-link { margin-top: 6px; min-height: 40px; padding: 5px 0; border: 0; background: transparent; color: #7b2510; font-size: 12px; font-weight: 700; cursor: pointer; }
+.accountant-scenario-price { display: flex; gap: 12px; align-items: baseline; margin: 3px 0 16px; font-size: 22px; font-variant-numeric: tabular-nums; }
+.accountant-scenario-price span:first-child { color: var(--accountant-muted); text-decoration: line-through; }
+.accountant-scenario-price strong { color: #7b2510; }
+.accountant-scenario-reconcile { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-top: 16px; padding: 22px 24px; border: 1px solid #e3c197; border-radius: 12px; background: #fbf6ee; }
+.accountant-scenario-reconcile h3 { margin: 5px 0 8px; }
+.accountant-scenario-reconcile p:last-child { max-width: 750px; color: #5a4222; font-size: 12px; line-height: 1.55; }
+.accountant-workspace .accountant-scenario-reconcile button { flex: 0 0 auto; min-height: 44px; padding: 9px 14px; border: 1px solid #7b2510; border-radius: 7px; background: #7b2510; color: #fff; font-size: 12px; cursor: pointer; }
+
 @media (max-width: 1024px) {
   .accountant-workspace { padding: 24px; }
   .accountant-metric { padding: 16px; }
@@ -195,4 +218,7 @@
   .accountant-statement-total { font-size: 12px; }
   .accountant-statement-rows { padding: 8px 14px; }
   .accountant-statement-total { padding: 12px 14px; }
+  .accountant-scenario-grid { grid-template-columns: 1fr; gap: 10px; }
+  .accountant-scenario-card { padding: 18px; }
+  .accountant-scenario-reconcile { align-items: stretch; flex-direction: column; padding: 18px; }
 }

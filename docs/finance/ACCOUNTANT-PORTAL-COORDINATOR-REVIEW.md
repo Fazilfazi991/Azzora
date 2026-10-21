@@ -1,5 +1,7 @@
 # Accountant Portal redesign — first owner design gate
 
+> This records the initial nine-route, 45-check gate. The expanded 16-route conditional review and current results are in [ACCOUNTANT-PORTAL-CONDITIONAL-REVIEW.md](ACCOUNTANT-PORTAL-CONDITIONAL-REVIEW.md).
+
 21 October 2026. This package is a **local visual and architecture review**, not a secure portal release. The owner rejected the Checkpoint 3 Accountant page as an accounting workspace. This review keeps the tested finance domain intact while defining a separate Accountant product surface for approval before integration.
 
 ## Verified starting point

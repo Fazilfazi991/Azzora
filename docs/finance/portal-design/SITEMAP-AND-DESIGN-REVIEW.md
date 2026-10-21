@@ -1,39 +1,54 @@
-# AZZORA Accounts — visual design gate
+# AZZORA Accounts — conditional design review
 
-Open `index.html` through `node docs/finance/portal-design/serve.mjs` from the worktree root, then visit `http://127.0.0.1:5299/docs/finance/portal-design/index.html#/login`. This is a static visual prototype. It does not authenticate, persist, issue documents, transfer money, post journals or use saved CRM data. The sign-in concept opens the design for review only. Transaction and export actions are intentionally disabled.
+Open the static prototype with `node docs/finance/portal-design/serve.mjs` from this worktree, then visit `http://127.0.0.1:5299/docs/finance/portal-design/index.html#/login`. The review entry opens `#/demo/dashboard`; every finance route lives under `#/demo/*` and carries an explicit **DESIGN DEMO · FICTIONAL DATA** notice. No password is checked, no session exists, and direct demo URLs remain viewable. The visible “Log out” action returns to the login concept; it does not revoke a real session. No CRM data, browser database, API or financial posting is used by these pages.
 
-## Sitemap
+## Sitemap and functional status
 
-| Prototype route | Intended portal page | Primary task |
-| --- | --- | --- |
-| `#/login` | Accountant sign-in | Enter the separate finance workspace after trusted authentication is approved |
-| `#/dashboard` | Financial overview | Read posted period metrics and open items |
-| `#/sales` | Sales invoices | Find tax, normal and proforma documents by search, type or status |
-| `#/invoice` | New invoice | Set document type, customer, dates, items and terms |
-| `#/receipt` | Customer receipts | Allocate a receipt to specific open invoices |
-| `#/expense` | Expense entry | Capture project/company cost and supporting evidence for review |
-| `#/ledger` | General ledger | Trace posted entries by account and reference |
-| `#/pnl` | Profit & loss | Inspect revenue, cost and profit for a period |
-| `#/balance` | Balance sheet | Review assets, liabilities and equity at a date |
+| Route | Page | Prototype status | Existing AZZORA capability or blocker |
+| --- | --- | --- | --- |
+| `#/login` | Separate Accountant login | UI prototype | Real sign-in and MFA require an approved identity/backend. |
+| `#/demo/dashboard` | Financial dashboard | Synthetic-only | Fictional journal metrics; no live CRM journal posting. |
+| `#/demo/sales` | Sales invoices | UI prototype with fictional rows | Canonical invoice draft/issue/PDF works in the browser-local Manager CRM; document-type policy is pending. |
+| `#/demo/invoice` | New invoice | UI prototype, save disabled | Must reuse canonical invoice commands after authorization and type/VAT approval. |
+| `#/demo/purchases` | Purchase bills | Synthetic-only | Canonical PO-linked supplier bills work in browser-local Procurement; no portal connection yet. |
+| `#/demo/receipt` | Customer receipt | UI prototype, save disabled | Legacy single-invoice payment works in Manager CRM; multi-document allocation is domain-tested only. |
+| `#/demo/supplier-payment` | Supplier payment | UI prototype, save disabled | Legacy single-bill payment works in Procurement; multi-bill allocation is domain-tested only. |
+| `#/demo/expenses` | Expense management | UI prototype with fictional submissions | Project expenses are browser-local; review and company-expense workflow need policy/backend. |
+| `#/demo/expense` | New expense | UI prototype, submit disabled | Approved posting, attachment custody and segregation of duties are pending. |
+| `#/demo/banking` | Bank and cash ledgers | Synthetic-only; staff cash unavailable | Custody/Thomas cash rules are domain-tested, not persisted or connected to real accounts. |
+| `#/demo/ar-aging` | Receivable aging | Synthetic-only | Canonical read-only aging adapters exist; shared authorized data is unavailable. |
+| `#/demo/ap-aging` | Payable aging | Synthetic-only | Canonical read-only aging adapters exist; shared authorized data is unavailable. |
+| `#/demo/ledger` | General ledger | Synthetic-only | Balanced fixture lines only; no real CRM-to-journal bridge. |
+| `#/demo/pnl` | Profit & loss | Synthetic-only | Derived from the same fictional journal; live recognition policy/opening balances blocked. |
+| `#/demo/balance` | Balance sheet | Synthetic-only | Derived from the same fictional journal; live cutover and opening balances blocked. |
+| `#/demo/access` | Role boundary explanation | Architecture proposal | No frontend role control is presented as security. Server enforcement is required. |
 
-The proposed production navigation groups **Overview**, **Transactions**, and **Accounting**. Purchase bills, supplier payments, banking, chart of accounts, journal entries, trial balance, aging and deeper reports belong in this finance workspace as later routed views; they are outside this first visual gate. The Manager CRM navigation is not reproduced in the portal.
+The navigation keeps the accepted independent AZZORA Accounts shell and groups **Overview**, **Transactions**, **Accounting**, and **Workspace**. It does not reproduce Manager CRM navigation. The menu scrolls between a fixed brand header and fixed footer, including at narrow/short viewports; its final Access model item remains reachable. The footer contains the visible design-demo exit.
 
-## Design direction
+## Financial basis and reconciliation
 
-The accountant is reviewing open balances, allocating a payment or tracing a journal reference. The interface therefore behaves like a compact financial work surface, with amounts right aligned, dates and references grouped in tables, and one primary task per page. The familiar AZZORA mark and architectural rust maintain brand continuity, while a separate `ACCOUNTS` lockup and finance-only rail make the workspace boundary obvious.
+[`finance-fixture.mjs`](finance-fixture.mjs) is a deterministic, in-memory fictional journal in integer fils. The activity period is **1 January–21 October 2026**, covering the older August invoice and newer October invoice. The position date is **21 October 2026**. Dashboard metrics identify whether they are activity totals or as-of balances.
 
-The visual vocabulary comes from invoices, receipt books, ledger lines, reconciliations and architectural specification sheets. Alabaster, chalk, limestone, terracotta, bronze and sage match the project's `DESIGN.md`. The signature element is the report-like treatment of every finance surface: small tracked section labels, clear account references, quiet hairline dividers and tabular amounts. We avoided the previous Manager sidebar, the stacked synthetic-scenario card wall, and a report-tab strip carrying unrelated operations.
+| Reconciliation | AED |
+| --- | ---: |
+| Revenue | 20,000 |
+| Less cost of sales | (8,000) |
+| **Gross profit** | **12,000** |
+| Less operating expenses | (1,000) |
+| **Net profit** | **11,000** |
+| Bank plus petty cash | 52,000 |
+| Receivables: 12,000 older + 3,000 newer | 15,000 |
+| **Assets** | **67,000** |
+| Payables: 5,000 first bill + 1,000 second bill | 6,000 |
+| Capital plus year-to-date earnings | 61,000 |
+| **Liabilities plus equity** | **67,000** |
 
-The desktop sign-in is a calm split composition. At mobile width it becomes a single-column form. The finance rail is fixed on desktop and opens as a labeled overlay on tablet/mobile, with a close button, backdrop and Escape dismissal. Wide financial tables scroll inside their own panel on narrow screens; a visible hint explains horizontal scrolling. Focus outlines, form labels, semantic tables and a reduced-motion-safe static design support keyboard and assistive use.
+All seven fictional journal events have equal debit and credit lines; the combined debit and credit totals are each AED 87,000. Expense submissions of AED 125 and AED 75 are excluded from posted expense. Draft normal and proforma documents are excluded from revenue and receivables. A receipt is applied only to the newer invoice; partial payment does not change either invoice’s original due-date age. No Thomas cash balance is invented. The operating expense comes from one company bill, while the project bill produces cost of sales once.
 
-## Fictional accounting fixture
+These are **design-fixture calculations**, not approved company statements. Existing finance selectors and journal rules are mapped in [`ACCOUNTANT-FUNCTIONAL-MAP.md`](../ACCOUNTANT-FUNCTIONAL-MAP.md); a real statement requires approved accounting policy, opening balances and an authorized posting bridge.
 
-All names and amounts are invented for the design. Two issued invoices total AED 20,000. A AED 5,000 receipt is allocated only to the newer AED 8,000 invoice, leaving AED 12,000 on the older invoice and AED 3,000 on the newer one. Draft normal and proforma documents do not affect posted revenue. Supplier costs are AED 9,000, supplier payments AED 3,000, and payables AED 6,000. The dashboard and statements show revenue AED 20,000, cost AED 9,000, profit AED 11,000, bank AED 52,000 and receivables AED 15,000. The balance sheet reconciles: assets AED 67,000 = liabilities AED 6,000 + equity AED 61,000. Expense submission examples are excluded from posting.
+## Visual evidence
 
-These numbers illustrate hierarchy and reconciliation only. Finance domain logic and tax policy still govern any future implementation.
+The [rejected Manager-shell screenshot](evidence/before-accountant-workspace.png) is retained for comparison. The separate [desktop login](evidence/login-1440.png), [mobile login](evidence/login-390.png), [desktop dashboard](evidence/dashboard-1440.png), [mobile dashboard](evidence/dashboard-390.png) and [mobile navigation](evidence/mobile-navigation-390.png) show the main before/after change. Each route in the sitemap has a screenshot at 1440 and 390 px under [`evidence/`](evidence/): sales, invoice, purchases, receipt, supplier-payment, expenses, expense, banking, ar-aging, ap-aging, ledger, pnl, balance and access.
 
-## Visual evidence and checks
-
-The rejected screenshot is preserved as [`evidence/before-accountant-workspace.png`](evidence/before-accountant-workspace.png). The redesigned prototype has screenshots for every route at 1440 and 390 px, plus login/dashboard captures at 1024, 768 and 430 px and [`evidence/mobile-navigation-390.png`](evidence/mobile-navigation-390.png). Key views: [`login-1440.png`](evidence/login-1440.png), [`login-390.png`](evidence/login-390.png), [`dashboard-1440.png`](evidence/dashboard-1440.png), [`dashboard-390.png`](evidence/dashboard-390.png), [`sales-1440.png`](evidence/sales-1440.png), [`invoice-1440.png`](evidence/invoice-1440.png), [`receipt-1440.png`](evidence/receipt-1440.png), [`expense-1440.png`](evidence/expense-1440.png), [`ledger-1440.png`](evidence/ledger-1440.png), [`pnl-1440.png`](evidence/pnl-1440.png), [`balance-1440.png`](evidence/balance-1440.png).
-
-`evidence/capture.mjs` ran 45 direct route/viewport combinations (9 routes × 5 widths: 1440, 1024, 768, 430, 390 px). All rendered without page errors, missing images or page-level horizontal overflow. The mobile navigation opened and closed; route navigation, invoice-type filtering and status filtering returned the expected results. Results are in [`evidence/visual-checks.json`](evidence/visual-checks.json). No production route, source module, database, authentication provider or deployment was changed by this design work.
+The five-width capture checks 16 routes × 390, 430, 768, 1024 and 1440 px for errors, loaded branding and page overflow. It also clicks all 13 sidebar links and checks login-to-dashboard routing, demo exit, sidebar/footer clearance, invoice filters, visible fictional-data boundary and preservation of a sentinel `azzora-demo-v1` value in the prototype origin. [Machine-readable results](evidence/visual-checks.json) are committed with the screenshots. The standalone fixture tests verify the profit bridge, document controls, journal balance and balance-sheet equation.

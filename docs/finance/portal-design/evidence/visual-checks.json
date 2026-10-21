@@ -1,6 +1,16 @@
 {
-  "checks": 45,
+  "checks": 80,
   "failures": [],
+  "sidebarLinkCount": 13,
+  "allSidebarRoutesWork": true,
+  "loginToDashboard": true,
+  "logoutToLogin": true,
+  "fictionalBoundary": true,
+  "browserDataPreserved": true,
+  "sidebarClearance": true,
+  "shortViewportClearance": true,
+  "permissionBoundaryHonest": true,
+  "managerShellAbsent": true,
   "mobileNavOpen": true,
   "mobileNavCloses": true,
   "navigationWorks": true,
@@ -52,6 +62,17 @@
       "errors": []
     },
     {
+      "route": "purchases",
+      "width": 1440,
+      "viewport": 1440,
+      "body": 1440,
+      "content": 1440,
+      "heading": "Purchase bills",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
       "route": "receipt",
       "width": 1440,
       "viewport": 1440,
@@ -63,12 +84,67 @@
       "errors": []
     },
     {
+      "route": "supplier-payment",
+      "width": 1440,
+      "viewport": 1440,
+      "body": 1440,
+      "content": 1440,
+      "heading": "Supplier payment",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "expenses",
+      "width": 1440,
+      "viewport": 1440,
+      "body": 1440,
+      "content": 1440,
+      "heading": "Expenses",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
       "route": "expense",
       "width": 1440,
       "viewport": 1440,
       "body": 1440,
       "content": 1440,
       "heading": "New expense",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "banking",
+      "width": 1440,
+      "viewport": 1440,
+      "body": 1440,
+      "content": 1440,
+      "heading": "Bank and cash ledgers",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "ar-aging",
+      "width": 1440,
+      "viewport": 1440,
+      "body": 1440,
+      "content": 1440,
+      "heading": "Receivable aging",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "ap-aging",
+      "width": 1440,
+      "viewport": 1440,
+      "body": 1440,
+      "content": 1440,
+      "heading": "Payable aging",
       "logoLoaded": true,
       "overflow": false,
       "errors": []
@@ -102,6 +178,17 @@
       "body": 1440,
       "content": 1440,
       "heading": "Balance sheet",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "access",
+      "width": 1440,
+      "viewport": 1440,
+      "body": 1440,
+      "content": 1440,
+      "heading": "Access model",
       "logoLoaded": true,
       "overflow": false,
       "errors": []
@@ -151,6 +238,17 @@
       "errors": []
     },
     {
+      "route": "purchases",
+      "width": 1024,
+      "viewport": 1024,
+      "body": 1024,
+      "content": 1024,
+      "heading": "Purchase bills",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
       "route": "receipt",
       "width": 1024,
       "viewport": 1024,
@@ -162,12 +260,67 @@
       "errors": []
     },
     {
+      "route": "supplier-payment",
+      "width": 1024,
+      "viewport": 1024,
+      "body": 1024,
+      "content": 1024,
+      "heading": "Supplier payment",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "expenses",
+      "width": 1024,
+      "viewport": 1024,
+      "body": 1024,
+      "content": 1024,
+      "heading": "Expenses",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
       "route": "expense",
       "width": 1024,
       "viewport": 1024,
       "body": 1024,
       "content": 1024,
       "heading": "New expense",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "banking",
+      "width": 1024,
+      "viewport": 1024,
+      "body": 1024,
+      "content": 1024,
+      "heading": "Bank and cash ledgers",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "ar-aging",
+      "width": 1024,
+      "viewport": 1024,
+      "body": 1024,
+      "content": 1024,
+      "heading": "Receivable aging",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "ap-aging",
+      "width": 1024,
+      "viewport": 1024,
+      "body": 1024,
+      "content": 1024,
+      "heading": "Payable aging",
       "logoLoaded": true,
       "overflow": false,
       "errors": []
@@ -201,6 +354,17 @@
       "body": 1024,
       "content": 1024,
       "heading": "Balance sheet",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "access",
+      "width": 1024,
+      "viewport": 1024,
+      "body": 1024,
+      "content": 1024,
+      "heading": "Access model",
       "logoLoaded": true,
       "overflow": false,
       "errors": []
@@ -250,6 +414,17 @@
       "errors": []
     },
     {
+      "route": "purchases",
+      "width": 768,
+      "viewport": 768,
+      "body": 768,
+      "content": 768,
+      "heading": "Purchase bills",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
       "route": "receipt",
       "width": 768,
       "viewport": 768,
@@ -261,12 +436,67 @@
       "errors": []
     },
     {
+      "route": "supplier-payment",
+      "width": 768,
+      "viewport": 768,
+      "body": 768,
+      "content": 768,
+      "heading": "Supplier payment",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "expenses",
+      "width": 768,
+      "viewport": 768,
+      "body": 768,
+      "content": 768,
+      "heading": "Expenses",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
       "route": "expense",
       "width": 768,
       "viewport": 768,
       "body": 768,
       "content": 768,
       "heading": "New expense",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "banking",
+      "width": 768,
+      "viewport": 768,
+      "body": 768,
+      "content": 768,
+      "heading": "Bank and cash ledgers",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "ar-aging",
+      "width": 768,
+      "viewport": 768,
+      "body": 768,
+      "content": 768,
+      "heading": "Receivable aging",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "ap-aging",
+      "width": 768,
+      "viewport": 768,
+      "body": 768,
+      "content": 768,
+      "heading": "Payable aging",
       "logoLoaded": true,
       "overflow": false,
       "errors": []
@@ -300,6 +530,17 @@
       "body": 768,
       "content": 768,
       "heading": "Balance sheet",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "access",
+      "width": 768,
+      "viewport": 768,
+      "body": 768,
+      "content": 768,
+      "heading": "Access model",
       "logoLoaded": true,
       "overflow": false,
       "errors": []
@@ -349,6 +590,17 @@
       "errors": []
     },
     {
+      "route": "purchases",
+      "width": 430,
+      "viewport": 430,
+      "body": 430,
+      "content": 430,
+      "heading": "Purchase bills",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
       "route": "receipt",
       "width": 430,
       "viewport": 430,
@@ -360,12 +612,67 @@
       "errors": []
     },
     {
+      "route": "supplier-payment",
+      "width": 430,
+      "viewport": 430,
+      "body": 430,
+      "content": 430,
+      "heading": "Supplier payment",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "expenses",
+      "width": 430,
+      "viewport": 430,
+      "body": 430,
+      "content": 430,
+      "heading": "Expenses",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
       "route": "expense",
       "width": 430,
       "viewport": 430,
       "body": 430,
       "content": 430,
       "heading": "New expense",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "banking",
+      "width": 430,
+      "viewport": 430,
+      "body": 430,
+      "content": 430,
+      "heading": "Bank and cash ledgers",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "ar-aging",
+      "width": 430,
+      "viewport": 430,
+      "body": 430,
+      "content": 430,
+      "heading": "Receivable aging",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "ap-aging",
+      "width": 430,
+      "viewport": 430,
+      "body": 430,
+      "content": 430,
+      "heading": "Payable aging",
       "logoLoaded": true,
       "overflow": false,
       "errors": []
@@ -399,6 +706,17 @@
       "body": 430,
       "content": 430,
       "heading": "Balance sheet",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "access",
+      "width": 430,
+      "viewport": 430,
+      "body": 430,
+      "content": 430,
+      "heading": "Access model",
       "logoLoaded": true,
       "overflow": false,
       "errors": []
@@ -448,6 +766,17 @@
       "errors": []
     },
     {
+      "route": "purchases",
+      "width": 390,
+      "viewport": 390,
+      "body": 390,
+      "content": 390,
+      "heading": "Purchase bills",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
       "route": "receipt",
       "width": 390,
       "viewport": 390,
@@ -459,12 +788,67 @@
       "errors": []
     },
     {
+      "route": "supplier-payment",
+      "width": 390,
+      "viewport": 390,
+      "body": 390,
+      "content": 390,
+      "heading": "Supplier payment",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "expenses",
+      "width": 390,
+      "viewport": 390,
+      "body": 390,
+      "content": 390,
+      "heading": "Expenses",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
       "route": "expense",
       "width": 390,
       "viewport": 390,
       "body": 390,
       "content": 390,
       "heading": "New expense",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "banking",
+      "width": 390,
+      "viewport": 390,
+      "body": 390,
+      "content": 390,
+      "heading": "Bank and cash ledgers",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "ar-aging",
+      "width": 390,
+      "viewport": 390,
+      "body": 390,
+      "content": 390,
+      "heading": "Receivable aging",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "ap-aging",
+      "width": 390,
+      "viewport": 390,
+      "body": 390,
+      "content": 390,
+      "heading": "Payable aging",
       "logoLoaded": true,
       "overflow": false,
       "errors": []
@@ -498,6 +882,17 @@
       "body": 390,
       "content": 390,
       "heading": "Balance sheet",
+      "logoLoaded": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "route": "access",
+      "width": 390,
+      "viewport": 390,
+      "body": 390,
+      "content": 390,
+      "heading": "Access model",
       "logoLoaded": true,
       "overflow": false,
       "errors": []

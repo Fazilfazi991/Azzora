@@ -2,6 +2,8 @@
 
 **Status: proposed for owner review, 21 October 2026.** This document specifies a future trusted boundary; it does not implement sign-in, provision a provider, grant users, migrate data, or authorize production posting. The local portal design may show a branded sign-in screen, but it must say that secure sign-in is unavailable until the identity and backend project is approved and connected. A password field or browser role switch must never be presented as working security.
 
+**Current review flow:** the isolated static prototype starts at `#/login`, and “View portal design” opens `#/demo/dashboard`; all finance pages are under `#/demo/*`. “Log out” returns to the login concept and clears its visible form, but no authenticated session exists or is revoked. Direct demo URLs remain accessible because the pages contain only fictional fixture data. The `#/demo/access` page states the proposed Accountant/Manager/Owner boundary and explicitly says it is not enforced. The existing Manager CRM and its `#/accounts/*` routes remain unchanged at this visual gate. Real deny tests cannot pass until a trusted backend and role policy are approved and implemented.
+
 ## Findings in the current repository
 
 - `package.json` defines a React 19/TypeScript/Vite SPA with `jspdf`, `zod`, and no auth, database, API, or server framework dependency. There is no `api/`, `server/`, `supabase/`, or `functions/` source directory in this checkout.

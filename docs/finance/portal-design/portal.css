@@ -11,3 +11,37 @@
 @media(max-width:700px){.login-layout{display:flex;flex-direction:column;background:white}.login-story{display:none}.login-side{min-height:100vh;justify-content:flex-start;padding:30px 23px 75px}.login-card{max-width:440px}.login-mobile-brand{display:flex;align-items:center;gap:15px;margin-bottom:53px}.login-mobile-brand img{width:66px}.login-mobile-brand strong{font:700 15px 'Space Grotesk',sans-serif;color:var(--clay-dark);letter-spacing:.12em;border-left:1px solid #dbcabc;padding-left:15px}.login-card h2{font-size:29px}.login-side-foot{left:23px;right:23px}.topbar{height:60px;padding:0 16px}.topbar-right .period-chip{display:none}.page-content{padding:27px 17px 45px}.page-head{display:block}.page-head h1{font-size:29px}.page-actions{justify-content:flex-start;margin-top:17px}.page-actions .button{flex:1}.prototype-note{margin-bottom:20px}.filter-line{align-items:start}.metrics-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.metric{padding:15px 13px}.metric:nth-child(3){border-right:1px solid var(--hairline)}.metric:nth-child(even){border-right:0}.metric:nth-child(-n+4){border-bottom:1px solid var(--hairline)}.metric-value{font-size:18px}.dashboard-grid,.form-grid,.report-layout{grid-template-columns:1fr}.performance,.attention{min-height:0}.form-aside{position:static}.activity{padding:17px 15px}.list-summary{gap:17px;flex-wrap:wrap}.toolbar{flex-wrap:wrap}.search-wrap{min-width:100%;width:100%}.toolbar select{flex:1;min-width:130px}.form-main{padding:18px}.statement{padding:20px}.report-aside{order:2}.report-filter{flex-wrap:wrap}.report-filter .filter-note{margin-left:0}.site-footer{padding:14px 17px 22px}.table-scroll:before{content:"Swipe table horizontally to see more →";display:block;padding:7px 10px;color:var(--muted);font-size:10px}}
 @media(max-width:430px){.crumb{font-size:11px}.crumb span:first-child{display:none}.crumb span:nth-child(2){display:none}.metric-label{font-size:9px}.metric-value{font-size:16px}.metric small{font-size:9px}.chart-row{grid-template-columns:78px minmax(0,1fr) 51px;gap:8px;font-size:10px}.chart-row strong{font-size:10px}.field-grid{grid-template-columns:1fr}.notes-grid{grid-template-columns:1fr}.statement-head{display:block}.status-dot{display:block;margin-top:12px}.report-nav{gap:15px}.report-nav a{font-size:11px}.equation{font-size:15px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+
+/* Accountant review refinement: preserve the accepted shell while making its longer menu usable. */
+.sidebar{min-height:0}
+.brand-lockup,.workspace-id,.sidebar-bottom{flex-shrink:0}
+.brand-lockup img,.login-brand img,.login-mobile-brand img{display:block;object-fit:contain;flex-shrink:0}
+.brand-lockup>div:last-of-type{min-width:0}
+.sidebar nav{min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.sidebar-bottom{min-height:67px;background:#fff;position:relative;z-index:1}
+.signout{font-size:11px;font-weight:700;color:var(--clay-dark);white-space:nowrap}
+.prototype-note{display:flex;align-items:baseline;flex-wrap:wrap;gap:8px;background:#f8f3eb;border:1px solid #e9dbc9;border-left:3px solid var(--bronze);border-radius:5px;padding:9px 12px;line-height:1.4;margin-bottom:20px}
+.prototype-note strong{font:700 10px 'Space Grotesk',sans-serif;letter-spacing:.08em;color:var(--clay-dark)}
+.basis-strip{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0 0 16px}
+.basis-strip>div{display:flex;flex-direction:column;gap:4px;padding:13px 15px;border:1px solid var(--hairline);background:#fff;border-radius:7px;min-width:0}
+.basis-strip strong{font-size:12px;font-weight:600;color:var(--ink)}
+.basis-strip small{font-size:10px;color:var(--muted)}
+.metrics-eight{grid-template-columns:repeat(4,minmax(0,1fr))}
+.metrics-eight .metric{border-right:1px solid var(--hairline);border-bottom:1px solid var(--hairline)}
+.metrics-eight .metric:nth-child(4n){border-right:0}
+.metrics-eight .metric:nth-child(n+5){border-bottom:0}
+.metrics-eight .metric-value{font-size:clamp(17px,1.7vw,23px)}
+.chart-row{grid-template-columns:104px minmax(0,1fr) 63px}
+.bar.operating{background:#9b9b91}
+.bar.net{background:#51745d}
+.account-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px;margin:0 0 18px}
+.account-tile{display:flex;flex-direction:column;gap:9px;padding:20px;min-height:117px}
+.account-tile strong{font:600 21px 'Space Grotesk',sans-serif;letter-spacing:-.03em}
+.account-tile small{font-size:11px;color:var(--muted)}
+.page-followup{padding:14px 0}
+.access-warning{margin-bottom:20px}
+.access-warning strong{color:var(--clay-dark)}
+@media(max-width:1200px){.metrics-eight{grid-template-columns:repeat(4,minmax(0,1fr))}.metrics-eight .metric:nth-child(3){border-right:1px solid var(--hairline)}}
+@media(max-width:1024px){.metrics-eight{grid-template-columns:repeat(2,minmax(0,1fr))}.metrics-eight .metric:nth-child(2n){border-right:0}.metrics-eight .metric:nth-child(-n+6){border-bottom:1px solid var(--hairline)}.account-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.basis-strip,.account-tiles{grid-template-columns:1fr}.metrics-eight .metric{padding:15px 13px}.chart-row{grid-template-columns:88px minmax(0,1fr) 55px}.sidebar{height:100dvh}.sidebar nav{padding-bottom:8px}.brand-lockup{padding-left:18px;padding-right:14px}}
+@media(max-width:430px){.metrics-eight .metric-value{font-size:16px}.chart-row{grid-template-columns:79px minmax(0,1fr) 52px}}

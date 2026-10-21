@@ -1,5 +1,9 @@
 # AZZORA MASTER STATUS
 
+## Accounts and finance cycle — local architecture checkpoint, 21 October 2026
+
+GitHub `main` and the clean verified timeline baseline are `fd7754dfe0022f9b64bf875313bd9679cb0144eb`. New finance work is isolated on `codex/azzora-finance-integration`; no new push, merge or deployment is authorized. The repository audit, full feature gap matrix, agent ownership, shared contracts, risk and decision register, and exact baseline validation are recorded in [the finance coordinator report](../finance/COORDINATOR-REPORT.md). Existing browser-local records and the `azzora-demo-v1` key are preserved. Pure accounting, settlement and expense-domain slices are being developed in separate worktrees; integration and browser verification remain pending. Secure Accountant login and production accounting reports need owner business decisions and authorized backend architecture.
+
 ## Gantt timeline UI correction — local verified revision, 15 October 2026
 
 The owner-requested connector, task-label, scroll, date-alignment and responsive Gantt corrections are integrated on local `codex/azzora-timeline-integration`. The full tested application/test SHA is `5053b9be2c0e20070225a1805e903670270a335a`. The scheduling engine, approved dates, storage model/key, and commercial/quotation calculations remain unchanged. Agent 1 verified Day/Week/Month geometry and FS/SS/FF/SF relationship bounds; Agent 2 corrected only Planning UI and chart styles; Agent 3 completed independent browser and full CRM regression.

@@ -8,6 +8,11 @@ import { initializeDocumentCompatibility } from "../workforce/document-approvals
 import type { Database, Task, Project, SnagStatus, Activity } from "./model";
 import { seed, generatePlan } from "./seed";
 import { validatePlanningData } from "../planning/compatibility";
+import {
+  dispatchSyntheticFinance,
+  serializeSyntheticFinanceFixture,
+  type SyntheticFinanceEnvelope,
+} from "../accounting/persistence";
 import { uid, validDependency, handoverState, taskProgress } from "./logic";
 const KEY = "azzora-demo-v1";
 export interface Repository {
@@ -47,9 +52,36 @@ export const localRepository: Repository = {
     return decodeSavedData(localStorage.getItem(KEY));
   },
   save(db) {
+    const previous = localStorage.getItem(KEY);
+    if (previous && /"finance(?:Fixture)?"\s*:/.test(previous)) {
+      const prior = JSON.parse(previous) as Record<string, unknown>;
+      if (prior.finance !== undefined && db.finance === undefined)
+        throw Error("Existing synthetic finance history cannot be removed.");
+      if (prior.financeFixture !== undefined &&
+          JSON.stringify(prior.financeFixture) !== JSON.stringify(db.financeFixture))
+        throw Error("Synthetic finance fixture identity cannot be changed.");
+    }
+    if (db.finance) {
+      validateSavedShape(db);
+      if (!previous)
+        throw Error("Synthetic finance fixture requires existing marked browser data.");
+      // Validate the previous snapshot and append-only finance history before one write.
+      serializeSyntheticFinanceFixture(previous, db.finance);
+    }
     localStorage.setItem(KEY, JSON.stringify(db));
   },
 };
+
+/** The only CRM command boundary for fixture journals; store.mutate saves its clone atomically. */
+export function applySyntheticFinanceCommand(
+  db: Database,
+  envelope: SyntheticFinanceEnvelope,
+) {
+  if (!db.finance || db.financeFixture?.mode !== "synthetic-demo" ||
+      db.financeFixture.id !== db.finance.fixtureId)
+    throw Error("Explicitly marked synthetic finance fixture is required.");
+  db.finance = dispatchSyntheticFinance(db.finance, envelope);
+}
 export const taskSchema = z
   .object({
     name: z.string().trim().min(2, "Task name needs at least 2 characters"),

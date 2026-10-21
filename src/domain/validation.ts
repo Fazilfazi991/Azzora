@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Database } from "./model";
+import { validateFinanceDemoState } from "../accounting/persistence";
 
 const text = z.string(),
   id = text.min(1),
@@ -541,6 +542,25 @@ function check(schema: z.ZodTypeAny, value: unknown, label: string) {
 export function validateSavedShape(value: unknown): asserts value is Database {
   check(z.object({ version: z.literal(1) }).passthrough(), value, "database");
   const v = value as Record<string, unknown>;
+  if (v.financeFixture !== undefined)
+    check(
+      z.object({
+        mode: z.literal("synthetic-demo"),
+        id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/),
+      }).strict(),
+      v.financeFixture,
+      "financeFixture",
+    );
+  if (v.finance !== undefined) {
+    try {
+      validateFinanceDemoState(v.finance);
+    } catch (error) {
+      throw Error("Saved data is incompatible at finance. Export the original data before recovery. " + String(error));
+    }
+    const marker = v.financeFixture as { mode?: string; id?: string } | undefined;
+    if (marker?.mode !== "synthetic-demo" || marker.id !== v.finance.fixtureId)
+      throw Error("Saved finance fixture marker is missing or mismatched. Export the original data before recovery.");
+  }
   for (const [key, schema] of Object.entries(baseSchemas))
     check(z.array(schema), v[key], key);
   if (v.commercialVersion !== undefined && v.commercialVersion !== 1)

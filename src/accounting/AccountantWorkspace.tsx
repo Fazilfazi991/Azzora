@@ -40,6 +40,7 @@ export interface LegacyOutstandingRow {
   readonly number: string;
   readonly partyName: string;
   readonly due: string;
+  readonly bucket: string;
   readonly outstandingFils: string;
 }
 
@@ -137,7 +138,7 @@ export function AccountantWorkspace({ db, finance, asOf, legacyArAp, demoReports
 
       <div className="accountant-demo-notice" role="note">
         <strong>Browser-local synthetic demo</strong>
-        <span>Figures are synthetic fixtures. This preview has no secure login, trusted role authorization, or live accounting posting.</span>
+        <span>Journal statements use synthetic fixtures; AR/AP reads existing browser records. This preview has no secure login, trusted role authorization, or live accounting posting.</span>
       </div>
 
       <nav className="accountant-nav" aria-label="Accountant reports">
@@ -167,7 +168,7 @@ export function AccountantWorkspace({ db, finance, asOf, legacyArAp, demoReports
               </div>
               <div className="accountant-note-panel">
                 <h3>Reconciliation basis</h3>
-                <p>General Ledger, Trial Balance and statements use the same posted synthetic journal lines. Receivable and payable document aging will connect after the settlement adapter is verified.</p>
+                <p>General Ledger, Trial Balance and statements use the same posted synthetic journal lines. Receivable and payable aging reads existing CRM documents separately.</p>
               </div>
             </>
           ) : <EmptyState title="No report fixture connected" detail="Supply a synthetic posted-journal report set to review this workspace. Existing CRM data is not read or posted here." />}
@@ -246,8 +247,8 @@ function LegacyOutstandingTable({ title, rows }: { title: string; rows: readonly
     <h3>{title}</h3>
     <div className="accountant-table-wrap"><table className="accountant-table accountant-legacy-table">
       <caption>{title} from existing CRM documents</caption>
-      <thead><tr><th scope="col">Document</th><th scope="col">Party</th><th scope="col">Due</th><th scope="col" className="amount">Outstanding</th></tr></thead>
-      <tbody>{rows.length ? rows.map((row) => <tr key={row.documentId}><td>{row.number}</td><td>{row.partyName}</td><td>{row.due}</td><td className="amount">{money(row.outstandingFils)}</td></tr>) : <tr><td colSpan={4}>No outstanding documents in this view.</td></tr>}</tbody>
+      <thead><tr><th scope="col">Document</th><th scope="col">Party</th><th scope="col">Due</th><th scope="col">Age</th><th scope="col" className="amount">Outstanding</th></tr></thead>
+      <tbody>{rows.length ? rows.map((row) => <tr key={row.documentId}><td>{row.number}</td><td>{row.partyName}</td><td>{row.due}</td><td>{row.bucket}</td><td className="amount">{money(row.outstandingFils)}</td></tr>) : <tr><td colSpan={5}>No outstanding documents in this view.</td></tr>}</tbody>
     </table></div>
   </section>;
 }

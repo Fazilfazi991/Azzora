@@ -53,6 +53,8 @@ import { Approvals } from "./operations/Controls";
 import { Budgets } from "./operations/Budgets";
 import { CompanySettings } from "./operations/CompanySettings";
 import { getOperations } from "./operations/migration";
+import { AccountantWorkspace } from "./accounting/AccountantWorkspace";
+import { legacyArApView } from "./accounting/legacy-ar-ap";
 const navigationGroups = [
   {
     key: "overview",
@@ -98,6 +100,7 @@ const navigationGroups = [
     items: [
       ["handover", "Handover", KeyRound],
       ["reports", "Reports", ChartNoAxesCombined],
+      ["accountant-preview", "Accountant Preview", Wallet],
       ["settings", "Settings", Settings],
     ],
   },
@@ -429,6 +432,15 @@ export default function App() {
     content = <Quotations key={id || "list"} id={id} mode={tab} />;
   else if (page === "handover") content = <Handover />;
   else if (page === "reports") content = <Reports />;
+  else if (page === "accountant-preview")
+    content = (
+      <AccountantWorkspace
+        db={db}
+        finance={db.finance}
+        asOf={today()}
+        legacyArAp={legacyArApView(db, today())}
+      />
+    );
   else if (page === "settings")
     content = (
       <>

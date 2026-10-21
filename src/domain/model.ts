@@ -1,5 +1,6 @@
 import type { Quotation } from "../quotation/model";
 import type { ProjectPlanning } from "../planning/model";
+import type { FinanceDemoState } from "../accounting/persistence";
 import type { OperationalData } from "../operations/model";
 import type {
   Contract,
@@ -219,6 +220,9 @@ export interface Activity {
 }
 export interface Database {
   version: 1;
+  /** Present only in explicitly marked, isolated synthetic finance fixtures. */
+  financeFixture?: { mode: "synthetic-demo"; id: string };
+  finance?: FinanceDemoState;
   planningVersion?: 1;
   planning?: ProjectPlanning[];
   operations?: OperationalData;

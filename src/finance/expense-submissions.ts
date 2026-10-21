@@ -2,6 +2,7 @@
  * Review-only expense submissions. These records are deliberately separate from
  * the existing posted/project Expense and supplier-bill cost write paths.
  */
+import type { AccountType } from "../accounting/model";
 export type ExpenseScope = "project" | "company";
 export type ExpenseSubmissionStatus =
   "draft" | "submitted" | "rejected" | "approved";
@@ -16,7 +17,7 @@ export interface ExpenseCategoryMapping {
 
 export interface ExpenseAccountReference {
   id: string;
-  classification: "Cost of Sales" | "Expenses" | string;
+  classification: AccountType;
   active: boolean;
 }
 
@@ -203,7 +204,7 @@ export function submitExpense(
   );
   if (
     !account?.active ||
-    !["Cost of Sales", "Expenses"].includes(account.classification)
+    !["Cost of Sales", "Expense"].includes(account.classification)
   )
     throw Error(
       "Expense category must map to an active cost or expense account.",

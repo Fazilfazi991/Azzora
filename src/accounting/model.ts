@@ -2,7 +2,7 @@
 // they survive JSON persistence without floating-point rounding or BigInt loss.
 export type Fils = string;
 export type AccountType =
-  "Asset" | "Liability" | "Equity" | "Income" | "Expense";
+  "Asset" | "Liability" | "Equity" | "Income" | "Cost of Sales" | "Expense";
 
 export interface Account {
   readonly id: string;

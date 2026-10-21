@@ -32,6 +32,18 @@ Expense submissions distinguish project/site and company cost center. Category-t
 
 Proposed roles: Owner/Admin, Accountant, Project Manager, Site Staff. The requested permission matrix is in the owner brief and remains subject to B01/B02/B07. Accountants may prepare financial drafts, allocations and reports; owner controls posting overrides, period reopening, mappings, opening balances and permission grants. Project Managers have assigned-project operational access and only specifically approved financial views. Site Staff may submit their own assigned-project expenses and view only permitted custody data.
 
+| Capability | Owner/Admin | Accountant | Project Manager | Site Staff |
+| --- | --- | --- | --- | --- |
+| CRM configuration and role grants | Full | None | None | None |
+| Sales/purchase draft documents | Full | Prepare/edit | Only if explicitly delegated | None |
+| Receipts and supplier payments | Full | Record within approved limits | None by default | None |
+| Financial statements, AR/AP and ledgers | Full | Read/export | Assigned-project summary only if approved | Own permitted custody balance only |
+| Expense submissions | Full | Review/categorize per B01/B02 | Project review per B02 | Create/view own assigned-project submissions |
+| Journal overrides, reversal, period reopen, opening balances | Full with explicit audit | Restricted; B01 decision | None | None |
+| Project delivery, Gantt and quotation editing | Full | None by default | Existing assigned-role permissions | Assigned tasks only |
+
+Every authorization decision must be checked on the trusted command/query boundary with the authenticated actor and resource scope. Route visibility is only a convenience. This table is a proposed contract pending owner approval, not current enforcement.
+
 The current app has no authentication server, secure session or trusted shared storage. Browser role switching/route hiding can demonstrate navigation only. It cannot enforce data-level permissions against direct URLs or manipulated local state. Secure Accountant login, cross-role isolation, revocation and session tests cannot be accepted as production features until B11 authorizes identity and backend architecture. No UI should describe a demo selector as secure login.
 
 ## Integration gates

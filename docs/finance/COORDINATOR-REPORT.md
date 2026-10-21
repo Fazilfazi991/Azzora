@@ -34,14 +34,14 @@ Baseline validation on this checkout: TypeScript passed; ESLint passed; 17/17 un
 
 | Agent | Workstream | Branch / files | Dependency | Status |
 | --- | --- | --- | --- | --- |
-| Agent 1 | Accounting core and invariants | `codex/agent-finance-core`, new `src/accounting/*` only | Shared contract, then owner B04/B05/B10 for real posting | Local pure-domain implementation in progress |
-| Agent 2 | Invoice/bill settlement and aging | `codex/agent-finance-settlement`, new `src/finance/settlement*` only | Existing document adapter later | Local pure-domain implementation complete; integration review pending |
-| Agent 3 | Expense submission/category rules | `codex/agent-finance-expenses`, new `src/finance/expense-submissions*` only | B02/B06/B07 and core posting adapter later | Local pure-domain implementation in progress |
+| Agent 1 | Accounting core and invariants | `codex/agent-finance-core`, `d67d576f795f6b10f3a98619228c4a4f90a7c8c7`; new `src/accounting/*` only | Owner B04/B05/B10 for real posting | Pure-domain commit integrated locally |
+| Agent 2 | Invoice/bill settlement and aging | `codex/agent-finance-settlement`, `bf1b62366d6f2e7e5aad959a1249bb50eee7e427`; new `src/finance/settlement*` only | Existing document adapter later | Pure-domain commit integrated locally |
+| Agent 3 | Expense submission/category rules | `codex/agent-finance-expenses`, `8a9aee5a69e98ebcea7757e6869fb15ad8415612`; new `src/finance/expense-submissions*` only | B02/B06/B07 and core posting adapter later | Pure-domain commit integrated locally |
 | Coordinator | Architecture, role/security/reporting contract, integration, QA | `codex/azzora-finance-integration`, docs and controlled cherry-picks | Agent commits; owner policy decisions | Checkpoint 0 complete; checkpoint 1 underway |
 | Future Agent 4 scope | Accountant portal, navigation and reconciled reports | Unassigned until core/domain interface review | Trusted auth B11 for security acceptance | Backlog |
 | Future Agent 5 scope | Mobile submission, actual extraction and historical import | Unassigned until expense/API and service decisions | B02/B03/B09/B11 | Backlog |
 
-No agents own or have edited shared `Database`, migration, commercial/operations repositories, `App.tsx`, or existing report files. Those integration points remain coordinator-owned to avoid duplicate write paths.
+No agents owned or edited shared `Database`, migration, commercial/operations repositories, `App.tsx`, or existing report files. Those integration points remain coordinator-owned to avoid duplicate write paths. The coordinator reconciled the account classification names across Agent 1 and Agent 3 before the combined test gate.
 
 ## D. Technical decisions and contracts
 
@@ -60,6 +60,8 @@ The [shared architecture contract](ARCHITECTURE-CONTRACTS.md) defines an additiv
 
 ## F. Current validation and next checkpoint
 
-Current exact baseline results are above. The new pure-domain agent branches require coordinator source review, cherry-pick, combined TypeScript/ESLint/unit/build, and cross-domain invariant tests before checkpoint 1 can be called integrated. Checkpoint 2 will connect approved business events through one transaction adapter and additive migration; it cannot be accepted until policy decisions and reconciliation fixtures are defined. Secure login and production financial statements remain infrastructure/business-policy gates, not completed features.
+Combined pure-domain source has been reviewed and cherry-picked in controlled order. It adds 5 accounting, 15 settlement and 10 expense tests: **414/414 tests in 20/20 files pass** on the integration branch. TypeScript and ESLint pass. The Vite production build passes with the pre-existing >500 kB chunk warning. A coordinator classification reconciliation initially exposed a TypeScript test-fixture inference error; the fixture was typed and the complete gate reran green. These modules are not wired to persistence or UI, so no new browser feature is claimed. Browser checks and PDF review remain pending until those layers change.
 
-The next concrete task is to review and integrate the three isolated domain commits, prove balanced posting, explicit settlement and expense-approval invariants on one SHA, then define a legacy-preserving schema adapter. The full client-review candidate, browser validation and owner acceptance are later gates.
+Checkpoint 1 is a **local pure-domain integration**, not a client-review-ready finance release. Checkpoint 2 will connect approved business events through one transaction adapter and additive migration; it cannot be accepted until policy decisions and reconciliation fixtures are defined. Secure login and production financial statements remain infrastructure/business-policy gates, not completed features.
+
+The next concrete task is to define a legacy-preserving schema adapter and one business-event/posting transaction path, with round-trip recovery and reconciliation fixtures before touching actual saved data. The full client-review candidate, browser validation and owner acceptance are later gates.

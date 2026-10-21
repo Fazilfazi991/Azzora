@@ -8,6 +8,7 @@ import {
   submitExpense,
   type ExpenseDraftInput,
   type ExpenseReviewPolicy,
+  type ExpenseAccountReference,
 } from "./expense-submissions";
 
 const createdAt = "2026-10-21T08:00:00.000Z";
@@ -28,9 +29,9 @@ const categories = [
     active: true,
   },
 ];
-const accounts = [
+const accounts: ExpenseAccountReference[] = [
   { id: "cost-materials", classification: "Cost of Sales", active: true },
-  { id: "expense-rent", classification: "Expenses", active: true },
+  { id: "expense-rent", classification: "Expense", active: true },
 ];
 const policy: ExpenseReviewPolicy = {
   authorizedReviewerIds: ["manager"],
@@ -115,7 +116,7 @@ describe("expense submission boundary", () => {
         [
           {
             id: "cost-materials",
-            classification: "Assets",
+            classification: "Asset",
             active: true,
           },
         ],

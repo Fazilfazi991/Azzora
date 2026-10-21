@@ -7,13 +7,13 @@ Baseline `fd7754dfe0022f9b64bf875313bd9679cb0144eb`; local integration branch `c
 | ID | Owner / scope | Status | Acceptance gate |
 | --- | --- | --- | --- |
 | FIN-00 | Coordinator — repository audit, feature gaps, contracts, B01–B12 | Complete locally | Baseline SHA, branch map, 384/384 units, TypeScript/ESLint/build; report |
-| FIN-01 | Agent 1 — pure CoA/journal/period/reversal rules | In progress | Integer-fils balanced/idempotent append-only tests and coordinator review |
-| FIN-02 | Agent 2 — pure explicit sales/bill allocations and due-date aging | Agent branch complete, review pending | One/many allocations, advances, reversals, party/balance checks |
-| FIN-03 | Agent 3 — pure expense submission/category-mapping rules | In progress | Configurable approval, no duplicate cost path, manual review on failed extraction |
+| FIN-01 | Agent 1 — pure CoA/journal/period/reversal rules | Integrated locally | `d67d576` → integration; balanced/idempotent append-only tests |
+| FIN-02 | Agent 2 — pure explicit sales/bill allocations and due-date aging | Integrated locally | `bf1b623` → integration; one/many allocations, advances, reversals, party/balance checks |
+| FIN-03 | Agent 3 — pure expense submission/category-mapping rules | Integrated locally | `8a9aee5` → integration; configurable review and no duplicate supplier-bill cost path |
 | FIN-04 | Coordinator — additive schema, event adapters, reconciled reports | Backlog | Approved mappings/policies, saved-data recovery, AR/AP/GL reconciliation |
 | FIN-05 | Accountant UI and secure identity | Blocked for secure acceptance | B11 backend/auth authorization; demo navigation must be labeled |
 | FIN-06 | Mobile expense/photo and historical PDF import | Backlog | B02/B03/B09/B11, actual extraction capability, reviewed import behavior |
-| FIN-QA | Independent combined financial/CRM/browser/PDF gate | Pending | Frozen combined SHA and exact test results |
+| FIN-QA | Independent combined financial/CRM/browser/PDF gate | Pending | Pure-domain coordinator gate: 414/414 units, TypeScript, ESLint and Vite build; browser/PDF gate follows UI integration |
 
 ## Gantt UI correction cycle — 15 October 2026
 

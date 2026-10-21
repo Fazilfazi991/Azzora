@@ -1,5 +1,11 @@
 # AZZORA MASTER STATUS
 
+## Finance checkpoint 2 — controlled local integration, 21 October 2026
+
+The additive finance demo, read-only legacy AR/AP bridge and Accountant Preview are integrated on local `codex/azzora-finance-integration`. The frozen source/test SHA is `edf96d31275b84820d2ebff018466ecb3c1c857b`. TypeScript, ESLint, production build and 458/458 unit tests pass. Final production-preview browser gates passed: Accountant 27, commercial 129, operational 136, core CRM 66, workforce 40 and recovery 25 checks, plus quotation workflow and four PDF print cases. The seven-page A4 quotation PDF and report PDF were rendered and inspected. See the [checkpoint-2 coordinator report](../finance/CHECKPOINT-2-REPORT.md) for source commits, evidence, corrected diagnostic failures and remaining gates.
+
+The browser key and historical documents remain preserved. Real posting, secure Accountant login, historical accounting cutover, backend, GitHub push, deployment and main merge remain outside this authorization. This revision is ready for owner review of the local demo architecture, not production accounting acceptance.
+
 ## Accounts and finance cycle — local architecture checkpoint, 21 October 2026
 
 GitHub `main` and the clean verified timeline baseline are `fd7754dfe0022f9b64bf875313bd9679cb0144eb`. New finance work is isolated on `codex/azzora-finance-integration`; no new push, merge or deployment is authorized. The repository audit, full feature gap matrix, agent ownership, shared contracts, risk and decision register, and exact validation are recorded in [the finance coordinator report](../finance/COORDINATOR-REPORT.md). Existing browser-local records and the `azzora-demo-v1` key are preserved. Three isolated pure-domain agent commits have been reviewed and integrated locally; 414/414 unit tests, TypeScript, ESLint and Vite build pass. Persistence/UI/browser finance verification remain pending. Secure Accountant login and production accounting reports need owner business decisions and authorized backend architecture.

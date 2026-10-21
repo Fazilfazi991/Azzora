@@ -1,5 +1,19 @@
 # Task board
 
+## Finance checkpoint 2 — local integration verified, 21 October 2026
+
+Source/test SHA `edf96d31275b84820d2ebff018466ecb3c1c857b`; full [coordinator report](../finance/CHECKPOINT-2-REPORT.md). This board distinguishes demo wiring from production finance acceptance.
+
+| ID | Owner / scope | Status | Evidence / next gate |
+| --- | --- | --- | --- |
+| FIN-C2-01 | Agent 1 — optional synthetic persistence, journal audit, period/idempotency | Integrated locally | `3d190629` → `cbd9919`; save/reload/retry/recovery and balanced journal tests |
+| FIN-C2-02 | Agent 2 — existing document and settlement adapters | Integrated read-only | `d489382` → `0bf0bb5`; explicit allocation previews, AR/AP aging, invoice-kind contracts; no real posting |
+| FIN-C2-03 | Agent 3 — custody and SKU price domains | Integrated as pure domain | `5df34d3` → `5b99309`; Thomas AED 2,000/350/1,650 reconciliation and price comparability |
+| FIN-C2-04 | Agent 4 — Accountant workspace/report/permission contracts | Integrated as local preview | `10fd50c` → `b088048`; six report views, journal-only statements, no security claim |
+| FIN-C2-05 | Coordinator — shared database/repository/nav/report bridge | Integrated locally | `e7c7270`, `edf96d3`; original key, guarded fixture state, read-only legacy AR/AP and browser gate |
+| FIN-C2-QA | Combined CRM/finance/browser/PDF verification | Passed for demo checkpoint | 458/458 units, TypeScript, ESLint, build; eight final-source browser suites and rendered PDFs |
+| FIN-C2-POLICY | B01–B12 and backend identity/posting/cutover decisions | Blocked pending owner decisions | No real journal posting, secure Accountant login, migration or production release |
+
 ## Accounts and finance cycle — 21 October 2026
 
 Baseline `fd7754dfe0022f9b64bf875313bd9679cb0144eb`; local integration branch `codex/azzora-finance-integration`. See [finance coordinator report](../finance/COORDINATOR-REPORT.md) for the full gap matrix, boundaries and decisions. Statuses below describe this cycle only; earlier verified releases remain historical entries below.

@@ -2,6 +2,8 @@
 
 Base: `1e8e2a9c5bfec2b594dc325e24d032a6380c3951` on `codex/azzora-finance-integration`; GitHub `main` remains `fd7754dfe0022f9b64bf875313bd9679cb0144eb`. This checkpoint is local only.
 
+**Checkpoint result:** All controlled stages were reviewed and integrated. Frozen source/test SHA: `edf96d31275b84820d2ebff018466ecb3c1c857b`. The exact tests, browser/PDF evidence, limitations and policy gates are in [CHECKPOINT-2-REPORT.md](CHECKPOINT-2-REPORT.md). No real posting or release action was enabled.
+
 ## Ownership and merge order
 
 | Stage | Owner | Exclusive files / boundary | Gate |

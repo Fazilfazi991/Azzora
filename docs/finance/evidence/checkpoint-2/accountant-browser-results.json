@@ -1,0 +1,32 @@
+{
+  "checks": [
+    "390: route and explicit demo boundary",
+    "390: six accessible report views",
+    "390: read-only legacy AR/AP tables",
+    "390: no page-level horizontal overflow",
+    "390: viewing and refreshing do not write saved records",
+    "430: route and explicit demo boundary",
+    "430: six accessible report views",
+    "430: read-only legacy AR/AP tables",
+    "430: no page-level horizontal overflow",
+    "430: viewing and refreshing do not write saved records",
+    "768: route and explicit demo boundary",
+    "768: six accessible report views",
+    "768: read-only legacy AR/AP tables",
+    "768: no page-level horizontal overflow",
+    "768: viewing and refreshing do not write saved records",
+    "1024: route and explicit demo boundary",
+    "1024: six accessible report views",
+    "1024: read-only legacy AR/AP tables",
+    "1024: no page-level horizontal overflow",
+    "1024: viewing and refreshing do not write saved records",
+    "1440: route and explicit demo boundary",
+    "1440: six accessible report views",
+    "1440: read-only legacy AR/AP tables",
+    "1440: no page-level horizontal overflow",
+    "1440: viewing and refreshing do not write saved records",
+    "issued invoice appears in read-only AR aging without a report-view write",
+    "malformed optional finance is preserved in read-only recovery"
+  ],
+  "pageErrors": []
+}

@@ -1,5 +1,7 @@
 # AZZORA finance cycle — coordinator report
 
+**Checkpoint 2 update (21 October 2026):** The controlled local integration and final verification are recorded in [CHECKPOINT-2-REPORT.md](CHECKPOINT-2-REPORT.md). The source/test SHA is `edf96d31275b84820d2ebff018466ecb3c1c857b`; this document preserves the preceding architecture checkpoint and its historical statuses.
+
 ## A. Baseline and audit
 
 21 October 2026, Asia/Dubai. Repository: `https://github.com/Fazilfazi991/Azzora.git`. Fetched `origin/main` and confirmed it is `fd7754dfe0022f9b64bf875313bd9679cb0144eb`, matching the clean verified timeline worktree before this cycle. New local integration worktree: `C:/Users/USER/Desktop/Projects/Azzora/azzora-finance-integration`, branch `codex/azzora-finance-integration`. Existing worktrees were neither reset nor deleted. No new code was pushed, merged or deployed.

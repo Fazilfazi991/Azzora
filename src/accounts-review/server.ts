@@ -9,6 +9,7 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 import { applyReviewAction, createReviewState, reviewSnapshot } from "./domain";
+import { reviewPdf } from "./pdf";
 
 const email = "accountant@review.azzora.test";
 const configuredPassword = process.env.AZZORA_REVIEW_PASSWORD || "";
@@ -174,6 +175,11 @@ export function accountsReviewPlugin() {
           }
           if (path === "/snapshot" && req.method === "GET")
             return json(res, 200, reviewSnapshot(finance, asOf));
+          if (path.startsWith("/pdf/") && req.method === "GET") {
+            const name = decodeURIComponent(path.slice(5));
+            res.writeHead(200, { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="AZZORA-demo.pdf"`, "Cache-Control": "no-store" });
+            return res.end(Buffer.from(reviewPdf(finance, name)));
+          }
           if (path.startsWith("/attachment/") && req.method === "GET") {
             const id = decodeURIComponent(path.slice("/attachment/".length));
             const file = finance.attachments.find((item) => item.id === id);

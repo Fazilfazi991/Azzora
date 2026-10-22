@@ -144,10 +144,10 @@ function Head({
 function Note() {
   return (
     <div className="prototype-note" role="note">
-      <strong>LOCAL CLIENT REVIEW · FICTIONAL DATA</strong>
+      <strong>CLIENT REVIEW · FICTIONAL DATA</strong>
       <span>
-        Actions update only this local, in-memory demo ledger. No Manager CRM
-        records or real money are changed.
+        Actions update only this isolated demo ledger. No Manager CRM records or
+        real money are changed.
       </span>
     </div>
   );
@@ -362,6 +362,13 @@ function Invoices({
               ) : (
                 <span className="badge badge-success">Issued</span>
               )}
+              <small>
+                <a
+                  href={`/api/accounts-review/pdf/${encodeURIComponent(item.id)}`}
+                >
+                  Download demo PDF
+                </a>
+              </small>
             </td>
           </tr>
         ))}
@@ -558,8 +565,8 @@ function Bills({
             <li>Record it once; the journal and payable update together.</li>
           </ol>
           <p>
-            Uploads stay in this local process and disappear when the review
-            server restarts.
+            Use fictional bills only. Uploads belong to this review session and
+            are unavailable after logout.
           </p>
         </div>
       </div>
@@ -911,7 +918,14 @@ function Statement({ data, balance }: { data: Snapshot; balance: boolean }) {
             ? `Position as of ${date(data.asOf)}. Assets reconcile to liabilities and equity.`
             : `Activity for ${date(data.period.from)} – ${date(data.period.to)}. Gross and net profit are shown separately.`
         }
-      />
+      >
+        <a
+          className="button button-secondary"
+          href={`/api/accounts-review/pdf/${balance ? "balance" : "pnl"}`}
+        >
+          Download demo PDF
+        </a>
+      </Head>
       <Note />
       <div className="report-layout">
         <section className="panel statement">
@@ -1185,11 +1199,11 @@ function App() {
             <span className="eyebrow">ACCOUNTANT WORKSPACE</span>
             <h2>Sign in to Accounts</h2>
             <p className="login-intro">
-              Separate local access to a fictional accounting workspace.
+              Separate access to a fictional accounting workspace.
             </p>
             <div className="prototype-inline">
-              Local client review only. Use the demo password supplied by the
-              review operator. No company financial records are opened.
+              Client review only. Use the demo password supplied by the review
+              operator. No company financial records are opened.
             </div>
             <form onSubmit={login}>
               <label htmlFor="email">Demo Accountant email</label>
@@ -1214,7 +1228,7 @@ function App() {
                 type="submit"
                 disabled={busy}
               >
-                Sign in to local review →
+                Sign in to review →
               </button>
             </form>
             {error && (
@@ -1223,8 +1237,9 @@ function App() {
               </p>
             )}
             <p className="login-disclaimer">
-              Server-checked access protects this local demo. Production
-              identity, HTTPS, MFA and shared storage require separate approval.
+              Protected demonstration access only. Individual production
+              identities, MFA and verified accounting policies require separate
+              approval.
             </p>
           </div>
           <div className="login-side-foot">
@@ -1337,7 +1352,7 @@ function App() {
             <strong>{titles[current]}</strong>
           </div>
           <div className="topbar-right">
-            <span className="period-chip">LOCAL REVIEW</span>
+            <span className="period-chip">CLIENT REVIEW</span>
             <span className="top-avatar" aria-hidden="true">
               FA
             </span>
@@ -1357,7 +1372,7 @@ function App() {
           {content[current]}
         </main>
         <footer className="site-footer">
-          AZZORA Accounts · Fictional local data · No production posting or CRM
+          AZZORA Accounts · Fictional demo data · No production posting or CRM
           record changes
         </footer>
       </div>

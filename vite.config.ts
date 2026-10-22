@@ -5,7 +5,10 @@ export default defineConfig({
   plugins: [react(), accountsReviewPlugin()],
   build: {
     rollupOptions: {
-      input: { main: "index.html", accountant: "accountant.html" },
+      input:
+        process.env.AZZORA_ACCOUNTS_PREVIEW === "1"
+          ? { accountant: "accountant.html" }
+          : { main: "index.html", accountant: "accountant.html" },
     },
   },
 });

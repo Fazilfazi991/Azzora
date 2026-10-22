@@ -1,5 +1,5 @@
 import { jsPDF } from "jspdf";
-import { reviewSnapshot, type ReviewState } from "./domain";
+import { reviewSnapshot, type ReviewState } from "./domain.js";
 const money = (fils: string) => {
   const n = BigInt(fils),
     a = n < 0n ? -n : n;

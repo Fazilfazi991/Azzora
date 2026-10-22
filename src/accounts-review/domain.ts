@@ -1,17 +1,17 @@
-import { postJournal } from "../accounting/core";
+import { postJournal } from "../accounting/core.js";
 import {
   buildBalanceSheet,
   buildGeneralLedger,
   buildProfitAndLoss,
   buildTrialBalance,
-} from "../accounting/reports";
+} from "../accounting/reports.js";
 import type { AccountingState, JournalLine } from "../accounting/model";
 import {
   documentAgeing,
   documentOutstanding,
   parseFils,
   postSettlement,
-} from "../finance/settlement";
+} from "../finance/settlement.js";
 import type {
   PostedSettlement,
   SettlementDocument,

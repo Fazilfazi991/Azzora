@@ -63,3 +63,4 @@ blob-report/
 /docs/*-samples/
 /docs/operational-screenshots/
 /docs/*-validation.json
+.vercel/

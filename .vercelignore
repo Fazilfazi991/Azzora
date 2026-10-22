@@ -1,0 +1,15 @@
+.git
+.env
+.env.*
+.vercel
+node_modules
+tmp
+temp
+output
+artifacts
+screenshots
+test-results
+playwright-report
+docs
+stitch_azzora_fit_out_crm_shell
+tests

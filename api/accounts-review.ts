@@ -1,5 +1,5 @@
-import { createHostedHandler } from "../src/accounts-review/hosted";
-import { BlobReviewStore } from "../src/accounts-review/hosted-store";
+import { createHostedHandler } from "../src/accounts-review/hosted.js";
+import { BlobReviewStore } from "../src/accounts-review/hosted-store.js";
 
 export default {
   fetch: createHostedHandler(

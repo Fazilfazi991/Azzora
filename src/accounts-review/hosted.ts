@@ -11,9 +11,9 @@ import {
   reviewSnapshot,
   type ReviewAction,
   type ReviewState,
-} from "./domain";
-import { ReviewConflict, type ReviewStore } from "./hosted-store";
-import { reviewPdf } from "./pdf";
+} from "./domain.js";
+import { ReviewConflict, type ReviewStore } from "./hosted-store.js";
+import { reviewPdf } from "./pdf.js";
 
 interface HostedSession {
   role: "accountant";

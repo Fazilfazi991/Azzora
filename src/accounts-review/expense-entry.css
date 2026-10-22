@@ -1,0 +1,98 @@
+.expense-ledger-choice {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+.expense-ledger-choice > label {
+  flex: 1;
+  min-width: 0;
+}
+.expense-ledger-choice > .button {
+  min-height: 44px;
+}
+.expense-entry .expense-ledger-hint {
+  margin: 8px 0 0;
+}
+.expense-ledger-create {
+  min-width: 0;
+  margin: 20px 0;
+  padding: 20px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  background: var(--limestone);
+}
+.expense-ledger-create legend {
+  padding: 0 8px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.expense-ledger-create p {
+  margin-top: 0;
+}
+.expense-ledger-description {
+  grid-column: 1 / -1;
+}
+.expense-entry .expense-field-hint {
+  color: var(--stone);
+  font:
+    400 11px/1.5 Inter,
+    Arial,
+    sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.expense-entry button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+.expense-records table {
+  min-width: 940px;
+}
+.expense-records .money {
+  font-variant-numeric: tabular-nums;
+}
+.expense-saved-detail {
+  min-width: 140px;
+  max-width: 260px;
+}
+.expense-saved-detail summary {
+  min-height: 44px;
+  cursor: pointer;
+  color: var(--clay-dark);
+  font-weight: 600;
+}
+.expense-saved-detail summary:focus-visible {
+  outline: 2px solid var(--clay);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+.expense-saved-detail dl {
+  margin: 12px 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.expense-saved-detail dt {
+  margin-top: 10px;
+  color: var(--stone);
+  font-size: 10px;
+}
+.expense-saved-detail dd {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--ink);
+}
+@media (max-width: 600px) {
+  .expense-ledger-choice {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .expense-ledger-choice > .button {
+    align-self: flex-start;
+  }
+  .expense-ledger-create {
+    padding: 14px;
+  }
+  .expense-ledger-create .review-actions .button {
+    min-width: 0;
+  }
+}

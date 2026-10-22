@@ -35,7 +35,10 @@ if (!fs.existsSync(secretPath)) {
 }
 const secret = JSON.parse(fs.readFileSync(secretPath, "utf8"));
 const vite = await createServer({
-  server: { middlewareMode: true },
+  server: {
+    middlewareMode: true,
+    watch: { ignored: ["**/tmp/**", "**/docs/**"] },
+  },
   appType: "custom",
 });
 const { createHostedHandler } = await vite.ssrLoadModule(

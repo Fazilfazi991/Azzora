@@ -234,6 +234,10 @@ export function createHostedHandler(
             "supplier-payment",
             "expense",
             "document-draft",
+            "update-invoice-draft",
+            "update-bill-draft",
+            "issue-bill",
+            "create-expense-ledger",
           ].includes(action.kind)
         )
           return json(400, { error: "Unknown finance action." });
@@ -261,10 +265,14 @@ export function createHostedHandler(
                 ? "PRO"
                 : "INV"
             : "DEMO";
-        const id =
-          action.kind === "issue-invoice"
-            ? action.id
-            : `${invoicePrefix}-26${randomUUID().slice(0, 6).toUpperCase()}`;
+        const id = [
+          "issue-invoice",
+          "issue-bill",
+          "update-invoice-draft",
+          "update-bill-draft",
+        ].includes(action.kind)
+          ? action.id
+          : `${invoicePrefix}-26${randomUUID().slice(0, 6).toUpperCase()}`;
         active.finance = applyReviewAction(active.finance, {
           ...action,
           id,

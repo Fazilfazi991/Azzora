@@ -87,15 +87,19 @@ try {
   await page
     .getByLabel("Document type")
     .selectOption({ label: "Normal Invoice" });
-  await page.getByLabel("Amount · AED (VAT excluded)").fill("123.45");
+  await page.getByLabel("Item 1 rate", { exact: true }).fill("123.45");
   await page.getByRole("button", { name: "Save draft" }).click();
-  await expect(page.getByRole("status")).toContainText("Recorded NOR-");
+  await expect(
+    page.getByRole("status").filter({ hasText: /Recorded|Issued/ }),
+  ).toContainText("Recorded NOR-");
   await page.getByRole("link", { name: "← Invoices" }).click();
   await expect(page.getByRole("button", { name: "Issue draft" })).toHaveCount(
     2,
   );
   await page.getByRole("button", { name: "Issue draft" }).last().click();
-  await expect(page.getByRole("status")).toContainText("Issued NOR-");
+  await expect(
+    page.getByRole("status").filter({ hasText: /Recorded|Issued/ }),
+  ).toContainText("Issued NOR-");
   await page.reload();
   await expect(page.getByRole("button", { name: "Issue draft" })).toHaveCount(
     1,
@@ -105,7 +109,9 @@ try {
     .selectOption({ label: "Proforma" });
   await expect(page.getByText("PRO-26009")).toBeVisible();
   await page.getByRole("button", { name: "Issue proforma" }).click();
-  await expect(page.getByRole("status")).toContainText("Issued PRO-26009");
+  await expect(
+    page.getByRole("status").filter({ hasText: /Recorded|Issued/ }),
+  ).toContainText("Issued PRO-26009");
   await expect(page.getByText("Proforma · no posting")).toBeVisible();
   const proformaDownload = page.waitForEvent("download");
   await page.getByRole("link", { name: "Download demo PDF" }).click();
@@ -127,14 +133,18 @@ try {
   });
   await page.getByRole("button", { name: "Record bill & upload" }).click();
   await expect(page.getByRole("alert")).toContainText("under 2 MB");
-  await expect(page.getByLabel("Supplier", { exact: true })).toHaveValue("Sample Supplier B");
+  await expect(page.getByLabel("Supplier", { exact: true })).toHaveValue(
+    "Sample Supplier B",
+  );
   await page.getByLabel("Bill image or PDF · up to 2 MB").setInputFiles({
     name: "sample-bill.pdf",
     mimeType: "application/pdf",
     buffer: Buffer.from("%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF"),
   });
   await page.getByRole("button", { name: "Record bill & upload" }).click();
-  await expect(page.getByRole("link", { name: "Download bill" })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Download bill", exact: true }),
+  ).toBeVisible();
   const afterBill = await (
     await context.request.get(`${base}/api/accounts-review/snapshot`)
   ).json();
@@ -150,16 +160,22 @@ try {
   await page.getByLabel("Open invoice").selectOption("INV-26041");
   await page.getByLabel("Amount · AED").fill("100.00");
   await page.getByRole("button", { name: "Record receipt" }).click();
-  await expect(page.getByRole("status")).toContainText("Recorded DEMO-");
+  await expect(
+    page.getByRole("status").filter({ hasText: /Recorded|Issued/ }),
+  ).toContainText("Recorded DEMO-");
   await page.getByRole("link", { name: "Supplier payments" }).click();
   await page.getByLabel("Open bill").selectOption("BILL-26031");
   await page.getByRole("button", { name: "Record payment" }).click();
-  await expect(page.getByRole("status")).toContainText("Recorded DEMO-");
+  await expect(
+    page.getByRole("status").filter({ hasText: /Recorded|Issued/ }),
+  ).toContainText("Recorded DEMO-");
   checks.push("receipt and supplier payment target selected documents");
 
   await page.getByRole("link", { name: "Expenses" }).click();
   await page.getByRole("button", { name: "Record paid expense" }).click();
-  await expect(page.getByRole("status")).toContainText("Recorded DEMO-");
+  await expect(
+    page.getByRole("status").filter({ hasText: /Recorded|Issued/ }),
+  ).toContainText("Recorded DEMO-");
   checks.push("paid expense updates fictional bank and expense ledger");
 
   const key = crypto.randomUUID();
@@ -333,7 +349,9 @@ try {
         buffer: Buffer.from("%PDF-1.4 fictional mobile upload"),
       });
       await view.getByRole("button", { name: "Record bill & upload" }).click();
-      await expect(view.getByRole("status")).toContainText("Recorded DEMO-");
+      await expect(
+        view.getByRole("status").filter({ hasText: /Recorded|Issued/ }),
+      ).toContainText("Recorded DEMO-");
       const savedBills = await (
         await mobile.request.get(`${base}/api/accounts-review/snapshot`)
       ).json();
@@ -341,11 +359,11 @@ try {
       const savedBill = savedBills.bills.at(-1);
       const savedRow = view.getByRole("row").filter({ hasText: savedBill.id });
       await expect(
-        savedRow.getByRole("link", { name: "Download bill" }),
+        savedRow.getByRole("link", { name: "Download bill", exact: true }),
       ).toBeVisible();
       await view.reload();
       await expect(
-        savedRow.getByRole("link", { name: "Download bill" }),
+        savedRow.getByRole("link", { name: "Download bill", exact: true }),
       ).toBeVisible();
       checks.push(
         mobileSession.mode === "fictional-hosted-review"

@@ -229,6 +229,10 @@ export function accountsReviewPlugin() {
                 "supplier-payment",
                 "expense",
                 "document-draft",
+                "update-invoice-draft",
+                "update-bill-draft",
+                "issue-bill",
+                "create-expense-ledger",
               ].includes(action.kind)
             )
               return json(res, 400, { error: "Unknown finance action." });
@@ -245,10 +249,14 @@ export function accountsReviewPlugin() {
                 : json(res, 409, {
                     error: "Action key was reused with different details.",
                   });
-            const id =
-              action.kind === "issue-invoice"
-                ? action.id
-                : `DEMO-${randomUUID().slice(0, 8).toUpperCase()}`;
+            const id = [
+              "issue-invoice",
+              "issue-bill",
+              "update-invoice-draft",
+              "update-bill-draft",
+            ].includes(action.kind)
+              ? action.id
+              : `DEMO-${randomUUID().slice(0, 8).toUpperCase()}`;
             const next = applyReviewAction(finance, { ...action, id });
             reviewSnapshot(next, asOf); // Reconcile before committing the in-memory transaction.
             finance = next;

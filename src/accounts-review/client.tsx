@@ -11,6 +11,8 @@ import type { reviewSnapshot } from "./domain";
 import "../../docs/finance/portal-design/portal.css";
 import "./review.css";
 import { DocumentEntry } from "./documents/DocumentEntry";
+import { InvoiceEntry, PurchaseBills } from "./DocumentForms";
+import { ExpenseEntry } from "./ExpenseEntry";
 import type { Upload } from "./documents/model";
 
 type Snapshot = ReturnType<typeof reviewSnapshot>;
@@ -50,7 +52,7 @@ const routes: Route[] = [
   "aging",
 ];
 const route = (): Route => {
-  const value = location.hash.replace(/^#\/?/, "") as Route;
+  const value = location.hash.replace(/^#\/?/, "").split("?")[0] as Route;
   return routes.includes(value) ? value : "dashboard";
 };
 const link = (name: Route) => `#/${name}`;
@@ -79,21 +81,6 @@ async function api(path: string, options: RequestInit = {}) {
   if (!response.ok) throw Error(result.error || "Request failed.");
   return result;
 }
-async function filePayload(
-  file: File | null,
-): Promise<{ name: string; mime: string; data: string } | undefined> {
-  if (!file) return undefined;
-  if (file.size > 2_000_000)
-    throw Error("Choose a PDF, PNG or JPEG under 2 MB.");
-  const data = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
-    reader.onerror = () => reject(Error("The file could not be read."));
-    reader.readAsDataURL(file);
-  });
-  return { name: file.name, mime: file.type, data };
-}
-
 const nav: {
   heading: string;
   links: { key: Route; label: string; icon: string }[];
@@ -439,12 +426,21 @@ function Invoices({
             <td className="money">{money(item.outstandingFils)}</td>
             <td>
               {item.status === "Draft" ? (
-                <button
-                  className="button button-secondary"
-                  onClick={() => act({ kind: "issue-invoice", id: item.id })}
-                >
-                  Issue {item.invoiceType === "Proforma" ? "proforma" : "draft"}
-                </button>
+                <>
+                  <a
+                    className="button"
+                    href={"#/new-invoice?edit=" + encodeURIComponent(item.id)}
+                  >
+                    Edit draft
+                  </a>
+                  <button
+                    className="button button-secondary"
+                    onClick={() => act({ kind: "issue-invoice", id: item.id })}
+                  >
+                    Issue{" "}
+                    {item.invoiceType === "Proforma" ? "proforma" : "draft"}
+                  </button>
+                </>
               ) : (
                 <span
                   className={`badge ${item.invoiceType === "Proforma" ? "badge-neutral" : "badge-success"}`}
@@ -477,271 +473,6 @@ function Invoices({
             normal and proforma documents are excluded from posted revenue.
           </td>
         </tr>
-      </Table>
-    </>
-  );
-}
-function InvoiceForm({
-  act,
-}: {
-  act: (action: Record<string, unknown>) => Promise<boolean>;
-}) {
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const values = Object.fromEntries(new FormData(form));
-    const issue =
-      (event.nativeEvent as SubmitEvent).submitter?.getAttribute(
-        "data-issue",
-      ) === "true";
-    if (await act({ kind: "invoice", ...values, issue })) form.reset();
-  }
-  return (
-    <>
-      <Head
-        eyebrow="SALES & RECEIVABLES"
-        title="New invoice"
-        sub="Create a tax invoice, normal invoice or proforma for this fictional review ledger."
-      >
-        <a className="button button-secondary" href={link("invoices")}>
-          ← Invoices
-        </a>
-      </Head>
-      <Note />
-      <form className="panel review-form" onSubmit={submit}>
-        <h2>Invoice details</h2>
-        <div className="field-grid">
-          <Field label="Document type" name="invoiceType">
-            <option>Tax Invoice</option>
-            <option>Normal Invoice</option>
-            <option>Proforma</option>
-          </Field>
-          <Field label="Customer" name="party" defaultValue="Sample Client A" />
-          <Field
-            label="Amount · AED (VAT excluded)"
-            name="amount"
-            type="number"
-            defaultValue="1000.00"
-          />
-          <Field
-            label="Invoice date"
-            name="date"
-            type="date"
-            defaultValue={today}
-          />
-          <Field label="Due date" name="due" type="date" defaultValue={today} />
-          <Field
-            label="Description"
-            name="description"
-            defaultValue="Additional design service"
-          />
-        </div>
-        <div className="review-actions">
-          <button
-            className="button button-secondary"
-            type="submit"
-            data-issue="false"
-          >
-            Save draft
-          </button>
-          <button
-            className="button button-primary"
-            type="submit"
-            data-issue="true"
-          >
-            Issue document
-          </button>
-        </div>
-        <p className="aside-note">
-          Tax and normal invoices post to the fictional journal when issued.
-          Proforma documents never create receivables or revenue. VAT is not
-          calculated in this demo; tax treatment requires approved policy.
-        </p>
-      </form>
-    </>
-  );
-}
-function Bills({
-  data,
-  act,
-}: {
-  data: Snapshot;
-  act: (action: Record<string, unknown>) => Promise<boolean>;
-}) {
-  const [uploadError, setUploadError] = useState("");
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const values = Object.fromEntries(new FormData(form));
-    const file =
-      (form.elements.namedItem("file") as HTMLInputElement).files?.[0] || null;
-    delete values.file;
-    try {
-      setUploadError("");
-      if (
-        await act({
-          kind: "bill",
-          ...values,
-          attachment: await filePayload(file),
-        })
-      )
-        form.reset();
-    } catch (problem) {
-      setUploadError(
-        String(problem instanceof Error ? problem.message : problem),
-      );
-    }
-  }
-  return (
-    <>
-      <Head
-        eyebrow="PURCHASES"
-        title="Purchase bills"
-        sub="Upload a bill to fill details automatically where text is readable, or enter it manually."
-      >
-        <a className="button button-primary" href="#/document-entry">
-          Upload & auto-fill
-        </a>
-      </Head>
-      <Note />
-      <div className="review-two bill-entry-options">
-        <a className="panel review-card bill-entry-option" href="#/document-entry">
-          <span className="eyebrow">OPTION 1 · UPLOAD & AUTO-FILL</span>
-          <h2>Read a purchase bill</h2>
-          <p>Local text extraction from selectable PDFs. Review every field, then save a draft. Photos and scanned files stay manual.</p>
-          <strong>Choose a document →</strong>
-        </a>
-        <div className="panel review-card bill-entry-option">
-          <span className="eyebrow">OPTION 2 · MANUAL ENTRY</span>
-          <h2>Enter bill details</h2>
-          <p>Record a bill directly with an optional attachment. This uses the existing validated finance posting path.</p>
-          <a href="#bill-manual-form">Go to manual form ↓</a>
-        </div>
-      </div>
-      <div className="review-two">
-        <form id="bill-manual-form" className="panel review-form" onSubmit={submit}>
-          <h2>Manual purchase bill</h2>
-          <div className="field-grid">
-            <Field
-              label="Supplier"
-              name="party"
-              defaultValue="Sample Supplier B"
-            />
-            <Field
-              label="Demo PO reference"
-              name="poReference"
-              defaultValue="DEMO-PO-33"
-            />
-            <Field
-              label="Supplier invoice number"
-              name="invoiceReference"
-              required={false}
-            />
-            <Field
-              label="Bill date"
-              name="date"
-              type="date"
-              defaultValue={today}
-            />
-            <Field
-              label="Due date"
-              name="due"
-              type="date"
-              defaultValue={today}
-            />
-            <Field
-              label="Amount · AED (VAT excluded)"
-              name="amount"
-              type="number"
-              defaultValue="250.00"
-            />
-            <Field
-              label="Category"
-              name="category"
-              defaultValue="Cost of Sales"
-            >
-              <option>Cost of Sales</option>
-              <option>Operating Expense</option>
-            </Field>
-            <Field
-              label="Description"
-              name="description"
-              defaultValue="Additional project materials"
-            />
-            <Field
-              label="Bill image or PDF · up to 2 MB"
-              name="file"
-              type="file"
-              required={false}
-              accept="application/pdf,image/png,image/jpeg"
-              capture="environment"
-            />
-          </div>
-          {uploadError && (
-            <p className="review-error" role="alert">
-              {uploadError}
-            </p>
-          )}
-          <button className="button button-primary" type="submit">
-            Record bill & upload
-          </button>
-          <p className="aside-note">
-            Manual upload only; no OCR, real supplier matching or CRM purchase
-            order is claimed.
-          </p>
-        </form>
-        <div className="panel review-card">
-          <span className="eyebrow">MOBILE BILL CAPTURE</span>
-          <h2>Three simple steps</h2>
-          <ol className="review-steps">
-            <li>Photograph or select the bill.</li>
-            <li>Check supplier, amount and demo PO reference.</li>
-            <li>Record it once; the journal and payable update together.</li>
-          </ol>
-          <p>
-            Use fictional bills only. Uploads belong to this review session and
-            are unavailable after logout.
-          </p>
-        </div>
-      </div>
-      <Table
-        heads={[
-          "Bill",
-          "Supplier",
-          "Date / due",
-          "Category",
-          "Amount",
-          "Open / file",
-        ]}
-      >
-        {data.bills.map((item) => (
-          <tr key={item.id}>
-            <td>
-              <strong>{item.id}</strong>
-              {item.invoiceReference && <small>Supplier ref {item.invoiceReference}</small>}
-              <small>{item.poReference}</small>
-            </td>
-            <td>{item.party}</td>
-            <td>
-              {date(item.date)}
-              <small>Due {date(item.due)}</small>
-            </td>
-            <td>{item.category}</td>
-            <td className="money">{money(item.amountFils)}</td>
-            <td className="money">
-              {money(item.outstandingFils)}
-              {item.attachmentId && (
-                <small>
-                  <a
-                    href={`/api/accounts-review/attachment/${encodeURIComponent(item.attachmentId)}`}
-                  >
-                    Download bill
-                  </a>
-                </small>
-              )}
-            </td>
-          </tr>
-        ))}
       </Table>
     </>
   );
@@ -818,132 +549,6 @@ function Settlement({
             <td>{date(item.date)}</td>
             <td>{item.documentId}</td>
             <td className="money">{money(item.amountFils)}</td>
-          </tr>
-        ))}
-      </Table>
-    </>
-  );
-}
-function Expenses({
-  data,
-  act,
-}: {
-  data: Snapshot;
-  act: (action: Record<string, unknown>) => Promise<boolean>;
-}) {
-  const [uploadError, setUploadError] = useState("");
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const values = Object.fromEntries(new FormData(form));
-    const file =
-      (form.elements.namedItem("file") as HTMLInputElement).files?.[0] || null;
-    delete values.file;
-    try {
-      setUploadError("");
-      if (
-        await act({
-          kind: "expense",
-          ...values,
-          attachment: await filePayload(file),
-        })
-      )
-        form.reset();
-    } catch (problem) {
-      setUploadError(
-        String(problem instanceof Error ? problem.message : problem),
-      );
-    }
-  }
-  return (
-    <>
-      <Head
-        eyebrow="OPERATING COSTS"
-        title="Expenses"
-        sub="Record a paid fictional operating cost against bank or cash, with optional evidence."
-      >
-        <a className="button" href="#/document-entry">
-          Read a receipt · save draft
-        </a>
-      </Head>
-      <Note />
-      <form className="panel review-form" onSubmit={submit}>
-        <h2>New paid expense</h2>
-        <div className="field-grid">
-          <Field
-            label="Payee"
-            name="payee"
-            defaultValue="Sample Service Provider"
-          />
-          <Field
-            label="Amount · AED (VAT excluded)"
-            name="amount"
-            type="number"
-            defaultValue="75.00"
-          />
-          <Field label="Date" name="date" type="date" defaultValue={today} />
-          <Field label="Paid from" name="account" defaultValue="bank">
-            <option value="bank">Business bank</option>
-            <option value="cash">Petty cash</option>
-          </Field>
-          <Field
-            label="Description"
-            name="description"
-            defaultValue="Office supplies"
-          />
-          <Field
-            label="Receipt image or PDF"
-            name="file"
-            type="file"
-            required={false}
-            accept="application/pdf,image/png,image/jpeg"
-            capture="environment"
-          />
-        </div>
-        {uploadError && (
-          <p className="review-error" role="alert">
-            {uploadError}
-          </p>
-        )}
-        <button className="button button-primary" type="submit">
-          Record paid expense
-        </button>
-        <p className="aside-note">
-          The demo posts this payment immediately. Real approvals and VAT
-          treatment remain blocked by owner policy.
-        </p>
-      </form>
-      <Table
-        heads={[
-          "Expense",
-          "Payee",
-          "Date",
-          "Description",
-          "Paid from",
-          "Amount / file",
-        ]}
-      >
-        {data.expenses.map((item) => (
-          <tr key={item.id}>
-            <td>
-              <strong>{item.id}</strong>
-            </td>
-            <td>{item.payee}</td>
-            <td>{date(item.date)}</td>
-            <td>{item.description}</td>
-            <td>{item.account === "bank" ? "Business bank" : "Petty cash"}</td>
-            <td className="money">
-              {money(item.amountFils)}
-              {item.attachmentId && (
-                <small>
-                  <a
-                    href={`/api/accounts-review/attachment/${encodeURIComponent(item.attachmentId)}`}
-                  >
-                    Download receipt
-                  </a>
-                </small>
-              )}
-            </td>
           </tr>
         ))}
       </Table>
@@ -1192,16 +797,18 @@ function Aging({ data }: { data: Snapshot }) {
       <Table
         heads={["Bill", "Supplier", "Due", "Open", "Days overdue", "Bucket"]}
       >
-        {data.bills.map((item) => (
-          <tr key={item.id}>
-            <td>{item.id}</td>
-            <td>{item.party}</td>
-            <td>{date(item.due)}</td>
-            <td className="money">{money(item.outstandingFils)}</td>
-            <td>{item.ageing.daysOverdue}</td>
-            <td>{item.ageing.bucket}</td>
-          </tr>
-        ))}
+        {data.bills
+          .filter((item) => item.status === "Issued")
+          .map((item) => (
+            <tr key={item.id}>
+              <td>{item.id}</td>
+              <td>{item.party}</td>
+              <td>{date(item.due)}</td>
+              <td className="money">{money(item.outstandingFils)}</td>
+              <td>{item.ageing?.daysOverdue}</td>
+              <td>{item.ageing?.bucket}</td>
+            </tr>
+          ))}
       </Table>
     </>
   );
@@ -1211,11 +818,16 @@ function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [current, setCurrent] = useState<Route>(route);
+  const [editingId, setEditingId] = useState(
+    () =>
+      new URLSearchParams(location.hash.split("?")[1] || "").get("edit") || "",
+  );
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [navOpen, setNavOpen] = useState(false);
   const inFlight = useRef(false);
+  const retryAction = useRef<{ fingerprint: string; key: string } | null>(null);
   const documentPending = useRef(false);
   const onDocumentPending = useCallback((value: boolean) => {
     documentPending.current = value;
@@ -1243,6 +855,10 @@ function App() {
       documentPending.current = false;
       previous = location.hash;
       setCurrent(route());
+      setEditingId(
+        new URLSearchParams(location.hash.split("?")[1] || "").get("edit") ||
+          "",
+      );
       setNavOpen(false);
       window.scrollTo(0, 0);
     };
@@ -1300,22 +916,28 @@ function App() {
     setError("");
     setMessage("");
     try {
+      const fingerprint = JSON.stringify(action);
+      if (retryAction.current?.fingerprint !== fingerprint)
+        retryAction.current = { fingerprint, key: crypto.randomUUID() };
       const result = await api("/action", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-Azzora-CSRF": session.csrf,
-          "X-Azzora-Idempotency-Key": crypto.randomUUID(),
+          "X-Azzora-Idempotency-Key": retryAction.current.key,
         },
         body: JSON.stringify(action),
       });
       setSnapshot(result.snapshot);
+      retryAction.current = null;
       setMessage(
-        action.kind === "document-draft"
-          ? "Document draft saved. No financial posting."
-          : action.kind === "create-bill-from-review"
-            ? "Purchase bill created once through the demo ledger."
-            : `${action.kind === "issue-invoice" ? "Issued" : "Recorded"} ${result.id} in the fictional review ledger.`,
+        action.kind === "create-expense-ledger"
+          ? "Expense ledger created. No financial posting."
+          : action.kind === "document-draft"
+            ? "Document draft saved. No financial posting."
+            : action.kind === "create-bill-from-review"
+              ? "Purchase bill created once through the demo ledger."
+              : `${action.kind === "issue-invoice" ? "Issued" : "Recorded"} ${result.id} in the fictional review ledger.`,
       );
       return true;
     } catch (problem) {
@@ -1432,8 +1054,22 @@ function App() {
   const content: Record<Route, ReactNode> = {
     dashboard: <Dashboard data={snapshot} />,
     invoices: <Invoices data={snapshot} act={act} />,
-    "new-invoice": <InvoiceForm act={act} />,
-    bills: <Bills data={snapshot} act={act} />,
+    "new-invoice": (
+      <InvoiceEntry
+        key={"invoice-" + editingId}
+        data={snapshot}
+        act={act}
+        editingId={editingId}
+      />
+    ),
+    bills: (
+      <PurchaseBills
+        key={"bill-" + editingId}
+        data={snapshot}
+        act={act}
+        editingId={editingId}
+      />
+    ),
     "document-entry": (
       <DocumentEntry
         data={snapshot}
@@ -1460,7 +1096,24 @@ function App() {
     ),
     receipts: <Settlement data={snapshot} act={act} supplier={false} />,
     "supplier-payments": <Settlement data={snapshot} act={act} supplier />,
-    expenses: <Expenses data={snapshot} act={act} />,
+    expenses: (
+      <>
+        <ExpenseEntry data={snapshot} act={act} />
+        <section className="panel review-card">
+          <h2>Project costs from posted journals</h2>
+          <p>
+            Current reporting period. Direct expenses and project overhead
+            retain their selected project.
+          </p>
+          {snapshot.projectCosts.map((project) => (
+            <div className="review-row" key={project.id}>
+              <span>{project.name}</span>
+              <strong>{money(project.costFils)}</strong>
+            </div>
+          ))}
+        </section>
+      </>
+    ),
     banking: <Banking data={snapshot} />,
     ledger: <Ledger data={snapshot} />,
     pnl: <Statement data={snapshot} balance={false} />,

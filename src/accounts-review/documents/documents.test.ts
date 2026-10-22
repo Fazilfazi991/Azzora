@@ -103,8 +103,22 @@ describe("actual local PDF text extraction", () => {
       total: "177.19",
       kind: "supplier-bill",
       items: [
-        { description: "Interior paint", quantity: "2", unit: "tin", unitRate: "60.00", tax: "6.00", total: "126.00" },
-        { description: "Sample fittings 2", quantity: "3", unit: "each", unitRate: "16.25", tax: "2.44", total: "51.19" },
+        {
+          description: "Interior paint",
+          quantity: "2",
+          unit: "tin",
+          unitRate: "60.00",
+          tax: "6.00",
+          total: "126.00",
+        },
+        {
+          description: "Sample fittings 2",
+          quantity: "3",
+          unit: "each",
+          unitRate: "16.25",
+          tax: "2.44",
+          total: "51.19",
+        },
       ],
     });
   });
@@ -128,8 +142,18 @@ describe("actual local PDF text extraction", () => {
     expect(extracted.fields.total).toBe("10401.85");
   });
   it("normalizes bilingual labels and Arabic digits without filling absent values", () => {
-    const result = parseBillText("المورد: شركة مثال\nرقم الفاتورة: INV-12\nالتاريخ: ٢٠٢٦-١٠-٠٥\nتاريخ الاستحقاق: ٢٠٢٦-١١-٠٥\nأمر الشراء: PO-12\nالمجموع شامل الضريبة: AED 120.00");
-    expect(result.fields).toMatchObject({ supplier: "شركة مثال", reference: "INV-12", date: "2026-10-05", dueDate: "2026-11-05", purchaseOrderReference: "PO-12", total: "120.00", kind: "supplier-bill" });
+    const result = parseBillText(
+      "المورد: شركة مثال\nرقم الفاتورة: INV-12\nالتاريخ: ٢٠٢٦-١٠-٠٥\nتاريخ الاستحقاق: ٢٠٢٦-١١-٠٥\nأمر الشراء: PO-12\nالمجموع شامل الضريبة: AED 120.00",
+    );
+    expect(result.fields).toMatchObject({
+      supplier: "شركة مثال",
+      reference: "INV-12",
+      date: "2026-10-05",
+      dueDate: "2026-11-05",
+      purchaseOrderReference: "PO-12",
+      total: "120.00",
+      kind: "supplier-bill",
+    });
     expect(result.fields.subtotal).toBe("");
     expect(result.uncertain).toContain("subtotal");
   });
@@ -150,13 +174,18 @@ describe("review-only finance boundaries", () => {
       projectId: "demo-apartment",
       dueDate: "2026-10-10",
       purchaseOrderReference: "DEMO-PO-REVIEW-1",
-      subtotal: "120.00",
+      subtotal: "168.75",
       tax: "0.00",
-      total: "120.00",
-      items: [{ ...original.fields.items[0], tax: "0.00", total: "120.00" }],
+      total: "168.75",
+      items: [
+        { ...original.fields.items[0], tax: "0.00", total: "120.00" },
+        { ...original.fields.items[1], tax: "0.00", total: "48.75" },
+      ],
     };
     const draft = applyReviewAction(uploaded.state, save(uploaded.id, fields));
-    expect(draft.accounting.journals).toHaveLength(uploaded.state.accounting.journals.length);
+    expect(draft.accounting.journals).toHaveLength(
+      uploaded.state.accounting.journals.length,
+    );
     const bill = applyReviewAction(draft, {
       kind: "create-bill-from-review",
       id: "BILL-REVIEW-1",
@@ -168,17 +197,24 @@ describe("review-only finance boundaries", () => {
       id: "BILL-REVIEW-1",
       invoiceReference: "SYNTH-02",
       sourceReviewId: uploaded.id,
-      amountFils: "12000",
+      amountFils: "16875",
     });
-    expect(bill.accounting.journals).toHaveLength(draft.accounting.journals.length + 1);
-    expect(bill.documentEntries!.reviews[0].convertedBillId).toBe("BILL-REVIEW-1");
-    expect(() => applyReviewAction(bill, {
-      kind: "create-bill-from-review",
-      id: "BILL-REVIEW-RETRY",
-      reviewId: uploaded.id,
-      revision: bill.documentEntries!.reviews[0].revision,
-      confirmed: true,
-    })).toThrow(/already been converted/);
+    expect(bill.bills.at(-1)!.items).toHaveLength(2);
+    expect(bill.accounting.journals).toHaveLength(
+      draft.accounting.journals.length + 1,
+    );
+    expect(bill.documentEntries!.reviews[0].convertedBillId).toBe(
+      "BILL-REVIEW-1",
+    );
+    expect(() =>
+      applyReviewAction(bill, {
+        kind: "create-bill-from-review",
+        id: "BILL-REVIEW-RETRY",
+        reviewId: uploaded.id,
+        revision: bill.documentEntries!.reviews[0].revision,
+        confirmed: true,
+      }),
+    ).toThrow(/already been converted/);
   });
   it("blocks VAT-bearing reviewed bills instead of silently omitting tax from the journal", async () => {
     const uploaded = await extractDocument(createReviewState(), upload(1));
@@ -191,14 +227,18 @@ describe("review-only finance boundaries", () => {
       categoryId: "project-materials",
     };
     const draft = applyReviewAction(uploaded.state, save(uploaded.id, fields));
-    expect(() => applyReviewAction(draft, {
-      kind: "create-bill-from-review",
-      id: "BILL-REVIEW-VAT",
-      reviewId: uploaded.id,
-      revision: draft.documentEntries!.reviews[0].revision,
-      confirmed: true,
-    })).toThrow(/cannot post VAT/);
-    expect(draft.accounting.journals).toHaveLength(uploaded.state.accounting.journals.length);
+    expect(() =>
+      applyReviewAction(draft, {
+        kind: "create-bill-from-review",
+        id: "BILL-REVIEW-VAT",
+        reviewId: uploaded.id,
+        revision: draft.documentEntries!.reviews[0].revision,
+        confirmed: true,
+      }),
+    ).toThrow(/cannot post VAT/);
+    expect(draft.accounting.journals).toHaveLength(
+      uploaded.state.accounting.journals.length,
+    );
   });
   it("rejects direct bill conversion when a reviewed line calculation is inconsistent", async () => {
     const uploaded = await extractDocument(createReviewState(), upload(1));
@@ -210,18 +250,28 @@ describe("review-only finance boundaries", () => {
       subtotal: "120.00",
       tax: "0.00",
       total: "120.00",
-      items: [{ ...uploaded.state.documentEntries!.reviews[0].fields.items[0], tax: "0.00", total: "119.00" }],
+      items: [
+        {
+          ...uploaded.state.documentEntries!.reviews[0].fields.items[0],
+          tax: "0.00",
+          total: "119.00",
+        },
+      ],
     };
     const draft = applyReviewAction(uploaded.state, save(uploaded.id, fields));
-    expect(() => applyReviewAction(draft, {
-      kind: "create-bill-from-review",
-      id: "BILL-REVIEW-BAD-MATH",
-      reviewId: uploaded.id,
-      revision: draft.documentEntries!.reviews[0].revision,
-      confirmed: true,
-    })).toThrow(/Resolve bill checks/);
+    expect(() =>
+      applyReviewAction(draft, {
+        kind: "create-bill-from-review",
+        id: "BILL-REVIEW-BAD-MATH",
+        reviewId: uploaded.id,
+        revision: draft.documentEntries!.reviews[0].revision,
+        confirmed: true,
+      }),
+    ).toThrow(/Resolve bill checks/);
     expect(draft.bills).toEqual(uploaded.state.bills);
-    expect(draft.accounting.journals).toHaveLength(uploaded.state.accounting.journals.length);
+    expect(draft.accounting.journals).toHaveLength(
+      uploaded.state.accounting.journals.length,
+    );
   });
   it("allows an office supplier bill to use the company expense mapping without inventing a project", async () => {
     const r = await extractDocument(createReviewState(), upload());

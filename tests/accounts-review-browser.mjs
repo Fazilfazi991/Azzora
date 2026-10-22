@@ -180,6 +180,7 @@ try {
     ).status(),
   ).toBe(409);
   checks.push("CSRF and idempotent action replay enforced by local API");
+  await page.reload();
 
   for (const [name, heading, filename] of [
     ["Bank & cash", "Bank & cash", "banking-1440.png"],
@@ -285,13 +286,11 @@ try {
     ).toBe(true);
     checks.push(`${width}px: login, dashboard, bill upload, no page overflow`);
     if (width === 390) {
-      await view
-        .getByLabel("Bill image or PDF · up to 2 MB")
-        .setInputFiles({
-          name: "mobile-fictional-bill.pdf",
-          mimeType: "application/pdf",
-          buffer: Buffer.from("%PDF-1.4 fictional mobile upload"),
-        });
+      await view.getByLabel("Bill image or PDF · up to 2 MB").setInputFiles({
+        name: "mobile-fictional-bill.pdf",
+        mimeType: "application/pdf",
+        buffer: Buffer.from("%PDF-1.4 fictional mobile upload"),
+      });
       await view.getByRole("button", { name: "Record bill & upload" }).click();
       await expect(
         view.getByRole("link", { name: "Download bill" }),
@@ -304,6 +303,14 @@ try {
         "390px: mobile upload persists after refresh; separate session data remains isolated",
       );
     }
+    if (width < 900)
+      await view
+        .getByRole("button", { name: "Open accountant navigation" })
+        .click();
+    await view.getByRole("button", { name: "Log out" }).click();
+    await expect(
+      view.getByRole("heading", { name: "Sign in to Accounts" }),
+    ).toBeVisible();
     await mobile.close();
   }
   expect(errors).toEqual([]);

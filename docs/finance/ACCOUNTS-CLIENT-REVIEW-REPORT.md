@@ -1,5 +1,7 @@
 # AZZORA Accounts — local client-review candidate
 
+**Hosted follow-up:** the protected live Preview, current access method, tested application SHA and hosted acceptance evidence are recorded in [ACCOUNTS-HOSTED-CLIENT-REVIEW.md](ACCOUNTS-HOSTED-CLIENT-REVIEW.md). This document preserves the original local checkpoint.
+
 **Review date:** 22 October 2026. **Scope:** a separate, fictional Accountant workspace for owner review. No GitHub push, merge to `main`, deployment, real credential, production database, or browser-record migration is part of this candidate.
 
 ## Run the review

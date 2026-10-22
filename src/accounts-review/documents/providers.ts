@@ -10,7 +10,10 @@ import {
 import { sampleDocuments } from "./samples.js";
 
 export interface DocumentExtractor {
-  extract(file: Upload): Promise<Extraction>;
+  extract(
+    file: Upload,
+    pageImages?: readonly { mime: "image/jpeg" | "image/png"; data: string }[],
+  ): Promise<Extraction>;
 }
 export const digestOf = (file: Upload) =>
   createHash("sha256").update(Buffer.from(file.data, "base64")).digest("hex");
@@ -97,7 +100,7 @@ export function createChatExtractor(
 ): DocumentExtractor {
   let calls = 0;
   return {
-    async extract(file) {
+    async extract(file, pageImages) {
       if (
         !approval.reference ||
         !approval.allowedDigests.has(digestOf(file)) ||
@@ -112,15 +115,32 @@ export function createChatExtractor(
       const content: unknown[] = [];
       let ocrPages: number | undefined;
       if (file.mime === "application/pdf") {
-        if (!ocr)
-          throw Error(
-            "PDF extraction requires an approved OCR service; manual review is available.",
-          );
-        const result = await ocr.read(file);
-        ocrPages = result.pages;
-        if (result.text.length > 40000 || result.pages > 5)
-          throw Error("Document exceeds the five-page evaluation limit.");
-        content.push({ type: "text", text: result.text });
+        if (pageImages) {
+          if (pageImages.length < 1 || pageImages.length > 5)
+            throw Error("Document exceeds the five-page evaluation limit.");
+          for (const page of pageImages) {
+            if (
+              !["image/jpeg", "image/png"].includes(page.mime) ||
+              page.data.length > 2800000 ||
+              !/^[A-Za-z0-9+/]+={0,2}$/.test(page.data)
+            )
+              throw Error("Invalid prepared PDF image.");
+            content.push({
+              type: "image_url",
+              image_url: { url: `data:${page.mime};base64,${page.data}` },
+            });
+          }
+        } else {
+          if (!ocr)
+            throw Error(
+              "PDF extraction requires an approved OCR service; manual review is available.",
+            );
+          const result = await ocr.read(file);
+          ocrPages = result.pages;
+          if (result.text.length > 40000 || result.pages > 5)
+            throw Error("Document exceeds the five-page evaluation limit.");
+          content.push({ type: "text", text: result.text });
+        }
       } else
         content.push({
           type: "image_url",
@@ -130,7 +150,7 @@ export function createChatExtractor(
       const response = await transport(config.url, {
         method: "POST",
         redirect: "error",
-        signal: AbortSignal.timeout(30000),
+        signal: AbortSignal.timeout(60000),
         headers: {
           Authorization: `Bearer ${key}`,
           "Content-Type": "application/json",
@@ -142,7 +162,7 @@ export function createChatExtractor(
             { role: "user", content },
           ],
           response_format: { type: "json_object" },
-          max_tokens: 3000,
+          max_tokens: 8192,
           stream: false,
           ...(provider === "qwen"
             ? { enable_thinking: false }

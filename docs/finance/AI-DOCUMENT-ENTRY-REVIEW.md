@@ -1,5 +1,7 @@
 # Accounts document entry — local review
 
+**Benchmark follow-up:** the owner approved a synthetic-only USD 5 combined evaluation and later deferred providing API credentials. Current safeguards and the unrun benchmark status are recorded in [AI-DOCUMENT-BENCHMARK-STATUS.md](AI-DOCUMENT-BENCHMARK-STATUS.md). The delivery checkpoint below preserves the original local review results.
+
 Review date: 22 October 2026. Branch: `codex/azzora-document-entry`, based on the Accounts client-review delivery `b4ddaa2f63808ac8bda36dfb531de2e451ff0011`. This candidate has not been pushed, deployed or merged. The existing live Accounts demo and Manager production are unchanged.
 
 ## Delivery status

@@ -362,6 +362,47 @@ describe("review-only finance boundaries", () => {
   });
 });
 describe("interchangeable server providers (mock transport only)", () => {
+  it("sends locally rendered PDF pages to vision without an external OCR service", async () => {
+    const pdf = upload(1),
+      image = upload();
+    let requests = 0;
+    const transport = (async (_url, init) => {
+      requests++;
+      const request = JSON.parse(String(init?.body));
+      expect(request.messages[1].content).toHaveLength(2);
+      expect(request.messages[1].content[0].type).toBe("image_url");
+      return Response.json({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                fields: sampleDocuments[1].fields,
+                uncertain: [],
+              }),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 500, completion_tokens: 300 },
+      });
+    }) as typeof fetch;
+    const provider = createChatExtractor(
+      "qwen",
+      "test-only",
+      {
+        reference: "mock-pdf-test",
+        allowedDigests: new Set([digestOf(pdf)]),
+        maxRequests: 1,
+      },
+      undefined,
+      transport,
+    );
+    const result = await provider.extract(pdf, [
+      { mime: "image/png", data: image.data },
+      { mime: "image/png", data: image.data },
+    ]);
+    expect(result.mode).toBe("live");
+    expect(requests).toBe(1);
+  });
   it("rejects overlong OCR output instead of silently returning the first pages", async () => {
     const f = upload(1),
       approval = {

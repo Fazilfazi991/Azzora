@@ -1,0 +1,201 @@
+{
+  "pdfDocuments": 11,
+  "pdfPages": 22,
+  "pdfs": [
+    {
+      "file": "tmp/accounts-stable-acceptance/accounts-feedback-browser/itemized-bill.pdf",
+      "pages": 1,
+      "renders": [
+        "tmp/accounts-stable-acceptance/accounts-feedback-browser/itemized-bill-page-1.png"
+      ]
+    },
+    {
+      "file": "tmp/accounts-stable-acceptance/accounts-feedback-browser/itemized-invoice.pdf",
+      "pages": 1,
+      "renders": [
+        "tmp/accounts-stable-acceptance/accounts-feedback-browser/itemized-invoice-page-1.png"
+      ]
+    },
+    {
+      "file": "tmp/accounts-stable-acceptance/accounts-feedback-browser/multipage-bill.pdf",
+      "pages": 6,
+      "renders": [
+        "tmp/accounts-stable-acceptance/accounts-feedback-browser/multipage-bill-page-1.png",
+        "tmp/accounts-stable-acceptance/accounts-feedback-browser/multipage-bill-page-2.png",
+        "tmp/accounts-stable-acceptance/accounts-feedback-browser/multipage-bill-page-3.png",
+        "tmp/accounts-stable-acceptance/accounts-feedback-browser/multipage-bill-page-4.png",
+        "tmp/accounts-stable-acceptance/accounts-feedback-browser/multipage-bill-page-5.png",
+        "tmp/accounts-stable-acceptance/accounts-feedback-browser/multipage-bill-page-6.png"
+      ]
+    },
+    {
+      "file": "tmp/accounts-stable-acceptance/accounts-feedback-browser/multipage-invoice.pdf",
+      "pages": 6,
+      "renders": [
+        "tmp/accounts-stable-acceptance/accounts-feedback-browser/multipage-invoice-page-1.png",
+        "tmp/accounts-stable-acceptance/accounts-feedback-browser/multipage-invoice-page-2.png",
+        "tmp/accounts-stable-acceptance/accounts-feedback-browser/multipage-invoice-page-3.png",
+        "tmp/accounts-stable-acceptance/accounts-feedback-browser/multipage-invoice-page-4.png",
+        "tmp/accounts-stable-acceptance/accounts-feedback-browser/multipage-invoice-page-5.png",
+        "tmp/accounts-stable-acceptance/accounts-feedback-browser/multipage-invoice-page-6.png"
+      ]
+    },
+    {
+      "file": "tmp/accounts-stable-acceptance/accounts-feedback-browser/oversized-row-invoice.pdf",
+      "pages": 2,
+      "renders": [
+        "tmp/accounts-stable-acceptance/accounts-feedback-browser/oversized-row-invoice-page-1.png",
+        "tmp/accounts-stable-acceptance/accounts-feedback-browser/oversized-row-invoice-page-2.png"
+      ]
+    },
+    {
+      "file": "tmp/accounts-stable-acceptance/accounts-final-preview-browser/proforma-invoice.pdf",
+      "pages": 1,
+      "renders": [
+        "tmp/accounts-stable-acceptance/accounts-final-preview-browser/proforma-invoice-page-1.png"
+      ]
+    },
+    {
+      "file": "tmp/accounts-stable-acceptance/accounts-final-preview-browser/tax-invoice.pdf",
+      "pages": 1,
+      "renders": [
+        "tmp/accounts-stable-acceptance/accounts-final-preview-browser/tax-invoice-page-1.png"
+      ]
+    },
+    {
+      "file": "tmp/accounts-stable-acceptance/accounts-review-browser/balance.pdf",
+      "pages": 1,
+      "renders": [
+        "tmp/accounts-stable-acceptance/accounts-review-browser/balance-page-1.png"
+      ]
+    },
+    {
+      "file": "tmp/accounts-stable-acceptance/accounts-review-browser/invoice.pdf",
+      "pages": 1,
+      "renders": [
+        "tmp/accounts-stable-acceptance/accounts-review-browser/invoice-page-1.png"
+      ]
+    },
+    {
+      "file": "tmp/accounts-stable-acceptance/accounts-review-browser/pnl.pdf",
+      "pages": 1,
+      "renders": [
+        "tmp/accounts-stable-acceptance/accounts-review-browser/pnl-page-1.png"
+      ]
+    },
+    {
+      "file": "tmp/accounts-stable-acceptance/accounts-review-browser/proforma.pdf",
+      "pages": 1,
+      "renders": [
+        "tmp/accounts-stable-acceptance/accounts-review-browser/proforma-page-1.png"
+      ]
+    }
+  ],
+  "uiComparison": [
+    {
+      "file": "invoice-items-1440.png",
+      "width": 1440,
+      "height": 1597,
+      "sameDimensions": true,
+      "changedPixelPercent": 0
+    },
+    {
+      "file": "invoice-items-1024.png",
+      "width": 1024,
+      "height": 1636,
+      "sameDimensions": true,
+      "changedPixelPercent": 0
+    },
+    {
+      "file": "invoice-items-768.png",
+      "width": 768,
+      "height": 1624,
+      "sameDimensions": true,
+      "changedPixelPercent": 0
+    },
+    {
+      "file": "invoice-items-430.png",
+      "width": 430,
+      "height": 1864,
+      "sameDimensions": true,
+      "changedPixelPercent": 0
+    },
+    {
+      "file": "invoice-items-390.png",
+      "width": 390,
+      "height": 1882,
+      "sameDimensions": true,
+      "changedPixelPercent": 0
+    },
+    {
+      "file": "purchase-items-1440.png",
+      "width": 1440,
+      "height": 2315,
+      "sameDimensions": true,
+      "changedPixelPercent": 0.0088
+    },
+    {
+      "file": "purchase-items-1024.png",
+      "width": 1024,
+      "height": 2354,
+      "sameDimensions": true,
+      "changedPixelPercent": 0.0122
+    },
+    {
+      "file": "purchase-items-768.png",
+      "width": 768,
+      "height": 2494,
+      "sameDimensions": true,
+      "changedPixelPercent": 0.0154
+    },
+    {
+      "file": "purchase-items-430.png",
+      "width": 430,
+      "height": 2839,
+      "sameDimensions": true,
+      "changedPixelPercent": 0.0242
+    },
+    {
+      "file": "purchase-items-390.png",
+      "width": 390,
+      "height": 2858,
+      "sameDimensions": true,
+      "changedPixelPercent": 0.0265
+    },
+    {
+      "file": "expense-ledgers-1440.png",
+      "width": 1440,
+      "height": 1517,
+      "sameDimensions": true,
+      "changedPixelPercent": 0.0155
+    },
+    {
+      "file": "expense-ledgers-1024.png",
+      "width": 1024,
+      "height": 1568,
+      "sameDimensions": true,
+      "changedPixelPercent": 0.0211
+    },
+    {
+      "file": "expense-ledgers-768.png",
+      "width": 768,
+      "height": 1544,
+      "sameDimensions": true,
+      "changedPixelPercent": 0.0286
+    },
+    {
+      "file": "expense-ledgers-430.png",
+      "width": 430,
+      "height": 1981,
+      "sameDimensions": true,
+      "changedPixelPercent": 0.0398
+    },
+    {
+      "file": "expense-ledgers-390.png",
+      "width": 390,
+      "height": 2000,
+      "sameDimensions": true,
+      "changedPixelPercent": 0.0435
+    }
+  ]
+}

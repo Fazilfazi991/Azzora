@@ -1,0 +1,59 @@
+{
+  "before": {
+    "previous": {
+      "id": "dpl_DM4WvXZFDXGWrq3YCA5xp2G9hMNt",
+      "url": "azzora-accounts-client-review-5bwkp7c0v-faziils-projects.vercel.app",
+      "state": "READY",
+      "target": null,
+      "projectId": "prj_inNGMsufKkeDUTS1Sn5whmwIVWuw",
+      "sourceSha": null
+    },
+    "approved": {
+      "id": "dpl_7F7DwZXXLWHsz8WjXUePuDsN4KTb",
+      "url": "azzora-accounts-client-review-6swvalds8-faziils-projects.vercel.app",
+      "state": "READY",
+      "target": null,
+      "projectId": "prj_inNGMsufKkeDUTS1Sn5whmwIVWuw",
+      "sourceSha": "e360f4bca2e82c3d5955667fbfb896202ef0922b"
+    },
+    "manager": {
+      "id": "dpl_F9kD9Vu4ioWTCJrQwD2ev5J6mYmp",
+      "url": "azzora-3tz3i63x0-faziils-projects.vercel.app",
+      "state": "READY",
+      "target": "production",
+      "projectId": "prj_IvRzemrf0OSGWVBrp6Jm9M9TyAfX",
+      "sourceSha": "fd7754dfe0022f9b64bf875313bd9679cb0144eb"
+    }
+  },
+  "after": {
+    "stable": {
+      "id": "dpl_7F7DwZXXLWHsz8WjXUePuDsN4KTb",
+      "url": "azzora-accounts-client-review-6swvalds8-faziils-projects.vercel.app",
+      "state": "READY",
+      "target": null,
+      "sourceSha": "e360f4bca2e82c3d5955667fbfb896202ef0922b"
+    },
+    "rollback": {
+      "id": "dpl_DM4WvXZFDXGWrq3YCA5xp2G9hMNt",
+      "url": "azzora-accounts-client-review-5bwkp7c0v-faziils-projects.vercel.app",
+      "state": "READY",
+      "target": null,
+      "sourceSha": null
+    },
+    "manager": {
+      "id": "dpl_F9kD9Vu4ioWTCJrQwD2ev5J6mYmp",
+      "url": "azzora-3tz3i63x0-faziils-projects.vercel.app",
+      "state": "READY",
+      "target": "production",
+      "sourceSha": "fd7754dfe0022f9b64bf875313bd9679cb0144eb"
+    }
+  },
+  "runtimeErrorScan": "## Runtime Logs\n\n**Project:** prj_inNGMsufKkeDUTS1Sn5whmwIVWuw\n**Deployment:** dpl_7F7DwZXXLWHsz8WjXUePuDsN4KTb\n**Time range:** 2026-10-22T15:21:18.217Z → 2026-10-22T16:11:18.217Z\n\nNo logs found for the specified criteria.",
+  "githubMainBeforeAndAfter": "fd7754dfe0022f9b64bf875313bd9679cb0144eb",
+  "onlyAliasReassigned": true,
+  "rebuildPerformed": false,
+  "productionPromoted": false,
+  "applicationSourceChanged": false,
+  "paidAiEnabled": false,
+  "vatPolicy": "pending"
+}

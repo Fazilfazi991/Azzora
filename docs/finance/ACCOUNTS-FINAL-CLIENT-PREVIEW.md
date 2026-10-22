@@ -1,5 +1,7 @@
 # AZZORA Accounts — final client Preview for owner approval
 
+Historical Preview checkpoint. The owner subsequently approved the stable alias reassignment; see [the verified stable client release](ACCOUNTS-STABLE-CLIENT-RELEASE.md) for the current shareable URL and fresh acceptance results.
+
 22 October 2026. **READY for owner review.** This is a separate Vercel Preview. The existing stable client-review URL has not been replaced.
 
 ## Review URL and access

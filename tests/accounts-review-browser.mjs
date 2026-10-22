@@ -127,7 +127,7 @@ try {
   });
   await page.getByRole("button", { name: "Record bill & upload" }).click();
   await expect(page.getByRole("alert")).toContainText("under 2 MB");
-  await expect(page.getByLabel("Supplier")).toHaveValue("Sample Supplier B");
+  await expect(page.getByLabel("Supplier", { exact: true })).toHaveValue("Sample Supplier B");
   await page.getByLabel("Bill image or PDF · up to 2 MB").setInputFiles({
     name: "sample-bill.pdf",
     mimeType: "application/pdf",

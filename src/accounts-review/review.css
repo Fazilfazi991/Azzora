@@ -255,3 +255,11 @@
     flex: 1;
   }
 }
+/* Purchase bill entry choices reuse the approved Accounts card language. */
+.bill-entry-options { margin: 18px 0; }
+.bill-entry-option { display: block; color: inherit; text-decoration: none; }
+.bill-entry-option h2 { margin: 10px 0 8px; }
+.bill-entry-option p { max-width: 60ch; }
+.bill-entry-option > strong,
+.bill-entry-option > a { color: var(--clay-dark); }
+.bill-entry-option:focus-visible { outline: 3px solid var(--clay); outline-offset: 3px; }

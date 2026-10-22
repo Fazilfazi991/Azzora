@@ -7,13 +7,14 @@ import {
   sampleExtractor,
   type DocumentExtractor,
 } from "./providers.js";
+import { localPdfExtractor } from "./local-pdf.js";
 import { inspectFields, suggest } from "./review.js";
 import { z } from "zod";
 
 export async function extractDocument(
   previous: ReviewState,
   file: Upload,
-  extractor: DocumentExtractor = sampleExtractor,
+  extractor?: DocumentExtractor,
   at = new Date().toISOString(),
 ) {
   file = z
@@ -37,7 +38,16 @@ export async function extractDocument(
   if (next.attachments.reduce((s, a) => s + a.size, 0) > 6000000)
     throw Error("This demo session supports up to 6 MB of attachments.");
   const started = performance.now();
-  const extraction = await extractor.extract(file);
+  const knownSample = sampleExtractor;
+  const chosenExtractor = extractor ?? {
+    extract: async (upload: Upload) => {
+      const sample = await knownSample.extract(upload);
+      return sample.mode === "synthetic-replay"
+        ? sample
+        : localPdfExtractor.extract(upload);
+    },
+  };
+  const extraction = await chosenExtractor.extract(file);
   const fields = suggest(extraction.fields, next);
   entries.reviews.push({
     id,

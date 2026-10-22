@@ -12,7 +12,7 @@ import type {
   ReferenceCatalog,
   EntryFields,
 } from "./documents/model";
-import { catalogFor, categories } from "./documents/review.js";
+import { catalogFor, categories, inspectFields } from "./documents/review.js";
 import {
   documentAgeing,
   documentOutstanding,
@@ -37,6 +37,8 @@ export interface ReviewDocument {
   invoiceType?: "Tax Invoice" | "Normal Invoice" | "Proforma";
   category?: "Cost of Sales" | "Operating Expense";
   poReference?: string;
+  invoiceReference?: string;
+  sourceReviewId?: string;
   attachmentId?: string;
 }
 export interface ReviewExpense {
@@ -323,7 +325,16 @@ export type ReviewAction =
       amount: string;
       category: "Cost of Sales" | "Operating Expense";
       poReference: string;
+      invoiceReference?: string;
+      sourceReviewId?: string;
       attachment?: { name: string; mime: string; data: string };
+    }
+  | {
+      kind: "create-bill-from-review";
+      id: string;
+      reviewId: string;
+      revision: number;
+      confirmed: true;
     }
   | {
       kind: "receipt" | "supplier-payment";
@@ -387,6 +398,58 @@ export function applyReviewAction(
 ): ReviewState {
   if (action.kind === "document-draft")
     return saveDocumentDraft(previous, action, new Date().toISOString());
+  if (action.kind === "create-bill-from-review") {
+    const review = previous.documentEntries?.reviews.find(
+      (item) => item.id === action.reviewId,
+    );
+    if (!review || review.status !== "Draft")
+      throw Error("Save and confirm this document draft before creating a bill.");
+    if (review.convertedBillId)
+      throw Error("This document has already been converted to a purchase bill.");
+    if (review.revision !== action.revision)
+      throw Error("Document draft changed. Refresh and review again.");
+    if (action.confirmed !== true || review.fields.kind !== "supplier-bill")
+      throw Error("Confirm supplier purchase bill classification before posting.");
+    const f = review.fields;
+    const blockingWarnings = inspectFields(f, previous, review.id, review.sha256)
+      .filter((warning) =>
+        !warning.code.startsWith("product-") &&
+        !warning.code.startsWith("price-") &&
+        warning.code !== "customer",
+      );
+    if (blockingWarnings.length)
+      throw Error(`Resolve bill checks before posting: ${blockingWarnings.map((warning) => warning.message).join(" ")}`);
+    if (!f.purchaseOrderReference?.trim())
+      throw Error("Enter the purchase order reference required by the bill workflow.");
+    if (!f.dueDate)
+      throw Error("Confirm the supplier bill due date before creating the bill.");
+    if (!f.subtotal || !f.total || parseFils(f.subtotal) !== parseFils(f.total) || !f.tax || parseFils(f.tax) !== 0n)
+      throw Error("This demo bill pathway cannot post VAT. Confirm a VAT-free total equal to the subtotal, or keep this document as a draft.");
+    if (f.items.some((item) => item.tax && parseFils(item.tax) !== 0n))
+      throw Error("This demo bill pathway cannot post item VAT. Keep this document as a draft.");
+    const category = categories.find((item) => item.id === f.categoryId && item.active);
+    if (!category || !["cost", "operating"].includes(category.expenseAccountId))
+      throw Error("Choose a supported approved demo expense mapping.");
+    const bill = applyReviewAction(previous, {
+      kind: "bill",
+      id: action.id,
+      party: f.supplier,
+      date: f.date,
+      due: f.dueDate,
+      description: f.items.map((item) => item.description).filter(Boolean).join(", ") || f.reference,
+      amount: f.total,
+      category: category.expenseAccountId === "cost" ? "Cost of Sales" : "Operating Expense",
+      poReference: f.purchaseOrderReference,
+      invoiceReference: f.reference,
+      sourceReviewId: review.id,
+    });
+    const created = bill.bills.find((item) => item.id === action.id)!;
+    created.attachmentId = review.attachmentId;
+    const converted = bill.documentEntries!.reviews.find((item) => item.id === review.id)!;
+    converted.convertedBillId = action.id;
+    converted.revision++;
+    return bill;
+  }
   const next = structuredClone(previous);
   const id = required(action.id, "Action ID", 80);
   if (
@@ -450,8 +513,20 @@ export function applyReviewAction(
       status: "Issued",
       category: action.category,
       poReference: required(action.poReference, "Demo purchase reference"),
+      invoiceReference: action.invoiceReference?.trim() || undefined,
+      sourceReviewId: action.sourceReviewId,
       attachmentId: attachment(next, `${id}-file`, action.attachment),
     };
+    if (
+      next.bills.some(
+        (bill) =>
+          (item.sourceReviewId && bill.sourceReviewId === item.sourceReviewId) ||
+          (item.invoiceReference &&
+            bill.invoiceReference?.toLocaleLowerCase() === item.invoiceReference.toLocaleLowerCase() &&
+            bill.party.toLocaleLowerCase() === item.party.toLocaleLowerCase()),
+      )
+    )
+      throw Error("A purchase bill with this supplier and invoice reference already exists.");
     next.bills.push(item);
     journal(next, id, date, `Purchase bill ${id}`, [
       line(

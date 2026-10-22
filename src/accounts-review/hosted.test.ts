@@ -68,6 +68,70 @@ async function signIn(handler: (r: Request) => Promise<Response>) {
   };
 }
 describe("hosted fictional Accountant boundary", () => {
+  it("creates a reviewed bill atomically once through the authenticated action route", async () => {
+    const { handler } = setup();
+    const user = await signIn(handler);
+    const headers = { Cookie: user.cookie, "X-Azzora-CSRF": user.csrf };
+    const upload = await handler(request("documents/extract", "POST", {
+      file: {
+        name: "fictional.png",
+        mime: "image/png",
+        data: readFileSync("public/document-samples/01.png").toString("base64"),
+      },
+    }, headers));
+    const before = await upload.json();
+    const review = before.snapshot.documentEntries.reviews[0];
+    const fields = {
+      ...review.fields,
+      dueDate: "2026-10-08",
+      purchaseOrderReference: "DEMO-PO-HOSTED",
+      projectId: "demo-apartment",
+      subtotal: "120.00",
+      tax: "0.00",
+      total: "120.00",
+      items: [{ ...review.fields.items[0], tax: "0.00", total: "120.00" }],
+    };
+    const save = await handler(request("action", "POST", {
+      kind: "document-draft",
+      reviewId: review.id,
+      revision: 0,
+      fields,
+      confirmed: true,
+      rememberSupplier: false,
+    }, { ...headers, "X-Azzora-Idempotency-Key": randomUUID() }));
+    expect(save.status).toBe(200);
+    const saved = await save.json();
+    const command = {
+      kind: "create-bill-from-review",
+      reviewId: review.id,
+      revision: saved.snapshot.documentEntries.reviews[0].revision,
+      confirmed: true,
+    };
+    const key = randomUUID();
+    const first = await handler(request("action", "POST", command, {
+      ...headers,
+      "X-Azzora-Idempotency-Key": key,
+    }));
+    expect(first.status).toBe(200);
+    const result = await first.json();
+    expect(result.snapshot.bills.at(-1)).toMatchObject({
+      sourceReviewId: review.id,
+      invoiceReference: review.fields.reference,
+      attachmentId: review.attachmentId,
+    });
+    expect(result.snapshot.metrics).not.toEqual(before.snapshot.metrics);
+    const retry = await handler(request("action", "POST", command, {
+      ...headers,
+      "X-Azzora-Idempotency-Key": key,
+    }));
+    expect(retry.status).toBe(200);
+    expect((await retry.json()).snapshot.bills.filter((b: { sourceReviewId?: string }) => b.sourceReviewId === review.id)).toHaveLength(1);
+    const duplicate = await handler(request("action", "POST", command, {
+      ...headers,
+      "X-Azzora-Idempotency-Key": randomUUID(),
+    }));
+    expect(duplicate.status).toBe(400);
+  });
   it("protects document extraction and drafts with session, CSRF, isolation, revision and idempotency", async () => {
     const { handler } = setup();
     const input = {

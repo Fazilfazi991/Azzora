@@ -597,16 +597,30 @@ function Bills({
       <Head
         eyebrow="PURCHASES"
         title="Purchase bills"
-        sub="Record a fictional PO-referenced bill, including a camera image or PDF from mobile."
+        sub="Upload a bill to fill details automatically where text is readable, or enter it manually."
       >
-        <a className="button" href="#/document-entry">
-          Read a bill · save draft
+        <a className="button button-primary" href="#/document-entry">
+          Upload & auto-fill
         </a>
       </Head>
       <Note />
+      <div className="review-two bill-entry-options">
+        <a className="panel review-card bill-entry-option" href="#/document-entry">
+          <span className="eyebrow">OPTION 1 · UPLOAD & AUTO-FILL</span>
+          <h2>Read a purchase bill</h2>
+          <p>Local text extraction from selectable PDFs. Review every field, then save a draft. Photos and scanned files stay manual.</p>
+          <strong>Choose a document →</strong>
+        </a>
+        <div className="panel review-card bill-entry-option">
+          <span className="eyebrow">OPTION 2 · MANUAL ENTRY</span>
+          <h2>Enter bill details</h2>
+          <p>Record a bill directly with an optional attachment. This uses the existing validated finance posting path.</p>
+          <a href="#bill-manual-form">Go to manual form ↓</a>
+        </div>
+      </div>
       <div className="review-two">
-        <form className="panel review-form" onSubmit={submit}>
-          <h2>New purchase bill</h2>
+        <form id="bill-manual-form" className="panel review-form" onSubmit={submit}>
+          <h2>Manual purchase bill</h2>
           <div className="field-grid">
             <Field
               label="Supplier"
@@ -617,6 +631,11 @@ function Bills({
               label="Demo PO reference"
               name="poReference"
               defaultValue="DEMO-PO-33"
+            />
+            <Field
+              label="Supplier invoice number"
+              name="invoiceReference"
+              required={false}
             />
             <Field
               label="Bill date"
@@ -699,6 +718,7 @@ function Bills({
           <tr key={item.id}>
             <td>
               <strong>{item.id}</strong>
+              {item.invoiceReference && <small>Supplier ref {item.invoiceReference}</small>}
               <small>{item.poReference}</small>
             </td>
             <td>{item.party}</td>
@@ -1293,7 +1313,9 @@ function App() {
       setMessage(
         action.kind === "document-draft"
           ? "Document draft saved. No financial posting."
-          : `${action.kind === "issue-invoice" ? "Issued" : "Recorded"} ${result.id} in the fictional review ledger.`,
+          : action.kind === "create-bill-from-review"
+            ? "Purchase bill created once through the demo ledger."
+            : `${action.kind === "issue-invoice" ? "Issued" : "Recorded"} ${result.id} in the fictional review ledger.`,
       );
       return true;
     } catch (problem) {

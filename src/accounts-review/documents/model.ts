@@ -37,7 +37,19 @@ export const fieldsSchema = z
             new Date(v).toISOString().slice(0, 10) === v),
         "Enter a valid date.",
       ),
+    dueDate: z
+      .string()
+      .optional()
+      .refine(
+        (v) =>
+          !v ||
+          (/^\d{4}-\d{2}-\d{2}$/.test(v) &&
+            Number.isFinite(Date.parse(v)) &&
+            new Date(v).toISOString().slice(0, 10) === v),
+        "Enter a valid due date.",
+      ),
     reference: text,
+    purchaseOrderReference: text.optional(),
     currency: z.enum(["AED", "other", "unknown"]),
     items: z.array(itemSchema).max(80),
     subtotal: amount,
@@ -60,7 +72,9 @@ export type EntryFields = z.infer<typeof fieldsSchema>;
 export const blankFields = (): EntryFields => ({
   supplier: "",
   date: "",
+  dueDate: "",
   reference: "",
+  purchaseOrderReference: "",
   currency: "unknown",
   items: [],
   subtotal: "",
@@ -82,7 +96,7 @@ export interface Extraction {
   fields: EntryFields;
   uncertain: string[];
   provider: string;
-  mode: "synthetic-replay" | "manual" | "live";
+  mode: "synthetic-replay" | "manual" | "local-pdf-text" | "live";
   inputTokens: number | null;
   outputTokens: number | null;
   requestId?: string;
@@ -100,6 +114,7 @@ export interface DocumentReview {
   fields: EntryFields;
   status: "Review" | "Draft";
   revision: number;
+  convertedBillId?: string;
   corrections: {
     at: string;
     actor: "demo-accountant";

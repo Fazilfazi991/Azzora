@@ -229,6 +229,7 @@ export function createHostedHandler(
             "invoice",
             "issue-invoice",
             "bill",
+            "create-bill-from-review",
             "receipt",
             "supplier-payment",
             "expense",

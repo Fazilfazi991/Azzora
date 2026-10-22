@@ -141,6 +141,7 @@ export function inspectFields(
   for (const key of [
     "supplier",
     "date",
+    "dueDate",
     "reference",
     "subtotal",
     "tax",
@@ -153,8 +154,12 @@ export function inspectFields(
       "Only AED draft review is supported; confirm currency.",
       "currency",
     );
+  if (f.dueDate && f.date && f.dueDate < f.date)
+    add("due-date", "Due date cannot be earlier than the invoice date.", "dueDate");
   if (f.kind === "unknown")
     add("kind", "Choose a document classification.", "kind");
+  if (f.kind === "supplier-bill" && !f.purchaseOrderReference?.trim())
+    add("purchase-order", "Enter the purchase order reference before creating a bill.", "purchaseOrderReference");
   const cat = categories.find((c) => c.id === f.categoryId);
   if (!cat)
     add("category", "Choose an existing expense category.", "categoryId");
@@ -264,7 +269,7 @@ export function inspectFields(
     state.bills.some(
       (b) =>
         normalize(b.party) === normalize(f.supplier) &&
-        (normalize(b.poReference || "") === normalize(f.reference) ||
+        ((b.invoiceReference && normalize(b.invoiceReference) === normalize(f.reference)) ||
           (f.date === b.date &&
             f.total &&
             fils(f.total) === BigInt(b.amountFils))),
@@ -288,6 +293,7 @@ export function saveDocumentDraft(
     entries = next.documentEntries ?? emptyEntries();
   const doc = entries.reviews.find((d) => d.id === action.reviewId);
   if (!doc) throw Error("Document review not found.");
+  if (doc.convertedBillId) throw Error("A converted bill is read-only in document review.");
   if (doc.revision !== action.revision)
     throw Error("Document draft changed. Refresh and review again.");
   const f = fieldsSchema.parse(action.fields),

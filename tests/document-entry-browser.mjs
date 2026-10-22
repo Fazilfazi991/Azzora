@@ -42,7 +42,13 @@ try {
     await context.request.get(`${base}/api/accounts-review/snapshot`)
   ).json();
   await page.goto(`${base}/accountant.html#/bills`);
-  await page.getByRole("link", { name: "Read a bill · save draft" }).click();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: `${out}/00-purchase-bills-1440.png`, fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: `${out}/00-purchase-bills-390.png`, fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.getByRole("link", { name: "Upload & auto-fill", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Read a bill", exact: true }),
   ).toBeVisible();
@@ -72,7 +78,7 @@ try {
   ).toHaveJSProperty("naturalWidth", 800);
   check("uploaded image preview and explicit synthetic suggestions");
   await expect(
-    page.getByRole("button", { name: "Confirm & save draft" }),
+    page.getByRole("button", { name: "Save reviewed draft" }),
   ).toBeDisabled();
   await expect(
     page.getByText(/changed from AED 50.00 to AED 60.00/),
@@ -114,7 +120,7 @@ try {
     .getByLabel("Item 1 description", { exact: true })
     .fill("Interior paint reviewed");
   await expect(
-    page.getByRole("button", { name: "Confirm & save draft" }),
+    page.getByRole("button", { name: "Save reviewed draft" }),
   ).toBeDisabled();
   check("editing an extracted field requires renewed confirmation");
   await page
@@ -122,7 +128,7 @@ try {
       "I checked all fields and any warnings against the original document",
     )
     .check();
-  await page.getByRole("button", { name: "Confirm & save draft" }).click();
+  await page.getByRole("button", { name: "Save reviewed draft" }).click();
   await expect(
     page.getByText(
       "Draft saved. No bill, payment or journal was posted. You can reopen and edit this draft below.",
@@ -283,7 +289,7 @@ try {
       "I checked all fields and any warnings against the original document",
     )
     .check();
-  await page.getByRole("button", { name: "Confirm & save draft" }).click();
+  await page.getByRole("button", { name: "Save reviewed draft" }).click();
   await expect(
     page.getByText(
       "Draft saved. No bill, payment or journal was posted. You can reopen and edit this draft below.",
@@ -314,10 +320,43 @@ try {
   );
   await expect(
     page.getByText(
-      "Not enabled. Original suggestions are preserved with each correction.",
+      "No local image OCR engine installed. Original suggestions are preserved with each correction.",
     ),
   ).toBeVisible();
   check("unregistered upload stays manual and no field is invented");
+  const pdfBytes = Buffer.concat([
+    fs.readFileSync("tests/fixtures/document-entry/04.pdf"),
+    Buffer.from("\n% local extraction browser proof"),
+  ]);
+  await page
+    .getByLabel("Upload document", { exact: true })
+    .setInputFiles({
+      name: "local-text-proof.pdf",
+      mimeType: "application/pdf",
+      buffer: pdfBytes,
+    });
+  await expect(page.getByLabel("Supplier name", { exact: true })).toHaveValue(
+    "Sample Supplier C",
+  );
+  await expect(
+    page.getByText(/Actual local PDF text extraction · not AI/),
+  ).toBeVisible();
+  await expect(page.getByLabel("Item 2 description", { exact: true })).toHaveValue(
+    "Sample fittings 2",
+  );
+  await expect(
+    page.getByRole("img", { name: "Original PDF page 1" }),
+  ).toHaveAttribute("data-rendered", "true", { timeout: 20000 });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: `${out}/09-actual-local-pdf-extraction.png`, fullPage: true });
+  const localReview = await (
+    await context.request.get(`${base}/api/accounts-review/snapshot`)
+  ).json();
+  expect(localReview.documentEntries.reviews.at(-1).extraction.mode).toBe(
+    "local-pdf-text",
+  );
+  check("arbitrary selectable PDF is actually read locally and labeled as non-AI");
   expect(
     await page.evaluate(() => localStorage.getItem("azzora-demo-v1")),
   ).toBe("DOCUMENT_AUTOMATION_SENTINEL");

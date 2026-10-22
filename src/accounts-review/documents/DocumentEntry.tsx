@@ -152,6 +152,12 @@ export function DocumentEntry({
         doc?.sha256,
       )
     : [];
+  const billBlockingWarnings = warnings.filter(
+    (warning) =>
+      !warning.code.startsWith("product-") &&
+      !warning.code.startsWith("price-") &&
+      warning.code !== "customer",
+  );
   const uncertain = (key: string) =>
     Boolean(
       doc?.extraction.uncertain.some(
@@ -233,6 +239,21 @@ export function DocumentEntry({
       setBusy(false);
     }
   }
+  async function createBill() {
+    if (!doc || doc.status !== "Draft" || !confirmed || busy) return;
+    if (!window.confirm("Create this purchase bill and post it to the fictional demo journal?")) return;
+    setBusy(true);
+    try {
+      await act({
+        kind: "create-bill-from-review",
+        reviewId: doc.id,
+        revision: doc.revision,
+        confirmed: true,
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <>
       <div className="page-head">
@@ -248,8 +269,7 @@ export function DocumentEntry({
       <div className="prototype-note">
         <strong>CLIENT REVIEW · FICTIONAL DATA</strong>
         <span>
-          AI service is not connected. Sample documents replay prepared
-          suggestions; other uploads open for manual entry.
+          Paid AI is disabled. Text PDFs use local PDF.js extraction; photos and scanned PDFs need manual entry. Prepared sample suggestions are labeled separately.
         </span>
       </div>
       <section className="panel entry-upload" aria-label="Upload a document">
@@ -268,7 +288,7 @@ export function DocumentEntry({
             }}
           />
         </label>
-        <span>PDF, PNG or JPEG · up to 2 MB</span>
+        <span>PDF, PNG or JPEG · up to 2 MB. Selectable PDF text is read locally; photos/scans remain manual.</span>
         <a href="/document-samples/01.png" download>
           Download sample bill
         </a>
@@ -317,8 +337,12 @@ export function DocumentEntry({
             )}
             <p>
               {doc.extraction.mode === "manual"
-                ? "Manual entry · no AI extraction."
-                : "Prepared sample suggestions · not an AI result."}{" "}
+                ? "Manual entry · no local OCR engine is available for this file."
+                : doc.extraction.mode === "local-pdf-text"
+                  ? "Actual local PDF text extraction · not AI. Verify every value against the original."
+                  : doc.extraction.mode === "live"
+                    ? "Actual AI result · verify every value against the original."
+                    : "Prepared synthetic demo suggestions · not an extraction or AI result."}{" "}
               {doc.extraction.provider}. Original suggestions are preserved with
               each correction.
             </p>
@@ -338,7 +362,9 @@ export function DocumentEntry({
             <div className="field-grid">
               {field("Supplier name", "supplier")}
               {field("Document date", "date", "date")}
+              {field("Due date", "dueDate", "date")}
               {field("Invoice / receipt reference", "reference")}
+              {field("Purchase order reference", "purchaseOrderReference")}
               {choice(
                 "Currency",
                 "currency",
@@ -588,12 +614,26 @@ export function DocumentEntry({
                 type="submit"
                 disabled={!confirmed || !parsed.success || busy}
               >
-                Confirm & save draft
+                Save reviewed draft
               </button>
+              {doc.status === "Draft" && fields.kind === "supplier-bill" && !doc.convertedBillId && (
+                <button
+                  className="button"
+                  type="button"
+                  disabled={!confirmed || busy || billBlockingWarnings.length > 0}
+                  onClick={() => void createBill()}
+                >
+                  Create purchase bill
+                </button>
+              )}
+              {doc.convertedBillId && (
+                <p className="review-success" role="status">
+                  Created purchase bill {doc.convertedBillId}. This document is linked to that bill and cannot be posted twice.
+                </p>
+              )}
             </div>
             <p>
-              Draft only. This action never creates a supplier, purchase bill,
-              paid expense or ledger entry.
+              Saving a draft never posts. Creating a purchase bill is a separate explicit action, uses the existing demo journal workflow, and currently requires a VAT-free total.
             </p>
           </form>
         </div>
@@ -636,6 +676,8 @@ const historyLabels: Record<string, string> = {
   supplier: "Supplier",
   date: "Date",
   reference: "Reference",
+  dueDate: "Due date",
+  purchaseOrderReference: "Purchase order reference",
   currency: "Currency",
   subtotal: "Subtotal",
   tax: "Tax",

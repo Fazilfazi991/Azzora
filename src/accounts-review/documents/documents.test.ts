@@ -27,6 +27,7 @@ import {
   sampleExtractor,
 } from "./providers";
 import { sampleDocuments } from "./samples";
+import { localPdfExtractor, parseBillText } from "./local-pdf";
 
 const manifest = JSON.parse(
   readFileSync("tests/fixtures/document-entry/manifest.json", "utf8"),
@@ -51,6 +52,7 @@ const upload = (n = 0): Upload => {
 };
 const save = (id: string, fields: EntryFields, revision = 0) => ({
   kind: "document-draft" as const,
+  id: "document-review-test",
   reviewId: id,
   revision,
   fields,
@@ -86,7 +88,141 @@ describe("synthetic document corpus (not live AI accuracy)", () => {
   it("has 40 distinct authorized synthetic files", () =>
     expect(new Set(sampleDocuments.map((d) => d.sha256)).size).toBe(40));
 });
+describe("actual local PDF text extraction", () => {
+  it("reads supplier, dates, references, multi-item amounts and classification from PDF text", async () => {
+    const extracted = await localPdfExtractor.extract(upload(1));
+    expect(extracted.mode).toBe("local-pdf-text");
+    expect(extracted.provider).toContain("PDF.js");
+    expect(extracted.fields).toMatchObject({
+      supplier: "Sample Supplier B",
+      date: "2026-10-03",
+      reference: "SYNTH-02",
+      currency: "AED",
+      subtotal: "168.75",
+      tax: "8.44",
+      total: "177.19",
+      kind: "supplier-bill",
+      items: [
+        { description: "Interior paint", quantity: "2", unit: "tin", unitRate: "60.00", tax: "6.00", total: "126.00" },
+        { description: "Sample fittings 2", quantity: "3", unit: "each", unitRate: "16.25", tax: "2.44", total: "51.19" },
+      ],
+    });
+  });
+  it("uses local extraction for an arbitrary PDF instead of its filename or a canned sample mapping", async () => {
+    const file = upload(1);
+    file.data = Buffer.concat([
+      Buffer.from(file.data, "base64"),
+      Buffer.from("\n% changed digest for local extraction test"),
+    ]).toString("base64");
+    const result = await extractDocument(createReviewState(), file);
+    const doc = result.state.documentEntries!.reviews[0];
+    expect(doc.extraction.mode).toBe("local-pdf-text");
+    expect(doc.fields.reference).toBe("SYNTH-02");
+    expect(doc.fields.items).toHaveLength(2);
+  });
+  it("reads long multi-page bills from their selectable text instead of returning fixture suggestions", async () => {
+    const extracted = await localPdfExtractor.extract(upload(21));
+    expect(extracted.mode).toBe("local-pdf-text");
+    expect(extracted.fields.items.length).toBeGreaterThan(20);
+    expect(extracted.fields.reference).toBe("SYNTH-22");
+    expect(extracted.fields.total).toBe("10401.85");
+  });
+  it("normalizes bilingual labels and Arabic digits without filling absent values", () => {
+    const result = parseBillText("المورد: شركة مثال\nرقم الفاتورة: INV-12\nالتاريخ: ٢٠٢٦-١٠-٠٥\nتاريخ الاستحقاق: ٢٠٢٦-١١-٠٥\nأمر الشراء: PO-12\nالمجموع شامل الضريبة: AED 120.00");
+    expect(result.fields).toMatchObject({ supplier: "شركة مثال", reference: "INV-12", date: "2026-10-05", dueDate: "2026-11-05", purchaseOrderReference: "PO-12", total: "120.00", kind: "supplier-bill" });
+    expect(result.fields.subtotal).toBe("");
+    expect(result.uncertain).toContain("subtotal");
+  });
+  it("does not claim image OCR when no OCR engine is installed", async () => {
+    const extracted = await localPdfExtractor.extract(upload(0));
+    expect(extracted.mode).toBe("manual");
+    expect(extracted.fields).toEqual(blankFields());
+    expect(extracted.provider).toContain("No local image OCR");
+  });
+});
 describe("review-only finance boundaries", () => {
+  it("creates one bill through the validated journal path only after a saved, confirmed VAT-free review", async () => {
+    const initial = createReviewState();
+    const uploaded = await extractDocument(initial, upload(1));
+    const original = uploaded.state.documentEntries!.reviews[0];
+    const fields = {
+      ...original.fields,
+      projectId: "demo-apartment",
+      dueDate: "2026-10-10",
+      purchaseOrderReference: "DEMO-PO-REVIEW-1",
+      subtotal: "120.00",
+      tax: "0.00",
+      total: "120.00",
+      items: [{ ...original.fields.items[0], tax: "0.00", total: "120.00" }],
+    };
+    const draft = applyReviewAction(uploaded.state, save(uploaded.id, fields));
+    expect(draft.accounting.journals).toHaveLength(uploaded.state.accounting.journals.length);
+    const bill = applyReviewAction(draft, {
+      kind: "create-bill-from-review",
+      id: "BILL-REVIEW-1",
+      reviewId: uploaded.id,
+      revision: draft.documentEntries!.reviews[0].revision,
+      confirmed: true,
+    });
+    expect(bill.bills.at(-1)).toMatchObject({
+      id: "BILL-REVIEW-1",
+      invoiceReference: "SYNTH-02",
+      sourceReviewId: uploaded.id,
+      amountFils: "12000",
+    });
+    expect(bill.accounting.journals).toHaveLength(draft.accounting.journals.length + 1);
+    expect(bill.documentEntries!.reviews[0].convertedBillId).toBe("BILL-REVIEW-1");
+    expect(() => applyReviewAction(bill, {
+      kind: "create-bill-from-review",
+      id: "BILL-REVIEW-RETRY",
+      reviewId: uploaded.id,
+      revision: bill.documentEntries!.reviews[0].revision,
+      confirmed: true,
+    })).toThrow(/already been converted/);
+  });
+  it("blocks VAT-bearing reviewed bills instead of silently omitting tax from the journal", async () => {
+    const uploaded = await extractDocument(createReviewState(), upload(1));
+    const fields = {
+      ...uploaded.state.documentEntries!.reviews[0].fields,
+      projectId: "demo-apartment",
+      dueDate: "2026-10-10",
+      purchaseOrderReference: "DEMO-PO-VAT-1",
+      kind: "supplier-bill" as const,
+      categoryId: "project-materials",
+    };
+    const draft = applyReviewAction(uploaded.state, save(uploaded.id, fields));
+    expect(() => applyReviewAction(draft, {
+      kind: "create-bill-from-review",
+      id: "BILL-REVIEW-VAT",
+      reviewId: uploaded.id,
+      revision: draft.documentEntries!.reviews[0].revision,
+      confirmed: true,
+    })).toThrow(/cannot post VAT/);
+    expect(draft.accounting.journals).toHaveLength(uploaded.state.accounting.journals.length);
+  });
+  it("rejects direct bill conversion when a reviewed line calculation is inconsistent", async () => {
+    const uploaded = await extractDocument(createReviewState(), upload(1));
+    const fields = {
+      ...uploaded.state.documentEntries!.reviews[0].fields,
+      dueDate: "2026-10-10",
+      purchaseOrderReference: "DEMO-PO-MATH-1",
+      projectId: "demo-apartment",
+      subtotal: "120.00",
+      tax: "0.00",
+      total: "120.00",
+      items: [{ ...uploaded.state.documentEntries!.reviews[0].fields.items[0], tax: "0.00", total: "119.00" }],
+    };
+    const draft = applyReviewAction(uploaded.state, save(uploaded.id, fields));
+    expect(() => applyReviewAction(draft, {
+      kind: "create-bill-from-review",
+      id: "BILL-REVIEW-BAD-MATH",
+      reviewId: uploaded.id,
+      revision: draft.documentEntries!.reviews[0].revision,
+      confirmed: true,
+    })).toThrow(/Resolve bill checks/);
+    expect(draft.bills).toEqual(uploaded.state.bills);
+    expect(draft.accounting.journals).toHaveLength(uploaded.state.accounting.journals.length);
+  });
   it("allows an office supplier bill to use the company expense mapping without inventing a project", async () => {
     const r = await extractDocument(createReviewState(), upload());
     const fields = {

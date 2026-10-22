@@ -4,23 +4,24 @@
 
 ## Delivery
 
-- Tested/deployed application: `8e549ff9dba7c82a4c93d4303a51fca9a0e29956`.
-- Branch: `codex/azzora-accounts-integrated-review`.
+- Tested/deployed application source: `f15a967fb3e090e9c53fc4a6bd0ec77dbbf21cc1`.
+- Branch: `codex/azzora-accounts-design-integration`.
 - Client link: https://azzora-accounts-client-review-faziils-projects.vercel.app/accountant.html
-- Immutable deployment URL: https://azzora-accounts-client-review-cg0l8erjo-faziils-projects.vercel.app/accountant.html
-- Preview deployment: `dpl_9Y8YVYhgY15xYdxrCWY2xBH6n89n`, READY, target Preview (`null` in the API), production URL absent.
+- Immutable deployment URL: https://azzora-accounts-client-review-5bwkp7c0v-faziils-projects.vercel.app/accountant.html
+- Preview deployment: `dpl_DM4WvXZFDXGWrq3YCA5xp2G9hMNt`, READY, no production URL or deployment aliases.
 - Dedicated project: `prj_inNGMsufKkeDUTS1Sn5whmwIVWuw`, team `faziils-projects`.
+- Previous Preview `dpl_9Y8YVYhgY15xYdxrCWY2xBH6n89n` remains available as a rollback candidate.
 
 The client link opens the separate Accountant sign-in screen without Vercel authentication. Sign in as `accountant@review.azzora.test` using the existing privately supplied Accountant demo password. No credential or access token is included in this report. Financial APIs and uploaded originals require the server-verified Accountant session. A public login screen does not make the ledger or uploads public.
 
-The local `/docs/finance/portal-design/index.html#/demo/sales` screenshot is the design prototype. The published functional application is `/accountant.html`; it preserves the approved independent visual direction and provides the working finance commands and document review.
+The local `/docs/finance/portal-design/index.html#/demo/sales` screenshot is the design prototype. The published functional application is `/accountant.html`; it preserves the approved independent visual direction and provides the working finance commands and document review. The latest alignment release brings the invoice list closer to that approved sales layout without replacing the finance app or changing its shared portal shell.
 
 ## Integrated functionality
 
 | Module | Client-review behavior |
 | --- | --- |
 | Dashboard | Journal-derived period revenue, cost of sales, operating expenses, gross profit and net profit; separately labelled as-of AR/AP and bank/cash. |
-| Sales invoices | Fictional draft, explicit issue, receivable/revenue posting once, refresh and marked demo PDF. |
+| Sales invoices | Search and type/status filters; issued/outstanding/draft summaries; tax, normal and proforma documents; explicit issue; receivable/revenue posting once for tax/normal invoices; proformas never post; type-labelled demo PDFs. |
 | Purchases | Fictional bill, PO reference and evidence upload, cost/payable posting; entry to separate document review. |
 | Customer receipts | Selected-invoice partial/full allocation, overpayment checks and bank/cash ledger update. |
 | Supplier payments | Selected-bill allocation and bank/cash/payables update. |
@@ -39,15 +40,17 @@ Document entry supports PDF/PNG/JPEG uploads, original image/PDF preview includi
 
 | Check | Result |
 | --- | --- |
-| Vitest | 546/546, 34 suites passed. |
+| Vitest | 548/548, 34 suites passed. |
 | Node finance fixtures | 2/2 passed. |
 | TypeScript, ESLint, diff whitespace | Passed. |
-| Combined build and Accounts-only build | Passed. |
+| Full Vite build and Accounts-only Vite build | Passed; Accounts-only output contains `accountant.html` and no Manager `index.html`. |
 | Node 24 API bundle/import | Passed; missing server credentials fail closed with 503. |
 | Built document browser workflow | 20/20, zero page errors. |
 | Hosted API smoke | 7/7: no Vercel redirect, auth, private upload, no-post draft save, persistent corrections/isolation, PDFs, logout revocation. |
 | Hosted document browser workflow | 20/20, zero page errors. |
-| Hosted Accounts workflows | 14/14, zero page errors: invoices, bills, allocations, expenses, ledgers/reports, PDFs, mobile upload, refresh/logout and isolation. |
+| Local Accounts browser workflows | 14/14 grouped checks, zero page errors: auth boundary, three invoice types, bills, allocations, expenses, reports, PDFs, mobile upload, refresh/logout and isolation. |
+| Immutable hosted Preview workflows | 14/14 grouped checks, zero page errors; desktop 1440 and responsive 1024/768/390 widths; no page-level horizontal overflow. |
+| Stable client alias after reassignment | Same 14/14 hosted checks passed after `azzora-accounts-client-review-faziils-projects.vercel.app` was updated to the new immutable Preview. |
 | Hosted navigation/access/concurrency | 8/8 grouped checks, including 52/52 route/viewport cases, conditional concurrent writes, idempotency, Secure cookie/logout revocation and Manager entry exclusion. |
 | Client alias browser check | 8/8: 1440/390px login without Vercel, refresh, private PDF upload/render, prepared suggestions and logout. |
 | Existing CRM browser regression | 482 numerical checks across nine suites plus quotation desktop/mobile/PDF/print/lifecycle/persistence journeys, all passed. |
@@ -56,7 +59,7 @@ Document entry supports PDF/PNG/JPEG uploads, original image/PDF preview includi
 
 CRM numerical groups: routes/handover 66; commercial 129 plus boundaries 6; operational 136 plus boundaries 18; corrective finance/accessibility 35; workforce 40; recovery 25; finance checkpoint 27. The first development PDF check timed out at five seconds without a page error. The built and hosted PDF workflows passed with a 20-second render allowance. Poppler reported local optional-font configuration warnings while producing the three readable, visually inspected report renders.
 
-Local evidence: ignored `tmp/accounts-integrated-review/`, including `crm/results.json`, `hosted/results.json`, API smoke results, PDF renders, desktop/tablet/mobile screenshots, correction history and Arabic/English/multipage samples. Screenshots were inspected at desktop and mobile sizes. Browser runs use fictional sessions and fresh contexts; no saved company records are used or reset.
+Local evidence: ignored `tmp/accounts-integrated-review/` retains the prior complete Accounts/CRM acceptance evidence. Current invoice-specific desktop/mobile screenshots and rendered tax/proforma PDFs are in ignored `tmp/accounts-design-hosted/`; the stable-alias rerun evidence is in `tmp/accounts-design-stable-alias/`. The updated invoice pages and both document PDFs were visually inspected. Browser runs use fictional sessions and fresh contexts; no saved company records are used or reset.
 
 ## Hosting and boundaries
 
@@ -71,5 +74,7 @@ There is no remaining blocker to sharing the verified demo link. Future releases
 Manager production remains `dpl_F9kD9Vu4ioWTCJrQwD2ev5J6mYmp`, SHA `fd7754dfe0022f9b64bf875313bd9679cb0144eb`, at `azzora-seven.vercel.app`. GitHub main remains that SHA. No merge, force-push, production promotion, real-company data change or paid AI enablement occurred.
 
 ## Source checkpoints
+
+Current design alignment and invoice-type integration: `f15a967fb3e090e9c53fc4a6bd0ec77dbbf21cc1` (deployed to the dedicated Accounts Preview). Documentation checkpoint for this release follows in Git history.
 
 The existing hosted finance implementation (`a3da2fa749144ee94f4a28eaddee9048af64ff08`, certified by `b4ddaa2f63808ac8bda36dfb531de2e451ff0011`) is retained. Document entry: `499d80b61c46fb26003336d0c2b4eeecbd8d1a4d`; company bill scope: `6ef1be48e556c46024479c7325daf61fe0c19f08`; delivery notes: `ab239bd5ecab4fe3faa0b80d60a309f871d3f32b`; deferred benchmark preparation: `f73242956e48ee6339d731079c8bc885117aa1d1`; visible history/navigation safeguard and harness: `bc5acd2f0633429cde20d3025bacc89811327042`; client login-only acceptance tests: `8e549ff9dba7c82a4c93d4303a51fca9a0e29956`.

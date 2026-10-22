@@ -107,6 +107,9 @@ try {
   await page.getByRole("button", { name: "Issue proforma" }).click();
   await expect(page.getByRole("status")).toContainText("Issued PRO-26009");
   await expect(page.getByText("Proforma · no posting")).toBeVisible();
+  const proformaDownload = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Download demo PDF" }).click();
+  await (await proformaDownload).saveAs(`${output}/proforma.pdf`);
   await page
     .getByLabel("Filter document type")
     .selectOption({ label: "All document types" });

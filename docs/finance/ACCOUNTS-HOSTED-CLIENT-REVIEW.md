@@ -1,5 +1,7 @@
 # AZZORA Accounts — protected hosted client review
 
+Historical checkpoint. The latest integrated demo, current client link and login-only access verification are recorded in [ACCOUNTS-INTEGRATED-CLIENT-REVIEW.md](ACCOUNTS-INTEGRATED-CLIENT-REVIEW.md). The Vercel share-link instructions below describe the original protected release, before the owner's subsequent request for access without Vercel login.
+
 Verified 22 October 2026. The live client-review application is **READY** as a Vercel **Preview** in the dedicated `azzora-accounts-client-review` project. It has not been merged or promoted to production.
 
 - Repository: https://github.com/Fazilfazi991/Azzora

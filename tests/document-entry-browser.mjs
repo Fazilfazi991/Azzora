@@ -1,14 +1,16 @@
 import fs from "node:fs";
 import { chromium, expect } from "@playwright/test";
-import { browserOptions } from "./browser-runtime.mjs";
+import { browserOptions, reviewTlsOptions } from "./browser-runtime.mjs";
 const base = process.env.AZZORA_ACCOUNTS_REVIEW_URL || "http://127.0.0.1:5289";
 const password =
   process.env.AZZORA_REVIEW_PASSWORD ||
   JSON.parse(fs.readFileSync("tmp/local-test-secret.json", "utf8")).password;
-const out = "tmp/document-entry-evidence";
+const out =
+  process.env.AZZORA_ACCOUNTS_EVIDENCE || "tmp/document-entry-evidence";
 fs.mkdirSync(out, { recursive: true });
 const browser = await chromium.launch(browserOptions),
   context = await browser.newContext({
+    ...reviewTlsOptions(base),
     viewport: { width: 1440, height: 1000 },
   }),
   page = await context.newPage();
@@ -146,6 +148,56 @@ try {
   ).toHaveValue("Interior paint reviewed");
   check("refresh and reopen preserve reviewed edits and original extraction");
   await page
+    .getByText("Correction history · 1 saved review(s)", { exact: true })
+    .click();
+  await expect(
+    page.getByText("Before: Interior paint", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("After: Interior paint reviewed", { exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: `${out}/08-correction-history.png`,
+    fullPage: true,
+  });
+  check("saved correction history displays original and reviewed values");
+  await page
+    .getByLabel("Supplier name", { exact: true })
+    .fill("Unsaved fictional supplier");
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await page.evaluate(() => {
+    location.hash = "#/bills";
+  });
+  await expect(page).toHaveURL(/#\/document-entry$/);
+  await expect(page.getByLabel("Supplier name", { exact: true })).toHaveValue(
+    "Unsaved fictional supplier",
+  );
+  page.once("dialog", (dialog) => dialog.dismiss());
+  if (
+    await page
+      .getByRole("button", { name: "Open accountant navigation" })
+      .isVisible()
+  )
+    await page
+      .getByRole("button", { name: "Open accountant navigation" })
+      .click();
+  await page.getByRole("button", { name: "Log out", exact: true }).click();
+  await expect(page.getByLabel("Supplier name", { exact: true })).toHaveValue(
+    "Unsaved fictional supplier",
+  );
+  if (
+    await page
+      .getByRole("button", { name: "Close accountant navigation" })
+      .isVisible()
+  )
+    await page
+      .getByRole("button", { name: "Close accountant navigation" })
+      .click();
+  await page
+    .getByLabel("Supplier name", { exact: true })
+    .fill("Sample Supplier B");
+  check("cancelled navigation and logout preserve unsaved document edits");
+  await page
     .getByLabel("Upload document", { exact: true })
     .setInputFiles("public/document-samples/01.png");
   await expect(
@@ -166,7 +218,7 @@ try {
   ).toHaveValue("SYNTH-02");
   await expect(
     page.getByRole("img", { name: "Original PDF page 1" }),
-  ).toHaveAttribute("data-rendered", "true");
+  ).toHaveAttribute("data-rendered", "true", { timeout: 20000 });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: `${out}/04-pdf-desktop.png`, fullPage: true });

@@ -150,6 +150,35 @@
 .entry-drafts .review-row p {
   margin: 6px 0 0;
 }
+.entry-history {
+  margin-bottom: 20px;
+}
+.entry-history summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding: 12px 0;
+  font-weight: 600;
+}
+.entry-history article {
+  border-top: 1px solid var(--hairline);
+  padding-top: 12px;
+  margin-top: 16px;
+}
+.entry-history dl > div {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.entry-history dt {
+  font-weight: 600;
+}
+.entry-history dd {
+  margin: 6px 0 0;
+  overflow-wrap: anywhere;
+}
+.entry-history dd span {
+  display: block;
+  margin-bottom: 4px;
+}
 @media (max-width: 1100px) {
   .entry-layout {
     grid-template-columns: 1fr;

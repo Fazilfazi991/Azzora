@@ -1,6 +1,6 @@
 import { chromium, expect } from "@playwright/test";
 import fs from "node:fs";
-import { browserOptions } from "./browser-runtime.mjs";
+import { browserOptions, reviewTlsOptions } from "./browser-runtime.mjs";
 
 const base = process.env.AZZORA_ACCOUNTS_REVIEW_URL || "http://127.0.0.1:5277";
 const password = process.env.AZZORA_REVIEW_PASSWORD;
@@ -16,6 +16,7 @@ const checks = [];
 const errors = [];
 try {
   const context = await browser.newContext({
+    ...reviewTlsOptions(base),
     viewport: { width: 1440, height: 900 },
   });
   const page = await context.newPage();
@@ -234,6 +235,7 @@ try {
 
   for (const width of [1024, 768, 390]) {
     const mobile = await browser.newContext({
+      ...reviewTlsOptions(base),
       viewport: { width, height: 850 },
     });
     const view = await mobile.newPage();

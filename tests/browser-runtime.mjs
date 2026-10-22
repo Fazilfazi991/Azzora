@@ -12,6 +12,15 @@ export const browserOptions = {
   headless: true,
 };
 
+// Self-signed certificates are allowed only for the loopback HTTPS handler harness.
+export function reviewTlsOptions(base) {
+  if (process.env.AZZORA_TEST_SELF_SIGNED_TLS !== "1") return {};
+  const url = new URL(base);
+  if (url.protocol !== "https:" || url.hostname !== "127.0.0.1")
+    throw Error("Test TLS exception is restricted to HTTPS on 127.0.0.1.");
+  return { ignoreHTTPSErrors: true };
+}
+
 // Run each worktree against its own server; browser contexts never reuse a user profile.
 export function resolveAuditUrl(env = process.env) {
   const values = ["AZZORA_URL", "AZZORA_TEST_URL", "QUOTATION_URL"]

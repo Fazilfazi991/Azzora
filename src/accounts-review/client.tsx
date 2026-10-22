@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -1089,6 +1090,10 @@ function App() {
   const [error, setError] = useState("");
   const [navOpen, setNavOpen] = useState(false);
   const inFlight = useRef(false);
+  const documentPending = useRef(false);
+  const onDocumentPending = useCallback((value: boolean) => {
+    documentPending.current = value;
+  }, []);
   useEffect(() => {
     api("/session")
       .then(async (result) => {
@@ -1096,7 +1101,21 @@ function App() {
         setSnapshot(await api("/snapshot"));
       })
       .catch(() => {});
+    let previous = location.hash;
     const update = () => {
+      if (
+        documentPending.current &&
+        !window.confirm("Discard unsaved document edits?")
+      ) {
+        history.replaceState(
+          null,
+          "",
+          location.pathname + location.search + previous,
+        );
+        return;
+      }
+      documentPending.current = false;
+      previous = location.hash;
       setCurrent(route());
       setNavOpen(false);
       window.scrollTo(0, 0);
@@ -1127,6 +1146,11 @@ function App() {
   }
   async function logout() {
     if (!session) return;
+    if (
+      documentPending.current &&
+      !window.confirm("Discard unsaved document edits and log out?")
+    )
+      return;
     try {
       await api("/logout", {
         method: "POST",
@@ -1285,6 +1309,7 @@ function App() {
     "document-entry": (
       <DocumentEntry
         data={snapshot}
+        onPendingChange={onDocumentPending}
         act={act}
         extract={async (file: Upload) => {
           const result = await api("/documents/extract", {

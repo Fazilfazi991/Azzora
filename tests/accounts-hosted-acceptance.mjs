@@ -1,26 +1,32 @@
 import { chromium, expect } from "@playwright/test";
 import fs from "node:fs";
-import { browserOptions } from "./browser-runtime.mjs";
+import { browserOptions, reviewTlsOptions } from "./browser-runtime.mjs";
 const base = process.env.AZZORA_ACCOUNTS_REVIEW_URL;
 const share = process.env.AZZORA_REVIEW_SHARE_URL;
 const password = process.env.AZZORA_REVIEW_PASSWORD;
-if (!base || !share || !password)
+const localHandler = process.env.AZZORA_REVIEW_LOCAL_HANDLER === "1";
+if (localHandler && (!base || new URL(base).hostname !== "127.0.0.1"))
+  throw Error("Local handler mode is restricted to loopback.");
+if (!base || (!share && !localHandler) || !password)
   throw Error(
     "Hosted URL, share link and review password are required in the environment.",
   );
-const output = "tmp/accounts-hosted-review";
+const output =
+  process.env.AZZORA_ACCOUNTS_EVIDENCE || "tmp/accounts-hosted-review";
 fs.mkdirSync(output, { recursive: true });
 const checks = [];
-const publicResponse = await fetch(base + "/accountant.html", {
-  redirect: "manual",
-});
-expect([401, 403, 302, 307]).toContain(publicResponse.status);
-checks.push("unshared deployment access blocked by Vercel protection");
+if (!localHandler) {
+  const publicResponse = await fetch(base + "/accountant.html", {
+    redirect: "manual",
+  });
+  expect([401, 403, 302, 307]).toContain(publicResponse.status);
+  checks.push("unshared deployment access blocked by Vercel protection");
+}
 const browser = await chromium.launch(browserOptions);
 try {
-  const context = await browser.newContext();
+  const context = await browser.newContext(reviewTlsOptions(base));
   const page = await context.newPage();
-  await page.goto(share);
+  await page.goto(share || base + "/accountant.html");
   const login = await context.request.post(
     base + "/api/accounts-review/login",
     {
@@ -128,6 +134,7 @@ try {
     "invoices",
     "new-invoice",
     "bills",
+    "document-entry",
     "receipts",
     "supplier-payments",
     "expenses",
@@ -138,9 +145,12 @@ try {
     "aging",
   ];
   for (const width of [1440, 1024, 768, 390]) {
-    const ctx = await browser.newContext({ viewport: { width, height: 900 } });
+    const ctx = await browser.newContext({
+      ...reviewTlsOptions(base),
+      viewport: { width, height: 900 },
+    });
     const view = await ctx.newPage();
-    await view.goto(share);
+    await view.goto(share || base + "/accountant.html");
     await view.screenshot({
       path: `${output}/login-${width}.png`,
       fullPage: true,
@@ -152,7 +162,22 @@ try {
       await view.evaluate((value) => {
         location.hash = "#/" + value;
       }, route);
-      await expect(view.locator("h1")).toBeVisible();
+      const headings = {
+        dashboard: "Financial dashboard",
+        invoices: "Sales invoices",
+        "new-invoice": "New invoice",
+        bills: "Purchase bills",
+        "document-entry": "Read a bill",
+        receipts: "Customer receipts",
+        "supplier-payments": "Supplier payments",
+        expenses: "Expenses",
+        banking: "Bank & cash",
+        ledger: "General ledger",
+        pnl: "Profit & loss",
+        balance: "Balance sheet",
+        aging: "Receivable & payable aging",
+      };
+      await expect(view.locator("h1")).toHaveText(headings[route]);
       expect(
         await view.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
@@ -164,7 +189,7 @@ try {
       });
     }
     checks.push(
-      `${width}px: all 12 Accountant routes render without page-level overflow`,
+      `${width}px: all 13 Accountant routes render without page-level overflow`,
     );
     const current = await (
       await ctx.request.get(base + "/api/accounts-review/session")
@@ -176,9 +201,21 @@ try {
   }
   fs.writeFileSync(
     output + "/hosted-acceptance.json",
-    JSON.stringify({ checks, routeWidthChecks: 48 }, null, 2),
+    JSON.stringify(
+      {
+        checks,
+        routeWidthChecks: 52,
+        environment: localHandler
+          ? "local HTTPS hosted-handler harness (not a Vercel deployment)"
+          : "protected Vercel Preview",
+      },
+      null,
+      2,
+    ),
   );
-  console.log(JSON.stringify({ checks, routeWidthChecks: 48 }, null, 2));
+  console.log(
+    JSON.stringify({ checks, routeWidthChecks: 52, localHandler }, null, 2),
+  );
 } finally {
   await browser.close();
 }

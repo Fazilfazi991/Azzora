@@ -37,10 +37,12 @@ export function DocumentEntry({
   data,
   extract,
   act,
+  onPendingChange,
 }: {
   data: Snapshot;
   extract: (file: Upload) => Promise<string>;
   act: (action: Record<string, unknown>) => Promise<boolean>;
+  onPendingChange: (pending: boolean) => void;
 }) {
   const [selected, setSelected] = useState<string>("");
   const [fields, setFields] = useState<EntryFields>(blankFields);
@@ -55,6 +57,10 @@ export function DocumentEntry({
   const pending = Boolean(
     doc && JSON.stringify(doc.fields) !== JSON.stringify(fields),
   );
+  useEffect(() => {
+    onPendingChange(pending);
+    return () => onPendingChange(false);
+  }, [pending, onPendingChange]);
   useEffect(() => {
     setUrl("");
     setFileMime("");
@@ -240,7 +246,7 @@ export function DocumentEntry({
         </a>
       </div>
       <div className="prototype-note">
-        <strong>LOCAL REVIEW · FICTIONAL DATA</strong>
+        <strong>CLIENT REVIEW · FICTIONAL DATA</strong>
         <span>
           AI service is not connected. Sample documents replay prepared
           suggestions; other uploads open for manual entry.
@@ -310,6 +316,9 @@ export function DocumentEntry({
               <p>Loading original…</p>
             )}
             <p>
+              {doc.extraction.mode === "manual"
+                ? "Manual entry · no AI extraction."
+                : "Prepared sample suggestions · not an AI result."}{" "}
               {doc.extraction.provider}. Original suggestions are preserved with
               each correction.
             </p>
@@ -597,6 +606,7 @@ export function DocumentEntry({
           </p>
         </div>
       )}
+      {doc && <CorrectionHistory doc={doc} />}
       <section className="panel review-card entry-drafts">
         <h2>Document reviews & drafts</h2>
         {!data.documentEntries.reviews.length ? (
@@ -620,6 +630,92 @@ export function DocumentEntry({
         )}
       </section>
     </>
+  );
+}
+const historyLabels: Record<string, string> = {
+  supplier: "Supplier",
+  date: "Date",
+  reference: "Reference",
+  currency: "Currency",
+  subtotal: "Subtotal",
+  tax: "Tax",
+  total: "Total",
+  kind: "Classification",
+  categoryId: "Category",
+  projectName: "Project name",
+  customerName: "Customer name",
+  projectId: "Project",
+  customerId: "Customer",
+  description: "Description",
+  quantity: "Quantity",
+  unit: "Unit",
+  unitRate: "Unit rate",
+  productId: "Product",
+};
+function historyValues(fields: EntryFields) {
+  const { items, ...values } = fields;
+  return Object.fromEntries([
+    ...Object.entries(values).map(([key, value]) => [
+      historyLabels[key],
+      value,
+    ]),
+    ...items.flatMap((item, index) =>
+      Object.entries(item).map(([key, value]) => [
+        `Item ${index + 1} · ${historyLabels[key]}`,
+        value,
+      ]),
+    ),
+  ]);
+}
+function CorrectionHistory({ doc }: { doc: DocumentReview }) {
+  return (
+    <section
+      className="panel review-card entry-history"
+      aria-label="Correction history"
+    >
+      <details key={doc.id}>
+        <summary>
+          Correction history · {doc.corrections.length} saved review(s)
+        </summary>
+        <p>
+          Original suggestions are unchanged. These are the accountant’s saved
+          reviews in this demo session.
+        </p>
+        {!doc.corrections.length && <p>No reviews saved yet.</p>}
+        {doc.corrections.map((correction, index) => {
+          const before = historyValues(correction.before),
+            after = historyValues(correction.after);
+          const changed = [
+            ...new Set([...Object.keys(before), ...Object.keys(after)]),
+          ].filter((key) => before[key] !== after[key]);
+          return (
+            <article key={index}>
+              <h3>Review {index + 1} · Demo Accountant</h3>
+              <p>
+                <time dateTime={correction.at}>
+                  {new Date(correction.at).toLocaleString()}
+                </time>
+              </p>
+              {changed.length ? (
+                <dl>
+                  {changed.map((key) => (
+                    <div key={key}>
+                      <dt>{key}</dt>
+                      <dd>
+                        <span>Before: {before[key] || "Empty"}</span>
+                        <span>After: {after[key] || "Empty"}</span>
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : (
+                <p>Fields confirmed without changes.</p>
+              )}
+            </article>
+          );
+        })}
+      </details>
+    </section>
   );
 }
 function Preview({ url, mime }: { url: string; mime: string }) {

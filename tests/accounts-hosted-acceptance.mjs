@@ -5,9 +5,10 @@ const base = process.env.AZZORA_ACCOUNTS_REVIEW_URL;
 const share = process.env.AZZORA_REVIEW_SHARE_URL;
 const password = process.env.AZZORA_REVIEW_PASSWORD;
 const localHandler = process.env.AZZORA_REVIEW_LOCAL_HANDLER === "1";
+const accountantLoginOnly = process.env.AZZORA_REVIEW_APP_LOGIN_ONLY === "1";
 if (localHandler && (!base || new URL(base).hostname !== "127.0.0.1"))
   throw Error("Local handler mode is restricted to loopback.");
-if (!base || (!share && !localHandler) || !password)
+if (!base || (!share && !localHandler && !accountantLoginOnly) || !password)
   throw Error(
     "Hosted URL, share link and review password are required in the environment.",
   );
@@ -19,14 +20,25 @@ if (!localHandler) {
   const publicResponse = await fetch(base + "/accountant.html", {
     redirect: "manual",
   });
-  expect([401, 403, 302, 307]).toContain(publicResponse.status);
-  checks.push("unshared deployment access blocked by Vercel protection");
+  if (accountantLoginOnly) {
+    expect(publicResponse.status).toBe(200);
+    expect((await publicResponse.text()).includes("accountant")).toBe(true);
+    checks.push("Accountant sign-in page accessible without Vercel login");
+  } else {
+    expect([401, 403, 302, 307]).toContain(publicResponse.status);
+    checks.push("unshared deployment access blocked by Vercel protection");
+  }
 }
 const browser = await chromium.launch(browserOptions);
 try {
   const context = await browser.newContext(reviewTlsOptions(base));
   const page = await context.newPage();
   await page.goto(share || base + "/accountant.html");
+  expect(
+    (
+      await context.request.get(base + "/api/accounts-review/snapshot")
+    ).status(),
+  ).toBe(401);
   const login = await context.request.post(
     base + "/api/accounts-review/login",
     {
@@ -207,7 +219,9 @@ try {
         routeWidthChecks: 52,
         environment: localHandler
           ? "local HTTPS hosted-handler harness (not a Vercel deployment)"
-          : "protected Vercel Preview",
+          : accountantLoginOnly
+            ? "Vercel Preview protected by server-side Accountant login (no Vercel login)"
+            : "protected Vercel Preview",
       },
       null,
       2,

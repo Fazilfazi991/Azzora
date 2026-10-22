@@ -252,10 +252,18 @@ export function createHostedHandler(
             error:
               "This review session has reached 100 actions. Start a new demo session.",
           });
+        const invoicePrefix =
+          action.kind === "invoice"
+            ? action.invoiceType === "Normal Invoice"
+              ? "NOR"
+              : action.invoiceType === "Proforma"
+                ? "PRO"
+                : "INV"
+            : "DEMO";
         const id =
           action.kind === "issue-invoice"
             ? action.id
-            : `DEMO-${randomUUID().slice(0, 8).toUpperCase()}`;
+            : `${invoicePrefix}-26${randomUUID().slice(0, 6).toUpperCase()}`;
         active.finance = applyReviewAction(active.finance, {
           ...action,
           id,

@@ -81,17 +81,26 @@ export function reviewPdf(state: ReviewState, name: string): ArrayBuffer {
   } else {
     const invoice = data.invoices.find((item) => item.id === name);
     if (!invoice) throw Error("Demo invoice document was not found.");
-    header("Demo invoice");
+    header(
+      invoice.invoiceType === "Proforma"
+        ? "Proforma - not a tax invoice"
+        : invoice.invoiceType === "Normal Invoice"
+          ? "Normal invoice"
+          : "Tax invoice - demo",
+    );
     row("Reference", invoice.id, true);
+    row("Document type", invoice.invoiceType ?? "Tax Invoice");
     row("Status", invoice.status);
     row("Customer", invoice.party);
     row("Invoice date", invoice.date);
     row("Due date", invoice.due);
     y += 4;
     row(invoice.description, money(invoice.amountFils));
-    row("VAT", "Not applied in review");
+    row("VAT", "Not calculated in this demo");
     row("Total", money(invoice.amountFils), true);
-    row("Open balance as of " + data.asOf, money(invoice.outstandingFils));
+    if (invoice.invoiceType !== "Proforma")
+      row("Open balance as of " + data.asOf, money(invoice.outstandingFils));
+    else row("Accounting", "No revenue or receivable posting");
   }
   for (let page = 1; page <= doc.getNumberOfPages(); page++) {
     doc.setPage(page);

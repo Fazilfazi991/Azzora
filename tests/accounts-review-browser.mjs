@@ -84,17 +84,32 @@ try {
     fullPage: true,
   });
   await page.getByRole("link", { name: "+ New invoice" }).click();
+  await page
+    .getByLabel("Document type")
+    .selectOption({ label: "Normal Invoice" });
   await page.getByLabel("Amount · AED (VAT excluded)").fill("123.45");
   await page.getByRole("button", { name: "Save draft" }).click();
-  await expect(page.getByRole("status")).toContainText("Recorded DEMO-");
+  await expect(page.getByRole("status")).toContainText("Recorded NOR-");
   await page.getByRole("link", { name: "← Invoices" }).click();
-  await expect(page.getByRole("button", { name: "Issue draft" })).toBeVisible();
-  await page.getByRole("button", { name: "Issue draft" }).click();
-  await expect(page.getByRole("status")).toContainText("Issued DEMO-");
+  await expect(page.getByRole("button", { name: "Issue draft" })).toHaveCount(
+    2,
+  );
+  await page.getByRole("button", { name: "Issue draft" }).last().click();
+  await expect(page.getByRole("status")).toContainText("Issued NOR-");
   await page.reload();
   await expect(page.getByRole("button", { name: "Issue draft" })).toHaveCount(
-    0,
+    1,
   );
+  await page
+    .getByLabel("Filter document type")
+    .selectOption({ label: "Proforma" });
+  await expect(page.getByText("PRO-26009")).toBeVisible();
+  await page.getByRole("button", { name: "Issue proforma" }).click();
+  await expect(page.getByRole("status")).toContainText("Issued PRO-26009");
+  await expect(page.getByText("Proforma · no posting")).toBeVisible();
+  await page
+    .getByLabel("Filter document type")
+    .selectOption({ label: "All document types" });
   const invoiceDownload = page.waitForEvent("download");
   await page.getByRole("link", { name: "Download demo PDF" }).first().click();
   await (await invoiceDownload).saveAs(`${output}/invoice.pdf`);
@@ -258,7 +273,7 @@ try {
       const isolated = await (
         await mobile.request.get(`${base}/api/accounts-review/snapshot`)
       ).json();
-      expect(isolated.invoices).toHaveLength(2);
+      expect(isolated.invoices).toHaveLength(4);
       expect(isolated.bills).toHaveLength(2);
       expect(
         (
@@ -272,6 +287,21 @@ try {
       path: `${output}/dashboard-${width}.png`,
       fullPage: true,
     });
+    if (width < 900) {
+      await view
+        .getByRole("button", { name: "Open accountant navigation" })
+        .click();
+      await view.getByRole("link", { name: "Sales invoices" }).click();
+      await view.screenshot({
+        path: `${output}/invoices-${width}.png`,
+        fullPage: true,
+      });
+      expect(
+        await view.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+    }
     if (width < 900)
       await view
         .getByRole("button", { name: "Open accountant navigation" })

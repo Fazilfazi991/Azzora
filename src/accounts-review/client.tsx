@@ -157,9 +157,20 @@ function Note() {
     </div>
   );
 }
-function Table({ heads, children }: { heads: string[]; children: ReactNode }) {
+function Table({
+  heads,
+  children,
+  toolbar,
+  variant,
+}: {
+  heads: string[];
+  children: ReactNode;
+  toolbar?: ReactNode;
+  variant?: string;
+}) {
   return (
-    <div className="panel table-panel">
+    <div className={`panel table-panel ${variant ?? ""}`}>
+      {toolbar && <div className="table-toolbar">{toolbar}</div>}
       <div className="table-scroll">
         <table>
           <thead>
@@ -321,39 +332,109 @@ function Invoices({
   data: Snapshot;
   act: (action: Record<string, unknown>) => Promise<boolean>;
 }) {
+  const [query, setQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("All document types");
+  const [statusFilter, setStatusFilter] = useState("All statuses");
+  const issued = data.invoices.filter((item) => item.status === "Issued");
+  const outstanding = issued.reduce(
+    (total, item) => total + BigInt(item.outstandingFils),
+    0n,
+  );
+  const rows = data.invoices.filter((item) => {
+    const matchesQuery = `${item.id} ${item.party} ${item.description}`
+      .toLocaleLowerCase()
+      .includes(query.trim().toLocaleLowerCase());
+    const matchesType =
+      typeFilter === "All document types" ||
+      (item.invoiceType ?? "Tax Invoice") === typeFilter;
+    const matchesStatus =
+      statusFilter === "All statuses" || item.status === statusFilter;
+    return matchesQuery && matchesType && matchesStatus;
+  });
   return (
     <>
       <Head
         eyebrow="SALES & RECEIVABLES"
         title="Sales invoices"
-        sub="Drafts do not enter receivables. Issued demo invoices post once to the journal."
+        sub="Find documents, review balances and start a new invoice."
       >
         <a className="button button-primary" href={link("new-invoice")}>
           + New invoice
         </a>
       </Head>
       <Note />
+      <div className="invoice-summary" aria-label="Invoice summary">
+        <span>
+          <strong>{issued.length}</strong> issued invoices
+        </span>
+        <span>
+          <strong>{money(outstanding)}</strong> outstanding
+        </span>
+        <span>
+          <strong>
+            {data.invoices.filter((item) => item.status === "Draft").length}
+          </strong>{" "}
+          draft documents
+        </span>
+      </div>
       <Table
         heads={[
           "Invoice",
           "Customer",
-          "Date / due",
-          "Amount",
-          "Open",
-          "Status / action",
+          "Document",
+          "Issued",
+          "Due",
+          "Total",
+          "Outstanding",
+          "Status",
         ]}
+        toolbar={
+          <div className="invoice-filter-row">
+            <label>
+              <span className="sr-only">Search reference or customer</span>
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search reference or customer"
+              />
+            </label>
+            <label>
+              <span className="sr-only">Filter document type</span>
+              <select
+                value={typeFilter}
+                onChange={(event) => setTypeFilter(event.target.value)}
+              >
+                <option>All document types</option>
+                <option>Tax Invoice</option>
+                <option>Normal Invoice</option>
+                <option>Proforma</option>
+              </select>
+            </label>
+            <label>
+              <span className="sr-only">Filter status</span>
+              <select
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+              >
+                <option>All statuses</option>
+                <option>Issued</option>
+                <option>Draft</option>
+              </select>
+            </label>
+          </div>
+        }
+        variant="invoice-table"
       >
-        {data.invoices.map((item) => (
+        {rows.map((item) => (
           <tr key={item.id}>
             <td>
               <strong>{item.id}</strong>
               <small>{item.description}</small>
             </td>
             <td>{item.party}</td>
-            <td>
-              {date(item.date)}
-              <small>Due {date(item.due)}</small>
-            </td>
+            <td>{item.invoiceType ?? "Tax Invoice"}</td>
+            <td>{date(item.date)}</td>
+            <td>{item.status === "Draft" ? "—" : date(item.due)}</td>
             <td className="money">{money(item.amountFils)}</td>
             <td className="money">{money(item.outstandingFils)}</td>
             <td>
@@ -362,10 +443,16 @@ function Invoices({
                   className="button button-secondary"
                   onClick={() => act({ kind: "issue-invoice", id: item.id })}
                 >
-                  Issue draft
+                  Issue {item.invoiceType === "Proforma" ? "proforma" : "draft"}
                 </button>
               ) : (
-                <span className="badge badge-success">Issued</span>
+                <span
+                  className={`badge ${item.invoiceType === "Proforma" ? "badge-neutral" : "badge-success"}`}
+                >
+                  {item.invoiceType === "Proforma"
+                    ? "Proforma · no posting"
+                    : "Issued"}
+                </span>
               )}
               <small>
                 <a
@@ -377,6 +464,19 @@ function Invoices({
             </td>
           </tr>
         ))}
+        {rows.length === 0 && (
+          <tr>
+            <td colSpan={8} className="invoice-empty">
+              No documents match these filters.
+            </td>
+          </tr>
+        )}
+        <tr className="invoice-table-note">
+          <td colSpan={8}>
+            Showing {rows.length} of {data.invoices.length} demo records · Draft
+            normal and proforma documents are excluded from posted revenue.
+          </td>
+        </tr>
       </Table>
     </>
   );
@@ -401,7 +501,7 @@ function InvoiceForm({
       <Head
         eyebrow="SALES & RECEIVABLES"
         title="New invoice"
-        sub="Simple AED demo invoice. VAT, numbering and production recognition await owner policy."
+        sub="Create a tax invoice, normal invoice or proforma for this fictional review ledger."
       >
         <a className="button button-secondary" href={link("invoices")}>
           ← Invoices
@@ -411,6 +511,11 @@ function InvoiceForm({
       <form className="panel review-form" onSubmit={submit}>
         <h2>Invoice details</h2>
         <div className="field-grid">
+          <Field label="Document type" name="invoiceType">
+            <option>Tax Invoice</option>
+            <option>Normal Invoice</option>
+            <option>Proforma</option>
+          </Field>
           <Field label="Customer" name="party" defaultValue="Sample Client A" />
           <Field
             label="Amount · AED (VAT excluded)"
@@ -444,12 +549,13 @@ function InvoiceForm({
             type="submit"
             data-issue="true"
           >
-            Issue demo invoice
+            Issue document
           </button>
         </div>
         <p className="aside-note">
-          Issued documents are immutable in this review. VAT is deliberately
-          excluded until policy B05 is approved.
+          Tax and normal invoices post to the fictional journal when issued.
+          Proforma documents never create receivables or revenue. VAT is not
+          calculated in this demo; tax treatment requires approved policy.
         </p>
       </form>
     </>

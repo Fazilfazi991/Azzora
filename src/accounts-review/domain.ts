@@ -33,6 +33,8 @@ export interface ReviewDocument {
   description: string;
   amountFils: string;
   status: "Draft" | "Issued";
+  /** Missing on persisted legacy invoices; those remain tax invoices. */
+  invoiceType?: "Tax Invoice" | "Normal Invoice" | "Proforma";
   category?: "Cost of Sales" | "Operating Expense";
   poReference?: string;
   attachmentId?: string;
@@ -162,6 +164,7 @@ export function createReviewState(): ReviewState {
         description: "Apartment renovation milestone",
         amountFils: "1200000",
         status: "Issued",
+        invoiceType: "Tax Invoice",
       },
       {
         id: "INV-26042",
@@ -171,6 +174,27 @@ export function createReviewState(): ReviewState {
         description: "Fit-out progress milestone",
         amountFils: "800000",
         status: "Issued",
+        invoiceType: "Tax Invoice",
+      },
+      {
+        id: "NOR-26007",
+        party: "Sample Client D",
+        date: "2026-10-19",
+        due: "2026-10-19",
+        description: "Additional design service",
+        amountFils: "320000",
+        status: "Draft",
+        invoiceType: "Normal Invoice",
+      },
+      {
+        id: "PRO-26009",
+        party: "Sample Client C",
+        date: "2026-10-18",
+        due: "2026-10-18",
+        description: "Fit-out concept proposal",
+        amountFils: "250000",
+        status: "Draft",
+        invoiceType: "Proforma",
       },
     ],
     bills: [
@@ -206,7 +230,9 @@ export function createReviewState(): ReviewState {
     line("bank", 5000000n, 0n),
     line("capital", 0n, 5000000n),
   ]);
-  for (const invoice of state.invoices)
+  for (const invoice of state.invoices.filter(
+    (item) => item.status === "Issued" && item.invoiceType !== "Proforma",
+  ))
     journal(state, invoice.id, invoice.date, `Invoice ${invoice.id}`, [
       line("receivables", BigInt(invoice.amountFils), 0n),
       line("revenue", 0n, BigInt(invoice.amountFils)),
@@ -250,7 +276,11 @@ export function createReviewState(): ReviewState {
     allocations: [{ documentId: "INV-26042", amountFils: 500000n }],
   };
   state.receipts = postSettlement(
-    state.invoices.map((item) => document(item, "receivable")),
+    state.invoices
+      .filter(
+        (item) => item.status === "Issued" && item.invoiceType !== "Proforma",
+      )
+      .map((item) => document(item, "receivable")),
     [],
     receipt,
   );
@@ -280,6 +310,7 @@ export type ReviewAction =
       description: string;
       amount: string;
       issue: boolean;
+      invoiceType?: "Tax Invoice" | "Normal Invoice" | "Proforma";
     }
   | { kind: "issue-invoice"; id: string }
   | {
@@ -372,6 +403,9 @@ export function applyReviewAction(
     const date = iso(action.date),
       due = iso(action.due),
       amount = positive(action.amount);
+    const invoiceType = action.invoiceType ?? "Tax Invoice";
+    if (!["Tax Invoice", "Normal Invoice", "Proforma"].includes(invoiceType))
+      throw Error("Choose a supported invoice document type.");
     if (due < date) throw Error("Due date cannot precede invoice date.");
     const invoice: ReviewDocument = {
       id,
@@ -381,9 +415,10 @@ export function applyReviewAction(
       description: required(action.description, "Description"),
       amountFils: amount.toString(),
       status: action.issue ? "Issued" : "Draft",
+      invoiceType,
     };
     next.invoices.push(invoice);
-    if (action.issue)
+    if (action.issue && invoice.invoiceType !== "Proforma")
       journal(next, id, date, `Invoice ${id}`, [
         line("receivables", amount, 0n),
         line("revenue", 0n, amount),
@@ -393,10 +428,11 @@ export function applyReviewAction(
     if (!invoice || invoice.status !== "Draft")
       throw Error("Only a draft invoice can be issued.");
     invoice.status = "Issued";
-    journal(next, id, invoice.date, `Invoice ${id}`, [
-      line("receivables", BigInt(invoice.amountFils), 0n),
-      line("revenue", 0n, BigInt(invoice.amountFils)),
-    ]);
+    if (invoice.invoiceType !== "Proforma")
+      journal(next, id, invoice.date, `Invoice ${id}`, [
+        line("receivables", BigInt(invoice.amountFils), 0n),
+        line("revenue", 0n, BigInt(invoice.amountFils)),
+      ]);
   } else if (action.kind === "bill") {
     const date = iso(action.date),
       due = iso(action.due),
@@ -497,8 +533,9 @@ export function reviewSnapshot(state: ReviewState, asOf = "2026-10-22") {
   const trial = buildTrialBalance(state.accounting, asOf);
   const invoiceRows = state.invoices.map((item) => ({
     ...item,
+    invoiceType: item.invoiceType ?? "Tax Invoice",
     outstandingFils:
-      item.status === "Issued"
+      item.status === "Issued" && item.invoiceType !== "Proforma"
         ? documentOutstanding(
             document(item, "receivable"),
             state.receipts,
@@ -506,7 +543,7 @@ export function reviewSnapshot(state: ReviewState, asOf = "2026-10-22") {
           ).toString()
         : zero,
     ageing:
-      item.status === "Issued"
+      item.status === "Issued" && item.invoiceType !== "Proforma"
         ? {
             ...documentAgeing(
               document(item, "receivable"),

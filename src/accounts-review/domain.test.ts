@@ -44,6 +44,43 @@ describe("local Accountant review ledger", () => {
     expect(reviewSnapshot(initial).metrics.revenueFils).toBe("2000000");
   });
 
+  it("keeps proformas outside receivables and revenue even when issued", () => {
+    const initial = createReviewState();
+    const draft = applyReviewAction(initial, {
+      kind: "invoice",
+      id: "PRO-NEW",
+      party: "Sample Client D",
+      date: "2026-10-22",
+      due: "2026-10-22",
+      description: "Concept proposal",
+      amount: "450.00",
+      issue: false,
+      invoiceType: "Proforma",
+    });
+    const issued = applyReviewAction(draft, {
+      kind: "issue-invoice",
+      id: "PRO-NEW",
+    });
+    const snapshot = reviewSnapshot(issued);
+    expect(snapshot.metrics.revenueFils).toBe("2000000");
+    expect(snapshot.metrics.receivablesFils).toBe("1500000");
+    expect(
+      snapshot.invoices.find((item) => item.id === "PRO-NEW"),
+    ).toMatchObject({
+      status: "Issued",
+      invoiceType: "Proforma",
+      outstandingFils: "0",
+      ageing: null,
+    });
+    expect(snapshot.trial.balanced).toBe(true);
+  });
+
+  it("keeps legacy invoice records readable as tax invoices", () => {
+    const state = createReviewState();
+    delete state.invoices[0].invoiceType;
+    expect(reviewSnapshot(state).invoices[0].invoiceType).toBe("Tax Invoice");
+  });
+
   it("posts a purchase bill, partial receipt, supplier payment, and paid expense through one journal", () => {
     let state = createReviewState();
     state = applyReviewAction(state, {

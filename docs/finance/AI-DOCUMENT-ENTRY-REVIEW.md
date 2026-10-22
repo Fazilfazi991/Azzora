@@ -31,6 +31,8 @@ The feature reuses `ExpenseCategoryMapping` from `src/finance/expense-submission
 
 These reuse the established **demo** account structure and the existing project/company expense boundary. They do not approve a new production Chart of Accounts or VAT posting policy. A future real-data adapter must receive approved mappings and authorized references from the shared backend. No arbitrary AI ledger posting exists.
 
+A supplier purchase bill may use either a project or company category. A company supplier bill does not require an artificial project. Explicit project expenses still require an existing project, and company expenses cannot carry one.
+
 ## Candidate comparison
 
 First-party documentation was checked on 22 October 2026. Prices below are published tariffs, not charges observed in this work. Regional availability and the selected account's current price must be reconfirmed before any paid run.
@@ -82,3 +84,52 @@ Final results and application revision are recorded in the delivery checkpoint b
 ## Remaining limitations
 
 This is ready for a **local workflow review**, not acceptance of production AI or real accounting. Live extraction benchmarking, billing evidence, privacy/region approval, canonical project/product mappings, persistent per-user supplier defaults and a production posting/approval path remain gated. Existing local review state is process-memory only; the already deployed demo uses its existing private session store, but this feature has not been deployed there. No real record migration or automatic data import occurs.
+
+## Final delivery checkpoint
+
+Tested application SHA: **`6ef1be48e556c46024479c7325daf61fe0c19f08`**. Initial implementation: `499d80b61c46fb26003336d0c2b4eeecbd8d1a4d`; the second commit fixes company supplier-bill scope. Subsequent delivery changes update this report and test measurement/record selectors only, with no application changes.
+
+| Check | Final result |
+| --- | --- |
+| Vitest, complete source/test selection | **539/539 passed, 33 suites** |
+| Separate Node finance fixtures | **2/2 passed** |
+| TypeScript | Passed |
+| ESLint, all `src` | Passed |
+| Production build | Passed; Accountant and Manager entry points retained |
+| New document workflow, development | **18/18 checks passed**, 0 browser errors |
+| New document workflow, built UI | **18/18 checks passed**, 0 browser errors |
+| Existing Accounts workflow, built UI | **14/14 checks passed**, 0 browser errors |
+| General CRM journey/responsive | **66 checks passed** |
+| Commercial journey/responsive | **129 checks passed** |
+| Commercial boundaries | **6 checks passed** |
+| Operational journey/responsive | **136 checks passed** |
+| Operational boundaries | **18 checks passed** |
+| Financial/accessibility corrective suite | **35 checks passed** |
+| Workforce/document/QA/handover suite | **40 checks passed** |
+| Recovery/rollback suite | **25 cases passed** |
+| Existing Accountant finance browser checks | **27 checks passed** |
+| Quotation workflow, lifecycle, download/print and persistence | **4 viewport journeys passed**, 0 failures |
+| Document viewports | 1440, 1024, 768 and 390 px; no page overflow; screenshots visually inspected |
+| Synthetic PDF inspection | All **21 pages across 20 PDFs** rendered with Poppler and visually inspected, including the two-page example |
+| Production dependency audit after PDF.js addition | **0 reported vulnerabilities** |
+| Live model/OCR requests | **0**; benchmark remains pending owner approval |
+
+The built-UI tests used a loopback harness serving the production `dist` files and forwarding only Accounts API calls to the existing local review server. They are not hosted/Vercel verification. Hosted authentication, cross-session file isolation, draft idempotency and CSRF are covered by the hosted-handler unit tests with a memory store.
+
+Manager browser regression results were obtained at the initial implementation checkpoint. All **12 compared Manager HTML/JS/CSS bundle assets** are byte-for-byte identical in the final build. The final 539-test run includes the unchanged financial, procurement, quotation, planning, workforce and handover domain suites. Relevant raw logs and the asset digest comparison are in ignored `tmp/document-entry-evidence/`.
+
+Initial concurrent browser runs exhausted local machine memory, and two development runs observed hot-reload connection errors while editing. Their affected suites were rerun sequentially against a frozen build and passed. The existing Accounts mobile test also had an ambiguous download selector when more than one valid bill existed in the process-local demo store. It now verifies the exact newly created bill before and after refresh, checks record-count growth, and distinguishes local-store behavior from actual hosted session isolation. Its fresh built-UI rerun passed all 14 checks. These superseded failures are retained in the local logs; no unresolved failure is hidden as an expected failure.
+
+Evidence index: `final-checkpoint.json`, `document-development-results.json`, `document-built-results.json`, `accounts-browser-built.log`, `manager-asset-comparison.json`, `dependency-audit.json`, `model-benchmark.json`, and `regression/*` under `tmp/document-entry-evidence/`. The no-network benchmark status is **not-run-owner-approval-required**, not a model success result.
+
+Owner review links:
+
+- [Upload screen](../../tmp/document-entry-evidence/01-upload-desktop.png)
+- [Desktop review](../../tmp/document-entry-evidence/02-review-1440.png)
+- [Mobile review](../../tmp/document-entry-evidence/02-review-390.png)
+- [Saved mobile draft](../../tmp/document-entry-evidence/03-draft-mobile.png)
+- [PDF review](../../tmp/document-entry-evidence/04-pdf-desktop.png)
+- [Arabic/English example](../../tmp/document-entry-evidence/05-bilingual-desktop.png)
+- [Multi-page mobile preview](../../tmp/document-entry-evidence/07-multipage-mobile.png)
+
+The loopback demo is at `http://127.0.0.1:5289/accountant.html#/document-entry`; its temporary credentials are in ignored `tmp/DOCUMENT-REVIEW-ACCESS.txt`. No credentials appear in this report. Paid evaluation and any Preview deployment require separate owner authorization.

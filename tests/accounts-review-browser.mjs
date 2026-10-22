@@ -249,7 +249,10 @@ try {
     await expect(
       view.getByRole("heading", { name: "Financial dashboard" }),
     ).toBeVisible();
-    if (shareUrl) {
+    const mobileSession = await (
+      await mobile.request.get(`${base}/api/accounts-review/session`)
+    ).json();
+    if (mobileSession.mode === "fictional-hosted-review") {
       const isolated = await (
         await mobile.request.get(`${base}/api/accounts-review/snapshot`)
       ).json();
@@ -286,21 +289,33 @@ try {
     ).toBe(true);
     checks.push(`${width}px: login, dashboard, bill upload, no page overflow`);
     if (width === 390) {
+      const priorBills = await (
+        await mobile.request.get(`${base}/api/accounts-review/snapshot`)
+      ).json();
       await view.getByLabel("Bill image or PDF · up to 2 MB").setInputFiles({
         name: "mobile-fictional-bill.pdf",
         mimeType: "application/pdf",
         buffer: Buffer.from("%PDF-1.4 fictional mobile upload"),
       });
       await view.getByRole("button", { name: "Record bill & upload" }).click();
+      await expect(view.getByRole("status")).toContainText("Recorded DEMO-");
+      const savedBills = await (
+        await mobile.request.get(`${base}/api/accounts-review/snapshot`)
+      ).json();
+      expect(savedBills.bills.length).toBe(priorBills.bills.length + 1);
+      const savedBill = savedBills.bills.at(-1);
+      const savedRow = view.getByRole("row").filter({ hasText: savedBill.id });
       await expect(
-        view.getByRole("link", { name: "Download bill" }),
+        savedRow.getByRole("link", { name: "Download bill" }),
       ).toBeVisible();
       await view.reload();
       await expect(
-        view.getByRole("link", { name: "Download bill" }),
+        savedRow.getByRole("link", { name: "Download bill" }),
       ).toBeVisible();
       checks.push(
-        "390px: mobile upload persists after refresh; separate session data remains isolated",
+        mobileSession.mode === "fictional-hosted-review"
+          ? "390px: mobile upload persists after refresh; hosted session isolation verified"
+          : "390px: exact uploaded bill persists after refresh in the local demo store",
       );
     }
     if (width < 900)

@@ -72,6 +72,16 @@ if (!approvalRef || !["qwen", "deepseek"].includes(selected)) {
             : [[`${prefix}${key}`, String(value)]],
         ),
       );
+    const numericField = (key) =>
+      /(quantity|unitRate|tax|total|subtotal)$/.test(key);
+    const decimal = (value) => {
+      if (!/^\d+(\.\d+)?$/.test(value || "")) return value;
+      const [whole, fraction = ""] = value.split(".");
+      const tail = fraction.replace(/0+$/, "");
+      return BigInt(whole).toString() + (tail ? `.` + tail : "");
+    };
+    const same = (key, a, b) =>
+      numericField(key) ? decimal(a) === decimal(b) : a === b;
     for (const sample of manifest) {
       const file = {
         name: sample.path.split("/").pop(),
@@ -92,7 +102,7 @@ if (!approvalRef || !["qwen", "deepseek"].includes(selected)) {
           expected = flat(sample.groundTruth),
           actual = flat(result.fields);
         const scored = Object.keys(expected).filter((k) => !k.endsWith("Id")),
-          correct = scored.filter((k) => actual[k] === expected[k]);
+          correct = scored.filter((k) => same(k, actual[k], expected[k]));
         const numeric = scored.filter((k) =>
           /(quantity|unitRate|tax|total|subtotal)$/.test(k),
         );
@@ -103,15 +113,21 @@ if (!approvalRef || !["qwen", "deepseek"].includes(selected)) {
           provider: result.provider,
           correctFields: correct.length,
           totalFields: scored.length,
-          incorrectAmounts: numeric.filter((k) => actual[k] !== expected[k])
-            .length,
+          incorrectAmounts: numeric.filter(
+            (k) => !same(k, actual[k], expected[k]),
+          ).length,
           requiredFieldCorrections: scored.filter(
-            (k) => actual[k] !== expected[k],
+            (k) => !same(k, actual[k], expected[k]),
           ),
           suggestedCategory: classified.categoryId,
+          categoryCorrect:
+            classified.categoryId ===
+            suggest(sample.groundTruth, createReviewState()).categoryId,
           classificationCorrect: result.fields.kind === sample.groundTruth.kind,
           inputTokens: result.inputTokens,
           outputTokens: result.outputTokens,
+          requestId: result.requestId,
+          ocrPages: result.ocrPages,
           latencyMs: result.latencyMs,
           retries: result.retries,
           actualApiCostUsd: null,
@@ -141,6 +157,14 @@ if (!approvalRef || !["qwen", "deepseek"].includes(selected)) {
       classificationAccuracy: complete.length
         ? complete.filter((r) => r.classificationCorrect).length /
           complete.length
+        : null,
+      categoryAccuracy: complete.length
+        ? complete.filter((r) => r.categoryCorrect).length / complete.length
+        : null,
+      p95LatencyMs: rows.length
+        ? rows.map((r) => r.latencyMs).sort((a, b) => a - b)[
+            Math.ceil(rows.length * 0.95) - 1
+          ]
         : null,
       meanLatencyMs: complete.length
         ? complete.reduce((s, r) => s + r.latencyMs, 0) / complete.length

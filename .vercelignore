@@ -22,9 +22,15 @@ coverage
 /Azzora Logo.pdf
 # Keep the approved stylesheet needed by the functional Accounts build.
 # Local reports, test exports and design prototypes are not deployed.
-docs/*
-!docs/finance/
-docs/finance/*
-!docs/finance/portal-design/
-docs/finance/portal-design/*
-!docs/finance/portal-design/portal.css
+docs/**/*.md
+docs/**/*.png
+docs/**/*.jpg
+docs/**/*.jpeg
+docs/**/*.pdf
+docs/**/*.json
+docs/**/*.csv
+docs/**/*.txt
+docs/**/*.html
+docs/**/*.js
+docs/**/*.mjs
+docs/**/*.ts

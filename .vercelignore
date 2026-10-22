@@ -13,3 +13,18 @@ playwright-report
 docs/finance/portal-design/evidence
 stitch_azzora_fit_out_crm_shell
 tests
+dist
+coverage
+*.pem
+*.key
+*.p12
+*.pfx
+/Azzora Logo.pdf
+# Keep the approved stylesheet needed by the functional Accounts build.
+# Local reports, test exports and design prototypes are not deployed.
+docs/*
+!docs/finance/
+docs/finance/*
+!docs/finance/portal-design/
+docs/finance/portal-design/*
+!docs/finance/portal-design/portal.css

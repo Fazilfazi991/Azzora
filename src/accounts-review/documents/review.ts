@@ -46,6 +46,14 @@ type MatchContext = Pick<
   ReviewState,
   "bills" | "invoices" | "documentEntries" | "documentCatalog"
 >;
+export const scopeFor = (f: EntryFields) =>
+  f.kind === "company-expense" ||
+  (f.kind === "supplier-bill" &&
+    categories
+      .find((c) => c.id === f.categoryId)
+      ?.allowedScopes.includes("company"))
+    ? "company"
+    : "project";
 export function catalogFor(state: MatchContext): ReferenceCatalog {
   return (
     state.documentCatalog ?? {
@@ -157,7 +165,7 @@ export function inspectFields(
       "No exact supplier match; review this name. No supplier will be created.",
       "supplier",
     );
-  if (f.kind !== "company-expense" && !f.projectId)
+  if (scopeFor(f) === "project" && !f.projectId)
     add("project", "Select a project for project-related costs.", "projectId");
   if (f.customerName && !f.customerId)
     add(
@@ -297,7 +305,7 @@ export function saveDocumentDraft(
       "Confirm supplier, date, reference, AED total and classification before saving a draft.",
     );
   const category = categories.find((c) => c.id === f.categoryId && c.active),
-    scope = f.kind === "company-expense" ? "company" : "project";
+    scope = scopeFor(f);
   if (!category || !category.allowedScopes.includes(scope))
     throw Error("Choose a category valid for this document scope.");
   const account = next.accounting.accounts.find(

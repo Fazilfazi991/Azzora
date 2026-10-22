@@ -14,7 +14,7 @@ import {
   type Upload,
 } from "./model";
 import { fieldsSchema } from "./model";
-import { inspectFields } from "./review";
+import { inspectFields, scopeFor } from "./review";
 import "./entry.css";
 
 const PdfPreview = lazy(() => import("./PdfPreview"));
@@ -191,6 +191,13 @@ export function DocumentEntry({
               change("categoryId", "");
               if (e.target.value === "company-expense") change("projectId", "");
             }
+            if (
+              key === "categoryId" &&
+              data.documentCategories
+                .find((c) => c.id === e.target.value)
+                ?.allowedScopes.includes("company")
+            )
+              change("projectId", "");
           }}
         >
           {children}
@@ -348,12 +355,14 @@ export function DocumentEntry({
                 <>
                   <option value="">Choose category</option>
                   {data.documentCategories
-                    .filter((c) =>
-                      c.allowedScopes.includes(
-                        fields.kind === "company-expense"
-                          ? "company"
-                          : "project",
-                      ),
+                    .filter(
+                      (c) =>
+                        fields.kind === "supplier-bill" ||
+                        c.allowedScopes.includes(
+                          fields.kind === "company-expense"
+                            ? "company"
+                            : "project",
+                        ),
                     )
                     .map((c) => (
                       <option key={c.id} value={c.id}>
@@ -362,7 +371,7 @@ export function DocumentEntry({
                     ))}
                 </>,
               )}
-              {fields.kind !== "company-expense" &&
+              {scopeFor(fields) === "project" &&
                 choice(
                   "Project",
                   "projectId",

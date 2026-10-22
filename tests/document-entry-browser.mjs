@@ -222,6 +222,33 @@ try {
     fullPage: true,
   });
   check("Arabic/English synthetic sample review");
+  await page
+    .getByLabel("Expense category", { exact: true })
+    .selectOption("company-expenses");
+  await expect(page.getByLabel("Project", { exact: true })).toHaveCount(0);
+  await page
+    .getByLabel(
+      "I checked all fields and any warnings against the original document",
+    )
+    .check();
+  await page.getByRole("button", { name: "Confirm & save draft" }).click();
+  await expect(
+    page.getByText(
+      "Draft saved. No bill, payment or journal was posted. You can reopen and edit this draft below.",
+    ),
+  ).toBeVisible();
+  const company = await (
+    await context.request.get(`${base}/api/accounts-review/snapshot`)
+  ).json();
+  expect(
+    company.documentEntries.reviews.find(
+      (d) => d.fields.reference === "SYNTH-03",
+    ).mapping.accountCode,
+  ).toBe("6000");
+  expect(company.metrics).toEqual(before.metrics);
+  check(
+    "company supplier bill saves a company-category draft with no artificial project or posting",
+  );
   // Unknown bytes must not receive canned results just because the file is named like a sample.
   const bytes = Buffer.concat([
     fs.readFileSync("public/document-samples/01.png"),

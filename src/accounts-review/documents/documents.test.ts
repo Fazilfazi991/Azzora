@@ -87,6 +87,18 @@ describe("synthetic document corpus (not live AI accuracy)", () => {
     expect(new Set(sampleDocuments.map((d) => d.sha256)).size).toBe(40));
 });
 describe("review-only finance boundaries", () => {
+  it("allows an office supplier bill to use the company expense mapping without inventing a project", async () => {
+    const r = await extractDocument(createReviewState(), upload());
+    const fields = {
+      ...r.state.documentEntries!.reviews[0].fields,
+      kind: "supplier-bill" as const,
+      categoryId: "company-expenses",
+      projectId: "",
+    };
+    const next = saveDocumentDraft(r.state, save(r.id, fields), "now");
+    expect(next.documentEntries!.reviews[0].mapping?.accountCode).toBe("6000");
+    expect(next.accounting).toEqual(r.state.accounting);
+  });
   it("does not apply a remembered supplier rule over a conflicting document classification", async () => {
     const r = await extractDocument(createReviewState(), upload());
     const fields = readyFields(r.state.documentEntries!.reviews[0].fields);

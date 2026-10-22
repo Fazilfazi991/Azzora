@@ -29,6 +29,8 @@ export class BlobReviewStore implements ReviewStore {
     const result = await get(`accounts-review/v1/${path}`, {
       access: "private",
       useCache: false,
+      // A compressed response has a weak ETag, which cannot authorize ifMatch.
+      headers: { "Accept-Encoding": "identity" },
     });
     if (!result || result.statusCode !== 200) return null;
     return {

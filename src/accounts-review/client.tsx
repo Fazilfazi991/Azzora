@@ -1300,7 +1300,7 @@ function App() {
           <span className="workspace-mark">A</span>
           <div>
             <strong>Accountant portal</strong>
-            <small>Local client review</small>
+            <small>Client review</small>
           </div>
         </div>
         <nav aria-label="Finance modules">

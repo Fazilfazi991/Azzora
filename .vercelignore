@@ -10,6 +10,6 @@ artifacts
 screenshots
 test-results
 playwright-report
-docs
+docs/finance/portal-design/evidence
 stitch_azzora_fit_out_crm_shell
 tests

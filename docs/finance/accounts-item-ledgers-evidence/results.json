@@ -1,0 +1,19 @@
+{
+  "passed": 9,
+  "checks": [
+    "dedicated Accountant login and authenticated isolated session",
+    "invoice add/edit/remove lines, 205.00 sample and half-up decimal boundary",
+    "saved invoice draft reopens; issue posts once; issued/legacy records immutable",
+    "purchase lines persist; bill draft has no payable; explicit issue once and bill PDF",
+    "60 long item invoice and bill PDFs downloaded from authenticated application endpoint",
+    "itemized invoice/bill partial settlements and proforma receipt refusal",
+    "custom Direct ledger creation, duplicate refusal, reload/reuse, correct cost-of-sales and bank mapping",
+    "all three expense groups persist; trial balance/Balance Sheet reconcile; Manager data sentinel preserved",
+    "all Accounting routes accessible; logout revokes authenticated API session"
+  ],
+  "errors": [],
+  "pdfDocuments": 5,
+  "pdfPages": 16,
+  "primaryScreenshots": 15,
+  "supplementaryScreenshots": 4
+}

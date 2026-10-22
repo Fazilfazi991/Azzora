@@ -1,0 +1,134 @@
+{
+  "applicationSha": "6b33aa87a86b280049992095d1b3bc86b9a466c8",
+  "sourceTree": "3fe7117bc64da3979d91ebcbc25e48c7b84e425e",
+  "branch": "codex/azzora-accounts-item-ledgers",
+  "completedAt": "2026-10-22T13:09:41.853Z",
+  "unitTests": {
+    "passed": 606,
+    "files": 37,
+    "failed": 0
+  },
+  "financeFixtureTests": {
+    "passed": 2,
+    "failed": 0
+  },
+  "typescript": "passed",
+  "eslint": "passed",
+  "combinedProductionBuild": "passed",
+  "accountsOnlyProductionBuild": "passed",
+  "browserSuites": [
+    {
+      "suite": "browser",
+      "exit": 0
+    },
+    {
+      "suite": "commercial-browser",
+      "exit": 0
+    },
+    {
+      "suite": "commercial-boundaries",
+      "exit": 0
+    },
+    {
+      "suite": "operational-browser",
+      "exit": 0
+    },
+    {
+      "suite": "operational-boundaries",
+      "exit": 0
+    },
+    {
+      "suite": "agent-1-corrective-browser",
+      "exit": 0
+    },
+    {
+      "exit": 0,
+      "suite": "workforce-browser"
+    },
+    {
+      "suite": "recovery-browser",
+      "exit": 0
+    },
+    {
+      "suite": "finance-checkpoint-browser",
+      "exit": 0
+    },
+    {
+      "suite": "quotation-browser",
+      "exit": 0
+    },
+    {
+      "suite": "quotation-ux-browser",
+      "exit": 0
+    },
+    {
+      "exit": 0,
+      "suite": "quotation-print-browser"
+    },
+    {
+      "exit": 0,
+      "suite": "quotation-live-preview-browser"
+    },
+    {
+      "exit": 0,
+      "suite": "quotation-hierarchy-browser"
+    },
+    {
+      "exit": 0,
+      "suite": "quotation-payment-rounding-browser"
+    },
+    {
+      "suite": "accounts-feedback-browser",
+      "exit": 0,
+      "checkpoints": 9
+    },
+    {
+      "suite": "accounts-review-browser",
+      "exit": 0,
+      "checkpoints": 14
+    },
+    {
+      "suite": "document-entry-browser",
+      "exit": 0,
+      "checkpoints": 21
+    }
+  ],
+  "originalFailedInvocations": [
+    {
+      "suite": "commercial-boundaries",
+      "exit": 1
+    },
+    {
+      "suite": "workforce-browser",
+      "exit": 1
+    },
+    {
+      "exit": 1,
+      "suite": "quotation-ux-browser"
+    }
+  ],
+  "rechecks": [
+    {
+      "suite": "commercial-boundaries",
+      "exit": 0
+    },
+    {
+      "suite": "quotation-ux-browser",
+      "exit": 0
+    },
+    {
+      "exit": 0,
+      "suite": "workforce-browser"
+    }
+  ],
+  "pdfDocuments": 5,
+  "pdfPages": 16,
+  "primaryScreenshots": 15,
+  "supplementaryScreenshots": 4,
+  "limits": [
+    "Fictional isolated demo only",
+    "VAT policy B05 pending",
+    "Paid AI disabled",
+    "No push, merge or deployment"
+  ]
+}

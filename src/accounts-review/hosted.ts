@@ -14,6 +14,8 @@ import {
 } from "./domain.js";
 import { ReviewConflict, type ReviewStore } from "./hosted-store.js";
 import { reviewPdf } from "./pdf.js";
+import { extractDocument } from "./documents/service.js";
+import { ZodError } from "zod";
 
 interface HostedSession {
   role: "accountant";
@@ -168,6 +170,18 @@ export function createHostedHandler(
       }
       if (path === "/snapshot" && request.method === "GET")
         return json(200, reviewSnapshot(active.finance));
+      if (path === "/documents/extract" && request.method === "POST") {
+        const input = await readInput(request);
+        const result = await extractDocument(active.finance, input.file);
+        active.finance = result.state;
+        if (!result.reused)
+          await store.write(sessionPath, active, stored.version);
+        return json(200, {
+          id: result.id,
+          reused: result.reused,
+          snapshot: reviewSnapshot(active.finance),
+        });
+      }
       if (path === "/reset" && request.method === "POST") {
         active.finance = createReviewState();
         active.actions = {};
@@ -218,6 +232,7 @@ export function createHostedHandler(
             "receipt",
             "supplier-payment",
             "expense",
+            "document-draft",
           ].includes(action.kind)
         )
           return json(400, { error: "Unknown finance action." });
@@ -259,6 +274,15 @@ export function createHostedHandler(
       }
       return json(404, { error: "Review endpoint not found." });
     } catch (error) {
+      if (error instanceof ZodError)
+        return json(400, {
+          error:
+            "Check document fields: " +
+            error.issues
+              .map((i) => `${i.path.join(".")}: ${i.message}`)
+              .join("; ")
+              .slice(0, 600),
+        });
       if (error instanceof ReviewConflict)
         return json(409, { error: error.message });
       if (

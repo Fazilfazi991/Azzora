@@ -1,6 +1,7 @@
 import { randomUUID, scryptSync } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { createHostedHandler } from "./hosted";
+import { readFileSync } from "node:fs";
 import {
   ReviewConflict,
   type ReviewStore,
@@ -67,6 +68,87 @@ async function signIn(handler: (r: Request) => Promise<Response>) {
   };
 }
 describe("hosted fictional Accountant boundary", () => {
+  it("protects document extraction and drafts with session, CSRF, isolation, revision and idempotency", async () => {
+    const { handler } = setup();
+    const input = {
+      file: {
+        name: "fictional.png",
+        mime: "image/png",
+        data: readFileSync("public/document-samples/01.png").toString("base64"),
+      },
+    };
+    expect(
+      (await handler(request("documents/extract", "POST", input))).status,
+    ).toBe(401);
+    const a = await signIn(handler),
+      b = await signIn(handler);
+    const headers = { Cookie: a.cookie, "X-Azzora-CSRF": a.csrf };
+    expect(
+      (
+        await handler(
+          request("documents/extract", "POST", input, { Cookie: a.cookie }),
+        )
+      ).status,
+    ).toBe(403);
+    const extracted = await handler(
+      request("documents/extract", "POST", input, headers),
+    );
+    expect(extracted.status).toBe(200);
+    const result = await extracted.json(),
+      doc = result.snapshot.documentEntries.reviews[0];
+    expect(doc.extraction.mode).toBe("synthetic-replay");
+    const key = randomUUID(),
+      action = {
+        kind: "document-draft",
+        reviewId: doc.id,
+        revision: 0,
+        fields: { ...doc.fields, projectId: "demo-apartment" },
+        confirmed: true,
+        rememberSupplier: true,
+      };
+    const writeHeaders = { ...headers, "X-Azzora-Idempotency-Key": key };
+    const first = await handler(
+      request("action", "POST", action, writeHeaders),
+    );
+    expect(first.status).toBe(200);
+    const saved = await first.json();
+    expect(saved.snapshot.documentEntries.reviews[0].status).toBe("Draft");
+    expect(saved.snapshot.metrics).toEqual(result.snapshot.metrics);
+    const retry = await handler(
+      request("action", "POST", action, writeHeaders),
+    );
+    expect(retry.status).toBe(200);
+    expect(
+      (await retry.json()).snapshot.documentEntries.reviews[0].corrections,
+    ).toHaveLength(1);
+    const second = await handler(
+      request("documents/extract", "POST", input, headers),
+    );
+    expect((await second.json()).reused).toBe(true);
+    const others = await handler(
+      request("snapshot", "GET", undefined, { Cookie: b.cookie }),
+    );
+    expect((await others.json()).documentEntries.reviews).toEqual([]);
+    expect(
+      (
+        await handler(
+          request(`attachment/${doc.attachmentId}`, "GET", undefined, {
+            Cookie: b.cookie,
+          }),
+        )
+      ).status,
+    ).toBe(404);
+    await handler(request("logout", "POST", {}, headers));
+    expect(
+      (
+        await handler(
+          request(`attachment/${doc.attachmentId}`, "GET", undefined, {
+            Cookie: a.cookie,
+          }),
+        )
+      ).status,
+    ).toBe(401);
+  });
   it("fails closed without configuration, HTTPS, session, origin or CSRF", async () => {
     const { store, handler } = setup();
     expect(

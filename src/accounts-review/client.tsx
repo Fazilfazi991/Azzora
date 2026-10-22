@@ -9,6 +9,8 @@ import { createRoot } from "react-dom/client";
 import type { reviewSnapshot } from "./domain";
 import "../../docs/finance/portal-design/portal.css";
 import "./review.css";
+import { DocumentEntry } from "./documents/DocumentEntry";
+import type { Upload } from "./documents/model";
 
 type Snapshot = ReturnType<typeof reviewSnapshot>;
 type Session = {
@@ -22,6 +24,7 @@ type Route =
   | "invoices"
   | "new-invoice"
   | "bills"
+  | "document-entry"
   | "receipts"
   | "supplier-payments"
   | "expenses"
@@ -35,6 +38,7 @@ const routes: Route[] = [
   "invoices",
   "new-invoice",
   "bills",
+  "document-entry",
   "receipts",
   "supplier-payments",
   "expenses",
@@ -487,7 +491,11 @@ function Bills({
         eyebrow="PURCHASES"
         title="Purchase bills"
         sub="Record a fictional PO-referenced bill, including a camera image or PDF from mobile."
-      />
+      >
+        <a className="button" href="#/document-entry">
+          Read a bill · save draft
+        </a>
+      </Head>
       <Note />
       <div className="review-two">
         <form className="panel review-form" onSubmit={submit}>
@@ -726,7 +734,11 @@ function Expenses({
         eyebrow="OPERATING COSTS"
         title="Expenses"
         sub="Record a paid fictional operating cost against bank or cash, with optional evidence."
-      />
+      >
+        <a className="button" href="#/document-entry">
+          Read a receipt · save draft
+        </a>
+      </Head>
       <Note />
       <form className="panel review-form" onSubmit={submit}>
         <h2>New paid expense</h2>
@@ -1149,7 +1161,9 @@ function App() {
       });
       setSnapshot(result.snapshot);
       setMessage(
-        `${action.kind === "issue-invoice" ? "Issued" : "Recorded"} ${result.id} in the fictional review ledger.`,
+        action.kind === "document-draft"
+          ? "Document draft saved. No financial posting."
+          : `${action.kind === "issue-invoice" ? "Issued" : "Recorded"} ${result.id} in the fictional review ledger.`,
       );
       return true;
     } catch (problem) {
@@ -1253,6 +1267,7 @@ function App() {
     invoices: "Sales invoices",
     "new-invoice": "New invoice",
     bills: "Purchase bills",
+    "document-entry": "Read a bill",
     receipts: "Customer receipts",
     "supplier-payments": "Supplier payments",
     expenses: "Expenses",
@@ -1267,6 +1282,29 @@ function App() {
     invoices: <Invoices data={snapshot} act={act} />,
     "new-invoice": <InvoiceForm act={act} />,
     bills: <Bills data={snapshot} act={act} />,
+    "document-entry": (
+      <DocumentEntry
+        data={snapshot}
+        act={act}
+        extract={async (file: Upload) => {
+          const result = await api("/documents/extract", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Azzora-CSRF": session.csrf,
+            },
+            body: JSON.stringify({ file }),
+          });
+          setMessage(
+            result.reused
+              ? "This exact file was already uploaded. Opened its existing review without creating a duplicate."
+              : "",
+          );
+          setSnapshot(result.snapshot);
+          return result.id;
+        }}
+      />
+    ),
     receipts: <Settlement data={snapshot} act={act} supplier={false} />,
     "supplier-payments": <Settlement data={snapshot} act={act} supplier />,
     expenses: <Expenses data={snapshot} act={act} />,
@@ -1311,7 +1349,7 @@ function App() {
                 <a
                   key={item.key}
                   href={link(item.key)}
-                  className={`nav-link ${current === item.key ? "is-active" : ""}`}
+                  className={`nav-link ${current === item.key || (current === "document-entry" && item.key === "bills") ? "is-active" : ""}`}
                   aria-current={current === item.key ? "page" : undefined}
                   onClick={() => setNavOpen(false)}
                 >

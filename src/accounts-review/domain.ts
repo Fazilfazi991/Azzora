@@ -6,6 +6,13 @@ import {
   buildTrialBalance,
 } from "../accounting/reports.js";
 import type { AccountingState, JournalLine } from "../accounting/model";
+import { saveDocumentDraft } from "./documents/review.js";
+import type {
+  DocumentEntryState,
+  ReferenceCatalog,
+  EntryFields,
+} from "./documents/model";
+import { catalogFor, categories } from "./documents/review.js";
 import {
   documentAgeing,
   documentOutstanding,
@@ -47,6 +54,8 @@ export interface ReviewAttachment {
   size: number;
 }
 export interface ReviewState {
+  documentEntries?: DocumentEntryState;
+  documentCatalog?: ReferenceCatalog;
   accounting: AccountingState;
   invoices: ReviewDocument[];
   bills: ReviewDocument[];
@@ -254,6 +263,15 @@ export function createReviewState(): ReviewState {
 
 export type ReviewAction =
   | {
+      kind: "document-draft";
+      id: string;
+      reviewId: string;
+      revision: number;
+      fields: EntryFields;
+      confirmed: true;
+      rememberSupplier: boolean;
+    }
+  | {
       kind: "invoice";
       id: string;
       party: string;
@@ -295,7 +313,7 @@ export type ReviewAction =
       attachment?: { name: string; mime: string; data: string };
     };
 
-function attachment(
+export function attachment(
   state: ReviewState,
   id: string,
   input: { name: string; mime: string; data: string } | undefined,
@@ -336,6 +354,8 @@ export function applyReviewAction(
   previous: ReviewState,
   action: ReviewAction,
 ): ReviewState {
+  if (action.kind === "document-draft")
+    return saveDocumentDraft(previous, action, new Date().toISOString());
   const next = structuredClone(previous);
   const id = required(action.id, "Action ID", 80);
   if (
@@ -542,6 +562,13 @@ export function reviewSnapshot(state: ReviewState, asOf = "2026-10-22") {
   )
     throw Error("Demo statements and open documents do not reconcile.");
   return {
+    documentEntries: state.documentEntries ?? {
+      version: 1 as const,
+      reviews: [],
+      defaults: [],
+    },
+    documentCatalog: catalogFor(state),
+    documentCategories: categories,
     asOf,
     period: { from, to: asOf },
     metrics: {

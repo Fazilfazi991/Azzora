@@ -10,6 +10,7 @@ import {
 } from "node:crypto";
 import { applyReviewAction, createReviewState, reviewSnapshot } from "./domain";
 import { reviewPdf } from "./pdf";
+import { extractDocument } from "./documents/service";
 
 const email = "accountant@review.azzora.test";
 const configuredPassword = process.env.AZZORA_REVIEW_PASSWORD || "";
@@ -175,9 +176,23 @@ export function accountsReviewPlugin() {
           }
           if (path === "/snapshot" && req.method === "GET")
             return json(res, 200, reviewSnapshot(finance, asOf));
+          if (path === "/documents/extract" && req.method === "POST") {
+            const input = await body(req);
+            const result = await extractDocument(finance, input.file);
+            finance = result.state;
+            return json(res, 200, {
+              id: result.id,
+              reused: result.reused,
+              snapshot: reviewSnapshot(finance, asOf),
+            });
+          }
           if (path.startsWith("/pdf/") && req.method === "GET") {
             const name = decodeURIComponent(path.slice(5));
-            res.writeHead(200, { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="AZZORA-demo.pdf"`, "Cache-Control": "no-store" });
+            res.writeHead(200, {
+              "Content-Type": "application/pdf",
+              "Content-Disposition": `attachment; filename="AZZORA-demo.pdf"`,
+              "Cache-Control": "no-store",
+            });
             return res.end(Buffer.from(reviewPdf(finance, name)));
           }
           if (path.startsWith("/attachment/") && req.method === "GET") {
@@ -212,6 +227,7 @@ export function accountsReviewPlugin() {
                 "receipt",
                 "supplier-payment",
                 "expense",
+                "document-draft",
               ].includes(action.kind)
             )
               return json(res, 400, { error: "Unknown finance action." });

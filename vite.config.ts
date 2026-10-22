@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import { accountsReviewPlugin } from "./src/accounts-review/server";
 export default defineConfig({
   plugins: [react(), accountsReviewPlugin()],
+  optimizeDeps: { include: ["pdfjs-dist"] },
   build: {
     rollupOptions: {
       input:

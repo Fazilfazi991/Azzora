@@ -1,0 +1,287 @@
+{
+  "url": "https://azzora-accounts-client-review-6swvalds8-faziils-projects.vercel.app/accountant.html",
+  "deployment": {
+    "id": "dpl_7F7DwZXXLWHsz8WjXUePuDsN4KTb",
+    "url": "azzora-accounts-client-review-6swvalds8-faziils-projects.vercel.app",
+    "target": null,
+    "state": "READY",
+    "sourceSha": "e360f4bca2e82c3d5955667fbfb896202ef0922b"
+  },
+  "applicationSha": "6b33aa87a86b280049992095d1b3bc86b9a466c8",
+  "deployedPackagingSha": "e360f4bca2e82c3d5955667fbfb896202ef0922b",
+  "sourceTree": "3fe7117bc64da3979d91ebcbc25e48c7b84e425e",
+  "completedAt": "2026-10-22T15:26:51.098Z",
+  "hostedSuites": [
+    {
+      "name": "itemized-documents-ledgers",
+      "passed": 9,
+      "errors": []
+    },
+    {
+      "name": "accounts-regression",
+      "passed": 14,
+      "errors": []
+    },
+    {
+      "name": "document-review",
+      "passed": 21,
+      "errors": []
+    },
+    {
+      "name": "hosted-security-navigation",
+      "passed": 8,
+      "routeWidthChecks": 52
+    },
+    {
+      "name": "invoice-types-local-parity-pdf-text",
+      "passed": 4,
+      "errors": []
+    }
+  ],
+  "totalGroupedChecks": 56,
+  "assetComparison": [
+    {
+      "asset": "/assets/accountant-kKplx9gk.js",
+      "sha256": "20201cb82f2c41d07031d2e8338e7f7ddf0cf9b086b8d78ec3f1ad6dac339a00",
+      "identicalToTestedLocalBuild": true
+    },
+    {
+      "asset": "/assets/accountant-Cbjyzozq.css",
+      "sha256": "e468315dd75b3e658ca1fd1854668c51c1f2b759cf4b3597745dc9f43ec14730",
+      "identicalToTestedLocalBuild": true
+    }
+  ],
+  "visual": {
+    "pdfDocuments": 11,
+    "pdfPages": 22,
+    "pdfs": [
+      {
+        "file": "tmp/accounts-final-hosted-v2/accounts-feedback-browser/itemized-bill.pdf",
+        "pages": 1,
+        "renders": [
+          "tmp/accounts-final-hosted-v2/accounts-feedback-browser/itemized-bill-page-1.png"
+        ]
+      },
+      {
+        "file": "tmp/accounts-final-hosted-v2/accounts-feedback-browser/itemized-invoice.pdf",
+        "pages": 1,
+        "renders": [
+          "tmp/accounts-final-hosted-v2/accounts-feedback-browser/itemized-invoice-page-1.png"
+        ]
+      },
+      {
+        "file": "tmp/accounts-final-hosted-v2/accounts-feedback-browser/multipage-bill.pdf",
+        "pages": 6,
+        "renders": [
+          "tmp/accounts-final-hosted-v2/accounts-feedback-browser/multipage-bill-page-1.png",
+          "tmp/accounts-final-hosted-v2/accounts-feedback-browser/multipage-bill-page-2.png",
+          "tmp/accounts-final-hosted-v2/accounts-feedback-browser/multipage-bill-page-3.png",
+          "tmp/accounts-final-hosted-v2/accounts-feedback-browser/multipage-bill-page-4.png",
+          "tmp/accounts-final-hosted-v2/accounts-feedback-browser/multipage-bill-page-5.png",
+          "tmp/accounts-final-hosted-v2/accounts-feedback-browser/multipage-bill-page-6.png"
+        ]
+      },
+      {
+        "file": "tmp/accounts-final-hosted-v2/accounts-feedback-browser/multipage-invoice.pdf",
+        "pages": 6,
+        "renders": [
+          "tmp/accounts-final-hosted-v2/accounts-feedback-browser/multipage-invoice-page-1.png",
+          "tmp/accounts-final-hosted-v2/accounts-feedback-browser/multipage-invoice-page-2.png",
+          "tmp/accounts-final-hosted-v2/accounts-feedback-browser/multipage-invoice-page-3.png",
+          "tmp/accounts-final-hosted-v2/accounts-feedback-browser/multipage-invoice-page-4.png",
+          "tmp/accounts-final-hosted-v2/accounts-feedback-browser/multipage-invoice-page-5.png",
+          "tmp/accounts-final-hosted-v2/accounts-feedback-browser/multipage-invoice-page-6.png"
+        ]
+      },
+      {
+        "file": "tmp/accounts-final-hosted-v2/accounts-feedback-browser/oversized-row-invoice.pdf",
+        "pages": 2,
+        "renders": [
+          "tmp/accounts-final-hosted-v2/accounts-feedback-browser/oversized-row-invoice-page-1.png",
+          "tmp/accounts-final-hosted-v2/accounts-feedback-browser/oversized-row-invoice-page-2.png"
+        ]
+      },
+      {
+        "file": "tmp/accounts-final-hosted-v2/accounts-final-preview-browser/proforma-invoice.pdf",
+        "pages": 1,
+        "renders": [
+          "tmp/accounts-final-hosted-v2/accounts-final-preview-browser/proforma-invoice-page-1.png"
+        ]
+      },
+      {
+        "file": "tmp/accounts-final-hosted-v2/accounts-final-preview-browser/tax-invoice.pdf",
+        "pages": 1,
+        "renders": [
+          "tmp/accounts-final-hosted-v2/accounts-final-preview-browser/tax-invoice-page-1.png"
+        ]
+      },
+      {
+        "file": "tmp/accounts-final-hosted-v2/accounts-review-browser/balance.pdf",
+        "pages": 1,
+        "renders": [
+          "tmp/accounts-final-hosted-v2/accounts-review-browser/balance-page-1.png"
+        ]
+      },
+      {
+        "file": "tmp/accounts-final-hosted-v2/accounts-review-browser/invoice.pdf",
+        "pages": 1,
+        "renders": [
+          "tmp/accounts-final-hosted-v2/accounts-review-browser/invoice-page-1.png"
+        ]
+      },
+      {
+        "file": "tmp/accounts-final-hosted-v2/accounts-review-browser/pnl.pdf",
+        "pages": 1,
+        "renders": [
+          "tmp/accounts-final-hosted-v2/accounts-review-browser/pnl-page-1.png"
+        ]
+      },
+      {
+        "file": "tmp/accounts-final-hosted-v2/accounts-review-browser/proforma.pdf",
+        "pages": 1,
+        "renders": [
+          "tmp/accounts-final-hosted-v2/accounts-review-browser/proforma-page-1.png"
+        ]
+      }
+    ],
+    "uiComparison": [
+      {
+        "file": "invoice-items-1440.png",
+        "width": 1440,
+        "height": 1597,
+        "sameDimensions": true,
+        "changedPixelPercent": 0
+      },
+      {
+        "file": "invoice-items-1024.png",
+        "width": 1024,
+        "height": 1636,
+        "sameDimensions": true,
+        "changedPixelPercent": 0
+      },
+      {
+        "file": "invoice-items-768.png",
+        "width": 768,
+        "height": 1624,
+        "sameDimensions": true,
+        "changedPixelPercent": 0
+      },
+      {
+        "file": "invoice-items-430.png",
+        "width": 430,
+        "height": 1864,
+        "sameDimensions": true,
+        "changedPixelPercent": 0
+      },
+      {
+        "file": "invoice-items-390.png",
+        "width": 390,
+        "height": 1882,
+        "sameDimensions": true,
+        "changedPixelPercent": 0
+      },
+      {
+        "file": "purchase-items-1440.png",
+        "width": 1440,
+        "height": 2315,
+        "sameDimensions": true,
+        "changedPixelPercent": 0.0099
+      },
+      {
+        "file": "purchase-items-1024.png",
+        "width": 1024,
+        "height": 2354,
+        "sameDimensions": true,
+        "changedPixelPercent": 0.0137
+      },
+      {
+        "file": "purchase-items-768.png",
+        "width": 768,
+        "height": 2494,
+        "sameDimensions": true,
+        "changedPixelPercent": 0.0173
+      },
+      {
+        "file": "purchase-items-430.png",
+        "width": 430,
+        "height": 2839,
+        "sameDimensions": true,
+        "changedPixelPercent": 0.0271
+      },
+      {
+        "file": "purchase-items-390.png",
+        "width": 390,
+        "height": 2858,
+        "sameDimensions": true,
+        "changedPixelPercent": 0.0297
+      },
+      {
+        "file": "expense-ledgers-1440.png",
+        "width": 1440,
+        "height": 1517,
+        "sameDimensions": true,
+        "changedPixelPercent": 0.0155
+      },
+      {
+        "file": "expense-ledgers-1024.png",
+        "width": 1024,
+        "height": 1568,
+        "sameDimensions": true,
+        "changedPixelPercent": 0.0211
+      },
+      {
+        "file": "expense-ledgers-768.png",
+        "width": 768,
+        "height": 1544,
+        "sameDimensions": true,
+        "changedPixelPercent": 0.0286
+      },
+      {
+        "file": "expense-ledgers-430.png",
+        "width": 430,
+        "height": 1981,
+        "sameDimensions": true,
+        "changedPixelPercent": 0.0398
+      },
+      {
+        "file": "expense-ledgers-390.png",
+        "width": 390,
+        "height": 2000,
+        "sameDimensions": true,
+        "changedPixelPercent": 0.0435
+      }
+    ]
+  },
+  "delivery": {
+    "preview": {
+      "id": "dpl_7F7DwZXXLWHsz8WjXUePuDsN4KTb",
+      "url": "azzora-accounts-client-review-6swvalds8-faziils-projects.vercel.app",
+      "target": null,
+      "state": "READY",
+      "sourceSha": "e360f4bca2e82c3d5955667fbfb896202ef0922b"
+    },
+    "stable": {
+      "id": "dpl_DM4WvXZFDXGWrq3YCA5xp2G9hMNt",
+      "url": "azzora-accounts-client-review-5bwkp7c0v-faziils-projects.vercel.app",
+      "target": null,
+      "state": "READY",
+      "sourceSha": null
+    },
+    "manager": {
+      "id": "dpl_F9kD9Vu4ioWTCJrQwD2ev5J6mYmp",
+      "url": "azzora-3tz3i63x0-faziils-projects.vercel.app",
+      "target": "production",
+      "state": "READY",
+      "sourceSha": "fd7754dfe0022f9b64bf875313bd9679cb0144eb"
+    },
+    "expectedStableUnchanged": true,
+    "expectedManagerUnchanged": true,
+    "previewNotProduction": true,
+    "runtimeErrorScan": "## Runtime Logs\n\n**Project:** prj_inNGMsufKkeDUTS1Sn5whmwIVWuw\n**Deployment:** dpl_7F7DwZXXLWHsz8WjXUePuDsN4KTb\n**Time range:** 2026-10-22T14:31:16.418Z → 2026-10-22T15:21:16.418Z\n\nNo logs found for the specified criteria."
+  },
+  "githubMainBeforeAndAfter": "fd7754dfe0022f9b64bf875313bd9679cb0144eb",
+  "paidAiEnabled": false,
+  "vatPolicy": "pending",
+  "stableAliasChanged": false,
+  "productionPromoted": false
+}

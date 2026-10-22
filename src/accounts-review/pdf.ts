@@ -69,7 +69,6 @@ export function reviewPdf(state: ReviewState, name: string): ArrayBuffer {
       header(pageTitle + " (continued)");
       y = 48;
     }
-    tableHeader();
     items.forEach((item, index) => {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
@@ -96,7 +95,17 @@ export function reviewPdf(state: ReviewState, name: string): ArrayBuffer {
         doc.setFont("helvetica", "normal");
         doc.setFontSize(8);
       }
-      if (y + Math.min(height, 200) > 265) nextTablePage();
+      if (index === 0) {
+        if (height <= 207 && y + 10 + height > 265) {
+          doc.addPage();
+          header(pageTitle + " (continued)");
+          y = 48;
+        }
+        tableHeader();
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+      }
+      if (height <= 207 && y + height > 265) nextTablePage();
       const lineCount = Math.max(...cells.map((cell) => cell.length));
       let offset = 0;
       while (offset < lineCount) {

@@ -364,7 +364,7 @@ export function DocumentEntry({
         <span>
           PDF, PNG or JPEG · up to 2 MB.{" "}
           {data.documentAi?.enabled
-            ? "Test DeepSeek using the fictional sample bills below. Review every suggestion before saving a draft."
+            ? "AI accepts approved samples and specifically authorized documents only. Review every suggestion before saving a draft."
             : "Selectable PDF text is read locally; photos/scans remain manual."}{" "}
           Manual entry keeps the original alongside a blank form.
         </span>
@@ -448,6 +448,13 @@ export function DocumentEntry({
           <form className="panel review-form entry-form" onSubmit={save}>
             <span className="eyebrow">REVIEW BEFORE SAVING</span>
             <h2>Document details</h2>
+            {doc.extraction.reviewOnly && (
+              <div className="entry-warnings" role="status">
+                Owner-authorized quotation · review drafts only. This document
+                cannot create a purchase bill, expense, payment or journal
+                posting.
+              </div>
+            )}
             <p>
               Confirm the document type. A quotation marked “Not Official Bill”
               must remain a review draft until an official invoice is obtained.
@@ -775,6 +782,7 @@ export function DocumentEntry({
                   Save reviewed draft
                 </button>
                 {doc.status === "Draft" &&
+                  !doc.extraction.reviewOnly &&
                   fields.kind === "supplier-bill" &&
                   !doc.convertedBillId && (
                     <button
@@ -799,6 +807,7 @@ export function DocumentEntry({
                 )}
               </div>
               {doc.status === "Draft" &&
+                !doc.extraction.reviewOnly &&
                 ["project-expense", "company-expense"].includes(fields.kind) &&
                 !(doc as DocumentReview & { convertedExpenseId?: string })
                   .convertedExpenseId && (

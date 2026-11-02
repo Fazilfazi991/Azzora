@@ -22,6 +22,8 @@ export function configuredDocumentRuntime(store: ReviewStore): DocumentRuntime {
   }
   return createDeepSeekRuntime({
     env: {
+      AZZORA_AI_AUTHORIZED_DOCUMENT_SHA256:
+        process.env.AZZORA_AI_AUTHORIZED_DOCUMENT_SHA256,
       AZZORA_AI_NEW_REQUESTS_ENABLED:
         process.env.AZZORA_AI_NEW_REQUESTS_ENABLED,
       AZZORA_AI_ENABLED: process.env.AZZORA_AI_ENABLED,
@@ -48,9 +50,11 @@ export function documentAvailability(runtime: DocumentRuntime) {
     message: value.ready
       ? value.newRequestsEnabled === false
         ? "New paid AI requests are on hold pending verification. Approved cached real results remain available. Unauthorized documents are never sent to the provider. Manual review remains available."
-        : value.authorizationMode === "owner-application-cap"
-          ? "Real DeepSeek extraction is available for approved fictional samples under the owner-approved shared USD 5 application cap. This is not a verified provider-account spending cap. Cached real results avoid another paid request. Review every field before saving a draft."
-          : "DeepSeek extraction is available only for approved fictional evaluation documents within the shared USD 5 allowance. Review every field before saving a draft."
+        : value.authorizedDocumentReview
+          ? "AI accepts the approved fictional samples and the one specifically owner-authorized quotation photo. That photo is restricted to review drafts with no financial posting. The shared USD 5 application cap remains active; provider-account controls are unverified. Review all extracted values."
+          : value.authorizationMode === "owner-application-cap"
+            ? "Real DeepSeek extraction is available for approved fictional samples under the owner-approved shared USD 5 application cap. This is not a verified provider-account spending cap. Cached real results avoid another paid request. Review every field before saving a draft."
+            : "DeepSeek extraction is available only for approved fictional evaluation documents within the shared USD 5 allowance. Review every field before saving a draft."
       : value.reason === "disabled"
         ? "Live AI extraction is disabled. Selectable PDF text and clearly labelled prepared demo suggestions are available; images can be entered manually."
         : "Live AI extraction is unavailable until credential and billing controls are verified. Manual entry and local PDF reading remain available.",

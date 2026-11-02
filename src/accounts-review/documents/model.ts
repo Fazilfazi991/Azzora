@@ -100,6 +100,7 @@ export interface EntryWarning {
   field: string;
 }
 export interface Extraction {
+  reviewOnly?: boolean;
   requestedMode?: "auto" | "manual";
   failureCode?: import("./extraction-status").ExtractionFailureCode;
   fields: EntryFields;

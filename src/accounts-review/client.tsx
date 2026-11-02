@@ -140,7 +140,7 @@ function Head({
 function Note() {
   return (
     <div className="prototype-note" role="note">
-      <strong>CLIENT REVIEW · FICTIONAL DATA</strong>
+      <strong>CLIENT REVIEW · DEMO LEDGER</strong>
       <span>
         Actions update only this isolated demo ledger. No Manager CRM records or
         real money are changed.
@@ -1302,7 +1302,7 @@ function App() {
           {content[current]}
         </main>
         <footer className="site-footer">
-          AZZORA Accounts · Fictional demo data · No production posting or CRM
+          AZZORA Accounts · Fictional demo ledger · No production posting or CRM
           record changes
         </footer>
       </div>

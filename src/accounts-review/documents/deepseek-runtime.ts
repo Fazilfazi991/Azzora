@@ -71,6 +71,7 @@ export const deepSeekApprovalSchema = z
   .strict();
 export type DeepSeekApproval = z.infer<typeof deepSeekApprovalSchema>;
 export interface DeepSeekEnvironment {
+  AZZORA_AI_AUTHORIZED_DOCUMENT_SHA256?: string;
   AZZORA_AI_NEW_REQUESTS_ENABLED?: string;
   AZZORA_AI_CLIENT_DEMO_APP_CAP?: string;
   AZZORA_AI_ENABLED?: string;
@@ -79,6 +80,7 @@ export interface DeepSeekEnvironment {
   DEEPSEEK_API_KEY?: string;
 }
 export interface DeepSeekRuntimeStatus {
+  authorizedDocumentReview?: boolean;
   newRequestsEnabled?: boolean;
   authorizationMode?: "owner-application-cap";
   provider: "deepseek";
@@ -93,7 +95,7 @@ export interface DeepSeekRuntimeStatus {
     | "approval-required"
     | "ready";
   maximumEvaluationUsd: 5;
-  syntheticOnly: true;
+  syntheticOnly: boolean;
 }
 interface SharedBudget {
   version: 1;

@@ -530,6 +530,10 @@ export function applyReviewAction(
         "Save and confirm this document draft before creating an expense.",
       );
     const converted = review as typeof review & { convertedExpenseId?: string };
+    if (review.extraction.reviewOnly)
+      throw Error(
+        "This document is authorized for review drafts only; financial posting is prohibited.",
+      );
     if (
       review.fields.documentType === "quotation" ||
       review.extraction.fields.documentType === "quotation"
@@ -662,6 +666,10 @@ export function applyReviewAction(
     )
       throw Error(
         "A quotation / not official bill cannot be posted. Obtain and review an official invoice.",
+      );
+    if (review.extraction.reviewOnly)
+      throw Error(
+        "This document is authorized for review drafts only; financial posting is prohibited.",
       );
     if (action.confirmed !== true || review.fields.kind !== "supplier-bill")
       throw Error(

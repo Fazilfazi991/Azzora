@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import {
   createReviewState,
@@ -58,6 +59,94 @@ const body = (fields: unknown = sampleDocuments[6].fields) => ({
 });
 
 describe("Auto-Fill failures stay distinct from manual selection and successful extraction", () => {
+  it("authorizes only one exact owner-approved digest and enforces review-only across cached results", async () => {
+    const log = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const approved = {
+        ...file,
+        data: Buffer.concat([
+          Buffer.from(file.data, "base64"),
+          Buffer.from("OWNER APPROVED MOCK DOCUMENT"),
+        ]).toString("base64"),
+      };
+      const digest = createHash("sha256")
+        .update(Buffer.from(approved.data, "base64"))
+        .digest("hex");
+      const store = new Store(),
+        transport = vi.fn(async () =>
+          Response.json(
+            body({ ...sampleDocuments[6].fields, documentType: "invoice" }),
+          ),
+        );
+      const runtime = createDeepSeekRuntime({
+        env: { ...env, AZZORA_AI_AUTHORIZED_DOCUMENT_SHA256: digest },
+        store,
+        transport,
+      });
+      expect(runtime.status()).toMatchObject({
+        syntheticOnly: false,
+        authorizedDocumentReview: true,
+      });
+      const r = await extractDocument(
+          createReviewState(),
+          approved,
+          runtime.extractor,
+        ),
+        d = r.state.documentEntries!.reviews[0];
+      expect(d.extraction.reviewOnly).toBe(true);
+      expect(d.fields.documentType).toBe("quotation");
+      expect(d.extraction.fields.documentType).toBe("invoice");
+      const draft = applyReviewAction(r.state, {
+        kind: "document-draft",
+        id: "OWNER-REVIEW",
+        reviewId: d.id,
+        revision: 0,
+        confirmed: true,
+        rememberSupplier: false,
+        fields: {
+          ...d.fields,
+          documentType: "invoice",
+          kind: "supplier-bill",
+          categoryId: "project-materials",
+          projectId: "demo-apartment",
+        },
+      });
+      for (const kind of [
+        "create-bill-from-review",
+        "create-expense-from-review",
+      ] as const)
+        expect(() =>
+          applyReviewAction(draft, {
+            kind,
+            id: "NO-POST-OWNER",
+            reviewId: d.id,
+            revision: 1,
+            confirmed: true,
+            account: "bank",
+          }),
+        ).toThrow(/review drafts only/);
+      expect((await runtime.extractor.extract(approved)).reviewOnly).toBe(true);
+      expect(transport).toHaveBeenCalledTimes(1);
+      const revoked = createDeepSeekRuntime({ env, store, transport });
+      await expect(revoked.extractor.extract(approved)).rejects.toMatchObject({
+        code: "not-authorized",
+      });
+      const other = {
+        ...approved,
+        data: Buffer.concat([
+          Buffer.from(approved.data, "base64"),
+          Buffer.from("DIFFERENT"),
+        ]).toString("base64"),
+      };
+      await expect(runtime.extractor.extract(other)).rejects.toMatchObject({
+        code: "not-authorized",
+      });
+      expect(transport).toHaveBeenCalledTimes(1);
+      expect(draft.accounting.journals).toEqual(r.state.accounting.journals);
+    } finally {
+      log.mockRestore();
+    }
+  });
   it("reproduces unauthorized photo rejection before preprocessing, spending or provider access", async () => {
     const log = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {

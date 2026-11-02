@@ -1,4 +1,4 @@
-// Server-only owner-authorized fictional demo. No provider-account cap is claimed.
+// Server-only owner-authorized review. No provider-account cap is claimed.
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import {
@@ -78,7 +78,6 @@ async function boundedResponseText(response: Response) {
     reader.releaseLock();
   }
 }
-const allowed = new Set(digests);
 const cap = 5_000_000;
 const outputLimit = 8192;
 // Verified published peak tariff, USD per million tokens. Usage is an upper
@@ -199,6 +198,20 @@ function validateShared(value: AppBudget) {
 
 export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
   const { env, store } = options;
+  const authorizedDigest = /^[a-f0-9]{64}$/.test(
+    env.AZZORA_AI_AUTHORIZED_DOCUMENT_SHA256 ?? "",
+  )
+    ? env.AZZORA_AI_AUTHORIZED_DOCUMENT_SHA256
+    : undefined;
+  const allowed = new Set(digests);
+  if (authorizedDigest) allowed.add(authorizedDigest);
+  const restrictReview = (
+    extraction: Extraction,
+    digest: string,
+  ): Extraction =>
+    digest === authorizedDigest
+      ? { ...extraction, reviewOnly: true }
+      : extraction;
   const now = options.now ?? (() => new Date());
   const status = (): DeepSeekRuntimeStatus => {
     let reason: DeepSeekRuntimeStatus["reason"] = "ready";
@@ -216,7 +229,8 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
       ready: reason === "ready",
       reason,
       maximumEvaluationUsd: 5,
-      syntheticOnly: true,
+      syntheticOnly: !authorizedDigest,
+      authorizedDocumentReview: Boolean(authorizedDigest),
       authorizationMode: "owner-application-cap",
       newRequestsEnabled: env.AZZORA_AI_NEW_REQUESTS_ENABLED !== "false",
     };
@@ -275,10 +289,13 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
             throw Error(
               "Cached AI extraction contains unapproved identifiers; enter manually.",
             );
-          return {
-            ...parsed.extraction,
-            provider: `Cached real DeepSeek extraction (${parsed.extraction.provider}; no new paid request)`,
-          } satisfies Extraction;
+          return restrictReview(
+            {
+              ...parsed.extraction,
+              provider: `Cached real DeepSeek extraction (${parsed.extraction.provider}; no new paid request)`,
+            } satisfies Extraction,
+            digest,
+          );
         }
         const rawCached = await store.read<unknown>(
           clientDemoRawCachePath(digest),
@@ -305,10 +322,13 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
           });
           stage = "cache";
           await store.write(clientDemoCachePath(digest), value);
-          return {
-            ...extraction,
-            provider: `Cached real DeepSeek extraction (${extraction.provider}; no new paid request)`,
-          };
+          return restrictReview(
+            {
+              ...extraction,
+              provider: `Cached real DeepSeek extraction (${extraction.provider}; no new paid request)`,
+            },
+            digest,
+          );
         }
         if (priorRecord) throw new DocumentExtractionError("budget-blocked");
         const key = env.DEEPSEEK_API_KEY!;
@@ -468,13 +488,19 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
           "deepseek",
           key,
           {
-            reference: "owner-authorized-fictional-demo-USD5-application-cap",
+            reference:
+              digest === authorizedDigest
+                ? "owner-authorized-single-document-review-USD5-application-cap"
+                : "owner-authorized-fictional-demo-USD5-application-cap",
             allowedDigests: allowed,
             maxRequests: 1,
           },
           undefined,
           transport,
-          { preparePdf: prepareDeepSeekPdf, timeoutMs: 20_000 },
+          {
+            preparePdf: prepareDeepSeekPdf,
+            timeoutMs: digest === authorizedDigest ? 35_000 : 20_000,
+          },
         ).extract(file);
         // Only successfully validated REAL provider output can enter this cache.
         // Cache-write failure retains the budget reservation and prevents recharge.
@@ -488,7 +514,7 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
         });
         stage = "cache";
         await store.write(clientDemoCachePath(digest), value);
-        return extraction;
+        return restrictReview(extraction, digest);
       } catch (error) {
         // Allowlisted operational metadata only. Never log provider bodies,
         // error messages, fields, filenames, hashes, credentials, or store paths.

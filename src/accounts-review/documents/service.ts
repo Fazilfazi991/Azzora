@@ -87,6 +87,9 @@ export async function extractDocument(
     requestedMode: extractor === disabledExtractor ? "manual" : "auto",
   };
   const fields = suggest(extraction.fields, next);
+  // This explicitly authorized source is a quotation, as confirmed by the owner.
+  // Keep the provider's raw fields immutable; the review policy supplies its type.
+  if (extraction.reviewOnly) fields.documentType = "quotation";
   entries.reviews.push({
     id,
     sha256,

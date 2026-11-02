@@ -86,7 +86,7 @@ try {
   check("uncertain fields, price-change flag and mandatory human confirmation");
   await page.getByLabel("Document total · AED", { exact: true }).fill("125.00");
   await expect(
-    page.getByText("Subtotal plus tax does not equal the document total."),
+    page.getByText("Subtotal less document discount plus tax does not equal the document total."),
   ).toBeVisible();
   await page.getByLabel("Document total · AED", { exact: true }).fill("126.00");
   await page

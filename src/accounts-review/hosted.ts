@@ -15,6 +15,7 @@ import { ReviewConflict, type ReviewStore } from "./hosted-store.js";
 import { reviewPdf } from "./pdf.js";
 import { extractDocument } from "./documents/service.js";
 import { ZodError } from "zod";
+import { safeHostedErrorDiagnostic } from "./hosted-diagnostics.js";
 import { reportSelection, selectedSnapshot } from "./reporting.js";
 import {
   configuredDocumentRuntime,
@@ -332,7 +333,7 @@ export function createHostedHandler(
         return json(400, { error: error.message });
       console.error(
         "accounts-review-request-failed",
-        error instanceof Error ? error.name : "unknown",
+        safeHostedErrorDiagnostic(error),
       );
       return json(503, {
         error: "The review service is temporarily unavailable. Please retry.",

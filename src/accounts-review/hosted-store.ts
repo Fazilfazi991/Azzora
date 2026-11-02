@@ -1,4 +1,5 @@
 import { BlobPreconditionFailedError, del, get, put } from "@vercel/blob";
+import { safeHostedErrorDiagnostic } from "./hosted-diagnostics.js";
 
 export interface StoredValue<T> {
   value: T;
@@ -26,17 +27,25 @@ export const decodeReview = <T>(value: string): T =>
 
 export class BlobReviewStore implements ReviewStore {
   async read<T>(path: string): Promise<StoredValue<T> | null> {
-    const result = await get(`accounts-review/v1/${path}`, {
-      access: "private",
-      useCache: false,
-      // A compressed response has a weak ETag, which cannot authorize ifMatch.
-      headers: { "Accept-Encoding": "identity" },
-    });
-    if (!result || result.statusCode !== 200) return null;
-    return {
-      value: decodeReview<T>(await new Response(result.stream).text()),
-      version: result.blob.etag,
-    };
+    try {
+      const result = await get(`accounts-review/v1/${path}`, {
+        access: "private",
+        useCache: false,
+        // A compressed response has a weak ETag, which cannot authorize ifMatch.
+        headers: { "Accept-Encoding": "identity" },
+      });
+      if (!result || result.statusCode !== 200) return null;
+      return {
+        value: decodeReview<T>(await new Response(result.stream).text()),
+        version: result.blob.etag,
+      };
+    } catch (error) {
+      console.error("accounts-review-store-failed", {
+        operation: "read",
+        ...safeHostedErrorDiagnostic(error),
+      });
+      throw error;
+    }
   }
   async write<T>(path: string, value: T, version?: string) {
     try {
@@ -55,6 +64,10 @@ export class BlobReviewStore implements ReviewStore {
         throw new ReviewConflict(
           "The demo changed in another request. Refresh and retry.",
         );
+      console.error("accounts-review-store-failed", {
+        operation: "write",
+        ...safeHostedErrorDiagnostic(error),
+      });
       throw error;
     }
   }
@@ -64,6 +77,10 @@ export class BlobReviewStore implements ReviewStore {
     } catch (error) {
       if (error instanceof BlobPreconditionFailedError)
         throw new ReviewConflict("Refresh before signing out.");
+      console.error("accounts-review-store-failed", {
+        operation: "remove",
+        ...safeHostedErrorDiagnostic(error),
+      });
       throw error;
     }
   }

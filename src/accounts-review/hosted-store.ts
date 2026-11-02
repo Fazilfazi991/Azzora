@@ -3,6 +3,7 @@ import {
   hostedRequestDiagnosticContext,
   hostedStoreAbortSignal,
   safeHostedErrorDiagnostic,
+  safeWritePreconditionDiagnostic,
   setHostedDiagnosticOperation,
 } from "./hosted-diagnostics.js";
 
@@ -77,6 +78,7 @@ export class BlobReviewStore implements ReviewStore {
       console.error("accounts-review-store-failed", {
         ...hostedRequestDiagnosticContext(),
         operation: "write",
+        ...safeWritePreconditionDiagnostic(version),
         ...safeHostedErrorDiagnostic(error),
       });
       throw error;

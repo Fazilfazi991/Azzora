@@ -135,7 +135,10 @@ export function hostedStoreAbortSignal() {
   // TimeoutError or a caller-supplied abort reason. Normalize cancellation so
   // a deadline cannot enter that retry backoff or disclose a private reason.
   if (combined.aborted) controller.abort();
-  else combined.addEventListener("abort", () => controller.abort(), { once: true });
+  else
+    combined.addEventListener("abort", () => controller.abort(), {
+      once: true,
+    });
   return controller.signal;
 }
 export function withHostedRequestDiagnostics(
@@ -173,6 +176,82 @@ export function withHostedRequestDiagnostics(
   );
 }
 
+// Only static hints leave this function. These phrases help classify the SDK's
+// generic bad-request wrapper; they never change a response status or retry it.
+function genericBlobReason(message: string) {
+  const text = message.slice(0, 2048);
+  const mentionsEtag = /\betag\b|\bif[\s_-]?match\b|\bpreconditions?\b/i.test(
+    text,
+  );
+  const mentionsOverwrite =
+    /\boverwrite\b|\ballowOverwrite\b|\balready\s+exists\b|\bexisting\s+blob\b/i.test(
+      text,
+    );
+  const mentionsBusy =
+    /\b(?:update|write|upload|overwrite)(?:[\s_-]+(?:is|already|currently)){0,3}[\s_-]+in[\s_-]+progress\b|\bconcurrent(?:ly)?[\s_-]+(?:write|update|request)s?\b|\bbeing\s+(?:written|updated|overwritten)\b|\b(?:busy|locked|locking)\b/i.test(
+      text,
+    );
+  const mentionsWeak = /\bweak(?:ly)?\b|\bW\/["']/i.test(text);
+  const mentionsQuoted =
+    /\b(?:quoted|quoting|unquoted|double[\s-]+quote|quotes?)\b/i.test(text);
+  const mentionsChanged =
+    /\b(?:changed|changing|mismatch)\b|\bdoes\s+not\s+match\b|\bdoesn't\s+match\b/i.test(
+      text,
+    );
+  const authorization =
+    /\b(?:unauthori[sz]ed|forbidden|access\s+denied|invalid\s+(?:authorization|authentication|token)|(?:token|credentials?)\s+(?:is\s+)?(?:invalid|expired|missing)|auth(?:entication|orization)\s+(?:failed|required|invalid|missing))\b/i.test(
+      text,
+    );
+  const mentionsFormat = /\bformat\b|\bformatting\b/i.test(text);
+  const rate =
+    /\brate[\s_-]+limit(?:ed|ing)?\b|\btoo[\s_]+many[\s_]+(?:requests|writes|updates)\b/i.test(
+      text,
+    );
+  const invalid =
+    /\binvalid\s+(?:argument|parameter|option|request|body|value)\b|\bbad[\s-]+request\b|\bmust\s+be\b|\brequired\s+(?:argument|parameter|option)\b/i.test(
+      text,
+    );
+  const blobReason = mentionsEtag
+    ? "etag-precondition"
+    : mentionsBusy
+      ? "write-contention"
+      : mentionsOverwrite
+        ? "overwrite-or-existing"
+        : authorization
+          ? "authorization"
+          : rate
+            ? "rate-limit"
+            : mentionsQuoted || mentionsFormat
+              ? "quote-or-format"
+              : invalid
+                ? "invalid-argument"
+                : "unknown";
+  return {
+    blobReason,
+    blobFlags: {
+      mentionsEtag,
+      mentionsOverwrite,
+      mentionsWeak,
+      mentionsQuoted,
+      mentionsChanged,
+      mentionsBusy,
+      mentionsFormat,
+    },
+  };
+}
+
+export function safeWritePreconditionDiagnostic(version: unknown) {
+  const versionFormat =
+    typeof version !== "string" || !version
+      ? "missing"
+      : /^W\//i.test(version)
+        ? "weak"
+        : /^"[^"\r\n]+"$/.test(version)
+          ? "strong-quoted"
+          : "opaque";
+  return { writeMode: version ? "conditional" : "create", versionFormat };
+}
+
 export function safeHostedErrorDiagnostic(error: unknown) {
   try {
     if (!(error instanceof Error))
@@ -200,6 +279,7 @@ export function safeHostedErrorDiagnostic(error: unknown) {
         ? { code: value.code }
         : {}),
       ...(found ? { sdkCode: found[2] } : {}),
+      ...(found?.[1] === "BlobError" ? genericBlobReason(error.message) : {}),
       ...(error instanceof BlobServiceRateLimited &&
       Number.isFinite(error.retryAfter) &&
       error.retryAfter >= 0 &&

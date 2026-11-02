@@ -281,6 +281,9 @@ export function BankingWorkspace({
         <h2 id="cash-history-heading" className="review-section-title">
           Account transaction history
         </h2>
+        <p className="aside-note">
+          Transactions for {data.period.from} – {data.period.to}.
+        </p>
         <label className="review-account-picker">
           Account
           <select

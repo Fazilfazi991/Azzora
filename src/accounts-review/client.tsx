@@ -946,7 +946,7 @@ function App() {
     }
   }
   async function act(action: Record<string, unknown>): Promise<boolean> {
-    if (!session || inFlight.current) return false;
+    if (!session || !snapshot || inFlight.current) return false;
     inFlight.current = true;
     setBusy(true);
     setError("");
@@ -955,7 +955,12 @@ function App() {
       const fingerprint = JSON.stringify(action);
       if (retryAction.current?.fingerprint !== fingerprint)
         retryAction.current = { fingerprint, key: crypto.randomUUID() };
-      const result = await api("/action", {
+      const reportQuery = new URLSearchParams({
+        from: snapshot.period.from,
+        to: snapshot.period.to,
+        asOf: snapshot.asOf,
+      }).toString();
+      const result = await api(`/action?${reportQuery}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1128,7 +1133,12 @@ function App() {
         onPendingChange={onDocumentPending}
         act={act}
         extract={async (file: Upload, mode?: "auto" | "manual") => {
-          const result = await api("/documents/extract", {
+          const reportQuery = new URLSearchParams({
+            from: snapshot.period.from,
+            to: snapshot.period.to,
+            asOf: snapshot.asOf,
+          }).toString();
+          const result = await api(`/documents/extract?${reportQuery}`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

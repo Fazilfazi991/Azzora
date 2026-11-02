@@ -19,6 +19,7 @@ export const itemSchema = z
     quantity,
     unit: text,
     unitRate: amount,
+    discount: amount.optional(),
     tax: amount,
     total: amount,
     productId: text,
@@ -62,6 +63,9 @@ export const fieldsSchema = z
       "unknown",
     ]),
     categoryId: text,
+    discount: amount.optional(),
+    department: z.enum(["", "MEP", "CIVIL", "JOINERY"]).optional(),
+    ledgerId: text.optional(),
     projectName: text,
     customerName: text,
     projectId: text,
@@ -115,6 +119,7 @@ export interface DocumentReview {
   status: "Review" | "Draft";
   revision: number;
   convertedBillId?: string;
+  convertedExpenseId?: string;
   corrections: {
     at: string;
     actor: "demo-accountant";
@@ -122,13 +127,15 @@ export interface DocumentReview {
     after: EntryFields;
   }[];
   warnings: EntryWarning[];
-  mapping?: { categoryId: string; accountId: string; accountCode: string };
+  mapping?: { categoryId: string; accountId: string; accountCode: string; ledgerId?: string };
 }
 export interface SupplierDefault {
   supplier: string;
   kind: EntryFields["kind"];
   categoryId: string;
   projectId: string;
+  department?: EntryFields["department"];
+  ledgerId?: string;
 }
 export interface DocumentEntryState {
   version: 1;

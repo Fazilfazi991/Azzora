@@ -1,5 +1,6 @@
 import type { ExpenseCategoryMapping } from "../../finance/expense-submissions";
 import type { ReviewState } from "../domain";
+import { expenseLedgersFor } from "../expense-ledgers.js";
 import {
   emptyEntries,
   fieldsSchema,
@@ -44,7 +45,7 @@ const uniqueMatch = <T>(values: T[], predicate: (value: T) => boolean) => {
 };
 type MatchContext = Pick<
   ReviewState,
-  "bills" | "invoices" | "documentEntries" | "documentCatalog"
+  "bills" | "invoices" | "documentEntries" | "documentCatalog" | "expenseLedgers"
 >;
 export const scopeFor = (f: EntryFields) =>
   f.kind === "company-expense" ||
@@ -115,6 +116,8 @@ export function suggest(fields: EntryFields, state: ReviewState): EntryFields {
     f.kind = saved.kind;
     f.categoryId = saved.categoryId;
     if (!f.projectName) f.projectId = saved.projectId;
+    if (!f.department) f.department = saved.department;
+    if (!f.ledgerId) f.ledgerId = saved.ledgerId;
   }
   for (const i of f.items)
     i.productId =
@@ -147,7 +150,8 @@ export function inspectFields(
     "tax",
     "total",
   ] as const)
-    if (!f[key]) add(`missing-${key}`, `Check missing ${key}.`, key);
+    if (!f[key] && (key !== "dueDate" || f.kind === "supplier-bill"))
+      add(`missing-${key}`, `Check missing ${key}.`, key);
   if (f.currency !== "AED")
     add(
       "currency",
@@ -182,11 +186,11 @@ export function inspectFields(
     f.subtotal &&
     f.tax &&
     f.total &&
-    fils(f.subtotal) + fils(f.tax) !== fils(f.total)
+    fils(f.subtotal) - fils(f.discount || "0") + fils(f.tax) !== fils(f.total)
   )
     add(
       "totals",
-      "Subtotal plus tax does not equal the document total.",
+      "Subtotal less document discount plus tax does not equal the document total.",
       "total",
     );
   if (!f.items.length)
@@ -207,11 +211,14 @@ export function inspectFields(
     }
     if (i.quantity && i.unitRate) {
       const net = lineNet(i.quantity, i.unitRate);
-      nets += net;
-      if (i.total && i.tax && net + fils(i.tax) !== fils(i.total))
+      const discount = fils(i.discount || "0");
+      if (discount > net)
+        add(`line-discount-${n}`, `Line ${n + 1}: discount exceeds the line amount.`, `${prefix}.discount`);
+      nets += net - discount;
+      if (i.total && i.tax && net - discount + fils(i.tax) !== fils(i.total))
         add(
           `line-math-${n}`,
-          `Line ${n + 1}: quantity × rate plus tax does not match the line total.`,
+          `Line ${n + 1}: quantity × rate less discount plus tax does not match the line total.`,
           prefix,
         );
     } else all = false;
@@ -244,6 +251,8 @@ export function inspectFields(
     );
   if (allTaxes && f.tax && taxes !== fils(f.tax))
     add("tax-lines", "Item taxes do not match the document tax.", "tax");
+  if (f.discount && f.subtotal && fils(f.discount) > fils(f.subtotal))
+    add("discount", "Document discount exceeds the subtotal.", "discount");
   const reviews = state.documentEntries?.reviews || [];
   if (
     reviews.some(
@@ -293,7 +302,8 @@ export function saveDocumentDraft(
     entries = next.documentEntries ?? emptyEntries();
   const doc = entries.reviews.find((d) => d.id === action.reviewId);
   if (!doc) throw Error("Document review not found.");
-  if (doc.convertedBillId) throw Error("A converted bill is read-only in document review.");
+  if (doc.convertedBillId || doc.convertedExpenseId)
+    throw Error("A converted document is read-only in document review.");
   if (doc.revision !== action.revision)
     throw Error("Document draft changed. Refresh and review again.");
   const f = fieldsSchema.parse(action.fields),
@@ -314,9 +324,13 @@ export function saveDocumentDraft(
     scope = scopeFor(f);
   if (!category || !category.allowedScopes.includes(scope))
     throw Error("Choose a category valid for this document scope.");
+  const ledger = f.ledgerId ? expenseLedgersFor(next).find((l) => l.id === f.ledgerId) : undefined;
+  if (f.ledgerId && !ledger) throw Error("Choose an existing expense ledger.");
+  if (ledger?.group === "Direct Expense" && scope !== "project")
+    throw Error("Direct expense ledgers require an existing project.");
   const account = next.accounting.accounts.find(
     (a) =>
-      a.id === category.expenseAccountId &&
+      a.id === (ledger?.accountId || category.expenseAccountId) &&
       a.status === "Active" &&
       a.postable &&
       ["Cost of Sales", "Expense"].includes(a.type),
@@ -351,6 +365,7 @@ export function saveDocumentDraft(
     categoryId: category.id,
     accountId: account.id,
     accountCode: account.code,
+    ...(ledger ? { ledgerId: ledger.id } : {}),
   };
   if (action.rememberSupplier) {
     const value = {
@@ -358,6 +373,8 @@ export function saveDocumentDraft(
       kind: f.kind,
       categoryId: f.categoryId,
       projectId: f.projectId,
+      ...(f.department ? { department: f.department } : {}),
+      ...(f.ledgerId ? { ledgerId: f.ledgerId } : {}),
     };
     entries.defaults = entries.defaults.filter(
       (d) => normalize(d.supplier) !== normalize(f.supplier),

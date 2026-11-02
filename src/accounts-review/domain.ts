@@ -177,12 +177,21 @@ function journal(
   memo: string,
   lines: JournalLine[],
 ): void {
+  // Preserve append order for new same-day postings. Identical seed timestamps
+  // otherwise let random IDs place spending before its funding in the ledger.
+  // Existing journals are never rewritten.
+  const priorTimes = state.accounting.journals
+    .filter((entry) => entry.date === date)
+    .map((entry) => Date.parse(entry.recordedAt));
+  const recordedAt = new Date(
+    Math.max(Date.parse(stamp(date)), ...priorTimes.map((time) => time + 1)),
+  ).toISOString();
   state.accounting = postJournal(state.accounting, {
     id: `J-${id}`,
     postingKey: `review:${id}`,
     source: { kind: "Review", id, action: "Post" },
     date,
-    recordedAt: stamp(date),
+    recordedAt,
     memo,
     currency: "AED",
     lines,

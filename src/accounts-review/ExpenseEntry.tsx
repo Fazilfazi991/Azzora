@@ -217,7 +217,7 @@ export function ExpenseEntry({
         setNotice("Paid expense recorded in the fictional demo ledger.");
       } else
         setError(
-          "The expense could not be saved. Review the message above and try again.",
+          "Unable to confirm whether the expense was saved. Review the message above and check the ledger before submitting again.",
         );
     } catch (problem) {
       setError(problem instanceof Error ? problem.message : String(problem));

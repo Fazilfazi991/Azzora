@@ -363,7 +363,7 @@ export function DocumentEntry({
         <span>
           PDF, PNG or JPEG · up to 2 MB.{" "}
           {data.documentAi?.enabled
-            ? "DeepSeek suggestions remain unposted until you review them."
+            ? "Test DeepSeek using the fictional sample bills below. Review every suggestion before saving a draft."
             : "Selectable PDF text is read locally; photos/scans remain manual."}{" "}
           Manual entry keeps the original alongside a blank form.
         </span>

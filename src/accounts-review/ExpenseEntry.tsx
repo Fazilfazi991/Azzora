@@ -161,7 +161,7 @@ export function ExpenseEntry({
       if (!saved) {
         pendingLedger.current = "";
         setLedgerError(
-          "The ledger could not be created. Review the message above and try again.",
+          "Unable to confirm whether the ledger was created. Review the message above and check the ledger list before submitting again.",
         );
       } else {
         setLedgerName("");

@@ -49,7 +49,7 @@ export function BankingWorkspace({
       setError(
         problem instanceof Error
           ? problem.message
-          : "The transaction could not be saved.",
+          : "Unable to confirm whether the transaction was saved. Keep details unchanged when retrying, or check the ledger.",
       );
     } finally {
       setBusy(false);

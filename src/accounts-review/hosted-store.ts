@@ -1,5 +1,10 @@
 import { BlobPreconditionFailedError, del, get, put } from "@vercel/blob";
-import { safeHostedErrorDiagnostic } from "./hosted-diagnostics.js";
+import {
+  hostedRequestDiagnosticContext,
+  hostedStoreAbortSignal,
+  safeHostedErrorDiagnostic,
+  setHostedDiagnosticOperation,
+} from "./hosted-diagnostics.js";
 
 export interface StoredValue<T> {
   value: T;
@@ -27,12 +32,14 @@ export const decodeReview = <T>(value: string): T =>
 
 export class BlobReviewStore implements ReviewStore {
   async read<T>(path: string): Promise<StoredValue<T> | null> {
+    setHostedDiagnosticOperation("read");
     try {
       const result = await get(`accounts-review/v1/${path}`, {
         access: "private",
         useCache: false,
         // A compressed response has a weak ETag, which cannot authorize ifMatch.
         headers: { "Accept-Encoding": "identity" },
+        abortSignal: hostedStoreAbortSignal(),
       });
       if (!result || result.statusCode !== 200) return null;
       return {
@@ -41,6 +48,7 @@ export class BlobReviewStore implements ReviewStore {
       };
     } catch (error) {
       console.error("accounts-review-store-failed", {
+        ...hostedRequestDiagnosticContext(),
         operation: "read",
         ...safeHostedErrorDiagnostic(error),
       });
@@ -48,6 +56,7 @@ export class BlobReviewStore implements ReviewStore {
     }
   }
   async write<T>(path: string, value: T, version?: string) {
+    setHostedDiagnosticOperation("write");
     try {
       await put(`accounts-review/v1/${path}`, encodeReview(value), {
         access: "private",
@@ -55,6 +64,7 @@ export class BlobReviewStore implements ReviewStore {
         allowOverwrite: Boolean(version),
         ...(version ? { ifMatch: version } : {}),
         contentType: "application/json",
+        abortSignal: hostedStoreAbortSignal(),
       });
     } catch (error) {
       if (
@@ -65,6 +75,7 @@ export class BlobReviewStore implements ReviewStore {
           "The demo changed in another request. Refresh and retry.",
         );
       console.error("accounts-review-store-failed", {
+        ...hostedRequestDiagnosticContext(),
         operation: "write",
         ...safeHostedErrorDiagnostic(error),
       });
@@ -72,12 +83,17 @@ export class BlobReviewStore implements ReviewStore {
     }
   }
   async remove(path: string, version: string) {
+    setHostedDiagnosticOperation("remove");
     try {
-      await del(`accounts-review/v1/${path}`, { ifMatch: version });
+      await del(`accounts-review/v1/${path}`, {
+        ifMatch: version,
+        abortSignal: hostedStoreAbortSignal(),
+      });
     } catch (error) {
       if (error instanceof BlobPreconditionFailedError)
         throw new ReviewConflict("Refresh before signing out.");
       console.error("accounts-review-store-failed", {
+        ...hostedRequestDiagnosticContext(),
         operation: "remove",
         ...safeHostedErrorDiagnostic(error),
       });

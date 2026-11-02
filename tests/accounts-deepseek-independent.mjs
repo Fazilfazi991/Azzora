@@ -47,7 +47,7 @@ try {
   }
   async function route(path, heading) {
     await page.goto(base + "/accountant.html#/" + path);
-    await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: heading, exact: true, level: 1 })).toBeVisible();
   }
   const initial = await snapshot();
   assert.equal(initial.documentAi.enabled, false, "No live AI activation is authorized by this QA harness.");

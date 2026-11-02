@@ -539,7 +539,12 @@ export function ExpenseEntry({
         </p>
       </form>
       <div className="panel table-panel expense-records">
-        <div className="table-scroll">
+        <div
+          className="table-scroll"
+          tabIndex={0}
+          role="region"
+          aria-label="Paid expenses"
+        >
           <table>
             <thead>
               <tr>

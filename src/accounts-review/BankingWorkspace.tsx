@@ -298,7 +298,12 @@ export function BankingWorkspace({
           </select>
         </label>
         <div className="panel table-panel">
-          <div className="table-scroll">
+          <div
+            className="table-scroll"
+            tabIndex={0}
+            role="region"
+            aria-labelledby="cash-history-heading"
+          >
             <table>
               <thead>
                 <tr>
@@ -361,7 +366,12 @@ export function BankingWorkspace({
           Internal transfers
         </h2>
         <div className="panel table-panel">
-          <div className="table-scroll">
+          <div
+            className="table-scroll"
+            tabIndex={0}
+            role="region"
+            aria-labelledby="cash-transfers-heading"
+          >
             <table>
               <thead>
                 <tr>

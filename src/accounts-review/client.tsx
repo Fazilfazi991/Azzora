@@ -162,16 +162,23 @@ function Table({
   children,
   toolbar,
   variant,
+  label,
 }: {
   heads: string[];
   children: ReactNode;
   toolbar?: ReactNode;
   variant?: string;
+  label: string;
 }) {
   return (
     <div className={`panel table-panel ${variant ?? ""}`}>
       {toolbar && <div className="table-toolbar">{toolbar}</div>}
-      <div className="table-scroll">
+      <div
+        className="table-scroll"
+        tabIndex={0}
+        role="region"
+        aria-label={label}
+      >
         <table>
           <thead>
             <tr>
@@ -378,6 +385,7 @@ function Invoices({
         </span>
       </div>
       <Table
+        label="Sales invoices"
         heads={[
           "Invoice",
           "Customer",
@@ -586,7 +594,10 @@ function Settlement({
           {supplier ? "Record payment" : "Record receipt"}
         </button>
       </form>
-      <Table heads={["Reference", "Date", "Applied to", "Account", "Amount"]}>
+      <Table
+        label={supplier ? "Supplier payments" : "Customer receipts"}
+        heads={["Reference", "Date", "Applied to", "Account", "Amount"]}
+      >
         {(
           posts as ((typeof posts)[number] & {
             account?: string;
@@ -653,6 +664,7 @@ function Ledger({
         </>
       )}
       <Table
+        label={`General ledger: ${ledger.account.name}`}
         heads={["Date", "Journal", "Description", "Debit", "Credit", "Running"]}
       >
         {ledger.lines.map((item, index) => (
@@ -814,6 +826,7 @@ function Aging({ data, filters }: { data: Snapshot; filters?: ReactNode }) {
       {filters}
       <h2 className="review-section-title">Customer receivables</h2>
       <Table
+        label="Customer receivable aging"
         heads={["Invoice", "Customer", "Due", "Open", "Days overdue", "Bucket"]}
       >
         {data.invoices
@@ -831,6 +844,7 @@ function Aging({ data, filters }: { data: Snapshot; filters?: ReactNode }) {
       </Table>
       <h2 className="review-section-title">Supplier payables</h2>
       <Table
+        label="Supplier payable aging"
         heads={["Bill", "Supplier", "Due", "Open", "Days overdue", "Bucket"]}
       >
         {data.bills

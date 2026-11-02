@@ -551,7 +551,12 @@ export function PurchaseBills({ data, act, editingId }: Props) {
         </fieldset>
       </form>
       <div className="panel table-panel">
-        <div className="table-scroll">
+        <div
+          className="table-scroll"
+          tabIndex={0}
+          role="region"
+          aria-label="Purchase bills"
+        >
           <table>
             <thead>
               <tr>

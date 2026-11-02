@@ -4,13 +4,20 @@ import { displayMoney, type CompletionSnapshot } from "./completion-ui";
 function ReportTable({
   heads,
   children,
+  label,
 }: {
   heads: string[];
   children: ReactNode;
+  label: string;
 }) {
   return (
     <div className="panel table-panel">
-      <div className="table-scroll">
+      <div
+        className="table-scroll"
+        tabIndex={0}
+        role="region"
+        aria-label={label}
+      >
         <table>
           <thead>
             <tr>
@@ -58,7 +65,10 @@ export function OperationalReports({
       {filters}
       {trial ? (
         <>
-          <ReportTable heads={["Code", "Account", "Debit", "Credit"]}>
+          <ReportTable
+            label="Trial balance"
+            heads={["Code", "Account", "Debit", "Credit"]}
+          >
             {data.trial.rows.map((item) => (
               <tr key={item.accountId}>
                 <td>{item.code}</td>
@@ -90,6 +100,7 @@ export function OperationalReports({
         <>
           <h2 className="review-section-title">Project profitability</h2>
           <ReportTable
+            label="Project profitability"
             heads={[
               "Project",
               "Revenue",
@@ -121,6 +132,7 @@ export function OperationalReports({
           </ReportTable>
           <h2 className="review-section-title">Expenses by project</h2>
           <ReportTable
+            label="Expenses by project"
             heads={[
               "Project",
               "Cost of sales",
@@ -146,6 +158,7 @@ export function OperationalReports({
           </ReportTable>
           <h2 className="review-section-title">Expenses by department</h2>
           <ReportTable
+            label="Expenses by department"
             heads={[
               "Department",
               "Cost of sales",

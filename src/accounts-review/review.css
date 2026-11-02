@@ -1,3 +1,21 @@
+/* Retain the approved warm palette with readable small-text contrast. */
+:root {
+  --muted: #746e67;
+  --bronze: #856441;
+}
+.nav-heading {
+  color: #7d6f62;
+}
+.metric-label {
+  color: #806b53;
+}
+.site-footer {
+  color: #776c62;
+}
+.table-scroll:focus-visible {
+  outline: 2px solid var(--clay);
+  outline-offset: -2px;
+}
 .review-two {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(270px, 1fr);

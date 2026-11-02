@@ -20,6 +20,7 @@ import {
   createChatExtractor,
   digestOf,
   extractionSchema,
+  parseChatExtractionResponse,
   type DocumentExtractor,
 } from "./providers.js";
 import { prepareDeepSeekPdf } from "./deepseek-pdf.js";
@@ -29,6 +30,42 @@ import digests from "./client-demo-digests.js";
 export const CLIENT_DEMO_APPLICATION = "azzora-accounts-client-demo";
 export const clientDemoCachePath = (digest: string) =>
   `ai-evaluation/client-demo-extractions-v1/${digest}.json`;
+export const clientDemoRawCachePath = (digest: string) =>
+  `ai-evaluation/client-demo-raw-responses-v1/${digest}.json`;
+const rawByteLimit = 1_048_576;
+const rawCacheSchema = z
+  .object({
+    version: z.literal(1),
+    application: z.literal(CLIENT_DEMO_APPLICATION),
+    digest: z.string().regex(/^[a-f0-9]{64}$/),
+    httpStatus: z.literal(200),
+    body: z.string().max(rawByteLimit),
+    requestId: z.string().max(200).optional(),
+    createdAt: z.string().datetime(),
+    latencyMs: z.number().finite().nonnegative(),
+  })
+  .strict();
+async function boundedResponseText(response: Response) {
+  const reader = response.clone().body?.getReader();
+  if (!reader) throw Error("AI response has no readable body.");
+  const chunks: Uint8Array[] = [];
+  let bytes = 0;
+  try {
+    for (;;) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      bytes += chunk.value.byteLength;
+      if (bytes > rawByteLimit) {
+        void reader.cancel();
+        throw Error("AI response exceeds the private recovery limit.");
+      }
+      chunks.push(chunk.value);
+    }
+    return Buffer.concat(chunks).toString("utf8");
+  } finally {
+    reader.releaseLock();
+  }
+}
 const allowed = new Set(digests);
 const cap = 5_000_000;
 const outputLimit = 8192;
@@ -233,6 +270,36 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
             provider: `Cached real DeepSeek extraction (${parsed.extraction.provider}; no new paid request)`,
           } satisfies Extraction;
         }
+        const rawCached = await store.read<unknown>(
+          clientDemoRawCachePath(digest),
+        );
+        if (rawCached) {
+          const raw = rawCacheSchema.parse(rawCached.value);
+          if (raw.digest !== digest || !priorRecord)
+            throw Error(
+              "Cached raw AI history is incomplete; enter manually without another paid request.",
+            );
+          stage = "validate";
+          httpStatus = raw.httpStatus;
+          const extraction = parseChatExtractionResponse(JSON.parse(raw.body), {
+            model: "deepseek-flash",
+            requestId: raw.requestId,
+            latencyMs: raw.latencyMs,
+          });
+          const value = cacheSchema.parse({
+            version: 1,
+            application: CLIENT_DEMO_APPLICATION,
+            digest,
+            createdAt: raw.createdAt,
+            extraction,
+          });
+          stage = "cache";
+          await store.write(clientDemoCachePath(digest), value);
+          return {
+            ...extraction,
+            provider: `Cached real DeepSeek extraction (${extraction.provider}; no new paid request)`,
+          };
+        }
         if (priorRecord)
           throw Error(
             "This sample was already submitted but has no reusable result; enter manually. No second paid request is allowed.",
@@ -313,8 +380,15 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
             );
           }
           let upper: number | null = null;
+          let rawText: string | undefined;
+          let readFailure: unknown;
           try {
-            const result = await response.clone().json();
+            rawText = await boundedResponseText(response);
+          } catch (error) {
+            readFailure = error;
+          }
+          try {
+            const result = JSON.parse(rawText ?? "");
             const usage = result.usage;
             if (
               response.ok &&
@@ -337,7 +411,42 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
           } catch {
             /* Keep the complete reservation when usage is uncertain. */
           }
+          let cacheFailure: unknown;
+          if (response.status === 200 && rawText !== undefined) {
+            stage = "cache";
+            try {
+              if (rawText.includes(key))
+                throw Error(
+                  "AI response cannot be retained safely; enter manually.",
+                );
+              // Create-only immutable evidence, saved BEFORE strict field
+              // validation. No key/request payload/ground truth is stored.
+              await store.write(
+                clientDemoRawCachePath(digest),
+                rawCacheSchema.parse({
+                  version: 1,
+                  application: CLIENT_DEMO_APPLICATION,
+                  digest,
+                  httpStatus: 200,
+                  body: rawText,
+                  requestId: response.headers.get("x-request-id") || undefined,
+                  createdAt: now().toISOString(),
+                  latencyMs: performance.now() - started,
+                }),
+              );
+            } catch (error) {
+              cacheFailure = error;
+            }
+          }
           await finish(upper);
+          if (cacheFailure) {
+            stage = "cache";
+            throw cacheFailure;
+          }
+          if (readFailure) {
+            stage = "provider-response";
+            throw readFailure;
+          }
           stage = response.ok ? "validate" : "provider-response";
           return response;
         };
@@ -369,37 +478,40 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
       } catch (error) {
         // Allowlisted operational metadata only. Never log provider bodies,
         // error messages, fields, filenames, hashes, credentials, or store paths.
-        console.warn("accounts-ai-extraction-failed", {
-          stage,
-          httpStatus,
-          inputTokens,
-          outputTokens,
-          elapsedMs: Math.round(Math.max(0, performance.now() - started)),
-          timedOut:
-            timedOut ||
-            (error instanceof Error &&
-              ["TimeoutError", "AbortError"].includes(error.name)),
-          validationFailed:
-            error instanceof z.ZodError || error instanceof SyntaxError,
-          validationIssues:
-            error instanceof z.ZodError
-              ? error.issues.slice(0, 6).map((issue) => ({
-                  code: safeIssueCodes.has(issue.code) ? issue.code : "other",
-                  path: issue.path
-                    .slice(0, 6)
-                    .map((part) =>
-                      typeof part === "number" &&
-                      Number.isSafeInteger(part) &&
-                      part >= 0 &&
-                      part <= 120
-                        ? part
-                        : typeof part === "string" && safeIssuePaths.has(part)
+        console.warn(
+          "accounts-ai-extraction-failed",
+          JSON.stringify({
+            stage,
+            httpStatus,
+            inputTokens,
+            outputTokens,
+            elapsedMs: Math.round(Math.max(0, performance.now() - started)),
+            timedOut:
+              timedOut ||
+              (error instanceof Error &&
+                ["TimeoutError", "AbortError"].includes(error.name)),
+            validationFailed:
+              error instanceof z.ZodError || error instanceof SyntaxError,
+            validationIssues:
+              error instanceof z.ZodError
+                ? error.issues.slice(0, 6).map((issue) => ({
+                    code: safeIssueCodes.has(issue.code) ? issue.code : "other",
+                    path: issue.path
+                      .slice(0, 6)
+                      .map((part) =>
+                        typeof part === "number" &&
+                        Number.isSafeInteger(part) &&
+                        part >= 0 &&
+                        part <= 120
                           ? part
-                          : "field",
-                    ),
-                }))
-              : [],
-        });
+                          : typeof part === "string" && safeIssuePaths.has(part)
+                            ? part
+                            : "field",
+                      ),
+                  }))
+                : [],
+          }),
+        );
         throw error;
       }
     },

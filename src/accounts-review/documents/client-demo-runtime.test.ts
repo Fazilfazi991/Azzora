@@ -10,6 +10,7 @@ import {
 import {
   CLIENT_DEMO_APPLICATION,
   clientDemoCachePath,
+  clientDemoRawCachePath,
 } from "./client-demo-runtime";
 import { digestOf } from "./providers";
 import { sampleDocuments } from "./samples";
@@ -130,13 +131,14 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
       expect(console.warn).toHaveBeenCalledTimes(1);
       const event = vi.mocked(console.warn).mock.calls[0];
       expect(event[0]).toBe("accounts-ai-extraction-failed");
-      expect(event[1]).toMatchObject({
+      const details = JSON.parse(String(event[1]));
+      expect(details).toMatchObject({
         stage,
         httpStatus,
         timedOut,
         validationFailed,
       });
-      expect(Object.keys(event[1]).sort()).toEqual([
+      expect(Object.keys(details).sort()).toEqual([
         "elapsedMs",
         "httpStatus",
         "inputTokens",
@@ -146,7 +148,7 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
         "validationFailed",
         "validationIssues",
       ]);
-      expect(event[1].elapsedMs).toBeGreaterThanOrEqual(0);
+      expect(details.elapsedMs).toBeGreaterThanOrEqual(0);
       expect(JSON.stringify(event)).not.toContain(secret);
       expect(JSON.stringify(event)).not.toContain(env.DEEPSEEK_API_KEY);
       expect(JSON.stringify(event)).not.toContain(digestOf(file));
@@ -183,7 +185,7 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
     );
     await expect(runtime.extractor.extract(file)).rejects.toThrow();
     const event = vi.mocked(console.warn).mock.calls[0];
-    expect(event[1].validationIssues).toEqual([
+    expect(JSON.parse(String(event[1])).validationIssues).toEqual([
       { code: "invalid_format", path: ["fields", "total"] },
     ]);
     expect(JSON.stringify(event)).not.toContain("private-invalid-value");
@@ -371,7 +373,7 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
           await store.read(clientDemoCachePath(digestOf(file))),
         ).toBeNull();
         await expect(runtime.extractor.extract(file)).rejects.toThrow(
-          /already submitted/,
+          mode === "malformed" ? undefined : /already submitted/,
         );
       } else
         expect((await runtime.extractor.extract(file)).provider).toContain(
@@ -455,6 +457,115 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
       /Cache unavailable/,
     );
     expect(await runtime.budgetExposureMicroUsd()).toBe(900);
+    await expect(runtime.extractor.extract(file)).rejects.toThrow(
+      /already submitted/,
+    );
+    expect(calls).toBe(1);
+  });
+  it("preserves a raw rejected response privately and revalidates it without another charge", async () => {
+    const store = new Store();
+    let calls = 0;
+    const { runtime } = setup(store, async () => {
+      calls++;
+      return response(
+        JSON.stringify({
+          fields: { ...sampleDocuments[0].fields, total: "invalid" },
+          uncertain: [],
+        }),
+      );
+    });
+    await expect(runtime.extractor.extract(file)).rejects.toThrow();
+    const path = clientDemoRawCachePath(digestOf(file));
+    const original = await store.read(path);
+    expect(original).not.toBeNull();
+    expect(JSON.stringify(original)).not.toContain(env.DEEPSEEK_API_KEY);
+    await expect(runtime.extractor.extract(file)).rejects.toThrow();
+    expect(await store.read(path)).toEqual(original);
+    expect(calls).toBe(1);
+    expect(await runtime.budgetExposureMicroUsd()).toBe(900);
+  });
+  it("recovers a previously saved real response with missing product IDs using the same strict parser", async () => {
+    const store = new Store();
+    const budget = newBudget();
+    budget.records.push({
+      id: `deepseek:${digestOf(file)}`,
+      provider: "deepseek",
+      reservedMicroUsd: 324404,
+      status: "metered",
+      meteredUpperMicroUsd: 900,
+    });
+    await store.write(DEEPSEEK_BUDGET_PATH, {
+      version: 1,
+      application: CLIENT_DEMO_APPLICATION,
+      budget,
+    });
+    const fields = structuredClone(sampleDocuments[0].fields);
+    const items = fields.items.map((item) =>
+      Object.fromEntries(
+        Object.entries(item).filter(([name]) => name !== "productId"),
+      ),
+    );
+    const body = JSON.stringify(
+      await response(
+        JSON.stringify({ fields: { ...fields, items }, uncertain: [] }),
+      ).json(),
+    );
+    const raw = {
+      version: 1,
+      application: CLIENT_DEMO_APPLICATION,
+      digest: digestOf(file),
+      httpStatus: 200,
+      body,
+      createdAt: "2026-11-02T10:00:00.000Z",
+      latencyMs: 123,
+    };
+    await store.write(clientDemoRawCachePath(digestOf(file)), raw);
+    let calls = 0;
+    const { runtime } = setup(store, async () => {
+      calls++;
+      return response();
+    });
+    const result = await runtime.extractor.extract(file);
+    expect(result.mode).toBe("live");
+    expect(result.provider).toContain("Cached real");
+    expect(result.fields).toEqual(fields);
+    expect(result.inputTokens).toBe(1000);
+    expect(result.requestId).toBe("mock-real-extraction-response");
+    expect(calls).toBe(0);
+    expect(await runtime.budgetExposureMicroUsd()).toBe(900);
+    expect(
+      (await store.read(clientDemoRawCachePath(digestOf(file))))!.value,
+    ).toEqual(raw);
+  });
+  it.each(["invented-id", null])(
+    "continues rejecting nonempty or null product IDs",
+    async (productId) => {
+      const fields = structuredClone(sampleDocuments[0].fields);
+      const items = fields.items.map((item) => ({ ...item, productId }));
+      let calls = 0;
+      const { runtime } = setup(new Store(), async () => {
+        calls++;
+        return response(
+          JSON.stringify({ fields: { ...fields, items }, uncertain: [] }),
+        );
+      });
+      await expect(runtime.extractor.extract(file)).rejects.toThrow();
+      await expect(runtime.extractor.extract(file)).rejects.toThrow();
+      expect(calls).toBe(1);
+      expect(await runtime.budgetExposureMicroUsd()).toBe(900);
+    },
+  );
+  it("bounds raw response storage and retains full reservation if body exceeds limit", async () => {
+    let calls = 0;
+    const { runtime, store } = setup(new Store(), async () => {
+      calls++;
+      return new Response("x".repeat(1_048_577), { status: 200 });
+    });
+    await expect(runtime.extractor.extract(file)).rejects.toThrow(
+      /recovery limit/,
+    );
+    expect(await store.read(clientDemoRawCachePath(digestOf(file)))).toBeNull();
+    expect(await runtime.budgetExposureMicroUsd()).toBe(324404);
     await expect(runtime.extractor.extract(file)).rejects.toThrow(
       /already submitted/,
     );

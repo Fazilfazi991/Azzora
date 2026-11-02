@@ -62,6 +62,7 @@ export function DocumentEntry({
   const [saved, setSaved] = useState(false);
   const [paymentAccount, setPaymentAccount] = useState("bank");
   const doc = data.documentEntries.reviews.find((d) => d.id === selected);
+  const converted = Boolean(doc?.convertedBillId || doc?.convertedExpenseId);
   const pending = Boolean(
     doc && JSON.stringify(doc.fields) !== JSON.stringify(fields),
   );
@@ -234,7 +235,7 @@ export function DocumentEntry({
   }
   async function save(e: FormEvent) {
     e.preventDefault();
-    if (!doc || !confirmed || busy) return;
+    if (!doc || !confirmed || busy || converted) return;
     setBusy(true);
     try {
       if (
@@ -255,7 +256,15 @@ export function DocumentEntry({
     }
   }
   async function createBill() {
-    if (!doc || doc.status !== "Draft" || !confirmed || busy) return;
+    if (
+      !doc ||
+      doc.status !== "Draft" ||
+      !confirmed ||
+      busy ||
+      pending ||
+      converted
+    )
+      return;
     if (
       !window.confirm(
         "Create this purchase bill and post it to the fictional demo journal?",
@@ -275,7 +284,15 @@ export function DocumentEntry({
     }
   }
   async function createExpense() {
-    if (!doc || doc.status !== "Draft" || !confirmed || busy || pending) return;
+    if (
+      !doc ||
+      doc.status !== "Draft" ||
+      !confirmed ||
+      busy ||
+      pending ||
+      converted
+    )
+      return;
     if (
       !window.confirm("Record this paid expense in the fictional demo journal?")
     )
@@ -412,384 +429,397 @@ export function DocumentEntry({
             <span className="eyebrow">REVIEW BEFORE SAVING</span>
             <h2>Document details</h2>
             <p id="entry-review-note">
-              Shaded fields need a closer look. Every field is editable. Taxes
-              are captured as evidence only; tax posting remains unavailable.
+              {converted
+                ? "This reviewed document is read only because it is linked to a posted demo transaction. Original extraction and correction history are preserved."
+                : "Shaded fields need a closer look. Every field is editable. Taxes are captured as evidence only; tax posting remains unavailable."}
             </p>
-            <datalist id="entry-suppliers">
-              {data.documentCatalog.suppliers.map((s) => (
-                <option key={s} value={s} />
-              ))}
-            </datalist>
-            <div className="field-grid">
-              {field("Supplier name", "supplier")}
-              {field("Document date", "date", "date")}
-              {field("Due date", "dueDate", "date")}
-              {field("Invoice / receipt reference", "reference")}
-              {field("Purchase order reference", "purchaseOrderReference")}
-              {choice(
-                "Currency",
-                "currency",
-                <>
-                  <option value="unknown">Check currency</option>
-                  <option value="AED">AED</option>
-                  <option value="other">Other / unsupported</option>
-                </>,
-              )}
-              {choice(
-                "Suggested classification",
-                "kind",
-                <>
-                  <option value="unknown">Choose classification</option>
-                  <option value="supplier-bill">Supplier purchase bill</option>
-                  <option value="project-expense">Project expense</option>
-                  <option value="company-expense">Company expense</option>
-                </>,
-              )}
-              {choice(
-                "Expense category",
-                "categoryId",
-                <>
-                  <option value="">Choose category</option>
-                  {data.documentCategories
-                    .filter(
-                      (c) =>
-                        fields.kind === "supplier-bill" ||
-                        c.allowedScopes.includes(
-                          fields.kind === "company-expense"
-                            ? "company"
-                            : "project",
-                        ),
-                    )
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                </>,
-              )}
-              {choice(
-                "Department",
-                "department",
-                <>
-                  <option value="">Unassigned</option>
-                  {(data.departments ?? []).map((department) => (
-                    <option key={department.id} value={department.id}>
-                      {department.name}
-                    </option>
-                  ))}
-                </>,
-              )}
-              {choice(
-                "Expense Ledger",
-                "ledgerId",
-                <>
-                  <option value="">Choose ledger if this is an expense</option>
-                  {data.expenseLedgers.map((ledger) => (
-                    <option key={ledger.id} value={ledger.id}>
-                      {ledger.name} · {ledger.group}
-                    </option>
-                  ))}
-                </>,
-              )}
-              {scopeFor(fields) === "project" &&
-                choice(
-                  "Project",
-                  "projectId",
+            <fieldset
+              className="entry-edit-fields"
+              aria-label="Reviewed document fields"
+              disabled={converted}
+            >
+              <datalist id="entry-suppliers">
+                {data.documentCatalog.suppliers.map((s) => (
+                  <option key={s} value={s} />
+                ))}
+              </datalist>
+              <div className="field-grid">
+                {field("Supplier name", "supplier")}
+                {field("Document date", "date", "date")}
+                {field("Due date", "dueDate", "date")}
+                {field("Invoice / receipt reference", "reference")}
+                {field("Purchase order reference", "purchaseOrderReference")}
+                {choice(
+                  "Currency",
+                  "currency",
                   <>
-                    <option value="">Choose project</option>
-                    {data.documentCatalog.projects.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
+                    <option value="unknown">Check currency</option>
+                    <option value="AED">AED</option>
+                    <option value="other">Other / unsupported</option>
+                  </>,
+                )}
+                {choice(
+                  "Suggested classification",
+                  "kind",
+                  <>
+                    <option value="unknown">Choose classification</option>
+                    <option value="supplier-bill">
+                      Supplier purchase bill
+                    </option>
+                    <option value="project-expense">Project expense</option>
+                    <option value="company-expense">Company expense</option>
+                  </>,
+                )}
+                {choice(
+                  "Expense category",
+                  "categoryId",
+                  <>
+                    <option value="">Choose category</option>
+                    {data.documentCategories
+                      .filter(
+                        (c) =>
+                          fields.kind === "supplier-bill" ||
+                          c.allowedScopes.includes(
+                            fields.kind === "company-expense"
+                              ? "company"
+                              : "project",
+                          ),
+                      )
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                  </>,
+                )}
+                {choice(
+                  "Department",
+                  "department",
+                  <>
+                    <option value="">Unassigned</option>
+                    {(data.departments ?? []).map((department) => (
+                      <option key={department.id} value={department.id}>
+                        {department.name}
                       </option>
                     ))}
                   </>,
                 )}
-              {field("Project name on document", "projectName")}
-              {field("Customer name on document", "customerName")}
-              {choice(
-                "Related customer (optional)",
-                "customerId",
-                <>
-                  <option value="">No customer selected</option>
-                  {data.documentCatalog.customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
+                {choice(
+                  "Expense Ledger",
+                  "ledgerId",
+                  <>
+                    <option value="">
+                      Choose ledger if this is an expense
                     </option>
-                  ))}
-                </>,
-              )}
-            </div>
-            <p className="entry-mapping">
-              Category mapping:{" "}
-              {data.accounts.find(
-                (a) =>
-                  a.id ===
-                  data.documentCategories.find(
-                    (c) => c.id === fields.categoryId,
-                  )?.expenseAccountId,
-              )?.code || "—"}{" "}
-              ·{" "}
-              {data.accounts.find(
-                (a) =>
-                  a.id ===
-                  data.documentCategories.find(
-                    (c) => c.id === fields.categoryId,
-                  )?.expenseAccountId,
-              )?.name || "Select an existing category"}
-              . Mapping is a draft suggestion.
-            </p>
-            <h3>Items</h3>
-            <div className="entry-items">
-              {fields.items.map((item, n) => (
-                <fieldset key={n}>
-                  <legend>Item {n + 1}</legend>
-                  <div className="field-grid">
-                    {(
-                      [
-                        "description",
-                        "quantity",
-                        "unit",
-                        "unitRate",
-                        "discount",
-                        "tax",
-                        "total",
-                      ] as const
-                    ).map((key) => (
-                      <label
-                        key={key}
-                        className={
-                          uncertain(`items.${n}.${key}`)
-                            ? "entry-uncertain"
-                            : ""
-                        }
-                      >
-                        {
-                          {
-                            description: "Description",
-                            quantity: "Quantity",
-                            unit: "Unit",
-                            unitRate: "Unit rate · AED",
-                            discount: "Item discount · AED",
-                            tax: "Item tax · AED",
-                            total: "Item total · AED",
-                          }[key]
-                        }
-                        <input
-                          aria-label={`Item ${n + 1} ${key}`}
-                          value={item[key] || ""}
-                          inputMode={
-                            [
-                              "quantity",
-                              "unitRate",
-                              "discount",
-                              "tax",
-                              "total",
-                            ].includes(key)
-                              ? "decimal"
-                              : "text"
+                    {data.expenseLedgers.map((ledger) => (
+                      <option key={ledger.id} value={ledger.id}>
+                        {ledger.name} · {ledger.group}
+                      </option>
+                    ))}
+                  </>,
+                )}
+                {scopeFor(fields) === "project" &&
+                  choice(
+                    "Project",
+                    "projectId",
+                    <>
+                      <option value="">Choose project</option>
+                      {data.documentCatalog.projects.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </>,
+                  )}
+                {field("Project name on document", "projectName")}
+                {field("Customer name on document", "customerName")}
+                {choice(
+                  "Related customer (optional)",
+                  "customerId",
+                  <>
+                    <option value="">No customer selected</option>
+                    {data.documentCatalog.customers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </>,
+                )}
+              </div>
+              <p className="entry-mapping">
+                Category mapping:{" "}
+                {data.accounts.find(
+                  (a) =>
+                    a.id ===
+                    data.documentCategories.find(
+                      (c) => c.id === fields.categoryId,
+                    )?.expenseAccountId,
+                )?.code || "—"}{" "}
+                ·{" "}
+                {data.accounts.find(
+                  (a) =>
+                    a.id ===
+                    data.documentCategories.find(
+                      (c) => c.id === fields.categoryId,
+                    )?.expenseAccountId,
+                )?.name || "Select an existing category"}
+                . Mapping is a draft suggestion.
+              </p>
+              <h3>Items</h3>
+              <div className="entry-items">
+                {fields.items.map((item, n) => (
+                  <fieldset key={n}>
+                    <legend>Item {n + 1}</legend>
+                    <div className="field-grid">
+                      {(
+                        [
+                          "description",
+                          "quantity",
+                          "unit",
+                          "unitRate",
+                          "discount",
+                          "tax",
+                          "total",
+                        ] as const
+                      ).map((key) => (
+                        <label
+                          key={key}
+                          className={
+                            uncertain(`items.${n}.${key}`)
+                              ? "entry-uncertain"
+                              : ""
                           }
+                        >
+                          {
+                            {
+                              description: "Description",
+                              quantity: "Quantity",
+                              unit: "Unit",
+                              unitRate: "Unit rate · AED",
+                              discount: "Item discount · AED",
+                              tax: "Item tax · AED",
+                              total: "Item total · AED",
+                            }[key]
+                          }
+                          <input
+                            aria-label={`Item ${n + 1} ${key}`}
+                            value={item[key] || ""}
+                            inputMode={
+                              [
+                                "quantity",
+                                "unitRate",
+                                "discount",
+                                "tax",
+                                "total",
+                              ].includes(key)
+                                ? "decimal"
+                                : "text"
+                            }
+                            onChange={(e) =>
+                              change(
+                                "items",
+                                fields.items.map((v, i) =>
+                                  i === n ? { ...v, [key]: e.target.value } : v,
+                                ),
+                              )
+                            }
+                          />
+                        </label>
+                      ))}
+                      <label>
+                        Matched product
+                        <select
+                          value={item.productId}
                           onChange={(e) =>
                             change(
                               "items",
                               fields.items.map((v, i) =>
-                                i === n ? { ...v, [key]: e.target.value } : v,
+                                i === n
+                                  ? { ...v, productId: e.target.value }
+                                  : v,
                               ),
                             )
                           }
-                        />
+                        >
+                          <option value="">No product match</option>
+                          {data.documentCatalog.products.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} · {p.unit}
+                            </option>
+                          ))}
+                        </select>
                       </label>
+                    </div>
+                    <button
+                      className="button"
+                      type="button"
+                      onClick={() =>
+                        change(
+                          "items",
+                          fields.items.filter((_, i) => i !== n),
+                        )
+                      }
+                    >
+                      Remove item {n + 1}
+                    </button>
+                  </fieldset>
+                ))}
+              </div>
+              <button
+                className="button"
+                type="button"
+                disabled={fields.items.length >= 80}
+                onClick={() =>
+                  change("items", [
+                    ...fields.items,
+                    {
+                      description: "",
+                      quantity: "",
+                      unit: "",
+                      unitRate: "",
+                      tax: "",
+                      total: "",
+                      productId: "",
+                    },
+                  ])
+                }
+              >
+                + Add item
+              </button>
+              <div className="field-grid entry-totals">
+                {field("Subtotal · AED", "subtotal")}
+                {field("Document discount · AED", "discount")}
+                {field("Tax · AED", "tax")}
+                {field("Document total · AED", "total")}
+              </div>
+              {!parsed.success && (
+                <p className="review-error" role="alert">
+                  Check amounts and dates. Amounts need a decimal point and up
+                  to two decimals; quantities allow four decimals.
+                </p>
+              )}
+              {warnings.length > 0 && (
+                <div className="entry-warnings" aria-label="Review warnings">
+                  <strong>Check before confirming</strong>
+                  <ul>
+                    {warnings.map((w) => (
+                      <li key={w.code}>{w.message}</li>
                     ))}
+                  </ul>
+                </div>
+              )}
+              <label className="entry-check">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => {
+                    setRemember(e.target.checked);
+                    setConfirmed(false);
+                  }}
+                />
+                Remember this supplier’s classification and category in this
+                demo session
+              </label>
+              <label className="entry-check">
+                <input
+                  type="checkbox"
+                  checked={confirmed}
+                  onChange={(e) => setConfirmed(e.target.checked)}
+                />
+                I checked all fields and any warnings against the original
+                document
+              </label>
+              <div className="review-actions">
+                <button
+                  className="button button-primary"
+                  type="submit"
+                  disabled={!confirmed || !parsed.success || busy}
+                >
+                  Save reviewed draft
+                </button>
+                {doc.status === "Draft" &&
+                  fields.kind === "supplier-bill" &&
+                  !doc.convertedBillId && (
+                    <button
+                      className="button"
+                      type="button"
+                      disabled={
+                        !confirmed ||
+                        busy ||
+                        pending ||
+                        billBlockingWarnings.length > 0
+                      }
+                      onClick={() => void createBill()}
+                    >
+                      Create purchase bill
+                    </button>
+                  )}
+                {doc.convertedBillId && (
+                  <p className="review-success" role="status">
+                    Created purchase bill {doc.convertedBillId}. This document
+                    is linked to that bill and cannot be posted twice.
+                  </p>
+                )}
+              </div>
+              {doc.status === "Draft" &&
+                ["project-expense", "company-expense"].includes(fields.kind) &&
+                !(doc as DocumentReview & { convertedExpenseId?: string })
+                  .convertedExpenseId && (
+                  <div className="entry-expense-conversion">
                     <label>
-                      Matched product
+                      Expense payment account
                       <select
-                        value={item.productId}
-                        onChange={(e) =>
-                          change(
-                            "items",
-                            fields.items.map((v, i) =>
-                              i === n ? { ...v, productId: e.target.value } : v,
-                            ),
-                          )
+                        value={paymentAccount}
+                        onChange={(event) =>
+                          setPaymentAccount(event.target.value)
                         }
+                        disabled={busy}
                       >
-                        <option value="">No product match</option>
-                        {data.documentCatalog.products.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} · {p.unit}
+                        {cashAccountsFor(data).map((account) => (
+                          <option key={account.id} value={account.id}>
+                            {account.name}
                           </option>
                         ))}
                       </select>
                     </label>
+                    <button
+                      className="button"
+                      type="button"
+                      disabled={
+                        !confirmed ||
+                        busy ||
+                        pending ||
+                        billBlockingWarnings.length > 0
+                      }
+                      onClick={() => void createExpense()}
+                    >
+                      Record reviewed expense
+                    </button>
+                    <p>
+                      This separate action records a paid expense. Choose the
+                      actual demo payment account and review the saved draft
+                      first.
+                    </p>
                   </div>
-                  <button
-                    className="button"
-                    type="button"
-                    onClick={() =>
-                      change(
-                        "items",
-                        fields.items.filter((_, i) => i !== n),
-                      )
-                    }
-                  >
-                    Remove item {n + 1}
-                  </button>
-                </fieldset>
-              ))}
-            </div>
-            <button
-              className="button"
-              type="button"
-              disabled={fields.items.length >= 80}
-              onClick={() =>
-                change("items", [
-                  ...fields.items,
-                  {
-                    description: "",
-                    quantity: "",
-                    unit: "",
-                    unitRate: "",
-                    tax: "",
-                    total: "",
-                    productId: "",
-                  },
-                ])
-              }
-            >
-              + Add item
-            </button>
-            <div className="field-grid entry-totals">
-              {field("Subtotal · AED", "subtotal")}
-              {field("Document discount · AED", "discount")}
-              {field("Tax · AED", "tax")}
-              {field("Document total · AED", "total")}
-            </div>
-            {!parsed.success && (
-              <p className="review-error" role="alert">
-                Check amounts and dates. Amounts need a decimal point and up to
-                two decimals; quantities allow four decimals.
-              </p>
-            )}
-            {warnings.length > 0 && (
-              <div className="entry-warnings" aria-label="Review warnings">
-                <strong>Check before confirming</strong>
-                <ul>
-                  {warnings.map((w) => (
-                    <li key={w.code}>{w.message}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            <label className="entry-check">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => {
-                  setRemember(e.target.checked);
-                  setConfirmed(false);
-                }}
-              />
-              Remember this supplier’s classification and category in this demo
-              session
-            </label>
-            <label className="entry-check">
-              <input
-                type="checkbox"
-                checked={confirmed}
-                onChange={(e) => setConfirmed(e.target.checked)}
-              />
-              I checked all fields and any warnings against the original
-              document
-            </label>
-            <div className="review-actions">
-              <button
-                className="button button-primary"
-                type="submit"
-                disabled={!confirmed || !parsed.success || busy}
-              >
-                Save reviewed draft
-              </button>
-              {doc.status === "Draft" &&
-                fields.kind === "supplier-bill" &&
-                !doc.convertedBillId && (
-                  <button
-                    className="button"
-                    type="button"
-                    disabled={
-                      !confirmed ||
-                      busy ||
-                      pending ||
-                      billBlockingWarnings.length > 0
-                    }
-                    onClick={() => void createBill()}
-                  >
-                    Create purchase bill
-                  </button>
                 )}
-              {doc.convertedBillId && (
+              {(doc as DocumentReview & { convertedExpenseId?: string })
+                .convertedExpenseId && (
                 <p className="review-success" role="status">
-                  Created purchase bill {doc.convertedBillId}. This document is
-                  linked to that bill and cannot be posted twice.
+                  Recorded expense{" "}
+                  {
+                    (doc as DocumentReview & { convertedExpenseId?: string })
+                      .convertedExpenseId
+                  }
+                  . This review cannot be posted twice.
                 </p>
               )}
-            </div>
-            {doc.status === "Draft" &&
-              ["project-expense", "company-expense"].includes(fields.kind) &&
-              !(doc as DocumentReview & { convertedExpenseId?: string })
-                .convertedExpenseId && (
-                <div className="entry-expense-conversion">
-                  <label>
-                    Expense payment account
-                    <select
-                      value={paymentAccount}
-                      onChange={(event) =>
-                        setPaymentAccount(event.target.value)
-                      }
-                      disabled={busy}
-                    >
-                      {cashAccountsFor(data).map((account) => (
-                        <option key={account.id} value={account.id}>
-                          {account.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    className="button"
-                    type="button"
-                    disabled={
-                      !confirmed ||
-                      busy ||
-                      pending ||
-                      billBlockingWarnings.length > 0
-                    }
-                    onClick={() => void createExpense()}
-                  >
-                    Record reviewed expense
-                  </button>
-                  <p>
-                    This separate action records a paid expense. Choose the
-                    actual demo payment account and review the saved draft
-                    first.
-                  </p>
-                </div>
-              )}
-            {(doc as DocumentReview & { convertedExpenseId?: string })
-              .convertedExpenseId && (
-              <p className="review-success" role="status">
-                Recorded expense{" "}
-                {
-                  (doc as DocumentReview & { convertedExpenseId?: string })
-                    .convertedExpenseId
-                }
-                . This review cannot be posted twice.
+              <p>
+                Saving a draft never posts. Creating a purchase bill or
+                recording an expense is a separate explicit action through the
+                existing demo journal workflow and currently requires a VAT-free
+                total. Save any edits before this action.
               </p>
-            )}
-            <p>
-              Saving a draft never posts. Creating a purchase bill or recording
-              an expense is a separate explicit action through the existing demo
-              journal workflow and currently requires a VAT-free total. Save any
-              edits before this action.
-            </p>
+            </fieldset>
           </form>
         </div>
       ) : (

@@ -55,7 +55,7 @@ try {
   await route("banking", "Bank & cash");
   await page.getByRole("button", { name: "+ New account", exact: true }).click();
   await page.getByLabel("Account name", { exact: true }).fill("Thomas Cash");
-  await page.getByLabel("Account type", { exact: true }).selectOption("staff");
+  await page.getByLabel("Account type").selectOption("staff");
   await page.getByLabel("Cash holder", { exact: true }).fill("Thomas");
   await page.getByRole("button", { name: "Create account", exact: true }).click();
   await expect(page.getByText("Account created at zero balance. No financial posting.", { exact: true })).toBeVisible();
@@ -66,8 +66,8 @@ try {
   report.checks.push("Staff cash account created through UI at zero balance without posting");
 
   await page.getByRole("button", { name: "Transfer between accounts", exact: true }).click();
-  await page.getByLabel("From account", { exact: true }).selectOption("bank");
-  await page.getByLabel("To account", { exact: true }).selectOption(thomas.id);
+  await page.getByLabel("From account").selectOption("bank");
+  await page.getByLabel("To account").selectOption(thomas.id);
   await page.getByLabel("Transfer amount · AED", { exact: true }).fill("100.00");
   await page.getByLabel("Transfer date", { exact: true }).fill(date);
   await page.getByLabel("Transfer reference", { exact: true }).fill("QA-THOMAS-FUNDING");

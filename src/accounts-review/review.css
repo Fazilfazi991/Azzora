@@ -12,6 +12,9 @@
 .site-footer {
   color: #776c62;
 }
+.login-story-foot {
+  color: #7c6956;
+}
 .table-scroll:focus-visible {
   outline: 2px solid var(--clay);
   outline-offset: -2px;

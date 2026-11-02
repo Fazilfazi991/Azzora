@@ -23,6 +23,7 @@
     "test:quotations:browser": "node tests/quotation-browser.mjs"
   },
   "dependencies": {
+    "@napi-rs/canvas": "1.0.13",
     "@vercel/blob": "2.8.0",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.468.0",

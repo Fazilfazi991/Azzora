@@ -45,7 +45,11 @@ const uniqueMatch = <T>(values: T[], predicate: (value: T) => boolean) => {
 };
 type MatchContext = Pick<
   ReviewState,
-  "bills" | "invoices" | "documentEntries" | "documentCatalog" | "expenseLedgers"
+  | "bills"
+  | "invoices"
+  | "documentEntries"
+  | "documentCatalog"
+  | "expenseLedgers"
 >;
 export const scopeFor = (f: EntryFields) =>
   f.kind === "company-expense" ||
@@ -159,11 +163,19 @@ export function inspectFields(
       "currency",
     );
   if (f.dueDate && f.date && f.dueDate < f.date)
-    add("due-date", "Due date cannot be earlier than the invoice date.", "dueDate");
+    add(
+      "due-date",
+      "Due date cannot be earlier than the invoice date.",
+      "dueDate",
+    );
   if (f.kind === "unknown")
     add("kind", "Choose a document classification.", "kind");
   if (f.kind === "supplier-bill" && !f.purchaseOrderReference?.trim())
-    add("purchase-order", "Enter the purchase order reference before creating a bill.", "purchaseOrderReference");
+    add(
+      "purchase-order",
+      "Enter the purchase order reference before creating a bill.",
+      "purchaseOrderReference",
+    );
   const cat = categories.find((c) => c.id === f.categoryId);
   if (!cat)
     add("category", "Choose an existing expense category.", "categoryId");
@@ -213,7 +225,11 @@ export function inspectFields(
       const net = lineNet(i.quantity, i.unitRate);
       const discount = fils(i.discount || "0");
       if (discount > net)
-        add(`line-discount-${n}`, `Line ${n + 1}: discount exceeds the line amount.`, `${prefix}.discount`);
+        add(
+          `line-discount-${n}`,
+          `Line ${n + 1}: discount exceeds the line amount.`,
+          `${prefix}.discount`,
+        );
       nets += net - discount;
       if (i.total && i.tax && net - discount + fils(i.tax) !== fils(i.total))
         add(
@@ -278,7 +294,8 @@ export function inspectFields(
     state.bills.some(
       (b) =>
         normalize(b.party) === normalize(f.supplier) &&
-        ((b.invoiceReference && normalize(b.invoiceReference) === normalize(f.reference)) ||
+        ((b.invoiceReference &&
+          normalize(b.invoiceReference) === normalize(f.reference)) ||
           (f.date === b.date &&
             f.total &&
             fils(f.total) === BigInt(b.amountFils))),
@@ -324,7 +341,9 @@ export function saveDocumentDraft(
     scope = scopeFor(f);
   if (!category || !category.allowedScopes.includes(scope))
     throw Error("Choose a category valid for this document scope.");
-  const ledger = f.ledgerId ? expenseLedgersFor(next).find((l) => l.id === f.ledgerId) : undefined;
+  const ledger = f.ledgerId
+    ? expenseLedgersFor(next).find((l) => l.id === f.ledgerId)
+    : undefined;
   if (f.ledgerId && !ledger) throw Error("Choose an existing expense ledger.");
   if (ledger?.group === "Direct Expense" && scope !== "project")
     throw Error("Direct expense ledgers require an existing project.");

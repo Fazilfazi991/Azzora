@@ -1,9 +1,15 @@
 import { randomUUID } from "node:crypto";
 import type { ReviewState } from "../domain";
 import { attachment } from "../domain.js";
-import { emptyEntries, type Upload } from "./model.js";
+import {
+  emptyEntries,
+  fieldsSchema,
+  type Extraction,
+  type Upload,
+} from "./model.js";
 import {
   digestOf,
+  disabledExtractor,
   sampleExtractor,
   type DocumentExtractor,
 } from "./providers.js";
@@ -47,7 +53,27 @@ export async function extractDocument(
         : localPdfExtractor.extract(upload);
     },
   };
-  const extraction = await chosenExtractor.extract(file);
+  let extraction: Extraction;
+  try {
+    extraction = await chosenExtractor.extract(file);
+    // A provider response is untrusted even when its transport acknowledged it.
+    extraction = {
+      ...extraction,
+      fields: fieldsSchema.parse(extraction.fields),
+    };
+  } catch {
+    // Keep the uploaded original available for manual entry; never retry a paid
+    // call implicitly or fabricate fields/costs after a service failure.
+    extraction = {
+      ...(await disabledExtractor.extract(file)),
+      provider: "Automatic extraction unavailable",
+      inputTokens: extractor ? null : 0,
+      outputTokens: extractor ? null : 0,
+      costUsd: extractor ? null : 0,
+      failureReason:
+        "Automatic extraction could not be completed. Review the original and enter the missing fields manually.",
+    };
+  }
   const fields = suggest(extraction.fields, next);
   entries.reviews.push({
     id,
@@ -59,7 +85,18 @@ export async function extractDocument(
     status: "Review",
     revision: 0,
     corrections: [],
-    warnings: inspectFields(fields, next, id, sha256),
+    warnings: [
+      ...inspectFields(fields, next, id, sha256),
+      ...(extraction.failureReason
+        ? [
+            {
+              code: "extraction-unavailable",
+              field: "items",
+              message: extraction.failureReason,
+            },
+          ]
+        : []),
+    ],
   });
   next.documentEntries = entries;
   return { state: next, id, reused: false };

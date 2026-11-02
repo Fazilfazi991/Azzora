@@ -1,14 +1,23 @@
 import { jsPDF } from "jspdf";
 import { reviewSnapshot, type ReviewState } from "./domain.js";
 import type { ReviewStoredLine } from "./item-lines";
+import type { ReviewReportSelection } from "./reporting";
 const money = (fils: string) => {
   const n = BigInt(fils),
     a = n < 0n ? -n : n;
   return `${n < 0n ? "-" : ""}AED ${(a / 100n).toLocaleString("en-AE")}.${(a % 100n).toString().padStart(2, "0")}`;
 };
-export function reviewPdf(state: ReviewState, name: string): ArrayBuffer {
+export function reviewPdf(
+  state: ReviewState,
+  name: string,
+  selection?: ReviewReportSelection,
+): ArrayBuffer {
   const doc = new jsPDF({ format: "a4", unit: "mm" });
-  const data = reviewSnapshot(state);
+  const data = reviewSnapshot(
+    state,
+    selection?.asOf,
+    selection ? { from: selection.from, to: selection.to } : undefined,
+  );
   let y = 48;
   let pageTitle = "Demo document";
   function header(title: string) {

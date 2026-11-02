@@ -8,9 +8,17 @@ import {
   scryptSync,
   timingSafeEqual,
 } from "node:crypto";
-import { applyReviewAction, createReviewState, reviewSnapshot } from "./domain";
+import { applyReviewAction, createReviewState } from "./domain";
 import { reviewPdf } from "./pdf";
 import { extractDocument } from "./documents/service";
+import { BlobReviewStore } from "./hosted-store";
+import { reportSelection, selectedSnapshot } from "./reporting";
+import {
+  configuredDocumentRuntime,
+  documentAvailability,
+  extractionInputSchema,
+  extractorFor,
+} from "./documents/runtime";
 
 const email = "accountant@review.azzora.test";
 const configuredPassword = process.env.AZZORA_REVIEW_PASSWORD || "";
@@ -20,7 +28,7 @@ const sessions = new Map();
 const attempts = new Map();
 const actionResults = new Map();
 let finance = createReviewState();
-const asOf = "2026-10-22";
+const documents = configuredDocumentRuntime(new BlobReviewStore());
 const cookieName = "azzora_review_session";
 
 function json(res, status, body, extra = {}) {
@@ -91,7 +99,13 @@ export function accountsReviewPlugin() {
               error:
                 "Set AZZORA_REVIEW_PASSWORD (at least 16 characters) before starting the local review.",
             });
-          const path = new URL(req.url || "/", "http://localhost").pathname;
+          const requestUrl = new URL(req.url || "/", "http://localhost");
+          const path = requestUrl.pathname;
+          const selection = reportSelection(requestUrl);
+          const snapshotOf = () => ({
+            ...selectedSnapshot(finance, selection),
+            documentAi: documentAvailability(documents),
+          });
           if (req.method === "POST" && !sameOrigin(req))
             return json(res, 403, { error: "Origin check failed." });
           if (path === "/login" && req.method === "POST") {
@@ -171,19 +185,23 @@ export function accountsReviewPlugin() {
             actionResults.clear();
             return json(res, 200, {
               ok: true,
-              snapshot: reviewSnapshot(finance, asOf),
+              snapshot: snapshotOf(),
             });
           }
           if (path === "/snapshot" && req.method === "GET")
-            return json(res, 200, reviewSnapshot(finance, asOf));
+            return json(res, 200, snapshotOf());
           if (path === "/documents/extract" && req.method === "POST") {
-            const input = await body(req);
-            const result = await extractDocument(finance, input.file);
+            const input = extractionInputSchema.parse(await body(req));
+            const result = await extractDocument(
+              finance,
+              input.file,
+              extractorFor(documents, input.mode),
+            );
             finance = result.state;
             return json(res, 200, {
               id: result.id,
               reused: result.reused,
-              snapshot: reviewSnapshot(finance, asOf),
+              snapshot: snapshotOf(),
             });
           }
           if (path.startsWith("/pdf/") && req.method === "GET") {
@@ -193,7 +211,7 @@ export function accountsReviewPlugin() {
               "Content-Disposition": `attachment; filename="AZZORA-demo.pdf"`,
               "Cache-Control": "no-store",
             });
-            return res.end(Buffer.from(reviewPdf(finance, name)));
+            return res.end(Buffer.from(reviewPdf(finance, name, selection)));
           }
           if (path.startsWith("/attachment/") && req.method === "GET") {
             const id = decodeURIComponent(path.slice("/attachment/".length));
@@ -233,6 +251,9 @@ export function accountsReviewPlugin() {
                 "update-bill-draft",
                 "issue-bill",
                 "create-expense-ledger",
+                "create-cash-account",
+                "transfer",
+                "create-expense-from-review",
               ].includes(action.kind)
             )
               return json(res, 400, { error: "Unknown finance action." });
@@ -244,7 +265,7 @@ export function accountsReviewPlugin() {
               return prior.fingerprint === fingerprint
                 ? json(res, 200, {
                     id: prior.id,
-                    snapshot: reviewSnapshot(finance, asOf),
+                    snapshot: snapshotOf(),
                   })
                 : json(res, 409, {
                     error: "Action key was reused with different details.",
@@ -258,9 +279,9 @@ export function accountsReviewPlugin() {
               ? action.id
               : `DEMO-${randomUUID().slice(0, 8).toUpperCase()}`;
             const next = applyReviewAction(finance, { ...action, id });
-            reviewSnapshot(next, asOf); // Reconcile before committing the in-memory transaction.
+            selectedSnapshot(next, selection); // Reconcile before committing the in-memory transaction.
             finance = next;
-            const result = { id, snapshot: reviewSnapshot(finance, asOf) };
+            const result = { id, snapshot: snapshotOf() };
             actionResults.set(key, { fingerprint, id });
             return json(res, 200, result);
           }

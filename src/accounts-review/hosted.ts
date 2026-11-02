@@ -8,7 +8,6 @@ import {
 import {
   applyReviewAction,
   createReviewState,
-  reviewSnapshot,
   type ReviewAction,
   type ReviewState,
 } from "./domain.js";
@@ -16,6 +15,14 @@ import { ReviewConflict, type ReviewStore } from "./hosted-store.js";
 import { reviewPdf } from "./pdf.js";
 import { extractDocument } from "./documents/service.js";
 import { ZodError } from "zod";
+import { reportSelection, selectedSnapshot } from "./reporting.js";
+import {
+  configuredDocumentRuntime,
+  documentAvailability,
+  extractionInputSchema,
+  extractorFor,
+  type DocumentRuntime,
+} from "./documents/runtime.js";
 
 interface HostedSession {
   role: "accountant";
@@ -49,7 +56,9 @@ async function readInput(request: Request) {
 export function createHostedHandler(
   store: ReviewStore,
   passwordHash: () => string | undefined,
+  options: { documents?: DocumentRuntime; now?: () => Date } = {},
 ) {
+  const documents = options.documents ?? configuredDocumentRuntime(store);
   return async (request: Request): Promise<Response> => {
     try {
       const configured = passwordHash() || "";
@@ -58,6 +67,11 @@ export function createHostedHandler(
           error: "The protected review login is not configured.",
         });
       const url = new URL(request.url);
+      const selection = reportSelection(url, options.now?.() ?? new Date());
+      const snapshotOf = (finance: ReviewState) => ({
+        ...selectedSnapshot(finance, selection),
+        documentAi: documentAvailability(documents),
+      });
       const path =
         "/" +
         (
@@ -169,17 +183,21 @@ export function createHostedHandler(
         );
       }
       if (path === "/snapshot" && request.method === "GET")
-        return json(200, reviewSnapshot(active.finance));
+        return json(200, snapshotOf(active.finance));
       if (path === "/documents/extract" && request.method === "POST") {
-        const input = await readInput(request);
-        const result = await extractDocument(active.finance, input.file);
+        const input = extractionInputSchema.parse(await readInput(request));
+        const result = await extractDocument(
+          active.finance,
+          input.file,
+          extractorFor(documents, input.mode),
+        );
         active.finance = result.state;
         if (!result.reused)
           await store.write(sessionPath, active, stored.version);
         return json(200, {
           id: result.id,
           reused: result.reused,
-          snapshot: reviewSnapshot(active.finance),
+          snapshot: snapshotOf(active.finance),
         });
       }
       if (path === "/reset" && request.method === "POST") {
@@ -188,7 +206,7 @@ export function createHostedHandler(
         await store.write(sessionPath, active, stored.version);
         return json(200, {
           ok: true,
-          snapshot: reviewSnapshot(active.finance),
+          snapshot: snapshotOf(active.finance),
         });
       }
       if (path.startsWith("/attachment/") && request.method === "GET") {
@@ -209,7 +227,7 @@ export function createHostedHandler(
       }
       if (path.startsWith("/pdf/") && request.method === "GET") {
         const name = decodeURIComponent(path.slice(5));
-        const pdf = reviewPdf(active.finance, name);
+        const pdf = reviewPdf(active.finance, name, selection);
         return new Response(pdf, {
           headers: {
             "Content-Type": "application/pdf",
@@ -238,6 +256,9 @@ export function createHostedHandler(
             "update-bill-draft",
             "issue-bill",
             "create-expense-ledger",
+            "create-cash-account",
+            "transfer",
+            "create-expense-from-review",
           ].includes(action.kind)
         )
           return json(400, { error: "Unknown finance action." });
@@ -247,7 +268,7 @@ export function createHostedHandler(
           return prior.fingerprint === fingerprint
             ? json(200, {
                 id: prior.id,
-                snapshot: reviewSnapshot(active.finance),
+                snapshot: snapshotOf(active.finance),
               })
             : json(409, {
                 error: "Action key was reused with different details.",
@@ -284,7 +305,7 @@ export function createHostedHandler(
           return json(400, {
             error: "This demo session supports up to 6 MB of attachments.",
           });
-        const snapshot = reviewSnapshot(active.finance);
+        const snapshot = snapshotOf(active.finance);
         active.actions[key] = { fingerprint, id };
         await store.write(sessionPath, active, stored.version);
         return json(200, { id, snapshot });

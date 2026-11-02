@@ -108,6 +108,7 @@ export interface Extraction {
   costUsd: number | null;
   latencyMs: number;
   retries: number;
+  failureReason?: string;
 }
 export interface DocumentReview {
   id: string;
@@ -127,7 +128,12 @@ export interface DocumentReview {
     after: EntryFields;
   }[];
   warnings: EntryWarning[];
-  mapping?: { categoryId: string; accountId: string; accountCode: string; ledgerId?: string };
+  mapping?: {
+    categoryId: string;
+    accountId: string;
+    accountCode: string;
+    ledgerId?: string;
+  };
 }
 export interface SupplierDefault {
   supplier: string;

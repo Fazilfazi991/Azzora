@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { reviewSnapshot } from "./domain";
 import "./expense-entry.css";
+import { cashAccountsFor, type CompletionSnapshot } from "./completion-ui";
 
 type Snapshot = ReturnType<typeof reviewSnapshot>;
 type ExpenseGroup =
@@ -19,6 +20,7 @@ type ExpenseDetail = Snapshot["expenses"][number] & {
   expenseGroup?: ExpenseGroup;
   projectId?: string;
   scope?: "company" | "project";
+  departmentId?: string;
 };
 type ExpenseSnapshot = Snapshot & { expenseLedgers?: ExpenseLedger[] };
 const groups: ExpenseGroup[] = [
@@ -69,6 +71,8 @@ export function ExpenseEntry({
 }) {
   const ledgers = (data as ExpenseSnapshot).expenseLedgers ?? [];
   const projects = data.documentCatalog.projects;
+  const accounts = cashAccountsFor(data);
+  const departments = (data as CompletionSnapshot).departments ?? [];
   const [ledgerId, setLedgerId] = useState(ledgers[0]?.id ?? "");
   const [scope, setScope] = useState<"company" | "project">(
     ledgers[0]?.group === "Direct Expense" ? "project" : "company",
@@ -235,8 +239,17 @@ export function ExpenseEntry({
         </div>
         <div className="page-actions">
           <a className="button" href="#/document-entry">
-            Read a receipt · save draft
+            Upload & Auto-Fill
           </a>
+          <button
+            className="button"
+            type="button"
+            onClick={() =>
+              document.getElementById("expense-manual-form")?.scrollIntoView()
+            }
+          >
+            Enter Manually
+          </button>
         </div>
       </div>
       <div className="prototype-note" role="note">
@@ -247,6 +260,7 @@ export function ExpenseEntry({
         </span>
       </div>
       <form
+        id="expense-manual-form"
         className="panel review-form expense-entry"
         onSubmit={submit}
         aria-busy={busy}
@@ -421,8 +435,22 @@ export function ExpenseEntry({
           <label>
             Paid from
             <select name="account" defaultValue="bank" required disabled={busy}>
-              <option value="bank">Business bank</option>
-              <option value="cash">Petty cash</option>
+              {accounts.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Department · optional
+            <select name="departmentId" defaultValue="" disabled={busy}>
+              <option value="">Unassigned</option>
+              {departments.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
             </select>
           </label>
           <label>
@@ -558,6 +586,15 @@ export function ExpenseEntry({
                           <dd>{group}</dd>
                           <dt>Expense for</dt>
                           <dd>{projectName}</dd>
+                          <dt>Department</dt>
+                          <dd>
+                            {departments.find(
+                              (department) =>
+                                department.id === item.departmentId,
+                            )?.name ||
+                              item.departmentId ||
+                              "Unassigned"}
+                          </dd>
                           <dt>Description</dt>
                           <dd>{item.description}</dd>
                         </dl>
@@ -572,10 +609,20 @@ export function ExpenseEntry({
                       {ledgerName}
                       <small>{group}</small>
                     </td>
-                    <td>{projectName}</td>
+                    <td>
+                      {projectName}
+                      <small>
+                        {departments.find(
+                          (department) => department.id === item.departmentId,
+                        )?.name ||
+                          item.departmentId ||
+                          "Unassigned department"}
+                      </small>
+                    </td>
                     <td>{displayDate(item.date)}</td>
                     <td>
-                      {item.account === "bank" ? "Business bank" : "Petty cash"}
+                      {accounts.find((account) => account.id === item.account)
+                        ?.name || item.account}
                     </td>
                     <td className="money">
                       {money(item.amountFils)}

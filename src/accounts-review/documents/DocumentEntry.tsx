@@ -10,15 +10,22 @@ import type { reviewSnapshot } from "../domain";
 import {
   blankFields,
   type DocumentReview,
-  type EntryFields,
+  type EntryFields as ExistingEntryFields,
   type Upload,
 } from "./model";
 import { fieldsSchema } from "./model";
 import { inspectFields, scopeFor } from "./review";
 import "./entry.css";
+import { cashAccountsFor, type CompletionSnapshot } from "../completion-ui";
 
 const PdfPreview = lazy(() => import("./PdfPreview"));
-type Snapshot = ReturnType<typeof reviewSnapshot>;
+type Snapshot = ReturnType<typeof reviewSnapshot> & CompletionSnapshot;
+type EntryFields = Omit<ExistingEntryFields, "items"> & {
+  department?: "" | "MEP" | "CIVIL" | "JOINERY";
+  ledgerId?: string;
+  discount?: string;
+  items: (ExistingEntryFields["items"][number] & { discount?: string })[];
+};
 const readFile = async (file: File): Promise<Upload> => {
   if (
     file.size > 2000000 ||
@@ -40,7 +47,7 @@ export function DocumentEntry({
   onPendingChange,
 }: {
   data: Snapshot;
-  extract: (file: Upload) => Promise<string>;
+  extract: (file: Upload, mode?: "auto" | "manual") => Promise<string>;
   act: (action: Record<string, unknown>) => Promise<boolean>;
   onPendingChange: (pending: boolean) => void;
 }) {
@@ -53,6 +60,7 @@ export function DocumentEntry({
   const [url, setUrl] = useState("");
   const [fileMime, setFileMime] = useState("");
   const [saved, setSaved] = useState(false);
+  const [paymentAccount, setPaymentAccount] = useState("bank");
   const doc = data.documentEntries.reviews.find((d) => d.id === selected);
   const pending = Boolean(
     doc && JSON.stringify(doc.fields) !== JSON.stringify(fields),
@@ -105,13 +113,13 @@ export function DocumentEntry({
     setConfirmed(false);
     setSaved(false);
   }
-  async function upload(file: File) {
+  async function upload(file: File, mode: "auto" | "manual" = "auto") {
     if (pending && !window.confirm("Discard unsaved document edits?")) return;
     setBusy(true);
     setError("");
     setSaved(false);
     try {
-      const id = await extract(await readFile(file));
+      const id = await extract(await readFile(file), mode);
       setSelected(id);
       setLoaded("");
       setConfirmed(false);
@@ -175,7 +183,7 @@ export function DocumentEntry({
         <input
           aria-label={label}
           type={type}
-          value={fields[key]}
+          value={fields[key] || ""}
           list={key === "supplier" ? "entry-suppliers" : undefined}
           onChange={(e) =>
             change(key, e.target.value as EntryFields[typeof key])
@@ -188,7 +196,14 @@ export function DocumentEntry({
   }
   function choice(
     label: string,
-    key: "kind" | "currency" | "categoryId" | "projectId" | "customerId",
+    key:
+      | "kind"
+      | "currency"
+      | "categoryId"
+      | "projectId"
+      | "customerId"
+      | "department"
+      | "ledgerId",
     children: ReactNode,
   ) {
     return (
@@ -196,7 +211,7 @@ export function DocumentEntry({
         {label}
         <select
           aria-label={label}
-          value={fields[key]}
+          value={fields[key] || ""}
           onChange={(e) => {
             change(key, e.target.value as EntryFields[typeof key]);
             if (key === "kind") {
@@ -241,7 +256,12 @@ export function DocumentEntry({
   }
   async function createBill() {
     if (!doc || doc.status !== "Draft" || !confirmed || busy) return;
-    if (!window.confirm("Create this purchase bill and post it to the fictional demo journal?")) return;
+    if (
+      !window.confirm(
+        "Create this purchase bill and post it to the fictional demo journal?",
+      )
+    )
+      return;
     setBusy(true);
     try {
       await act({
@@ -254,13 +274,32 @@ export function DocumentEntry({
       setBusy(false);
     }
   }
+  async function createExpense() {
+    if (!doc || doc.status !== "Draft" || !confirmed || busy || pending) return;
+    if (
+      !window.confirm("Record this paid expense in the fictional demo journal?")
+    )
+      return;
+    setBusy(true);
+    try {
+      await act({
+        kind: "create-expense-from-review",
+        reviewId: doc.id,
+        revision: doc.revision,
+        confirmed: true,
+        account: paymentAccount,
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <>
       <div className="page-head">
         <div>
           <span className="eyebrow">PURCHASES & EXPENSES</span>
           <h1>Read a bill</h1>
-          <p>Upload, check the details, then save a draft.</p>
+          <p>Upload → auto-fill → review → save a draft.</p>
         </div>
         <a className="button" href="#/bills">
           ← Purchase bills
@@ -269,12 +308,13 @@ export function DocumentEntry({
       <div className="prototype-note">
         <strong>CLIENT REVIEW · FICTIONAL DATA</strong>
         <span>
-          Paid AI is disabled. Text PDFs use local PDF.js extraction; photos and scanned PDFs need manual entry. Prepared sample suggestions are labeled separately.
+          {data.documentAi?.message ||
+            "Paid AI is disabled. Text PDFs use local PDF.js extraction; photos and scanned PDFs need manual entry. Prepared sample suggestions are labeled separately."}
         </span>
       </div>
       <section className="panel entry-upload" aria-label="Upload a document">
         <label className="button">
-          Upload photo or PDF
+          Upload & Auto-Fill
           <input
             aria-label="Upload document"
             type="file"
@@ -288,7 +328,28 @@ export function DocumentEntry({
             }}
           />
         </label>
-        <span>PDF, PNG or JPEG · up to 2 MB. Selectable PDF text is read locally; photos/scans remain manual.</span>
+        <label className="button">
+          Enter Manually
+          <input
+            aria-label="Upload document for manual entry"
+            type="file"
+            accept="application/pdf,image/png,image/jpeg"
+            capture="environment"
+            disabled={busy}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void upload(file, "manual");
+              event.target.value = "";
+            }}
+          />
+        </label>
+        <span>
+          PDF, PNG or JPEG · up to 2 MB.{" "}
+          {data.documentAi?.enabled
+            ? "DeepSeek suggestions remain unposted until you review them."
+            : "Selectable PDF text is read locally; photos/scans remain manual."}{" "}
+          Manual entry keeps the original alongside a blank form.
+        </span>
         <a href="/document-samples/01.png" download>
           Download sample bill
         </a>
@@ -406,6 +467,30 @@ export function DocumentEntry({
                     ))}
                 </>,
               )}
+              {choice(
+                "Department",
+                "department",
+                <>
+                  <option value="">Unassigned</option>
+                  {(data.departments ?? []).map((department) => (
+                    <option key={department.id} value={department.id}>
+                      {department.name}
+                    </option>
+                  ))}
+                </>,
+              )}
+              {choice(
+                "Expense Ledger",
+                "ledgerId",
+                <>
+                  <option value="">Choose ledger if this is an expense</option>
+                  {data.expenseLedgers.map((ledger) => (
+                    <option key={ledger.id} value={ledger.id}>
+                      {ledger.name} · {ledger.group}
+                    </option>
+                  ))}
+                </>,
+              )}
               {scopeFor(fields) === "project" &&
                 choice(
                   "Project",
@@ -465,6 +550,7 @@ export function DocumentEntry({
                         "quantity",
                         "unit",
                         "unitRate",
+                        "discount",
                         "tax",
                         "total",
                       ] as const
@@ -483,17 +569,22 @@ export function DocumentEntry({
                             quantity: "Quantity",
                             unit: "Unit",
                             unitRate: "Unit rate · AED",
+                            discount: "Item discount · AED",
                             tax: "Item tax · AED",
                             total: "Item total · AED",
                           }[key]
                         }
                         <input
                           aria-label={`Item ${n + 1} ${key}`}
-                          value={item[key]}
+                          value={item[key] || ""}
                           inputMode={
-                            ["quantity", "unitRate", "tax", "total"].includes(
-                              key,
-                            )
+                            [
+                              "quantity",
+                              "unitRate",
+                              "discount",
+                              "tax",
+                              "total",
+                            ].includes(key)
                               ? "decimal"
                               : "text"
                           }
@@ -568,6 +659,7 @@ export function DocumentEntry({
             </button>
             <div className="field-grid entry-totals">
               {field("Subtotal · AED", "subtotal")}
+              {field("Document discount · AED", "discount")}
               {field("Tax · AED", "tax")}
               {field("Document total · AED", "total")}
             </div>
@@ -616,24 +708,87 @@ export function DocumentEntry({
               >
                 Save reviewed draft
               </button>
-              {doc.status === "Draft" && fields.kind === "supplier-bill" && !doc.convertedBillId && (
-                <button
-                  className="button"
-                  type="button"
-                  disabled={!confirmed || busy || billBlockingWarnings.length > 0}
-                  onClick={() => void createBill()}
-                >
-                  Create purchase bill
-                </button>
-              )}
+              {doc.status === "Draft" &&
+                fields.kind === "supplier-bill" &&
+                !doc.convertedBillId && (
+                  <button
+                    className="button"
+                    type="button"
+                    disabled={
+                      !confirmed ||
+                      busy ||
+                      pending ||
+                      billBlockingWarnings.length > 0
+                    }
+                    onClick={() => void createBill()}
+                  >
+                    Create purchase bill
+                  </button>
+                )}
               {doc.convertedBillId && (
                 <p className="review-success" role="status">
-                  Created purchase bill {doc.convertedBillId}. This document is linked to that bill and cannot be posted twice.
+                  Created purchase bill {doc.convertedBillId}. This document is
+                  linked to that bill and cannot be posted twice.
                 </p>
               )}
             </div>
+            {doc.status === "Draft" &&
+              ["project-expense", "company-expense"].includes(fields.kind) &&
+              !(doc as DocumentReview & { convertedExpenseId?: string })
+                .convertedExpenseId && (
+                <div className="entry-expense-conversion">
+                  <label>
+                    Expense payment account
+                    <select
+                      value={paymentAccount}
+                      onChange={(event) =>
+                        setPaymentAccount(event.target.value)
+                      }
+                      disabled={busy}
+                    >
+                      {cashAccountsFor(data).map((account) => (
+                        <option key={account.id} value={account.id}>
+                          {account.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    className="button"
+                    type="button"
+                    disabled={
+                      !confirmed ||
+                      busy ||
+                      pending ||
+                      billBlockingWarnings.length > 0
+                    }
+                    onClick={() => void createExpense()}
+                  >
+                    Record reviewed expense
+                  </button>
+                  <p>
+                    This separate action records a paid expense. Choose the
+                    actual demo payment account and review the saved draft
+                    first.
+                  </p>
+                </div>
+              )}
+            {(doc as DocumentReview & { convertedExpenseId?: string })
+              .convertedExpenseId && (
+              <p className="review-success" role="status">
+                Recorded expense{" "}
+                {
+                  (doc as DocumentReview & { convertedExpenseId?: string })
+                    .convertedExpenseId
+                }
+                . This review cannot be posted twice.
+              </p>
+            )}
             <p>
-              Saving a draft never posts. Creating a purchase bill is a separate explicit action, uses the existing demo journal workflow, and currently requires a VAT-free total.
+              Saving a draft never posts. Creating a purchase bill or recording
+              an expense is a separate explicit action through the existing demo
+              journal workflow and currently requires a VAT-free total. Save any
+              edits before this action.
             </p>
           </form>
         </div>
@@ -682,6 +837,9 @@ const historyLabels: Record<string, string> = {
   subtotal: "Subtotal",
   tax: "Tax",
   total: "Total",
+  discount: "Discount",
+  department: "Department",
+  ledgerId: "Expense ledger",
   kind: "Classification",
   categoryId: "Category",
   projectName: "Project name",

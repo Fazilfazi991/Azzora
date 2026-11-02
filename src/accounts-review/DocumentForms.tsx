@@ -8,6 +8,7 @@ import {
   type ReviewLineInput,
 } from "./item-lines";
 import { purchasePriceWarnings } from "./review-purchase-prices";
+import type { CompletionSnapshot } from "./completion-ui";
 
 type Snapshot = ReturnType<typeof reviewSnapshot>;
 type Props = {
@@ -372,9 +373,10 @@ export function PurchaseBills({ data, act, editingId }: Props) {
           <span className="eyebrow">OPTION 1 · UPLOAD & AUTO-FILL</span>
           <h2>Read a purchase bill</h2>
           <p>
-            Review the original beside editable details. Paid AI remains
-            disabled; local PDF text reading and prepared demo suggestions are
-            labeled.
+            Review the original beside editable details, then save a draft.
+            {(data as CompletionSnapshot).documentAi?.enabled
+              ? " DeepSeek suggestions need your review before use."
+              : " Paid AI is unavailable; local PDF reading and prepared demo suggestions are labeled separately."}
           </p>
           <strong>Choose a document →</strong>
         </a>
@@ -465,6 +467,26 @@ export function PurchaseBills({ data, act, editingId }: Props) {
               <option>Operating Expense</option>
             </Field>
             <Project data={data} value={existing?.projectId} />
+            <Field
+              label="Department · optional"
+              name="departmentId"
+              value={
+                (
+                  existing as
+                    (ReviewDocument & { departmentId?: string }) | undefined
+                )?.departmentId || ""
+              }
+              optional
+            >
+              <option value="">Unassigned</option>
+              {((data as CompletionSnapshot).departments ?? []).map(
+                (department) => (
+                  <option key={department.id} value={department.id}>
+                    {department.name}
+                  </option>
+                ),
+              )}
+            </Field>
           </div>
           <LineItemsEditor
             items={items}

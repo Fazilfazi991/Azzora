@@ -8,6 +8,23 @@
   font-size: 12px;
   color: var(--stone);
 }
+.entry-expense-conversion {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--hairline);
+}
+.entry-expense-conversion p {
+  grid-column: 1 / -1;
+}
+@media (max-width: 700px) {
+  .entry-expense-conversion {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .entry-upload input[type="file"] {
   position: absolute;
   width: 1px;

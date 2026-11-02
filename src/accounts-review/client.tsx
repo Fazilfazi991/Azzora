@@ -13,6 +13,10 @@ import "./review.css";
 import { DocumentEntry } from "./documents/DocumentEntry";
 import { InvoiceEntry, PurchaseBills } from "./DocumentForms";
 import { ExpenseEntry } from "./ExpenseEntry";
+import { BankingWorkspace } from "./BankingWorkspace";
+import { OperationalReports } from "./OperationalReports";
+import { ReportDates } from "./ReportDates";
+import { cashAccountsFor, type CompletionSnapshot } from "./completion-ui";
 import type { Upload } from "./documents/model";
 
 type Snapshot = ReturnType<typeof reviewSnapshot>;
@@ -35,6 +39,8 @@ type Route =
   | "ledger"
   | "pnl"
   | "balance"
+  | "trial"
+  | "project-reports"
   | "aging";
 const routes: Route[] = [
   "dashboard",
@@ -49,6 +55,8 @@ const routes: Route[] = [
   "ledger",
   "pnl",
   "balance",
+  "trial",
+  "project-reports",
   "aging",
 ];
 const route = (): Route => {
@@ -70,7 +78,6 @@ const date = (value: string) =>
     year: "numeric",
     timeZone: "UTC",
   }).format(new Date(`${value}T00:00:00Z`));
-const today = "2026-10-22";
 async function api(path: string, options: RequestInit = {}) {
   const response = await fetch(`/api/accounts-review${path}`, {
     credentials: "same-origin",
@@ -106,7 +113,13 @@ const nav: {
       { key: "ledger", label: "General ledger", icon: "≡" },
       { key: "pnl", label: "Profit & loss", icon: "▤" },
       { key: "balance", label: "Balance sheet", icon: "▤" },
+      { key: "trial", label: "Trial balance", icon: "≡" },
       { key: "aging", label: "AR / AP aging", icon: "◷" },
+      {
+        key: "project-reports",
+        label: "Project & department reports",
+        icon: "▥",
+      },
     ],
   },
 ];
@@ -487,7 +500,12 @@ function Settlement({
   supplier: boolean;
 }) {
   const source = supplier ? data.bills : data.invoices;
-  const open = source.filter((item) => BigInt(item.outstandingFils) > 0n);
+  const [party, setParty] = useState("");
+  const accounts = cashAccountsFor(data);
+  const open = source.filter(
+    (item) =>
+      BigInt(item.outstandingFils) > 0n && (!party || item.party === party),
+  );
   const posts = supplier ? data.supplierPayments : data.receipts;
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -513,7 +531,22 @@ function Settlement({
           {supplier ? "Record supplier payment" : "Record customer receipt"}
         </h2>
         <div className="field-grid">
+          <label>
+            {supplier ? "Supplier" : "Customer"}
+            <select
+              value={party}
+              onChange={(event) => setParty(event.target.value)}
+            >
+              <option value="">
+                {supplier ? "All suppliers" : "All customers"}
+              </option>
+              {[...new Set(source.map((item) => item.party))].map((name) => (
+                <option key={name}>{name}</option>
+              ))}
+            </select>
+          </label>
           <Field
+            key={party}
             label={supplier ? "Open bill" : "Open invoice"}
             name="documentId"
           >
@@ -530,24 +563,48 @@ function Settlement({
             type="number"
             defaultValue="100.00"
           />
-          <Field label="Date" name="date" type="date" defaultValue={today} />
+          <Field
+            label="Date"
+            name="date"
+            type="date"
+            defaultValue={data.asOf}
+          />
           <Field label="Payment account" name="account" defaultValue="bank">
-            <option value="bank">Business bank</option>
-            <option value="cash">Petty cash</option>
+            {accounts.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
           </Field>
+          <Field
+            label="Payment reference · optional"
+            name="reference"
+            required={false}
+          />
         </div>
         <button className="button button-primary" type="submit">
           {supplier ? "Record payment" : "Record receipt"}
         </button>
       </form>
-      <Table heads={["Reference", "Date", "Applied to", "Amount"]}>
-        {posts.map((item) => (
+      <Table heads={["Reference", "Date", "Applied to", "Account", "Amount"]}>
+        {(
+          posts as ((typeof posts)[number] & {
+            account?: string;
+            reference?: string;
+          })[]
+        ).map((item) => (
           <tr key={item.id}>
             <td>
               <strong>{item.id}</strong>
+              {item.reference && <small>{item.reference}</small>}
             </td>
             <td>{date(item.date)}</td>
             <td>{item.documentId}</td>
+            <td>
+              {accounts.find((account) => account.id === item.account)?.name ||
+                item.account ||
+                "Historical account"}
+            </td>
             <td className="money">{money(item.amountFils)}</td>
           </tr>
         ))}
@@ -555,48 +612,16 @@ function Settlement({
     </>
   );
 }
-function Banking({ data }: { data: Snapshot }) {
-  return (
-    <>
-      <Head
-        eyebrow="CASH POSITION"
-        title="Bank & cash"
-        sub={`Journal balances as of ${date(data.asOf)}. All transactions are fictional.`}
-      />
-      <Note />
-      <div className="account-tiles">
-        <div className="panel account-tile">
-          <span className="eyebrow">BUSINESS BANK</span>
-          <strong>{money(data.metrics.bankFils)}</strong>
-          <small>Account 1000 · as-of balance</small>
-        </div>
-        <div className="panel account-tile">
-          <span className="eyebrow">PETTY CASH</span>
-          <strong>{money(data.metrics.cashFils)}</strong>
-          <small>Account 1010 · as-of balance</small>
-        </div>
-        <div className="panel account-tile">
-          <span className="eyebrow">TOTAL LIQUID BALANCE</span>
-          <strong>
-            {money(
-              BigInt(data.metrics.bankFils) + BigInt(data.metrics.cashFils),
-            )}
-          </strong>
-          <small>Bank plus cash</small>
-        </div>
-      </div>
-      <Ledger data={data} account="bank" compact />
-    </>
-  );
-}
 function Ledger({
   data,
   account,
   compact = false,
+  filters,
 }: {
   data: Snapshot;
   account?: string;
   compact?: boolean;
+  filters?: ReactNode;
 }) {
   const [selected, setSelected] = useState(account || "bank");
   const ledger =
@@ -611,6 +636,7 @@ function Ledger({
             sub={`Posted entries from ${date(data.period.from)} to ${date(data.period.to)} with running balances.`}
           />
           <Note />
+          {filters}
           <label className="review-account-picker">
             Account{" "}
             <select
@@ -651,7 +677,15 @@ function Ledger({
     </>
   );
 }
-function Statement({ data, balance }: { data: Snapshot; balance: boolean }) {
+function Statement({
+  data,
+  balance,
+  filters,
+}: {
+  data: Snapshot;
+  balance: boolean;
+  filters?: ReactNode;
+}) {
   return (
     <>
       <Head
@@ -665,12 +699,13 @@ function Statement({ data, balance }: { data: Snapshot; balance: boolean }) {
       >
         <a
           className="button button-secondary"
-          href={`/api/accounts-review/pdf/${balance ? "balance" : "pnl"}`}
+          href={`/api/accounts-review/pdf/${balance ? "balance" : "pnl"}?${new URLSearchParams({ from: data.period.from, to: data.period.to, asOf: data.asOf }).toString()}`}
         >
           Download demo PDF
         </a>
       </Head>
       <Note />
+      {filters}
       <div className="report-layout">
         <section className="panel statement">
           <div className="statement-head">
@@ -767,7 +802,7 @@ function StatementSection({
     </div>
   );
 }
-function Aging({ data }: { data: Snapshot }) {
+function Aging({ data, filters }: { data: Snapshot; filters?: ReactNode }) {
   return (
     <>
       <Head
@@ -776,6 +811,7 @@ function Aging({ data }: { data: Snapshot }) {
         sub={`As of ${date(data.asOf)}. Partial settlements retain each document’s original due date.`}
       />
       <Note />
+      {filters}
       <h2 className="review-section-title">Customer receivables</h2>
       <Table
         heads={["Invoice", "Customer", "Due", "Open", "Days overdue", "Bucket"]}
@@ -816,7 +852,7 @@ function Aging({ data }: { data: Snapshot }) {
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
-  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [snapshot, setSnapshot] = useState<CompletionSnapshot | null>(null);
   const [current, setCurrent] = useState<Route>(route);
   const [editingId, setEditingId] = useState(
     () =>
@@ -931,13 +967,17 @@ function App() {
       setSnapshot(result.snapshot);
       retryAction.current = null;
       setMessage(
-        action.kind === "create-expense-ledger"
-          ? "Expense ledger created. No financial posting."
-          : action.kind === "document-draft"
-            ? "Document draft saved. No financial posting."
-            : action.kind === "create-bill-from-review"
-              ? "Purchase bill created once through the demo ledger."
-              : `${action.kind === "issue-invoice" ? "Issued" : "Recorded"} ${result.id} in the fictional review ledger.`,
+        action.kind === "create-cash-account"
+          ? "Account created at zero balance. No financial posting."
+          : action.kind === "transfer"
+            ? "Internal transfer recorded once. No expense or revenue created."
+            : action.kind === "create-expense-ledger"
+              ? "Expense ledger created. No financial posting."
+              : action.kind === "document-draft"
+                ? "Document draft saved. No financial posting."
+                : action.kind === "create-bill-from-review"
+                  ? "Purchase bill created once through the demo ledger."
+                  : `${action.kind === "issue-invoice" ? "Issued" : "Recorded"} ${result.id} in the fictional review ledger.`,
       );
       return true;
     } catch (problem) {
@@ -1049,8 +1089,20 @@ function App() {
     ledger: "General ledger",
     pnl: "Profit & loss",
     balance: "Balance sheet",
+    trial: "Trial balance",
+    "project-reports": "Project & department reports",
     aging: "AR / AP aging",
   };
+  const reportDates = (
+    <ReportDates
+      data={snapshot}
+      apply={async (values) => {
+        setSnapshot(
+          await api(`/snapshot?${new URLSearchParams(values).toString()}`),
+        );
+      }}
+    />
+  );
   const content: Record<Route, ReactNode> = {
     dashboard: <Dashboard data={snapshot} />,
     invoices: <Invoices data={snapshot} act={act} />,
@@ -1075,14 +1127,14 @@ function App() {
         data={snapshot}
         onPendingChange={onDocumentPending}
         act={act}
-        extract={async (file: Upload) => {
+        extract={async (file: Upload, mode?: "auto" | "manual") => {
           const result = await api("/documents/extract", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               "X-Azzora-CSRF": session.csrf,
             },
-            body: JSON.stringify({ file }),
+            body: JSON.stringify({ file, ...(mode ? { mode } : {}) }),
           });
           setMessage(
             result.reused
@@ -1114,11 +1166,15 @@ function App() {
         </section>
       </>
     ),
-    banking: <Banking data={snapshot} />,
-    ledger: <Ledger data={snapshot} />,
-    pnl: <Statement data={snapshot} balance={false} />,
-    balance: <Statement data={snapshot} balance />,
-    aging: <Aging data={snapshot} />,
+    banking: <BankingWorkspace data={snapshot} act={act} />,
+    ledger: <Ledger data={snapshot} filters={reportDates} />,
+    pnl: <Statement data={snapshot} balance={false} filters={reportDates} />,
+    balance: <Statement data={snapshot} balance filters={reportDates} />,
+    trial: <OperationalReports data={snapshot} trial filters={reportDates} />,
+    "project-reports": (
+      <OperationalReports data={snapshot} filters={reportDates} />
+    ),
+    aging: <Aging data={snapshot} filters={reportDates} />,
   };
   return (
     <div className={`shell ${navOpen ? "nav-open" : ""}`}>

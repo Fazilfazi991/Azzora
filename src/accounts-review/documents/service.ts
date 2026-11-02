@@ -16,6 +16,10 @@ import {
 import { localPdfExtractor } from "./local-pdf.js";
 import { inspectFields, suggest } from "./review.js";
 import { z } from "zod";
+import {
+  DocumentExtractionError,
+  extractionFailures,
+} from "./extraction-status.js";
 
 export async function extractDocument(
   previous: ReviewState,
@@ -61,19 +65,27 @@ export async function extractDocument(
       ...extraction,
       fields: fieldsSchema.parse(extraction.fields),
     };
-  } catch {
+  } catch (error) {
     // Keep the uploaded original available for manual entry; never retry a paid
     // call implicitly or fabricate fields/costs after a service failure.
+    const code =
+      error instanceof DocumentExtractionError
+        ? error.code
+        : "provider-unavailable";
     extraction = {
       ...(await disabledExtractor.extract(file)),
       provider: "Automatic extraction unavailable",
       inputTokens: extractor ? null : 0,
       outputTokens: extractor ? null : 0,
       costUsd: extractor ? null : 0,
-      failureReason:
-        "Automatic extraction could not be completed. Review the original and enter the missing fields manually.",
+      failureCode: code,
+      failureReason: extractionFailures[code],
     };
   }
+  extraction = {
+    ...extraction,
+    requestedMode: extractor === disabledExtractor ? "manual" : "auto",
+  };
   const fields = suggest(extraction.fields, next);
   entries.reviews.push({
     id,

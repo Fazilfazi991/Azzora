@@ -145,6 +145,12 @@ export function inspectFields(
   const warnings: EntryWarning[] = [],
     add = (code: string, message: string, field: string) =>
       warnings.push({ code, message, field });
+  if (f.documentType === "quotation")
+    add(
+      "quotation-not-invoice",
+      "This is a quotation / not an official bill. Save it for review only; obtain an official invoice before creating a purchase bill or recording an expense.",
+      "documentType",
+    );
   for (const key of [
     "supplier",
     "date",

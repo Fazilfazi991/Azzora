@@ -6,7 +6,7 @@
   "functions": {
     "api/accounts-review.ts": {
       "maxDuration": 60,
-      "includeFiles": "node_modules/{pdfjs-dist/legacy/build/pdf.worker.mjs,@napi-rs/canvas-linux-x64-gnu/**}"
+      "includeFiles": "node_modules/{pdfjs-dist/legacy/build/pdf.worker.mjs,@napi-rs/canvas/**,@napi-rs/canvas-linux-x64-gnu/**}"
     }
   },
   "rewrites": [

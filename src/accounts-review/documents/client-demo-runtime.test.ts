@@ -143,6 +143,8 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
         "httpStatus",
         "inputTokens",
         "outputTokens",
+        "preparedImageCount",
+        "reasonCode",
         "stage",
         "timedOut",
         "validationFailed",
@@ -210,7 +212,7 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
       );
       expect(runtime.status().reason).toBe(reason);
       await expect(runtime.extractor.extract(file)).rejects.toThrow(
-        /disabled|unconfigured/,
+        /not configured/,
       );
       expect(calls).toBe(0);
       expect(store.values.size).toBe(0);
@@ -319,7 +321,9 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
       calls++;
       return response();
     });
-    await expect(runtime.extractor.extract(file)).rejects.toThrow(/combined/);
+    await expect(runtime.extractor.extract(file)).rejects.toThrow(
+      /shared spending/,
+    );
     expect(calls).toBe(0);
     expect(await runtime.budgetExposureMicroUsd()).toBe(4_900_000);
     expect((await store.read(DEEPSEEK_BUDGET_PATH))!.value).toEqual(old);
@@ -373,7 +377,7 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
           await store.read(clientDemoCachePath(digestOf(file))),
         ).toBeNull();
         await expect(runtime.extractor.extract(file)).rejects.toThrow(
-          mode === "malformed" ? undefined : /already submitted/,
+          mode === "malformed" ? undefined : /prior-attempt/,
         );
       } else
         expect((await runtime.extractor.extract(file)).provider).toContain(
@@ -398,7 +402,7 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
       return response();
     });
     await expect(runtime.extractor.extract(file)).rejects.toThrow(
-      /already submitted/,
+      /prior-attempt/,
     );
     expect(calls).toBe(0);
   });
@@ -454,11 +458,11 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
       return response();
     });
     await expect(runtime.extractor.extract(file)).rejects.toThrow(
-      /Cache unavailable/,
+      /protected storage/,
     );
     expect(await runtime.budgetExposureMicroUsd()).toBe(900);
     await expect(runtime.extractor.extract(file)).rejects.toThrow(
-      /already submitted/,
+      /prior-attempt/,
     );
     expect(calls).toBe(1);
   });
@@ -562,12 +566,12 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
       return new Response("x".repeat(1_048_577), { status: 200 });
     });
     await expect(runtime.extractor.extract(file)).rejects.toThrow(
-      /recovery limit/,
+      /provider is unavailable/,
     );
     expect(await store.read(clientDemoRawCachePath(digestOf(file)))).toBeNull();
     expect(await runtime.budgetExposureMicroUsd()).toBe(324404);
     await expect(runtime.extractor.extract(file)).rejects.toThrow(
-      /already submitted/,
+      /prior-attempt/,
     );
     expect(calls).toBe(1);
   });
@@ -584,7 +588,7 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
       return response();
     });
     await expect(runtime.extractor.extract(file)).rejects.toThrow(
-      /incompatible/,
+      /protected storage/,
     );
     expect(calls).toBe(0);
   });

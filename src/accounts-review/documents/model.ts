@@ -27,6 +27,9 @@ export const itemSchema = z
   .strict();
 export const fieldsSchema = z
   .object({
+    documentType: z
+      .enum(["invoice", "receipt", "quotation", "unknown"])
+      .optional(),
     supplier: text,
     date: z
       .string()
@@ -97,6 +100,8 @@ export interface EntryWarning {
   field: string;
 }
 export interface Extraction {
+  requestedMode?: "auto" | "manual";
+  failureCode?: import("./extraction-status").ExtractionFailureCode;
   fields: EntryFields;
   uncertain: string[];
   provider: string;

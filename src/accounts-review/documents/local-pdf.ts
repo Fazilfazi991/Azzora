@@ -1,3 +1,4 @@
+import "./pdf-platform.js";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { blankFields, type EntryFields, type Upload } from "./model.js";
 import type { DocumentExtractor } from "./providers.js";

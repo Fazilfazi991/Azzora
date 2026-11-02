@@ -531,6 +531,13 @@ export function applyReviewAction(
       );
     const converted = review as typeof review & { convertedExpenseId?: string };
     if (
+      review.fields.documentType === "quotation" ||
+      review.extraction.fields.documentType === "quotation"
+    )
+      throw Error(
+        "A quotation / not official bill cannot be posted. Obtain and review an official invoice.",
+      );
+    if (
       review.convertedBillId ||
       converted.convertedExpenseId ||
       previous.expenses.some((item) => item.sourceReviewId === review.id)
@@ -649,6 +656,13 @@ export function applyReviewAction(
       );
     if (review.revision !== action.revision)
       throw Error("Document draft changed. Refresh and review again.");
+    if (
+      review.fields.documentType === "quotation" ||
+      review.extraction.fields.documentType === "quotation"
+    )
+      throw Error(
+        "A quotation / not official bill cannot be posted. Obtain and review an official invoice.",
+      );
     if (action.confirmed !== true || review.fields.kind !== "supplier-bill")
       throw Error(
         "Confirm supplier purchase bill classification before posting.",

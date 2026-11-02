@@ -199,6 +199,7 @@ export function DocumentEntry({
     label: string,
     key:
       | "kind"
+      | "documentType"
       | "currency"
       | "categoryId"
       | "projectId"
@@ -413,21 +414,44 @@ export function DocumentEntry({
             ) : (
               <p>Loading original…</p>
             )}
-            <p>
-              {doc.extraction.mode === "manual"
-                ? "Manual entry · no local OCR engine is available for this file."
-                : doc.extraction.mode === "local-pdf-text"
-                  ? "Actual local PDF text extraction · not AI. Verify every value against the original."
-                  : doc.extraction.mode === "live"
-                    ? "Actual AI result · verify every value against the original."
-                    : "Prepared synthetic demo suggestions · not an extraction or AI result."}{" "}
+            <p role={doc.extraction.failureReason ? "alert" : undefined}>
+              {doc.extraction.failureReason
+                ? `Auto-Fill failed · ${doc.extraction.failureReason}`
+                : doc.extraction.mode === "manual"
+                  ? doc.extraction.requestedMode === "manual"
+                    ? "Manual entry selected · no AI request was made."
+                    : "Automatic extraction did not complete · manual review required."
+                  : doc.extraction.mode === "local-pdf-text"
+                    ? "Actual local PDF text extraction · not AI. Verify every value against the original."
+                    : doc.extraction.mode === "live"
+                      ? "Actual AI result · verify every value against the original."
+                      : "Prepared synthetic demo suggestions · not an extraction or AI result."}{" "}
               {doc.extraction.provider}. Original suggestions are preserved with
               each correction.
             </p>
+            {doc.extraction.mode === "live" && (
+              <p aria-label="AI extraction evidence">
+                Extraction completed ·{" "}
+                {doc.extraction.inputTokens ?? "Unreported"} input tokens ·{" "}
+                {doc.extraction.outputTokens ?? "Unreported"} output tokens.{" "}
+                Provider-billed cost:{" "}
+                {doc.extraction.costUsd === null
+                  ? "unverified; usage is not a billing receipt"
+                  : `USD ${doc.extraction.costUsd.toFixed(6)}`}
+                .
+                {doc.extraction.requestId && (
+                  <> Request ID: {doc.extraction.requestId}.</>
+                )}
+              </p>
+            )}
           </section>
           <form className="panel review-form entry-form" onSubmit={save}>
             <span className="eyebrow">REVIEW BEFORE SAVING</span>
             <h2>Document details</h2>
+            <p>
+              Confirm the document type. A quotation marked “Not Official Bill”
+              must remain a review draft until an official invoice is obtained.
+            </p>
             <p id="entry-review-note">
               {converted
                 ? "This reviewed document is read only because it is linked to a posted demo transaction. Original extraction and correction history are preserved."
@@ -444,6 +468,19 @@ export function DocumentEntry({
                 ))}
               </datalist>
               <div className="field-grid">
+                {choice(
+                  "Document type",
+                  "documentType",
+                  <>
+                    <option value="">Not yet confirmed</option>
+                    <option value="unknown">Unknown</option>
+                    <option value="invoice">Invoice</option>
+                    <option value="receipt">Receipt</option>
+                    <option value="quotation">
+                      Quotation / not an official bill
+                    </option>
+                  </>,
+                )}
                 {field("Supplier name", "supplier")}
                 {field("Document date", "date", "date")}
                 {field("Due date", "dueDate", "date")}

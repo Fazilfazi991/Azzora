@@ -1,4 +1,5 @@
 // Server-only PDF preparation. Originals stay in AZZORA; no external OCR service.
+import { ReviewCanvasFactory } from "./pdf-platform.js";
 import { getDocument, OPS } from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { Canvas } from "@napi-rs/canvas";
 import { readPdfText } from "./local-pdf.js";
@@ -30,6 +31,7 @@ export async function prepareDeepSeekPdf(
     useSystemFonts: true,
     disableFontFace: true,
     maxImageSize: 16_000_000,
+    CanvasFactory: ReviewCanvasFactory,
   });
   try {
     const pdf = await task.promise;

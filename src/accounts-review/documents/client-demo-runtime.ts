@@ -26,6 +26,18 @@ import {
 import { prepareDeepSeekPdf } from "./deepseek-pdf.js";
 import type { Extraction } from "./model.js";
 import digests from "./client-demo-digests.js";
+import { DocumentExtractionError } from "./extraction-status.js";
+function failureFor(stage: string) {
+  return stage === "prepare"
+    ? ("preparation-failed" as const)
+    : stage === "reserve"
+      ? ("budget-blocked" as const)
+      : stage === "validate"
+        ? ("response-invalid" as const)
+        : stage === "cache" || stage === "meter"
+          ? ("storage-unavailable" as const)
+          : ("provider-unavailable" as const);
+}
 
 export const CLIENT_DEMO_APPLICATION = "azzora-accounts-client-demo";
 export const clientDemoCachePath = (digest: string) =>
@@ -206,6 +218,7 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
       maximumEvaluationUsd: 5,
       syntheticOnly: true,
       authorizationMode: "owner-application-cap",
+      newRequestsEnabled: env.AZZORA_AI_NEW_REQUESTS_ENABLED !== "false",
     };
   };
   const budgetExposureMicroUsd = async () => {
@@ -226,18 +239,15 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
       let httpStatus: number | null = null;
       let inputTokens: number | null = null;
       let outputTokens: number | null = null;
+      let preparedImageCount: number | null = null;
       let timedOut = false;
       const started = performance.now();
       try {
         if (!status().ready)
-          throw Error(
-            "AI extraction is disabled or unconfigured; enter manually.",
-          );
+          throw new DocumentExtractionError("configuration-required");
         const digest = digestOf(file);
         if (!allowed.has(digest))
-          throw Error(
-            "Only approved fictional demo samples may use AI; enter this document manually.",
-          );
+          throw new DocumentExtractionError("not-authorized");
         const id = `deepseek:${digest}`;
         // The cache uses the same injected PRIVATE Blob store as the allowance.
         // Never replace it with a public URL or a session-local spending ledger.
@@ -300,10 +310,7 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
             provider: `Cached real DeepSeek extraction (${extraction.provider}; no new paid request)`,
           };
         }
-        if (priorRecord)
-          throw Error(
-            "This sample was already submitted but has no reusable result; enter manually. No second paid request is allowed.",
-          );
+        if (priorRecord) throw new DocumentExtractionError("budget-blocked");
         const key = env.DEEPSEEK_API_KEY!;
         const fingerprint = createHash("sha256").update(key).digest("hex");
         stage = "prepare";
@@ -314,12 +321,19 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
           if (url !== "https://api.deepseek.com/chat/completions")
             throw Error("Unexpected AI endpoint.");
           const body = JSON.parse(String(init?.body));
+          preparedImageCount = Array.isArray(body.messages?.[1]?.content)
+            ? body.messages[1].content.filter(
+                (part: { type?: string }) => part?.type === "image_url",
+              ).length
+            : 0;
           if (
             body.model !== "deepseek-flash" ||
             body.max_tokens !== outputLimit ||
             body.stream !== false
           )
             throw Error("AI request exceeds the approved model envelope.");
+          if (env.AZZORA_AI_NEW_REQUESTS_ENABLED === "false")
+            throw new DocumentExtractionError("configuration-required");
           const prior = await store.read<AppBudget>(DEEPSEEK_BUDGET_PATH);
           if (prior) validateShared(prior.value);
           const current: AppBudget = prior?.value ?? {
@@ -482,9 +496,14 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
           "accounts-ai-extraction-failed",
           JSON.stringify({
             stage,
+            reasonCode:
+              error instanceof DocumentExtractionError
+                ? error.code
+                : failureFor(stage),
             httpStatus,
             inputTokens,
             outputTokens,
+            preparedImageCount,
             elapsedMs: Math.round(Math.max(0, performance.now() - started)),
             timedOut:
               timedOut ||
@@ -512,7 +531,8 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
                 : [],
           }),
         );
-        throw error;
+        if (error instanceof DocumentExtractionError) throw error;
+        throw new DocumentExtractionError(failureFor(stage));
       }
     },
   };

@@ -24,7 +24,7 @@ import {
 } from "./providers.js";
 import { prepareDeepSeekPdf } from "./deepseek-pdf.js";
 import type { Extraction } from "./model.js";
-import digests from "./client-demo-digests.json";
+import digests from "./client-demo-digests.js";
 
 export const CLIENT_DEMO_APPLICATION = "azzora-accounts-client-demo";
 export const clientDemoCachePath = (digest: string) =>

@@ -1,4 +1,5 @@
-[
+// Approved fictional document hashes only; no sample answers.
+export default [
   "8070aeb5f09ec3cf8151de4fc02819fff542b34f53cb1de519cb6d8f981cfa82",
   "92f8bf104d0dea087c415e59680ac02ac6f9dbeb797e8dec4666d0a18889a6e1",
   "c698f4c0b3132b840de42d0b9eff7cb9855566b60e5f0b791ef4a0475fea15f7",
@@ -39,4 +40,4 @@
   "8418e2ac23f5db69eecd5621bc64e88ac0a88e30a82b69ceec7646bd20f7f634",
   "66f86c2cb35446e8f7952ba2f79becde172449725f2452811b7ac485b07404ee",
   "45bf43e77769a91d23b9f92906f5d405feb5b5e5eeff7e7b0270c55cd5716e97"
-]
+];

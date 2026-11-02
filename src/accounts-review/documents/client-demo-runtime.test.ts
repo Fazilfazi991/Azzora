@@ -14,7 +14,7 @@ import {
 import { digestOf } from "./providers";
 import { sampleDocuments } from "./samples";
 import { documentAvailability } from "./runtime";
-import digests from "./client-demo-digests.json";
+import digests from "./client-demo-digests.js";
 
 class Store implements ReviewStore {
   values = new Map<string, { value: unknown; version: string }>();

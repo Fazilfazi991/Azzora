@@ -108,7 +108,8 @@ try {
     let text = "";
     for (let number = 1; number <= pdf.numPages; number++) text += " " + (await (await pdf.getPage(number)).getTextContent()).items.map(item => item.str || "").join(" ");
     await pdf.destroy();
-    for (const expected of [id, reference, party, amount, accountName, initial.asOf]) assert.ok(text.includes(expected), `${kind} PDF must contain ${expected}`);
+    const sourceDocument = kind === "receipt" ? "INV-26041" : "BILL-26031";
+    for (const expected of [id, sourceDocument, reference, party, amount, accountName, initial.asOf]) assert.ok(text.includes(expected), `${kind} PDF must contain ${expected}`);
     assert.match(text, /fictional/i);
     assert.match(text, /VAT.*pending/i);
     assert.match(text, kind === "receipt" ? /receipt/i : /payment/i);
@@ -122,7 +123,7 @@ try {
   assert.deepEqual(afterExports.supplierPayments, settled.supplierPayments);
   report.checks.push("Receipt/payment PDF exports show source allocation, party, date, actual account, reference, exact amount and fictional/VAT notices without writes");
 
-  for (const [route, heading, id, linkName] of [["receipts", "Customer receipts", receipt.id, /Download receipt PDF/], ["supplier-payments", "Supplier payments", payment.id, /Download payment voucher/]]) {
+  for (const [route, heading, id, linkName] of [["receipts", "Customer receipts", receipt.id, /Download receipt voucher/], ["supplier-payments", "Supplier payments", payment.id, /Download payment voucher/]]) {
     await page.goto(base + "/accountant.html#/" + route);
     await page.reload(); // The API setup intentionally bypasses normal UI state refresh.
     await expect(page.getByRole("heading", { name: heading, level: 1, exact: true })).toBeVisible();

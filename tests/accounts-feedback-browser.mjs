@@ -504,14 +504,14 @@ try {
   await action({
     kind: "receipt",
     documentId: invoice.id,
-    date: "2026-10-22",
+    date: invoice.date,
     amount: "100.00",
     account: "bank",
   });
   await action({
     kind: "supplier-payment",
     documentId: bill.id,
-    date: "2026-10-22",
+    date: bill.date,
     amount: "50.25",
     account: "bank",
   });

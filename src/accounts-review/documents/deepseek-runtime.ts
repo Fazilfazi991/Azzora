@@ -19,6 +19,9 @@ import {
 import { prepareDeepSeekPdf } from "./deepseek-pdf.js";
 
 export const DEEPSEEK_BUDGET_PATH = "ai-evaluation/shared-budget-v1.json";
+// Official /models metadata reports a 1,048,576-token context. Reserve that
+// entire input envelope plus the output ceiling, rather than rounding it to 1M.
+export const DEEPSEEK_MAX_INPUT_TOKENS = 1_048_576;
 const hash = (text: string) => createHash("sha256").update(text).digest("hex");
 const money = z.number().int().positive().max(5_000_000);
 const accountSchema = z
@@ -39,7 +42,7 @@ const accountSchema = z
         sourceUrl: z.string().url(),
         checkedAt: z.string(),
         // The full model envelope is reserved; image-token estimates are not a cap.
-        maxInputTokens: z.literal(1_000_000),
+        maxInputTokens: z.literal(DEEPSEEK_MAX_INPUT_TOKENS),
         maxOutputTokens: z.literal(8192),
         inputUsdPerMillion: z.number().finite().min(0.3),
         outputUsdPerMillion: z.number().finite().min(1.2),

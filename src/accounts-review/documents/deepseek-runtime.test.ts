@@ -70,7 +70,7 @@ function approval(): DeepSeekApproval {
         tariff: {
           sourceUrl: "https://api-docs.deepseek.com/quick_start/pricing/",
           checkedAt: "2026-11-02",
-          maxInputTokens: 1_000_000,
+          maxInputTokens: 1_048_576,
           maxOutputTokens: 8192,
           inputUsdPerMillion: 0.3,
           outputUsdPerMillion: 1.2,
@@ -201,7 +201,7 @@ describe("DeepSeek live integration gate — mocked transport only", () => {
           `Bearer ${key}`,
         );
         expect(String(init?.body)).not.toContain(key);
-        expect(await runtime.budgetExposureMicroUsd()).toBe(309831);
+        expect(await runtime.budgetExposureMicroUsd()).toBe(324404);
         return response();
       },
     });
@@ -243,7 +243,7 @@ describe("DeepSeek live integration gate — mocked transport only", () => {
       });
       if (mode === "usage") await runtime.extractor.extract(file);
       else await expect(runtime.extractor.extract(file)).rejects.toThrow();
-      expect(await runtime.budgetExposureMicroUsd()).toBe(309831);
+      expect(await runtime.budgetExposureMicroUsd()).toBe(324404);
       expect(calls).toBe(1);
     }
   });
@@ -271,6 +271,81 @@ describe("DeepSeek live integration gate — mocked transport only", () => {
       }),
     ).rejects.toThrow(/not approved/);
     expect(calls).toBe(0);
+  });
+  it("requires and reserves the complete 1,048,576-token input envelope", async () => {
+    const a = approval();
+    const oldEnvelope = structuredClone(a);
+    const invalid = {
+      ...oldEnvelope,
+      providers: {
+        deepseek: {
+          ...oldEnvelope.providers.deepseek,
+          tariff: {
+            ...oldEnvelope.providers.deepseek.tariff,
+            maxInputTokens: 1_000_000,
+          },
+        },
+      },
+    };
+    expect(
+      createDeepSeekRuntime({
+        env,
+        store: new Store(),
+        approval: invalid,
+        now,
+      }).status().reason,
+    ).toBe("approval-required");
+    const store = new Store();
+    const runtime = createDeepSeekRuntime({
+      env,
+      store,
+      approval: a,
+      now,
+      transport: async () => {
+        expect(await runtime.budgetExposureMicroUsd()).toBe(324404);
+        return response({ prompt_tokens: 1_048_576, completion_tokens: 8192 });
+      },
+    });
+    await runtime.extractor.extract(file);
+    expect(await runtime.budgetExposureMicroUsd()).toBe(324404);
+    const recorded = store.value as {
+      budget: { records: { status: string; meteredUpperMicroUsd: number }[] };
+    };
+    expect(recorded.budget.records[0].status).toBe("metered");
+    expect(recorded.budget.records[0].meteredUpperMicroUsd).toBe(324404);
+  });
+  it("retains valid metered cost when document JSON is malformed or its schema is invalid", async () => {
+    for (const content of [
+      "not json",
+      JSON.stringify({ fields: { supplier: "incomplete" }, uncertain: [] }),
+    ]) {
+      const store = new Store();
+      let calls = 0;
+      const runtime = createDeepSeekRuntime({
+        env,
+        store,
+        approval: approval(),
+        now,
+        transport: async () => {
+          calls++;
+          return Response.json({
+            choices: [{ message: { content }, finish_reason: "stop" }],
+            usage: { prompt_tokens: 1000, completion_tokens: 500 },
+          });
+        },
+      });
+      await expect(runtime.extractor.extract(file)).rejects.toThrow();
+      expect(await runtime.budgetExposureMicroUsd()).toBe(900);
+      const recorded = store.value as {
+        budget: { records: { status: string; meteredUpperMicroUsd: number }[] };
+      };
+      expect(recorded.budget.records[0].status).toBe("metered");
+      expect(recorded.budget.records[0].meteredUpperMicroUsd).toBe(900);
+      await expect(runtime.extractor.extract(file)).rejects.toThrow(
+        /already reserved/,
+      );
+      expect(calls).toBe(1);
+    }
   });
   it("uses optimistic concurrency to prevent a double paid call", async () => {
     const store = new Store();

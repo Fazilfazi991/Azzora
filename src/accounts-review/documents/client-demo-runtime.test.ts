@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ReviewConflict, type ReviewStore } from "../hosted-store";
 import { newBudget } from "./benchmark-budget";
 import {
@@ -77,6 +77,84 @@ const setup = (
 });
 
 describe("owner-authorized USD5 fictional AI demo — mocked provider only", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+  it.each([
+    ["prepare", "prepare", null, false, false],
+    ["reserve", "reserve", null, false, false],
+    ["http", "provider-response", 400, false, false],
+    ["timeout", "provider-response", null, true, false],
+    ["meter", "meter", 200, false, false],
+    ["validate", "validate", 200, false, true],
+    ["cache", "cache", 200, false, false],
+  ] as const)(
+    "logs only safe metadata for %s failures without retrying",
+    async (failure, stage, httpStatus, timedOut, validationFailed) => {
+      const secret = "private-filename-path-key-provider-body-and-message";
+      class FailureStore extends Store {
+        override async write<T>(path: string, value: T, version?: string) {
+          if (
+            (failure === "reserve" &&
+              path === DEEPSEEK_BUDGET_PATH &&
+              version === undefined) ||
+            (failure === "meter" &&
+              path === DEEPSEEK_BUDGET_PATH &&
+              version !== undefined) ||
+            (failure === "cache" && path !== DEEPSEEK_BUDGET_PATH)
+          )
+            throw Error(secret);
+          return super.write(path, value, version);
+        }
+      }
+      let calls = 0;
+      const { runtime } = setup(
+        new FailureStore(),
+        async () => {
+          calls++;
+          if (failure === "timeout")
+            throw new DOMException(secret, "TimeoutError");
+          if (failure === "http") return new Response(secret, { status: 400 });
+          return response(failure === "validate" ? secret : undefined);
+        },
+        failure === "prepare"
+          ? { ...env, AZZORA_AI_ENABLED: "false" }
+          : { ...env },
+      );
+      await expect(
+        runtime.extractor.extract({ ...file, name: secret }),
+      ).rejects.toThrow();
+      expect(console.warn).toHaveBeenCalledTimes(1);
+      const event = vi.mocked(console.warn).mock.calls[0];
+      expect(event[0]).toBe("accounts-ai-extraction-failed");
+      expect(event[1]).toMatchObject({
+        stage,
+        httpStatus,
+        timedOut,
+        validationFailed,
+      });
+      expect(Object.keys(event[1]).sort()).toEqual([
+        "elapsedMs",
+        "httpStatus",
+        "inputTokens",
+        "outputTokens",
+        "stage",
+        "timedOut",
+        "validationFailed",
+        "validationIssues",
+      ]);
+      expect(event[1].elapsedMs).toBeGreaterThanOrEqual(0);
+      expect(JSON.stringify(event)).not.toContain(secret);
+      expect(JSON.stringify(event)).not.toContain(env.DEEPSEEK_API_KEY);
+      expect(JSON.stringify(event)).not.toContain(digestOf(file));
+      expect(calls).toBe(
+        failure === "prepare" || failure === "reserve" ? 0 : 1,
+      );
+    },
+  );
   it("requires exact opt-in and keeps the strict benchmark approval gate unchanged", () => {
     expect(setup().runtime.status()).toMatchObject({
       ready: true,
@@ -94,6 +172,22 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
     expect(visible).toContain("not a verified provider-account spending cap");
     expect(visible).not.toContain(env.DEEPSEEK_API_KEY);
     expect(visible).not.toContain("hardStopVerified");
+  });
+  it("logs schema code and fixed field paths without rejected values or issue messages", async () => {
+    const fields = {
+      ...sampleDocuments[0].fields,
+      total: "private-invalid-value",
+    };
+    const { runtime } = setup(new Store(), async () =>
+      response(JSON.stringify({ fields, uncertain: [] })),
+    );
+    await expect(runtime.extractor.extract(file)).rejects.toThrow();
+    const event = vi.mocked(console.warn).mock.calls[0];
+    expect(event[1].validationIssues).toEqual([
+      { code: "invalid_format", path: ["fields", "total"] },
+    ]);
+    expect(JSON.stringify(event)).not.toContain("private-invalid-value");
+    expect(JSON.stringify(event)).not.toContain("Use a nonnegative");
   });
   it.each([
     [{ ...env, AZZORA_AI_ENABLED: "false" }, "disabled"],

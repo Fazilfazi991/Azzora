@@ -36,6 +36,63 @@ const outputLimit = 8192;
 // estimate, not a claim that provider billing was independently reconciled.
 const inputRate = 0.3;
 const outputRate = 1.2;
+const safeIssueCodes = new Set([
+  "invalid_type",
+  "invalid_value",
+  "too_big",
+  "too_small",
+  "invalid_format",
+  "unrecognized_keys",
+  "custom",
+  "invalid_union",
+  "not_multiple_of",
+  "invalid_key",
+  "invalid_element",
+  "invalid_string",
+  "invalid_enum_value",
+]);
+const safeIssuePaths = new Set([
+  "version",
+  "application",
+  "digest",
+  "createdAt",
+  "extraction",
+  "fields",
+  "uncertain",
+  "provider",
+  "mode",
+  "inputTokens",
+  "outputTokens",
+  "requestId",
+  "ocrPages",
+  "costUsd",
+  "latencyMs",
+  "retries",
+  "supplier",
+  "date",
+  "dueDate",
+  "reference",
+  "purchaseOrderReference",
+  "currency",
+  "items",
+  "description",
+  "quantity",
+  "unit",
+  "unitRate",
+  "discount",
+  "tax",
+  "total",
+  "productId",
+  "subtotal",
+  "kind",
+  "categoryId",
+  "department",
+  "ledgerId",
+  "projectName",
+  "customerName",
+  "projectId",
+  "customerId",
+]);
 interface AppBudget {
   version: 1;
   application?: string;
@@ -122,163 +179,229 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
   };
   const extractor: DocumentExtractor = {
     async extract(file) {
-      if (!status().ready)
-        throw Error(
-          "AI extraction is disabled or unconfigured; enter manually.",
-        );
-      const digest = digestOf(file);
-      if (!allowed.has(digest))
-        throw Error(
-          "Only approved fictional demo samples may use AI; enter this document manually.",
-        );
-      const id = `deepseek:${digest}`;
-      // The cache uses the same injected PRIVATE Blob store as the allowance.
-      // Never replace it with a public URL or a session-local spending ledger.
-      const cached = await store.read<unknown>(clientDemoCachePath(digest));
-      const initial = await store.read<AppBudget>(DEEPSEEK_BUDGET_PATH);
-      if (initial) validateShared(initial.value);
-      const priorRecord = initial?.value.budget.records.find(
-        (record) => record.id === id,
-      );
-      if (cached) {
-        const parsed = cacheSchema.parse(cached.value);
-        if (parsed.digest !== digest || !priorRecord)
-          throw Error(
-            "Cached AI history is incomplete; enter manually without another paid request.",
-          );
-        const fields = parsed.extraction.fields;
-        if (
-          fields.categoryId ||
-          fields.projectId ||
-          fields.customerId ||
-          fields.ledgerId ||
-          fields.items.some((item) => item.productId)
-        )
-          throw Error(
-            "Cached AI extraction contains unapproved identifiers; enter manually.",
-          );
-        return {
-          ...parsed.extraction,
-          provider: `Cached real DeepSeek extraction (${parsed.extraction.provider}; no new paid request)`,
-        } satisfies Extraction;
-      }
-      if (priorRecord)
-        throw Error(
-          "This sample was already submitted but has no reusable result; enter manually. No second paid request is allowed.",
-        );
-      const key = env.DEEPSEEK_API_KEY!;
-      const fingerprint = createHash("sha256").update(key).digest("hex");
-      const transport: typeof fetch = async (url, init) => {
+      let stage:
+        | "prepare"
+        | "reserve"
+        | "provider-response"
+        | "meter"
+        | "validate"
+        | "cache" = "prepare";
+      let httpStatus: number | null = null;
+      let inputTokens: number | null = null;
+      let outputTokens: number | null = null;
+      let timedOut = false;
+      const started = performance.now();
+      try {
         if (!status().ready)
-          throw Error("AI extraction was disabled before submission.");
-        if (url !== "https://api.deepseek.com/chat/completions")
-          throw Error("Unexpected AI endpoint.");
-        const body = JSON.parse(String(init?.body));
-        if (
-          body.model !== "deepseek-flash" ||
-          body.max_tokens !== outputLimit ||
-          body.stream !== false
-        )
-          throw Error("AI request exceeds the approved model envelope.");
-        const prior = await store.read<AppBudget>(DEEPSEEK_BUDGET_PATH);
-        if (prior) validateShared(prior.value);
-        const current: AppBudget = prior?.value ?? {
-          version: 1,
-          budget: newBudget(),
-        };
-        const fingerprints = new Set(current.keyFingerprints ?? []);
-        if (current.keySha256 && /^[a-f0-9]{64}$/.test(current.keySha256))
-          fingerprints.add(current.keySha256);
-        fingerprints.add(fingerprint);
-        const maximum = tokenCostUpperMicroUsd(
-          DEEPSEEK_MAX_INPUT_TOKENS,
-          outputLimit,
-          inputRate,
-          outputRate,
-        );
-        const reserved: AppBudget = {
-          ...current,
-          application: CLIENT_DEMO_APPLICATION,
-          authorizationMode: "owner-application-cap",
-          keyFingerprints: [...fingerprints],
-          budget: reserveBudget(current.budget, id, "deepseek", maximum, cap),
-        };
-        // CAS before any provider request. Conflicts and uncertain outcomes do
-        // not retry, erase history, reset on key rotation, or permit recharging.
-        await store.write(DEEPSEEK_BUDGET_PATH, reserved, prior?.version);
-        const finish = async (upper: number | null) => {
-          const latest = await store.read<AppBudget>(DEEPSEEK_BUDGET_PATH);
-          if (!latest)
-            throw Error(
-              "AI reservation history is missing; stop and reconcile billing.",
-            );
-          validateShared(latest.value);
-          await store.write(
-            DEEPSEEK_BUDGET_PATH,
-            {
-              ...latest.value,
-              budget: meterBudget(latest.value.budget, id, upper),
-            },
-            latest.version,
-          );
-        };
-        let response: Response;
-        try {
-          response = await (options.transport ?? fetch)(url, init);
-        } catch {
-          await finish(null);
           throw Error(
-            "AI service unavailable; no automatic retry. Enter manually.",
+            "AI extraction is disabled or unconfigured; enter manually.",
           );
-        }
-        let upper: number | null = null;
-        try {
-          const result = await response.clone().json();
-          const usage = result.usage;
-          if (
-            response.ok &&
-            Number.isSafeInteger(usage?.prompt_tokens) &&
-            usage.prompt_tokens >= 0 &&
-            usage.prompt_tokens <= DEEPSEEK_MAX_INPUT_TOKENS &&
-            Number.isSafeInteger(usage?.completion_tokens) &&
-            usage.completion_tokens >= 0 &&
-            usage.completion_tokens <= outputLimit
-          )
-            upper = tokenCostUpperMicroUsd(
-              usage.prompt_tokens,
-              usage.completion_tokens,
-              inputRate,
-              outputRate,
+        const digest = digestOf(file);
+        if (!allowed.has(digest))
+          throw Error(
+            "Only approved fictional demo samples may use AI; enter this document manually.",
+          );
+        const id = `deepseek:${digest}`;
+        // The cache uses the same injected PRIVATE Blob store as the allowance.
+        // Never replace it with a public URL or a session-local spending ledger.
+        stage = "cache";
+        const cached = await store.read<unknown>(clientDemoCachePath(digest));
+        const initial = await store.read<AppBudget>(DEEPSEEK_BUDGET_PATH);
+        if (initial) validateShared(initial.value);
+        const priorRecord = initial?.value.budget.records.find(
+          (record) => record.id === id,
+        );
+        if (cached) {
+          const parsed = cacheSchema.parse(cached.value);
+          if (parsed.digest !== digest || !priorRecord)
+            throw Error(
+              "Cached AI history is incomplete; enter manually without another paid request.",
             );
-        } catch {
-          /* Keep the complete reservation when usage is uncertain. */
+          const fields = parsed.extraction.fields;
+          if (
+            fields.categoryId ||
+            fields.projectId ||
+            fields.customerId ||
+            fields.ledgerId ||
+            fields.items.some((item) => item.productId)
+          )
+            throw Error(
+              "Cached AI extraction contains unapproved identifiers; enter manually.",
+            );
+          return {
+            ...parsed.extraction,
+            provider: `Cached real DeepSeek extraction (${parsed.extraction.provider}; no new paid request)`,
+          } satisfies Extraction;
         }
-        await finish(upper);
-        return response;
-      };
-      const extraction = await createChatExtractor(
-        "deepseek",
-        key,
-        {
-          reference: "owner-authorized-fictional-demo-USD5-application-cap",
-          allowedDigests: allowed,
-          maxRequests: 1,
-        },
-        undefined,
-        transport,
-        { preparePdf: prepareDeepSeekPdf, timeoutMs: 20_000 },
-      ).extract(file);
-      // Only successfully validated REAL provider output can enter this cache.
-      // Cache-write failure retains the budget reservation and prevents recharge.
-      const value = cacheSchema.parse({
-        version: 1,
-        application: CLIENT_DEMO_APPLICATION,
-        digest,
-        createdAt: now().toISOString(),
-        extraction,
-      });
-      await store.write(clientDemoCachePath(digest), value);
-      return extraction;
+        if (priorRecord)
+          throw Error(
+            "This sample was already submitted but has no reusable result; enter manually. No second paid request is allowed.",
+          );
+        const key = env.DEEPSEEK_API_KEY!;
+        const fingerprint = createHash("sha256").update(key).digest("hex");
+        stage = "prepare";
+        const transport: typeof fetch = async (url, init) => {
+          stage = "reserve";
+          if (!status().ready)
+            throw Error("AI extraction was disabled before submission.");
+          if (url !== "https://api.deepseek.com/chat/completions")
+            throw Error("Unexpected AI endpoint.");
+          const body = JSON.parse(String(init?.body));
+          if (
+            body.model !== "deepseek-flash" ||
+            body.max_tokens !== outputLimit ||
+            body.stream !== false
+          )
+            throw Error("AI request exceeds the approved model envelope.");
+          const prior = await store.read<AppBudget>(DEEPSEEK_BUDGET_PATH);
+          if (prior) validateShared(prior.value);
+          const current: AppBudget = prior?.value ?? {
+            version: 1,
+            budget: newBudget(),
+          };
+          const fingerprints = new Set(current.keyFingerprints ?? []);
+          if (current.keySha256 && /^[a-f0-9]{64}$/.test(current.keySha256))
+            fingerprints.add(current.keySha256);
+          fingerprints.add(fingerprint);
+          const maximum = tokenCostUpperMicroUsd(
+            DEEPSEEK_MAX_INPUT_TOKENS,
+            outputLimit,
+            inputRate,
+            outputRate,
+          );
+          const reserved: AppBudget = {
+            ...current,
+            application: CLIENT_DEMO_APPLICATION,
+            authorizationMode: "owner-application-cap",
+            keyFingerprints: [...fingerprints],
+            budget: reserveBudget(current.budget, id, "deepseek", maximum, cap),
+          };
+          // CAS before any provider request. Conflicts and uncertain outcomes do
+          // not retry, erase history, reset on key rotation, or permit recharging.
+          await store.write(DEEPSEEK_BUDGET_PATH, reserved, prior?.version);
+          const finish = async (upper: number | null) => {
+            stage = "meter";
+            const latest = await store.read<AppBudget>(DEEPSEEK_BUDGET_PATH);
+            if (!latest)
+              throw Error(
+                "AI reservation history is missing; stop and reconcile billing.",
+              );
+            validateShared(latest.value);
+            await store.write(
+              DEEPSEEK_BUDGET_PATH,
+              {
+                ...latest.value,
+                budget: meterBudget(latest.value.budget, id, upper),
+              },
+              latest.version,
+            );
+          };
+          let response: Response;
+          try {
+            stage = "provider-response";
+            response = await (options.transport ?? fetch)(url, init);
+            httpStatus = response.status;
+          } catch (error) {
+            timedOut =
+              Boolean(init?.signal?.aborted) ||
+              (error instanceof Error &&
+                ["TimeoutError", "AbortError"].includes(error.name));
+            await finish(null);
+            stage = "provider-response";
+            throw Error(
+              "AI service unavailable; no automatic retry. Enter manually.",
+            );
+          }
+          let upper: number | null = null;
+          try {
+            const result = await response.clone().json();
+            const usage = result.usage;
+            if (
+              response.ok &&
+              Number.isSafeInteger(usage?.prompt_tokens) &&
+              usage.prompt_tokens >= 0 &&
+              usage.prompt_tokens <= DEEPSEEK_MAX_INPUT_TOKENS &&
+              Number.isSafeInteger(usage?.completion_tokens) &&
+              usage.completion_tokens >= 0 &&
+              usage.completion_tokens <= outputLimit
+            ) {
+              inputTokens = usage.prompt_tokens;
+              outputTokens = usage.completion_tokens;
+              upper = tokenCostUpperMicroUsd(
+                usage.prompt_tokens,
+                usage.completion_tokens,
+                inputRate,
+                outputRate,
+              );
+            }
+          } catch {
+            /* Keep the complete reservation when usage is uncertain. */
+          }
+          await finish(upper);
+          stage = response.ok ? "validate" : "provider-response";
+          return response;
+        };
+        const extraction = await createChatExtractor(
+          "deepseek",
+          key,
+          {
+            reference: "owner-authorized-fictional-demo-USD5-application-cap",
+            allowedDigests: allowed,
+            maxRequests: 1,
+          },
+          undefined,
+          transport,
+          { preparePdf: prepareDeepSeekPdf, timeoutMs: 20_000 },
+        ).extract(file);
+        // Only successfully validated REAL provider output can enter this cache.
+        // Cache-write failure retains the budget reservation and prevents recharge.
+        stage = "validate";
+        const value = cacheSchema.parse({
+          version: 1,
+          application: CLIENT_DEMO_APPLICATION,
+          digest,
+          createdAt: now().toISOString(),
+          extraction,
+        });
+        stage = "cache";
+        await store.write(clientDemoCachePath(digest), value);
+        return extraction;
+      } catch (error) {
+        // Allowlisted operational metadata only. Never log provider bodies,
+        // error messages, fields, filenames, hashes, credentials, or store paths.
+        console.warn("accounts-ai-extraction-failed", {
+          stage,
+          httpStatus,
+          inputTokens,
+          outputTokens,
+          elapsedMs: Math.round(Math.max(0, performance.now() - started)),
+          timedOut:
+            timedOut ||
+            (error instanceof Error &&
+              ["TimeoutError", "AbortError"].includes(error.name)),
+          validationFailed:
+            error instanceof z.ZodError || error instanceof SyntaxError,
+          validationIssues:
+            error instanceof z.ZodError
+              ? error.issues.slice(0, 6).map((issue) => ({
+                  code: safeIssueCodes.has(issue.code) ? issue.code : "other",
+                  path: issue.path
+                    .slice(0, 6)
+                    .map((part) =>
+                      typeof part === "number" &&
+                      Number.isSafeInteger(part) &&
+                      part >= 0 &&
+                      part <= 120
+                        ? part
+                        : typeof part === "string" && safeIssuePaths.has(part)
+                          ? part
+                          : "field",
+                    ),
+                }))
+              : [],
+        });
+        throw error;
+      }
     },
   };
   return { status, extractor, budgetExposureMicroUsd };

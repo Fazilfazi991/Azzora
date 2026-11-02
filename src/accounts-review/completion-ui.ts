@@ -19,7 +19,7 @@ type CostSummary = {
   totalFils: string;
 };
 export type CompletionSnapshot = ReturnType<typeof reviewSnapshot> & {
-  departments?: { id: string; name: string }[];
+  departments?: readonly { id: string; name: string }[];
   cashAccounts?: CashAccountView[];
   transfers?: {
     id: string;

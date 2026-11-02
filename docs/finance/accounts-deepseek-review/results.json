@@ -1,0 +1,459 @@
+{
+  "testedSHA": "50e60d2ca812b7b1077b5edca2740ca3c4c1619b",
+  "base": "https://azzora-accounts-client-review-ik4bhvqhz-faziils-projects.vercel.app",
+  "generatedAt": "2026-11-02T05:28:27.202Z",
+  "checks": [
+    "Staff cash account created through UI at zero balance without posting",
+    "Internal transfer UI funds Thomas Cash; combined cash/P&L reconcile",
+    "Manual original/review corrections retained; Save Draft creates no transaction",
+    "Explicit reviewed expense conversion posts once; Thomas payment/MEP classification/idempotency verified",
+    "Itemized draft/issue invoices and bills, partial invoice-wise allocations and all basic reports reconcile",
+    "Refresh persists accounts/posted balances and PDF endpoints produce valid documents",
+    "Manager browser data preserved; logout revokes private financial session"
+  ],
+  "responsive": [
+    {
+      "path": "dashboard",
+      "width": 1440,
+      "status": "pass"
+    },
+    {
+      "path": "dashboard",
+      "width": 1024,
+      "status": "pass"
+    },
+    {
+      "path": "dashboard",
+      "width": 768,
+      "status": "pass"
+    },
+    {
+      "path": "dashboard",
+      "width": 390,
+      "status": "pass"
+    },
+    {
+      "path": "invoices",
+      "width": 1440,
+      "status": "pass"
+    },
+    {
+      "path": "invoices",
+      "width": 1024,
+      "status": "pass"
+    },
+    {
+      "path": "invoices",
+      "width": 768,
+      "status": "pass"
+    },
+    {
+      "path": "invoices",
+      "width": 390,
+      "status": "pass"
+    },
+    {
+      "path": "bills",
+      "width": 1440,
+      "status": "pass"
+    },
+    {
+      "path": "bills",
+      "width": 1024,
+      "status": "pass"
+    },
+    {
+      "path": "bills",
+      "width": 768,
+      "status": "pass"
+    },
+    {
+      "path": "bills",
+      "width": 390,
+      "status": "pass"
+    },
+    {
+      "path": "receipts",
+      "width": 1440,
+      "status": "pass"
+    },
+    {
+      "path": "receipts",
+      "width": 1024,
+      "status": "pass"
+    },
+    {
+      "path": "receipts",
+      "width": 768,
+      "status": "pass"
+    },
+    {
+      "path": "receipts",
+      "width": 390,
+      "status": "pass"
+    },
+    {
+      "path": "supplier-payments",
+      "width": 1440,
+      "status": "pass"
+    },
+    {
+      "path": "supplier-payments",
+      "width": 1024,
+      "status": "pass"
+    },
+    {
+      "path": "supplier-payments",
+      "width": 768,
+      "status": "pass"
+    },
+    {
+      "path": "supplier-payments",
+      "width": 390,
+      "status": "pass"
+    },
+    {
+      "path": "expenses",
+      "width": 1440,
+      "status": "pass"
+    },
+    {
+      "path": "expenses",
+      "width": 1024,
+      "status": "pass"
+    },
+    {
+      "path": "expenses",
+      "width": 768,
+      "status": "pass"
+    },
+    {
+      "path": "expenses",
+      "width": 390,
+      "status": "pass"
+    },
+    {
+      "path": "banking",
+      "width": 1440,
+      "status": "pass"
+    },
+    {
+      "path": "banking",
+      "width": 1024,
+      "status": "pass"
+    },
+    {
+      "path": "banking",
+      "width": 768,
+      "status": "pass"
+    },
+    {
+      "path": "banking",
+      "width": 390,
+      "status": "pass"
+    },
+    {
+      "path": "ledger",
+      "width": 1440,
+      "status": "pass"
+    },
+    {
+      "path": "ledger",
+      "width": 1024,
+      "status": "pass"
+    },
+    {
+      "path": "ledger",
+      "width": 768,
+      "status": "pass"
+    },
+    {
+      "path": "ledger",
+      "width": 390,
+      "status": "pass"
+    },
+    {
+      "path": "pnl",
+      "width": 1440,
+      "status": "pass"
+    },
+    {
+      "path": "pnl",
+      "width": 1024,
+      "status": "pass"
+    },
+    {
+      "path": "pnl",
+      "width": 768,
+      "status": "pass"
+    },
+    {
+      "path": "pnl",
+      "width": 390,
+      "status": "pass"
+    },
+    {
+      "path": "balance",
+      "width": 1440,
+      "status": "pass"
+    },
+    {
+      "path": "balance",
+      "width": 1024,
+      "status": "pass"
+    },
+    {
+      "path": "balance",
+      "width": 768,
+      "status": "pass"
+    },
+    {
+      "path": "balance",
+      "width": 390,
+      "status": "pass"
+    },
+    {
+      "path": "trial",
+      "width": 1440,
+      "status": "pass"
+    },
+    {
+      "path": "trial",
+      "width": 1024,
+      "status": "pass"
+    },
+    {
+      "path": "trial",
+      "width": 768,
+      "status": "pass"
+    },
+    {
+      "path": "trial",
+      "width": 390,
+      "status": "pass"
+    },
+    {
+      "path": "aging",
+      "width": 1440,
+      "status": "pass"
+    },
+    {
+      "path": "aging",
+      "width": 1024,
+      "status": "pass"
+    },
+    {
+      "path": "aging",
+      "width": 768,
+      "status": "pass"
+    },
+    {
+      "path": "aging",
+      "width": 390,
+      "status": "pass"
+    },
+    {
+      "path": "project-reports",
+      "width": 1440,
+      "status": "pass"
+    },
+    {
+      "path": "project-reports",
+      "width": 1024,
+      "status": "pass"
+    },
+    {
+      "path": "project-reports",
+      "width": 768,
+      "status": "pass"
+    },
+    {
+      "path": "project-reports",
+      "width": 390,
+      "status": "pass"
+    },
+    {
+      "path": "document-entry",
+      "width": 1440,
+      "status": "pass"
+    },
+    {
+      "path": "document-entry",
+      "width": 1024,
+      "status": "pass"
+    },
+    {
+      "path": "document-entry",
+      "width": 768,
+      "status": "pass"
+    },
+    {
+      "path": "document-entry",
+      "width": 390,
+      "status": "pass"
+    }
+  ],
+  "accessibility": [
+    {
+      "path": "dashboard",
+      "width": 1440,
+      "violations": []
+    },
+    {
+      "path": "dashboard",
+      "width": 390,
+      "violations": []
+    },
+    {
+      "path": "invoices",
+      "width": 1440,
+      "violations": []
+    },
+    {
+      "path": "invoices",
+      "width": 390,
+      "violations": []
+    },
+    {
+      "path": "bills",
+      "width": 1440,
+      "violations": []
+    },
+    {
+      "path": "bills",
+      "width": 390,
+      "violations": []
+    },
+    {
+      "path": "receipts",
+      "width": 1440,
+      "violations": []
+    },
+    {
+      "path": "receipts",
+      "width": 390,
+      "violations": []
+    },
+    {
+      "path": "supplier-payments",
+      "width": 1440,
+      "violations": []
+    },
+    {
+      "path": "supplier-payments",
+      "width": 390,
+      "violations": []
+    },
+    {
+      "path": "expenses",
+      "width": 1440,
+      "violations": []
+    },
+    {
+      "path": "expenses",
+      "width": 390,
+      "violations": []
+    },
+    {
+      "path": "banking",
+      "width": 1440,
+      "violations": []
+    },
+    {
+      "path": "banking",
+      "width": 390,
+      "violations": []
+    },
+    {
+      "path": "ledger",
+      "width": 1440,
+      "violations": []
+    },
+    {
+      "path": "ledger",
+      "width": 390,
+      "violations": []
+    },
+    {
+      "path": "pnl",
+      "width": 1440,
+      "violations": []
+    },
+    {
+      "path": "pnl",
+      "width": 390,
+      "violations": []
+    },
+    {
+      "path": "balance",
+      "width": 1440,
+      "violations": []
+    },
+    {
+      "path": "balance",
+      "width": 390,
+      "violations": []
+    },
+    {
+      "path": "trial",
+      "width": 1440,
+      "violations": []
+    },
+    {
+      "path": "trial",
+      "width": 390,
+      "violations": []
+    },
+    {
+      "path": "aging",
+      "width": 1440,
+      "violations": []
+    },
+    {
+      "path": "aging",
+      "width": 390,
+      "violations": []
+    },
+    {
+      "path": "project-reports",
+      "width": 1440,
+      "violations": []
+    },
+    {
+      "path": "project-reports",
+      "width": 390,
+      "violations": []
+    },
+    {
+      "path": "document-entry",
+      "width": 1440,
+      "violations": []
+    },
+    {
+      "path": "document-entry",
+      "width": 390,
+      "violations": []
+    }
+  ],
+  "errors": [],
+  "pdfs": [
+    {
+      "name": "purchase",
+      "bytes": 7796
+    },
+    {
+      "name": "invoice",
+      "bytes": 7410
+    },
+    {
+      "name": "pnl",
+      "bytes": 5183
+    },
+    {
+      "name": "balance",
+      "bytes": 6153
+    }
+  ],
+  "liveAI": "disabled; no paid call or measured model accuracy",
+  "status": "pass"
+}

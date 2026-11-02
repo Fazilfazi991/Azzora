@@ -1,0 +1,14 @@
+{
+  "checks": [
+    "Accountant sign-in page accessible without Vercel login",
+    "concurrent distinct actions preserve every committed receipt; concurrent duplicate action posts once",
+    "Manager CRM entry point absent from dedicated review build",
+    "hosted Secure HttpOnly cookie and server-side logout revocation verified",
+    "1440px: all 13 Accountant routes render without page-level overflow",
+    "1024px: all 13 Accountant routes render without page-level overflow",
+    "768px: all 13 Accountant routes render without page-level overflow",
+    "390px: all 13 Accountant routes render without page-level overflow"
+  ],
+  "routeWidthChecks": 52,
+  "environment": "Vercel Preview protected by server-side Accountant login (no Vercel login)"
+}

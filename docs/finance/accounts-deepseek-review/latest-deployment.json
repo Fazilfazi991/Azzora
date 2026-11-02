@@ -1,0 +1,13 @@
+{
+  "id": "dpl_DcXXap7LkU1rKTehRmvgMPSCxTfW",
+  "url": "azzora-accounts-client-review-2o12ggich-faziils-projects.vercel.app",
+  "readyState": "READY",
+  "target": null,
+  "projectId": "prj_inNGMsufKkeDUTS1Sn5whmwIVWuw",
+  "meta": {
+    "verifiedCommit": "188f4efec89d1e8eb324b946bdbbdf5ac2529fed",
+    "sourceBranch": "codex/azzora-accounts-deepseek",
+    "actor": "codex",
+    "lambdaRuntimeStats": "{\"nodejs\":1}"
+  }
+}

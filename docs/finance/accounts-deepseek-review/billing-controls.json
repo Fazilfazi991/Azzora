@@ -1,0 +1,17 @@
+{
+  "observedAt": "2026-11-02T05:22:06.795Z",
+  "sourcePages": [
+    "https://platform.deepseek.com/usage",
+    "https://platform.deepseek.com/top_up",
+    "https://platform.deepseek.com/transactions"
+  ],
+  "observedPrepaidBalanceUsd": 0.67,
+  "manualTopUpAvailable": true,
+  "balanceSettings": "Email alert only; not an enforced spending stop",
+  "accountHardCapVerified": false,
+  "automaticTopUpStatus": "Not independently verified",
+  "dedicatedBenchmarkAccountVerified": false,
+  "paidCalls": 0,
+  "accuracyMeasured": false,
+  "credentials": "Server-side Preview Secret; rotation required before activation after key-popup inspection exposure; no values retained in evidence"
+}

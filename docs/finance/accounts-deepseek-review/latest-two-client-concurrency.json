@@ -1,0 +1,16 @@
+{
+  "applicationSHA": "188f4efec89d1e8eb324b946bdbbdf5ac2529fed",
+  "clients": 2,
+  "results": [
+    {
+      "client": 1,
+      "exitCode": 0,
+      "first503": null
+    },
+    {
+      "client": 2,
+      "exitCode": 0,
+      "first503": null
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "testedSHA": "50e60d2ca812b7b1077b5edca2740ca3c4c1619b",
+  "deployment": "dpl_2NqTj4ngUQdqfLKh79Ez3gnAzm8x",
+  "base": "https://azzora-accounts-client-review-ik4bhvqhz-faziils-projects.vercel.app",
+  "scans": [
+    {
+      "route": "login",
+      "width": 1440,
+      "violations": []
+    },
+    {
+      "route": "login",
+      "width": 390,
+      "violations": []
+    },
+    {
+      "route": "opened-document-review",
+      "width": 1440,
+      "violations": []
+    },
+    {
+      "route": "opened-document-review",
+      "width": 390,
+      "violations": []
+    }
+  ],
+  "errors": [],
+  "status": "pass",
+  "draftMetricsUnchanged": true
+}

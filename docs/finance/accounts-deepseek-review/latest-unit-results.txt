@@ -1,0 +1,8 @@
+
+ RUN  v4.1.11 C:/Users/USER/Desktop/Projects/Azzora/azzora-accounts-deepseek
+
+
+ Test Files  45 passed (45)
+      Tests  684 passed (684)
+   Start at  09:59:11
+   Duration  94.79s (transform 5.49s, setup 0ms, import 22.68s, tests 34.65s, environment 24ms)

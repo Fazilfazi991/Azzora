@@ -1,0 +1,35 @@
+{
+  "url": "https://azzora-accounts-client-review-2o12ggich-faziils-projects.vercel.app",
+  "checks": [
+    "Hosted entry JavaScript and CSS byte-identical to the tested local Accounts build",
+    "Tax Invoice: two-item UI entry, save/reopen/issue, pending VAT, correct journal boundary and hosted PDF",
+    "Proforma: two-item UI entry, save/reopen/issue, pending VAT, correct journal boundary and hosted PDF",
+    "Fresh selectable-text PDF reads supplier/reference/items/totals on Vercel, zero paid AI cost and no financial posting"
+  ],
+  "errors": [],
+  "assetComparison": [
+    {
+      "asset": "/assets/accountant-BPGJwZZH.js",
+      "sha256": "ae7b6248360266d11c5bd768598c23444ce21915437d96aaae21921bec92cebf",
+      "identicalToTestedLocalBuild": true
+    },
+    {
+      "asset": "/assets/accountant-D6fM7igH.css",
+      "sha256": "dbbf0924a47041a83a0c6a80f3c8a9f9e0df0a884fc2056d76fd328ce51b732b",
+      "identicalToTestedLocalBuild": true
+    }
+  ],
+  "pdfEvidence": [
+    {
+      "file": "tax-invoice",
+      "pages": 1,
+      "text": "AZZORA Accounts  Tax invoice - demo  FICTIONAL CLIENT REVIEW - NOT A TAX OR PRODUCTION ACCOUNTING DOCUMENT  Reference   INV-267ED844  Document type   Tax Invoice Status   Issued Customer   Fictional Hosted Tax Invoice Client Invoice date   2026-11-02 Due date   2026-11-02  #   Description   Qty   Unit   Rate   Amount  1   Fictional fittings   2   Nos   12.50   25.00 2   Fictional installation   1   Nos   5.00   5.00  Subtotal   AED 30.00 VAT - policy pending   AED 0.00  Grand total   AED 30.00  Tax policy   Not applied in this fictional review Open balance as of 2026-11-02   AED 30.00  Synthetic demonstration only. No real records or money movement.   Page 1 of 1"
+    },
+    {
+      "file": "proforma-invoice",
+      "pages": 1,
+      "text": "AZZORA Accounts  Proforma - not a tax invoice  FICTIONAL CLIENT REVIEW - NOT A TAX OR PRODUCTION ACCOUNTING DOCUMENT  Reference   PRO-269FF1D7  Document type   Proforma Status   Issued Customer   Fictional Hosted Proforma Client Invoice date   2026-11-02 Due date   2026-11-02  #   Description   Qty   Unit   Rate   Amount  1   Fictional fittings   2   Nos   12.50   25.00 2   Fictional installation   1   Nos   5.00   5.00  Subtotal   AED 30.00 VAT - policy pending   AED 0.00  Grand total   AED 30.00  Tax policy   Not applied in this fictional review Accounting   No revenue or receivable posting  Synthetic demonstration only. No real records or money movement.   Page 1 of 1"
+    }
+  ],
+  "passed": 4
+}

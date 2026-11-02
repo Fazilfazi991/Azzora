@@ -1,0 +1,53 @@
+{
+  "latestApplicationSHA": "188f4efec89d1e8eb324b946bdbbdf5ac2529fed",
+  "latestDeployment": "dpl_DcXXap7LkU1rKTehRmvgMPSCxTfW",
+  "status": "owner-review-only-live-AI-blocked-earlier-intermittent-503-unexplained",
+  "latest": {
+    "unitPassed": 684,
+    "unitFiles": 45,
+    "typecheck": "passed",
+    "eslint": "passed",
+    "accountsBuild": "passed",
+    "hostedAcceptanceGroups": 8,
+    "responsive": 52,
+    "finalPreviewGroups": 4,
+    "exactConcurrencyFreshSessions": 5,
+    "additionalImmediateFreshSessions": 6,
+    "twoConcurrentClients": 2,
+    "runtimeErrorsObserved": 0
+  },
+  "completeIntegrationCheckpoint": {
+    "sha": "50e60d2ca812b7b1077b5edca2740ca3c4c1619b",
+    "unitPassed": 680,
+    "crmSuitesPassingAfterHarnessCorrections": 33,
+    "independentLocalAndHostedEach": {
+      "groups": 7,
+      "responsive": 56,
+      "axeScans": 32,
+      "axeFindings": 0,
+      "pdfs": 4
+    },
+    "establishedHosted": {
+      "groups": 56,
+      "responsive": 52,
+      "earlierConcurrentWrite503Failures": 2
+    }
+  },
+  "paidAI": {
+    "enabled": false,
+    "actualCalls": 0,
+    "actualSpendUsd": 0,
+    "accuracy": null,
+    "averageCostPerDocument": null
+  },
+  "main": "fd7754dfe0022f9b64bf875313bd9679cb0144eb",
+  "stableAliasDeployment": "dpl_7F7DwZXXLWHsz8WjXUePuDsN4KTb",
+  "managerProductionDeployment": "dpl_F9kD9Vu4ioWTCJrQwD2ev5J6mYmp",
+  "limitations": [
+    "Provider-account hardcap/disabledtopups not independently verified",
+    "Further keyrotation/Preview-secret replacement required before activation after popup exposure",
+    "Earlier intermittent503 not reproduced or explained by diagnostic revision",
+    "Inherited production dependency audit:4high1critical",
+    "Fictional demo only; VATpolicy pending; shared demo credential,not productionmultiuser"
+  ]
+}

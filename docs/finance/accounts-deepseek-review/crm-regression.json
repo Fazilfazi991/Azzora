@@ -1,0 +1,228 @@
+{
+  "testedSHA": "50e60d2ca812b7b1077b5edca2740ca3c4c1619b",
+  "results": [
+    {
+      "suite": "browser",
+      "exitCode": 0,
+      "durationMs": 123264,
+      "log": "tmp/deepseek-verification/crm/browser/output.txt"
+    },
+    {
+      "suite": "commercial-browser",
+      "exitCode": 0,
+      "durationMs": 212897,
+      "log": "tmp/deepseek-verification/crm/commercial-browser/output.txt"
+    },
+    {
+      "suite": "commercial-boundaries",
+      "exitCode": 0,
+      "durationMs": 23413,
+      "log": "tmp/deepseek-verification/crm/commercial-boundaries/output.txt"
+    },
+    {
+      "suite": "operational-browser",
+      "exitCode": 0,
+      "durationMs": 474543,
+      "log": "tmp/deepseek-verification/crm/operational-browser/output.txt"
+    },
+    {
+      "suite": "operational-boundaries",
+      "exitCode": 1,
+      "durationMs": 1617,
+      "log": "tmp/deepseek-verification/crm/operational-boundaries/output.txt"
+    },
+    {
+      "suite": "workforce-browser",
+      "exitCode": 0,
+      "durationMs": 40629,
+      "log": "tmp/deepseek-verification/crm/workforce-browser/output.txt"
+    },
+    {
+      "suite": "agent-1-corrective-browser",
+      "exitCode": 0,
+      "durationMs": 76347,
+      "log": "tmp/deepseek-verification/crm/agent-1-corrective-browser/output.txt"
+    },
+    {
+      "suite": "recovery-browser",
+      "exitCode": 0,
+      "durationMs": 84700,
+      "log": "tmp/deepseek-verification/crm/recovery-browser/output.txt"
+    },
+    {
+      "suite": "financial-followup-browser",
+      "exitCode": 0,
+      "durationMs": 35649,
+      "log": "tmp/deepseek-verification/crm/financial-followup-browser/output.txt"
+    },
+    {
+      "suite": "financial-modal-feedback-browser",
+      "exitCode": 0,
+      "durationMs": 35196,
+      "log": "tmp/deepseek-verification/crm/financial-modal-feedback-browser/output.txt"
+    },
+    {
+      "suite": "finance-checkpoint-browser",
+      "exitCode": 0,
+      "durationMs": 26239,
+      "log": "tmp/deepseek-verification/crm/finance-checkpoint-browser/output.txt"
+    },
+    {
+      "suite": "dialog-regressions",
+      "exitCode": 0,
+      "durationMs": 102465,
+      "log": "tmp/deepseek-verification/crm/dialog-regressions/output.txt"
+    },
+    {
+      "suite": "timeline-independent-browser",
+      "exitCode": 0,
+      "durationMs": 12163,
+      "log": "tmp/deepseek-verification/crm/timeline-independent-browser/output.txt"
+    },
+    {
+      "suite": "timeline-ui-browser",
+      "exitCode": 1,
+      "durationMs": 36668,
+      "log": "tmp/deepseek-verification/crm/timeline-ui-browser/output.txt"
+    },
+    {
+      "suite": "timeline-date-position-browser",
+      "exitCode": 0,
+      "durationMs": 7342,
+      "log": "tmp/deepseek-verification/crm/timeline-date-position-browser/output.txt"
+    },
+    {
+      "suite": "gantt-independent-browser",
+      "exitCode": 0,
+      "durationMs": 23303,
+      "log": "tmp/deepseek-verification/crm/gantt-independent-browser/output.txt"
+    },
+    {
+      "suite": "quotation-browser",
+      "exitCode": 0,
+      "durationMs": 70675,
+      "log": "tmp/deepseek-verification/crm/quotation-browser/output.txt"
+    },
+    {
+      "suite": "quotation-ux-browser",
+      "exitCode": 0,
+      "durationMs": 159587,
+      "log": "tmp/deepseek-verification/crm/quotation-ux-browser/output.txt"
+    },
+    {
+      "suite": "quotation-hierarchy-browser",
+      "exitCode": 0,
+      "durationMs": 152509,
+      "log": "tmp/deepseek-verification/crm/quotation-hierarchy-browser/output.txt"
+    },
+    {
+      "suite": "quotation-live-preview-browser",
+      "exitCode": 0,
+      "durationMs": 66876,
+      "log": "tmp/deepseek-verification/crm/quotation-live-preview-browser/output.txt"
+    },
+    {
+      "suite": "quotation-selector-boq-browser",
+      "exitCode": 0,
+      "durationMs": 32060,
+      "log": "tmp/deepseek-verification/crm/quotation-selector-boq-browser/output.txt"
+    },
+    {
+      "suite": "quotation-payment-rounding-browser",
+      "exitCode": 0,
+      "durationMs": 6633,
+      "log": "tmp/deepseek-verification/crm/quotation-payment-rounding-browser/output.txt"
+    },
+    {
+      "suite": "quotation-print-browser",
+      "exitCode": 0,
+      "durationMs": 30558,
+      "log": "tmp/deepseek-verification/crm/quotation-print-browser/output.txt"
+    },
+    {
+      "suite": "final-ui-navigation-browser",
+      "exitCode": 0,
+      "durationMs": 101849,
+      "log": "tmp/deepseek-verification/crm/final-ui-navigation-browser/output.txt"
+    },
+    {
+      "suite": "rapid-search-browser",
+      "exitCode": 0,
+      "durationMs": 60177,
+      "log": "tmp/deepseek-verification/crm/rapid-search-browser/output.txt"
+    },
+    {
+      "suite": "agent-1-accounts-navigation",
+      "exitCode": 0,
+      "durationMs": 49547,
+      "log": "tmp/deepseek-verification/crm/agent-1-accounts-navigation/output.txt"
+    },
+    {
+      "suite": "accountant-client-demo-browser",
+      "exitCode": 0,
+      "durationMs": 18728,
+      "log": "tmp/deepseek-verification/crm/accountant-client-demo-browser/output.txt"
+    },
+    {
+      "suite": "boq-visual",
+      "exitCode": 0,
+      "durationMs": 32419,
+      "log": "tmp/deepseek-verification/crm/boq-visual/output.txt"
+    },
+    {
+      "suite": "agent-3-compose-browser",
+      "exitCode": 1,
+      "durationMs": 2588,
+      "log": "tmp/deepseek-verification/crm/agent-3-compose-browser/output.txt"
+    },
+    {
+      "suite": "agent-3-audit",
+      "exitCode": 0,
+      "durationMs": 100318,
+      "log": "tmp/deepseek-verification/crm/agent-3-audit/output.txt"
+    },
+    {
+      "suite": "agent-3-critical",
+      "exitCode": 0,
+      "durationMs": 251163,
+      "log": "tmp/deepseek-verification/crm/agent-3-critical/output.txt"
+    },
+    {
+      "suite": "agent-3-interactions",
+      "exitCode": 0,
+      "durationMs": 69506,
+      "log": "tmp/deepseek-verification/crm/agent-3-interactions/output.txt"
+    },
+    {
+      "suite": "agent-3-upload",
+      "exitCode": 0,
+      "durationMs": 88310,
+      "log": "tmp/deepseek-verification/crm/agent-3-upload/output.txt"
+    }
+  ],
+  "initialPass": 30,
+  "initialFailures": [
+    "operational-boundaries",
+    "timeline-ui-browser",
+    "agent-3-compose-browser"
+  ],
+  "correctedRuns": {
+    "operational-boundaries": {
+      "status": "passed",
+      "evidence": "crm/operational-boundaries/result-corrected.json",
+      "cause": "Fixture path must reference operational-browser journey outputs"
+    },
+    "timeline-ui-browser": {
+      "status": "passed",
+      "evidence": "crm/timeline-ui-browser/result-corrected.json",
+      "cause": "Fixed October scenario needed deterministic October browser clock"
+    },
+    "agent-3-compose-browser": {
+      "status": "passed",
+      "evidence": "crm/agent-3-compose-browser/output-corrected.txt",
+      "cause": "Fixture path must reference operational-browser journey outputs",
+      "passingChecks": 9
+    }
+  },
+  "finalPassingSuites": 33
+}

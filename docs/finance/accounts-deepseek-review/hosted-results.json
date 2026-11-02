@@ -1,0 +1,173 @@
+{
+  "applicationSHA": "50e60d2ca812b7b1077b5edca2740ca3c4c1619b",
+  "deployment": "dpl_2NqTj4ngUQdqfLKh79Ez3gnAzm8x",
+  "status": "blocked-intermittent-concurrent-write-503",
+  "suites": [
+    {
+      "name": "accounts-review-browser",
+      "passed": 14,
+      "result": {
+        "checks": [
+          "unauthenticated API denied; Manager identity denied",
+          "dedicated login routes to reconciled Accountant dashboard",
+          "invoice draft and issue update canonical demo journal once",
+          "purchase bill and protected sample attachment recorded",
+          "receipt and supplier payment target selected documents",
+          "paid expense updates fictional bank and expense ledger",
+          "CSRF and idempotent action replay enforced by local API",
+          "ledger, P&L, balance sheet and aging routes reconcile",
+          "invoice browser download and both financial report PDFs pass",
+          "logout revokes session; Manager CRM browser key preserved",
+          "1024px: login, dashboard, bill upload, no page overflow",
+          "768px: login, dashboard, bill upload, no page overflow",
+          "390px: login, dashboard, bill upload, no page overflow",
+          "390px: mobile upload persists after refresh; hosted session isolation verified"
+        ],
+        "errors": []
+      }
+    },
+    {
+      "name": "accounts-feedback-browser",
+      "passed": 9,
+      "result": {
+        "passed": 9,
+        "checks": [
+          "dedicated Accountant login and authenticated isolated session",
+          "invoice add/edit/remove lines, 205.00 sample and half-up decimal boundary",
+          "saved invoice draft reopens; issue posts once; issued/legacy records immutable",
+          "purchase lines persist; bill draft has no payable; explicit issue once and bill PDF",
+          "60 long item invoice and bill PDFs downloaded from authenticated application endpoint",
+          "itemized invoice/bill partial settlements and proforma receipt refusal",
+          "custom Direct ledger creation, duplicate refusal, reload/reuse, correct cost-of-sales and bank mapping",
+          "all three expense groups persist; trial balance/Balance Sheet reconcile; Manager data sentinel preserved",
+          "all Accounting routes accessible; logout revokes authenticated API session"
+        ],
+        "errors": [],
+        "pdfDocuments": 5,
+        "pdfPages": 16,
+        "primaryScreenshots": 15,
+        "supplementaryScreenshots": 4
+      }
+    },
+    {
+      "name": "document-entry-browser",
+      "passed": 21,
+      "result": {
+        "checks": [
+          "existing Purchase bills links to document-entry workflow",
+          "uploaded image preview and explicit synthetic suggestions",
+          "uncertain fields, price-change flag and mandatory human confirmation",
+          "document review responsive layout 1440px",
+          "document review responsive layout 1024px",
+          "document review responsive layout 768px",
+          "document review responsive layout 390px",
+          "editing an extracted field requires renewed confirmation",
+          "saved draft and supplier default leave all financial modules unchanged",
+          "refresh and reopen preserve reviewed edits and original extraction",
+          "saved correction history displays original and reviewed values",
+          "cancelled navigation and logout preserve unsaved document edits",
+          "same-file retry opens existing draft without duplicate attachment",
+          "PDF upload, suggestions and original-document viewer route",
+          "multi-page PDF renders both pages with accessible controls on desktop and mobile",
+          "Arabic/English synthetic sample review",
+          "company supplier bill saves a company-category draft with no artificial project or posting",
+          "unregistered upload stays manual and no field is invented",
+          "arbitrary selectable PDF is actually read locally and labeled as non-AI",
+          "Manager browser-local records preserved",
+          "separate Accountant logout flow"
+        ],
+        "errors": [],
+        "passed": 21
+      }
+    },
+    {
+      "name": "accounts-final-preview-browser",
+      "passed": 4,
+      "result": {
+        "url": "https://azzora-accounts-client-review-ik4bhvqhz-faziils-projects.vercel.app",
+        "checks": [
+          "Hosted entry JavaScript and CSS byte-identical to the tested local Accounts build",
+          "Tax Invoice: two-item UI entry, save/reopen/issue, pending VAT, correct journal boundary and hosted PDF",
+          "Proforma: two-item UI entry, save/reopen/issue, pending VAT, correct journal boundary and hosted PDF",
+          "Fresh selectable-text PDF reads supplier/reference/items/totals on Vercel, zero paid AI cost and no financial posting"
+        ],
+        "errors": [],
+        "assetComparison": [
+          {
+            "asset": "/assets/accountant-BPGJwZZH.js",
+            "sha256": "ae7b6248360266d11c5bd768598c23444ce21915437d96aaae21921bec92cebf",
+            "identicalToTestedLocalBuild": true
+          },
+          {
+            "asset": "/assets/accountant-D6fM7igH.css",
+            "sha256": "dbbf0924a47041a83a0c6a80f3c8a9f9e0df0a884fc2056d76fd328ce51b732b",
+            "identicalToTestedLocalBuild": true
+          }
+        ],
+        "pdfEvidence": [
+          {
+            "file": "tax-invoice",
+            "pages": 1,
+            "text": "AZZORA Accounts  Tax invoice - demo  FICTIONAL CLIENT REVIEW - NOT A TAX OR PRODUCTION ACCOUNTING DOCUMENT  Reference   INV-2636F76A  Document type   Tax Invoice Status   Issued Customer   Fictional Hosted Tax Invoice Client Invoice date   2026-11-02 Due date   2026-11-02  #   Description   Qty   Unit   Rate   Amount  1   Fictional fittings   2   Nos   12.50   25.00 2   Fictional installation   1   Nos   5.00   5.00  Subtotal   AED 30.00 VAT - policy pending   AED 0.00  Grand total   AED 30.00  Tax policy   Not applied in this fictional review Open balance as of 2026-11-02   AED 30.00  Synthetic demonstration only. No real records or money movement.   Page 1 of 1"
+          },
+          {
+            "file": "proforma-invoice",
+            "pages": 1,
+            "text": "AZZORA Accounts  Proforma - not a tax invoice  FICTIONAL CLIENT REVIEW - NOT A TAX OR PRODUCTION ACCOUNTING DOCUMENT  Reference   PRO-2663B8BE  Document type   Proforma Status   Issued Customer   Fictional Hosted Proforma Client Invoice date   2026-11-02 Due date   2026-11-02  #   Description   Qty   Unit   Rate   Amount  1   Fictional fittings   2   Nos   12.50   25.00 2   Fictional installation   1   Nos   5.00   5.00  Subtotal   AED 30.00 VAT - policy pending   AED 0.00  Grand total   AED 30.00  Tax policy   Not applied in this fictional review Accounting   No revenue or receivable posting  Synthetic demonstration only. No real records or money movement.   Page 1 of 1"
+          }
+        ],
+        "passed": 4
+      }
+    },
+    {
+      "name": "accounts-hosted-acceptance",
+      "status": "failed-twice-then-passed-intermittency-unresolved",
+      "latestPassingGroups": 8,
+      "latestPassingRouteWidths": 52,
+      "result": {
+        "checks": [
+          "Accountant sign-in page accessible without Vercel login",
+          "concurrent distinct actions preserve every committed receipt; concurrent duplicate action posts once",
+          "Manager CRM entry point absent from dedicated review build",
+          "hosted Secure HttpOnly cookie and server-side logout revocation verified",
+          "1440px: all 13 Accountant routes render without page-level overflow",
+          "1024px: all 13 Accountant routes render without page-level overflow",
+          "768px: all 13 Accountant routes render without page-level overflow",
+          "390px: all 13 Accountant routes render without page-level overflow"
+        ],
+        "routeWidthChecks": 52,
+        "environment": "Vercel Preview protected by server-side Accountant login (no Vercel login)"
+      }
+    }
+  ],
+  "independent": {
+    "workflowGroups": 7,
+    "responsiveChecks": 56,
+    "axeScans": 32,
+    "axeViolations": 0,
+    "pdfs": 4,
+    "browserErrors": 0
+  },
+  "unit": {
+    "files": 44,
+    "passed": 680,
+    "failed": 0
+  },
+  "paidAI": {
+    "enabled": false,
+    "calls": 0,
+    "spendUsd": 0,
+    "accuracy": null,
+    "costPerDocument": null
+  },
+  "initialFailures": [
+    {
+      "suite": "accounts-feedback-browser",
+      "cause": "default five-second assertion expired while ledger save in progress; bounded30s rerun passed"
+    },
+    {
+      "suite": "accounts-hosted-acceptance",
+      "cause": "unexplained intermittent503 during concurrent same-key or distinct-key requests; blocking"
+    }
+  ]
+}

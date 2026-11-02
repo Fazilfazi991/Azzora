@@ -23,6 +23,7 @@ export function configuredDocumentRuntime(store: ReviewStore): DocumentRuntime {
   return createDeepSeekRuntime({
     env: {
       AZZORA_AI_ENABLED: process.env.AZZORA_AI_ENABLED,
+      AZZORA_AI_CLIENT_DEMO_APP_CAP: process.env.AZZORA_AI_CLIENT_DEMO_APP_CAP,
       AZZORA_AI_PROVIDER: process.env.AZZORA_AI_PROVIDER,
       DEEPSEEK_MODEL: process.env.DEEPSEEK_MODEL,
       DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
@@ -36,13 +37,16 @@ export function documentAvailability(runtime: DocumentRuntime) {
   return {
     enabled: value.ready,
     provider: "deepseek" as const,
+    authorizationMode: value.authorizationMode,
     status: value.ready
       ? ("ready" as const)
       : value.reason === "disabled"
         ? ("disabled" as const)
         : ("configuration-required" as const),
     message: value.ready
-      ? "DeepSeek extraction is available only for approved fictional evaluation documents within the shared USD 5 allowance. Review every field before saving a draft."
+      ? value.authorizationMode === "owner-application-cap"
+        ? "Real DeepSeek extraction is available for approved fictional samples under the owner-approved shared USD 5 application cap. This is not a verified provider-account spending cap. Cached real results avoid another paid request. Review every field before saving a draft."
+        : "DeepSeek extraction is available only for approved fictional evaluation documents within the shared USD 5 allowance. Review every field before saving a draft."
       : value.reason === "disabled"
         ? "Live AI extraction is disabled. Selectable PDF text and clearly labelled prepared demo suggestions are available; images can be entered manually."
         : "Live AI extraction is unavailable until credential and billing controls are verified. Manual entry and local PDF reading remain available.",

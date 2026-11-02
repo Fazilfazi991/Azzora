@@ -17,6 +17,7 @@ import {
   type DocumentExtractor,
 } from "./providers.js";
 import { prepareDeepSeekPdf } from "./deepseek-pdf.js";
+import { createClientDemoRuntime } from "./client-demo-runtime.js";
 
 export const DEEPSEEK_BUDGET_PATH = "ai-evaluation/shared-budget-v1.json";
 // Official /models metadata reports a 1,048,576-token context. Reserve that
@@ -70,12 +71,14 @@ export const deepSeekApprovalSchema = z
   .strict();
 export type DeepSeekApproval = z.infer<typeof deepSeekApprovalSchema>;
 export interface DeepSeekEnvironment {
+  AZZORA_AI_CLIENT_DEMO_APP_CAP?: string;
   AZZORA_AI_ENABLED?: string;
   AZZORA_AI_PROVIDER?: string;
   DEEPSEEK_MODEL?: string;
   DEEPSEEK_API_KEY?: string;
 }
 export interface DeepSeekRuntimeStatus {
+  authorizationMode?: "owner-application-cap";
   provider: "deepseek";
   model: "deepseek-flash";
   enabled: boolean;
@@ -139,6 +142,10 @@ export function createDeepSeekRuntime(options: DeepSeekRuntimeOptions): {
   extractor: DocumentExtractor;
   budgetExposureMicroUsd: () => Promise<number | null>;
 } {
+  // Explicit owner-approved demo mode does not claim provider-account controls.
+  // Without this exact opt-in the original strict benchmark gate is unchanged.
+  if (options.env.AZZORA_AI_CLIENT_DEMO_APP_CAP === "5")
+    return createClientDemoRuntime(options);
   const { env, store } = options;
   const now = options.now ?? (() => new Date());
   const base = {

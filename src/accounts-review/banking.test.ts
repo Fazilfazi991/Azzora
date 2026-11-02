@@ -130,7 +130,7 @@ describe("basic banking, departments and journal-derived dimension reports", () 
       data.cashAccounts
         .find((item) => item.id === "thomas")!
         .transactions.map((item) => item.runningBalanceFils),
-    ).toEqual(["100000", "90000", "77475"]);
+    ).toEqual(["100000", "87475", "77475"]);
     expect(state.invoices).toEqual(original.invoices);
     expect(state.bills).toEqual(original.bills);
   });

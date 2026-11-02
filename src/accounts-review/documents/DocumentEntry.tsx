@@ -367,10 +367,10 @@ export function DocumentEntry({
             : "Selectable PDF text is read locally; photos/scans remain manual."}{" "}
           Manual entry keeps the original alongside a blank form.
         </span>
-        <a href="/document-samples/01.png" download>
+        <a href="/document-samples/05.png" download>
           Download sample bill
         </a>
-        <a href="/document-samples/02.pdf" download>
+        <a href="/document-samples/04.pdf" download>
           Sample PDF
         </a>
         <a href="/document-samples/03.png" download>

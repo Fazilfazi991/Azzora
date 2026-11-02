@@ -103,11 +103,12 @@ try {
     assert.match(response.headers()["content-type"], /application\/pdf/);
     const bytes = await response.body();
     fs.writeFileSync(`${out}/${kind}-voucher.pdf`, bytes);
-    const pdf = await getDocument({ data: new Uint8Array(bytes), useSystemFonts: true }).promise;
+    const loadingTask = getDocument({ data: new Uint8Array(bytes), useSystemFonts: true });
+    const pdf = await loadingTask.promise;
     const pages = pdf.numPages;
     let text = "";
     for (let number = 1; number <= pdf.numPages; number++) text += " " + (await (await pdf.getPage(number)).getTextContent()).items.map(item => item.str || "").join(" ");
-    await pdf.destroy();
+    await loadingTask.destroy();
     const sourceDocument = kind === "receipt" ? "INV-26041" : "BILL-26031";
     for (const expected of [id, sourceDocument, reference, party, amount, accountName, initial.asOf]) assert.ok(text.includes(expected), `${kind} PDF must contain ${expected}`);
     assert.match(text, /fictional/i);

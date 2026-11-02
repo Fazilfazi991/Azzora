@@ -79,7 +79,7 @@ try {
   assert.equal(BigInt(state.metrics.bankFils) + BigInt(state.metrics.cashFils), BigInt(initial.metrics.bankFils) + BigInt(initial.metrics.cashFils));
   report.checks.push("Internal transfer UI funds Thomas Cash; combined cash/P&L reconcile");
 
-  await action({ kind: "create-cash-account", id: "QA-SECOND-BANK", name: "QA second bank", type: "bank" });
+  const secondBank = await action({ kind: "create-cash-account", name: "QA second bank", type: "bank" });
   const manualBytes = fs.readFileSync("tests/fixtures/document-entry/01.png").toString("base64");
   const extractedResponse = await context.request.post(base + "/api/accounts-review/documents/extract", { headers, data: { file: { name: "fictional-independent-receipt.png", mime: "image/png", data: manualBytes }, mode: "manual" } });
   assert.equal(extractedResponse.status(), 200, await extractedResponse.text());
@@ -117,9 +117,9 @@ try {
   assert.equal(issued.snapshot.bills.find(item => item.id === bill.id).departmentId, "JOINERY");
   const invoice = await action({ kind: "invoice", party: "Sample Client A", date, due: date, description: "QA itemized sales", items: [{ description: "QA design service", quantity: "3", unit: "hour", rate: "20.00" }], invoiceType: "Normal Invoice", issue: false, projectId: "demo-apartment" });
   await action({ kind: "issue-invoice", id: invoice.id });
-  const received = await action({ kind: "receipt", documentId: invoice.id, date, amount: "20.00", account: "QA-SECOND-BANK", reference: "QA-CUSTOMER-RECEIPT" });
+  const received = await action({ kind: "receipt", documentId: invoice.id, date, amount: "20.00", account: secondBank.id, reference: "QA-CUSTOMER-RECEIPT" });
   assert.equal(received.snapshot.invoices.find(item => item.id === invoice.id).outstandingFils, "4000");
-  assert.equal(received.snapshot.cashAccounts.find(account => account.id === "QA-SECOND-BANK").balanceFils, "2000");
+  assert.equal(received.snapshot.cashAccounts.find(account => account.id === secondBank.id).balanceFils, "2000");
   assert.equal(BigInt(received.snapshot.metrics.revenueFils) - BigInt(initial.metrics.revenueFils), 6000n);
   assert.equal(BigInt(received.snapshot.metrics.costOfSalesFils) - BigInt(initial.metrics.costOfSalesFils), 15000n);
   assert.equal(BigInt(received.snapshot.metrics.netProfitFils) - BigInt(initial.metrics.netProfitFils), -9000n);

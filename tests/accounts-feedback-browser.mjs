@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { chromium, expect } from "@playwright/test";
+import { chromium, expect as baseExpect } from "@playwright/test";
 import { browserOptions, reviewTlsOptions } from "./browser-runtime.mjs";
 import { createCanvas, DOMMatrix, ImageData, Path2D } from "@napi-rs/canvas";
 
@@ -10,6 +10,8 @@ const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
 // Synthetic, isolated browser context. No credentials are embedded in this harness.
 const base = process.env.AZZORA_ACCOUNTS_REVIEW_URL || "https://127.0.0.1:5293";
+// Hosted persistence can exceed the local five-second assertion budget.
+const expect = baseExpect.configure({ timeout: new URL(base).hostname.endsWith(".vercel.app") ? 30000 : 5000 });
 const password =
   process.env.AZZORA_REVIEW_PASSWORD ||
   JSON.parse(fs.readFileSync("tmp/accounts-preview-access.json", "utf8"))

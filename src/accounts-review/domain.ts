@@ -539,7 +539,7 @@ export function applyReviewAction(
       review.extraction.fields.documentType === "quotation"
     )
       throw Error(
-        "A quotation / not official bill cannot be posted. Obtain and review an official invoice.",
+        "A quotation document / not official bill cannot be posted. Obtain and review an official invoice.",
       );
     if (
       review.convertedBillId ||
@@ -665,7 +665,7 @@ export function applyReviewAction(
       review.extraction.fields.documentType === "quotation"
     )
       throw Error(
-        "A quotation / not official bill cannot be posted. Obtain and review an official invoice.",
+        "A quotation document / not official bill cannot be posted. Obtain and review an official invoice.",
       );
     if (review.extraction.reviewOnly)
       throw Error(

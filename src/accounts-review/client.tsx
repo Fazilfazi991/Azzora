@@ -85,7 +85,20 @@ async function api(path: string, options: RequestInit = {}) {
     ...options,
   });
   const result = await response.json();
-  if (!response.ok) throw Error(result.error || "Request failed.");
+  if (!response.ok) {
+    const reference = response.headers.get("X-Azzora-Request-ID");
+    const validReference =
+      reference &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        reference,
+      );
+    throw Error(
+      (result.error || "Request failed.") +
+        (response.status === 503 && validReference
+          ? ` Reference: ${reference}.`
+          : ""),
+    );
+  }
   return result;
 }
 const nav: {
@@ -596,7 +609,14 @@ function Settlement({
       </form>
       <Table
         label={supplier ? "Supplier payments" : "Customer receipts"}
-        heads={["Reference", "Date", "Applied to", "Account", "Amount"]}
+        heads={[
+          "Reference",
+          "Date",
+          "Applied to",
+          "Account",
+          "Amount",
+          "Voucher",
+        ]}
       >
         {(
           posts as ((typeof posts)[number] & {
@@ -617,6 +637,14 @@ function Settlement({
                 "Historical account"}
             </td>
             <td className="money">{money(item.amountFils)}</td>
+            <td>
+              <a
+                className="text-link"
+                href={`/api/accounts-review/pdf/${encodeURIComponent(`${supplier ? "payment" : "receipt"}:${item.id}`)}?${new URLSearchParams({ from: data.period.from, to: data.period.to, asOf: data.asOf })}`}
+              >
+                Download {supplier ? "payment" : "receipt"} voucher
+              </a>
+            </td>
           </tr>
         ))}
       </Table>

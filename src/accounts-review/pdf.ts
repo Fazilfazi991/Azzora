@@ -145,7 +145,50 @@ export function reviewPdf(
     });
     y += 4;
   }
-  if (name === "pnl") {
+  if (name.startsWith("receipt:") || name.startsWith("payment:")) {
+    const payment = name.startsWith("payment:");
+    const id = name.slice(name.indexOf(":") + 1);
+    const settlement = (payment ? data.supplierPayments : data.receipts).find(
+      (item) => item.id === id,
+    );
+    if (!settlement) throw Error("Posted settlement document was not found.");
+    const allocated = (payment ? data.bills : data.invoices).find(
+      (item) => item.id === settlement.documentId,
+    );
+    if (!allocated)
+      throw Error("Allocated invoice or bill document was not found.");
+    header(
+      payment
+        ? "Supplier payment voucher - demo"
+        : "Customer receipt voucher - demo",
+    );
+    row("Voucher reference", settlement.id, true);
+    row(payment ? "Supplier" : "Customer", allocated.party);
+    row("Date", settlement.date);
+    row("Payment reference", settlement.reference);
+    row(
+      payment ? "Paid from" : "Received into",
+      data.cashAccounts.find((account) => account.id === settlement.account)
+        ?.name || settlement.account,
+    );
+    row(
+      payment ? "Applied to bill" : "Applied to invoice",
+      settlement.documentId,
+    );
+    row("Allocated amount", money(settlement.amountFils), true);
+    const journal = state.accounting.journals.find(
+      (item) => item.source.id === id,
+    );
+    if (journal) row("Posted journal", journal.id);
+    row(
+      "Accounting",
+      "Export of an existing posted demo settlement; no new posting.",
+    );
+    row(
+      "VAT - policy pending",
+      "Not a tax invoice. No additional VAT is calculated.",
+    );
+  } else if (name === "pnl") {
     header("Profit & loss");
     row(`Period ${data.period.from} to ${data.period.to}`);
     y += 4;

@@ -33,6 +33,8 @@ try {
   await expect(page.getByRole("heading", { name: "Financial dashboard", exact: true })).toBeVisible();
   const auth = await (await context.request.get(base + "/api/accounts-review/session")).json();
   const headers = { Origin: base, "X-Azzora-CSRF": auth.csrf };
+  const reset = await context.request.post(base + "/api/accounts-review/reset", { headers });
+  assert.equal(reset.status(), 200, "Reset only this disposable fictional test session.");
   async function snapshot(query = "") {
     const response = await context.request.get(base + "/api/accounts-review/snapshot" + query);
     assert.equal(response.status(), 200, await response.text());
@@ -138,7 +140,7 @@ try {
   assert.equal((await snapshot()).cashAccounts.find(account => account.id === thomas.id).balanceFils, "5000");
   report.checks.push("Refresh persists accounts/posted balances and PDF endpoints produce valid documents");
 
-  const routes = [["dashboard", "Financial dashboard"], ["invoices", "Sales invoices"], ["bills", "Purchase bills"], ["receipts", "Customer receipts"], ["supplier-payments", "Supplier payments"], ["expenses", "Expenses"], ["banking", "Bank & cash"], ["ledger", "General ledger"], ["pnl", "Profit & loss"], ["balance", "Balance sheet"], ["trial", "Trial balance"], ["aging", "AR / AP aging"], ["project-reports", "Project & department reports"], ["document-entry", "Read a bill"]];
+  const routes = [["dashboard", "Financial dashboard"], ["invoices", "Sales invoices"], ["bills", "Purchase bills"], ["receipts", "Customer receipts"], ["supplier-payments", "Supplier payments"], ["expenses", "Expenses"], ["banking", "Bank & cash"], ["ledger", "General ledger"], ["pnl", "Profit & loss"], ["balance", "Balance sheet"], ["trial", "Trial balance"], ["aging", "Receivable & payable aging"], ["project-reports", "Project & department reports"], ["document-entry", "Read a bill"]];
   for (const [path, heading] of routes) {
     for (const width of [1440, 1024, 768, 390]) {
       await page.setViewportSize({ width, height: 1000 });
@@ -158,6 +160,7 @@ try {
   assert.equal(await page.evaluate(() => localStorage.getItem("azzora-demo-v1")), "INDEPENDENT_QA_MANAGER_SENTINEL");
   assert.equal(report.errors.length, 0);
   assert.equal(report.accessibility.flatMap(item => item.violations).length, 0, "Accessibility findings: see QA report");
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.getByRole("button", { name: /Log out/ }).click();
   await expect(page.getByRole("heading", { name: "Sign in to Accounts", exact: true })).toBeVisible();
   assert.equal((await context.request.get(base + "/api/accounts-review/snapshot")).status(), 401);

@@ -18,6 +18,7 @@ import { OperationalReports } from "./OperationalReports";
 import { ReportDates } from "./ReportDates";
 import { cashAccountsFor, type CompletionSnapshot } from "./completion-ui";
 import type { Upload } from "./documents/model";
+import { accountsRequest as api } from "./http";
 
 type Snapshot = ReturnType<typeof reviewSnapshot>;
 type Session = {
@@ -78,29 +79,6 @@ const date = (value: string) =>
     year: "numeric",
     timeZone: "UTC",
   }).format(new Date(`${value}T00:00:00Z`));
-async function api(path: string, options: RequestInit = {}) {
-  const response = await fetch(`/api/accounts-review${path}`, {
-    credentials: "same-origin",
-    cache: "no-store",
-    ...options,
-  });
-  const result = await response.json();
-  if (!response.ok) {
-    const reference = response.headers.get("X-Azzora-Request-ID");
-    const validReference =
-      reference &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-        reference,
-      );
-    throw Error(
-      (result.error || "Request failed.") +
-        (response.status === 503 && validReference
-          ? ` Reference: ${reference}.`
-          : ""),
-    );
-  }
-  return result;
-}
 const nav: {
   heading: string;
   links: { key: Route; label: string; icon: string }[];

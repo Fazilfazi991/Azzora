@@ -169,8 +169,8 @@ try {
   console.log(JSON.stringify({ checks: report.checks.length, responsive: report.responsive.length, axeScans: report.accessibility.length, pdfs: report.pdfs.length, errors: report.errors }, null, 2));
 } catch (error) {
   report.status = "fail";
-  report.failure = error.stack;
-  console.error(error.stack);
+  report.failure = String(error.stack || error).replaceAll(password, "[REDACTED]");
+  console.error(report.failure);
   process.exitCode = 1;
 } finally {
   fs.writeFileSync(out + "/results.json", JSON.stringify(report, null, 2));

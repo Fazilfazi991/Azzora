@@ -6,6 +6,8 @@ import { browserOptions, auditUrl } from "./browser-runtime.mjs";
 const browser = await chromium.launch(browserOptions);
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true });
 const page = await context.newPage();
+// Keep the fixed October fixture within the timeline viewport as the real date advances.
+await page.clock.install({ time: new Date("2026-10-14T08:00:00+04:00") });
 fs.mkdirSync("docs/planning/evidence", { recursive: true });
 const errors = [];
 page.on("pageerror", (error) => errors.push(error.message));

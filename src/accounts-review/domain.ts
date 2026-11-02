@@ -1,5 +1,19 @@
 import { postJournal } from "../accounting/core.js";
 import {
+  cashAccountSnapshot,
+  cashBalanceAt,
+  createCashAccount,
+  departmentId,
+  departments,
+  planningExpenseReports,
+  requireCashAccount,
+  type DepartmentId,
+  type DepartmentJournalLine,
+  type ReviewCashAccount,
+  type ReviewSettlementDetail,
+  type ReviewTransfer,
+} from "./banking.js";
+import {
   buildBalanceSheet,
   buildGeneralLedger,
   buildProfitAndLoss,
@@ -36,6 +50,15 @@ import type {
   SettlementEvent,
 } from "../finance/settlement";
 
+// Optional additions to persisted document reviews remain readable during the
+// additive schema rollout. Only validated ledger/department IDs reach posting.
+type PostingFields = Omit<EntryFields, "items"> & {
+  ledgerId?: string;
+  department?: string;
+  discount?: string;
+  items: (EntryFields["items"][number] & { discount?: string })[];
+};
+
 export interface ReviewDocument {
   id: string;
   party: string;
@@ -47,6 +70,8 @@ export interface ReviewDocument {
   /** Missing on persisted legacy invoices; those remain tax invoices. */
   invoiceType?: "Tax Invoice" | "Normal Invoice" | "Proforma";
   category?: "Cost of Sales" | "Operating Expense";
+  ledgerId?: string;
+  expenseAccountId?: string;
   poReference?: string;
   invoiceReference?: string;
   sourceReviewId?: string;
@@ -56,6 +81,7 @@ export interface ReviewDocument {
   taxFils?: string;
   taxStatus?: "Policy pending";
   projectId?: string;
+  departmentId?: DepartmentId;
   revision?: number;
 }
 export interface ReviewExpense {
@@ -64,13 +90,16 @@ export interface ReviewExpense {
   payee: string;
   description: string;
   amountFils: string;
-  account: "bank" | "cash";
+  account: string;
   attachmentId?: string;
   ledgerId?: string;
   ledgerName?: string;
   expenseGroup?: ExpenseGroup;
   scope?: "company" | "project";
   projectId?: string;
+  departmentId?: DepartmentId;
+  sourceReviewId?: string;
+  invoiceReference?: string;
 }
 export interface ReviewAttachment {
   id: string;
@@ -80,6 +109,9 @@ export interface ReviewAttachment {
   size: number;
 }
 export interface ReviewState {
+  cashAccounts?: ReviewCashAccount[];
+  transfers?: ReviewTransfer[];
+  settlementDetails?: ReviewSettlementDetail[];
   expenseLedgers?: ReviewExpenseLedger[];
   documentEntries?: DocumentEntryState;
   documentCatalog?: ReferenceCatalog;
@@ -98,11 +130,13 @@ const line = (
   debit: bigint,
   credit: bigint,
   projectId?: string,
-): JournalLine => ({
+  departmentId?: DepartmentId,
+): DepartmentJournalLine => ({
   accountId,
   debitFils: debit.toString(),
   creditFils: credit.toString(),
   ...(projectId ? { projectId } : {}),
+  ...(departmentId ? { departmentId } : {}),
 });
 const iso = (value: unknown): string => {
   if (
@@ -320,6 +354,30 @@ export function createReviewState(): ReviewState {
 
 export type ReviewAction =
   | {
+      kind: "create-expense-from-review";
+      id: string;
+      reviewId: string;
+      revision: number;
+      confirmed: true;
+      account: string;
+    }
+  | {
+      kind: "create-cash-account";
+      id: string;
+      name: string;
+      type: ReviewCashAccount["type"];
+      holder?: string;
+    }
+  | {
+      kind: "transfer";
+      id: string;
+      date: string;
+      fromAccount: string;
+      toAccount: string;
+      amount: string;
+      reference: string;
+    }
+  | {
       kind: "document-draft";
       id: string;
       reviewId: string;
@@ -353,9 +411,11 @@ export type ReviewAction =
       amount?: string;
       items?: ReviewLineInput[];
       projectId?: string;
+      departmentId?: DepartmentId;
       revision?: number;
       issue?: boolean;
       category: "Cost of Sales" | "Operating Expense";
+      ledgerId?: string;
       poReference: string;
       invoiceReference?: string;
       sourceReviewId?: string;
@@ -374,7 +434,8 @@ export type ReviewAction =
       documentId: string;
       date: string;
       amount: string;
-      account: "bank" | "cash";
+      account: string;
+      reference?: string;
     }
   | {
       kind: "create-expense-ledger";
@@ -390,10 +451,11 @@ export type ReviewAction =
       date: string;
       description: string;
       amount: string;
-      account: "bank" | "cash";
+      account: string;
       ledgerId?: string;
       scope?: "company" | "project";
       projectId?: string;
+      departmentId?: DepartmentId;
       attachment?: { name: string; mime: string; data: string };
     };
 
@@ -438,6 +500,8 @@ export function applyReviewAction(
   previous: ReviewState,
   action: ReviewAction,
 ): ReviewState {
+  if (action.kind === "create-cash-account")
+    return createCashAccount(previous, action);
   if (action.kind === "document-draft")
     return saveDocumentDraft(previous, action, new Date().toISOString());
   if (action.kind === "create-expense-ledger")
@@ -448,6 +512,116 @@ export function applyReviewAction(
       action.group,
       action.description,
     );
+  if (action.kind === "create-expense-from-review") {
+    const review = previous.documentEntries?.reviews.find(
+      (item) => item.id === action.reviewId,
+    );
+    if (!review || review.status !== "Draft")
+      throw Error(
+        "Save and confirm this document draft before creating an expense.",
+      );
+    const converted = review as typeof review & { convertedExpenseId?: string };
+    if (
+      review.convertedBillId ||
+      converted.convertedExpenseId ||
+      previous.expenses.some((item) => item.sourceReviewId === review.id)
+    )
+      throw Error(
+        "This document has already been converted to an accounting transaction.",
+      );
+    if (review.revision !== action.revision)
+      throw Error("Document draft changed. Refresh and review again.");
+    if (
+      action.confirmed !== true ||
+      !["project-expense", "company-expense"].includes(review.fields.kind)
+    )
+      throw Error(
+        "Confirm the project or company expense classification before posting.",
+      );
+    const f = review.fields as PostingFields;
+    if (
+      (f.discount && parseFils(f.discount) !== 0n) ||
+      f.items.some((item) => item.discount && parseFils(item.discount) !== 0n)
+    )
+      throw Error(
+        "Discounted documents must remain drafts until their posting policy is approved.",
+      );
+    const blocking = inspectFields(
+      f,
+      previous,
+      review.id,
+      review.sha256,
+    ).filter(
+      (warning) =>
+        !warning.code.startsWith("product-") &&
+        !warning.code.startsWith("price-") &&
+        warning.code !== "customer" &&
+        warning.code !== "missing-dueDate",
+    );
+    if (blocking.length)
+      throw Error(
+        `Resolve expense checks before posting: ${blocking.map((warning) => warning.message).join(" ")}`,
+      );
+    if (
+      !f.subtotal ||
+      !f.tax ||
+      !f.total ||
+      parseFils(f.tax) !== 0n ||
+      parseFils(f.subtotal) !== parseFils(f.total) ||
+      f.items.some((item) => item.tax && parseFils(item.tax) !== 0n)
+    )
+      throw Error(
+        "This demo expense pathway cannot post VAT. Keep the reviewed document as a draft.",
+      );
+    const category = categories.find(
+      (item) => item.id === f.categoryId && item.active,
+    );
+    const ledger = expenseLedgersFor(previous).find((item) =>
+      f.ledgerId
+        ? item.id === f.ledgerId
+        : item.accountId === category?.expenseAccountId,
+    );
+    if (!category || !ledger)
+      throw Error("Choose a supported approved expense mapping and ledger.");
+    const expected =
+      ledger.group === "Direct Expense" ? "Cost of Sales" : "Expense";
+    if (
+      previous.accounting.accounts.find(
+        (item) => item.id === category.expenseAccountId,
+      )?.type !== expected
+    )
+      throw Error(
+        "The selected ledger does not match the approved expense category.",
+      );
+    const next = applyReviewAction(previous, {
+      kind: "expense",
+      id: action.id,
+      payee: f.supplier,
+      date: f.date,
+      description: (
+        f.items
+          .map((item) => item.description)
+          .filter(Boolean)
+          .join(", ") || f.reference
+      ).slice(0, 140),
+      amount: f.total,
+      account: action.account,
+      ledgerId: ledger.id,
+      scope: f.kind === "project-expense" ? "project" : "company",
+      projectId: f.projectId || undefined,
+      departmentId: departmentId(f.department),
+    });
+    const expense = next.expenses.find((item) => item.id === action.id)!;
+    expense.attachmentId = review.attachmentId;
+    expense.sourceReviewId = review.id;
+    expense.invoiceReference = f.reference;
+    const saved = next.documentEntries!.reviews.find(
+      (item) => item.id === review.id,
+    )! as typeof review & { convertedExpenseId?: string };
+    saved.convertedExpenseId = action.id;
+    saved.revision++;
+    return next;
+  }
   if (action.kind === "create-bill-from-review") {
     const review = previous.documentEntries?.reviews.find(
       (item) => item.id === action.reviewId,
@@ -456,7 +630,11 @@ export function applyReviewAction(
       throw Error(
         "Save and confirm this document draft before creating a bill.",
       );
-    if (review.convertedBillId)
+    if (
+      review.convertedBillId ||
+      (review as typeof review & { convertedExpenseId?: string })
+        .convertedExpenseId
+    )
       throw Error(
         "This document has already been converted to a purchase bill.",
       );
@@ -466,7 +644,14 @@ export function applyReviewAction(
       throw Error(
         "Confirm supplier purchase bill classification before posting.",
       );
-    const f = review.fields;
+    const f = review.fields as PostingFields;
+    if (
+      (f.discount && parseFils(f.discount) !== 0n) ||
+      f.items.some((item) => item.discount && parseFils(item.discount) !== 0n)
+    )
+      throw Error(
+        "Discounted documents must remain drafts until their posting policy is approved.",
+      );
     const blockingWarnings = inspectFields(
       f,
       previous,
@@ -530,6 +715,8 @@ export function applyReviewAction(
       invoiceReference: f.reference,
       sourceReviewId: review.id,
       projectId: f.projectId || undefined,
+      ledgerId: f.ledgerId || undefined,
+      departmentId: departmentId(f.department),
       items: f.items.map((item) => ({
         description: item.description,
         quantity: item.quantity,
@@ -559,12 +746,43 @@ export function applyReviewAction(
     (next.invoices.some((item) => item.id === id) ||
       next.bills.some((item) => item.id === id) ||
       next.expenses.some((item) => item.id === id) ||
+      next.transfers?.some((item) => item.id === id) ||
       [...next.receipts, ...next.supplierPayments].some(
         (item) => item.id === id,
       ))
   )
     throw Error("This action has already been recorded.");
-  if (action.kind === "invoice" || action.kind === "update-invoice-draft") {
+  if (action.kind === "transfer") {
+    const date = iso(action.date),
+      amount = positive(action.amount);
+    const from = requireCashAccount(next, action.fromAccount),
+      to = requireCashAccount(next, action.toAccount);
+    if (from.id === to.id)
+      throw Error("Choose two different accounts for the transfer.");
+    if (cashBalanceAt(next, from.id, date) < amount)
+      throw Error(
+        "The source account has insufficient posted funds on this date.",
+      );
+    const reference = required(action.reference, "Transfer reference", 140);
+    journal(next, id, date, `Internal transfer ${reference}`, [
+      line(to.id, amount, 0n),
+      line(from.id, 0n, amount),
+    ]);
+    next.transfers = [
+      ...(next.transfers || []),
+      {
+        id,
+        date,
+        fromAccount: from.id,
+        toAccount: to.id,
+        amountFils: amount.toString(),
+        reference,
+      },
+    ];
+  } else if (
+    action.kind === "invoice" ||
+    action.kind === "update-invoice-draft"
+  ) {
     const existing = next.invoices.find((item) => item.id === id);
     if (
       action.kind === "update-invoice-draft" &&
@@ -655,6 +873,20 @@ export function applyReviewAction(
     if (due < date) throw Error("Due date cannot precede bill date.");
     if (!["Cost of Sales", "Operating Expense"].includes(action.category))
       throw Error("Choose a bill category.");
+    const ledger = action.ledgerId
+      ? expenseLedgersFor(next).find((item) => item.id === action.ledgerId)
+      : undefined;
+    if (
+      action.ledgerId &&
+      (!ledger ||
+        (ledger.group === "Direct Expense") !==
+          (action.category === "Cost of Sales"))
+    )
+      throw Error("Choose an expense ledger that matches the bill category.");
+    if (ledger?.group === "Direct Expense" && !action.projectId)
+      throw Error("Direct expenses require a project.");
+    if (ledger?.group === "Administrative Expense" && action.projectId)
+      throw Error("Administrative expenses belong to the company.");
     const item: ReviewDocument = {
       id,
       party: required(action.party, "Supplier"),
@@ -664,6 +896,8 @@ export function applyReviewAction(
       amountFils: amount.toString(),
       status: action.issue === false ? "Draft" : "Issued",
       category: action.category,
+      ledgerId: ledger?.id,
+      expenseAccountId: ledger?.accountId,
       poReference: required(action.poReference, "Demo purchase reference"),
       invoiceReference: action.invoiceReference?.trim() || undefined,
       sourceReviewId: action.sourceReviewId,
@@ -675,6 +909,7 @@ export function applyReviewAction(
           )
         : existing?.attachmentId,
       projectId: action.projectId || undefined,
+      departmentId: departmentId(action.departmentId),
       revision: existing ? (existing.revision || 0) + 1 : 0,
       ...(calculated
         ? {
@@ -706,10 +941,12 @@ export function applyReviewAction(
     if (item.status === "Draft") return next;
     journal(next, id, date, `Purchase bill ${id}`, [
       line(
-        action.category === "Cost of Sales" ? "cost" : "operating",
+        item.expenseAccountId ||
+          (action.category === "Cost of Sales" ? "cost" : "operating"),
         amount,
         0n,
         item.projectId,
+        item.departmentId,
       ),
       line("payables", 0n, amount),
     ]);
@@ -721,18 +958,19 @@ export function applyReviewAction(
     bill.revision = (bill.revision || 0) + 1;
     journal(next, id, bill.date, "Purchase bill " + id, [
       line(
-        bill.category === "Cost of Sales" ? "cost" : "operating",
+        bill.expenseAccountId ||
+          (bill.category === "Cost of Sales" ? "cost" : "operating"),
         BigInt(bill.amountFils),
         0n,
         bill.projectId,
+        bill.departmentId,
       ),
       line("payables", 0n, BigInt(bill.amountFils)),
     ]);
   } else if (action.kind === "receipt" || action.kind === "supplier-payment") {
     const date = iso(action.date),
       amount = positive(action.amount);
-    if (!["bank", "cash"].includes(action.account))
-      throw Error("Choose bank or cash.");
+    requireCashAccount(next, action.account);
     const receivable = action.kind === "receipt";
     const source = receivable ? next.invoices : next.bills;
     const selected = source.find(
@@ -766,6 +1004,17 @@ export function applyReviewAction(
     );
     if (receivable) next.receipts = posted;
     else next.supplierPayments = posted;
+    next.settlementDetails = [
+      ...(next.settlementDetails || []),
+      {
+        id,
+        account: action.account,
+        reference:
+          action.reference === undefined || action.reference === ""
+            ? ""
+            : required(action.reference, "Payment reference", 140),
+      },
+    ];
     journal(
       next,
       id,
@@ -780,8 +1029,8 @@ export function applyReviewAction(
   } else if (action.kind === "expense") {
     const date = iso(action.date),
       amount = positive(action.amount);
-    if (!["bank", "cash"].includes(action.account))
-      throw Error("Choose bank or cash.");
+    requireCashAccount(next, action.account);
+    const department = departmentId(action.departmentId);
     const ledger = expenseLedgersFor(next).find(
       (item) => item.id === (action.ledgerId || "legacy-operating"),
     );
@@ -824,6 +1073,7 @@ export function applyReviewAction(
       expenseGroup: ledger.group,
       scope,
       projectId: scope === "project" ? action.projectId : undefined,
+      departmentId: department,
       attachmentId: attachment(next, `${id}-file`, action.attachment),
     });
     journal(next, id, date, `Paid expense ${id}`, [
@@ -832,6 +1082,7 @@ export function applyReviewAction(
         amount,
         0n,
         scope === "project" ? action.projectId : undefined,
+        department,
       ),
       line(action.account, 0n, amount),
     ]);
@@ -839,12 +1090,24 @@ export function applyReviewAction(
   return next;
 }
 
-export function reviewSnapshot(state: ReviewState, asOf = "2026-10-22") {
+export function reviewSnapshot(
+  state: ReviewState,
+  asOf = "2026-10-22",
+  period?: { from: string; to: string },
+) {
   iso(asOf);
-  const from = `${asOf.slice(0, 4)}-01-01`;
-  const pnl = buildProfitAndLoss(state.accounting, from, asOf);
+  const from = iso(period?.from ?? `${asOf.slice(0, 4)}-01-01`);
+  const to = iso(period?.to ?? asOf);
+  const pnl = buildProfitAndLoss(state.accounting, from, to);
   const balance = buildBalanceSheet(state.accounting, asOf);
   const trial = buildTrialBalance(state.accounting, asOf);
+  const cashAccounts = cashAccountSnapshot(state, from, to, asOf);
+  const dimensionalReports = planningExpenseReports(
+    state,
+    catalogFor(state).projects,
+    from,
+    to,
+  );
   const invoiceRows = state.invoices.map((item) => ({
     ...item,
     invoiceType: item.invoiceType ?? "Tax Invoice",
@@ -919,11 +1182,15 @@ export function reviewSnapshot(state: ReviewState, asOf = "2026-10-22") {
   )
     throw Error("Demo statements and open documents do not reconcile.");
   return {
+    cashAccounts,
+    transfers: (state.transfers || []).filter((item) => item.date <= asOf),
+    departments,
+    ...dimensionalReports,
     expenseLedgers: expenseLedgersFor(state),
     projectCosts: catalogFor(state).projects.map((project) => ({
       ...project,
       costFils: state.accounting.journals
-        .filter((entry) => entry.date >= from && entry.date <= asOf)
+        .filter((entry) => entry.date >= from && entry.date <= to)
         .flatMap((entry) => entry.lines)
         .filter(
           (entry) =>
@@ -949,7 +1216,7 @@ export function reviewSnapshot(state: ReviewState, asOf = "2026-10-22") {
     documentCatalog: catalogFor(state),
     documentCategories: categories,
     asOf,
-    period: { from, to: asOf },
+    period: { from, to },
     metrics: {
       revenueFils: pnl.income.totalFils,
       costOfSalesFils: pnl.costOfSales.totalFils,
@@ -958,8 +1225,14 @@ export function reviewSnapshot(state: ReviewState, asOf = "2026-10-22") {
       netProfitFils: pnl.netProfitFils,
       receivablesFils: receivables.toString(),
       payablesFils: payables.toString(),
-      bankFils: balanceOf("bank").toString(),
-      cashFils: balanceOf("cash").toString(),
+      bankFils: cashAccounts
+        .filter((account) => account.type === "bank")
+        .reduce((sum, account) => sum + BigInt(account.balanceFils), 0n)
+        .toString(),
+      cashFils: cashAccounts
+        .filter((account) => account.type !== "bank")
+        .reduce((sum, account) => sum + BigInt(account.balanceFils), 0n)
+        .toString(),
     },
     invoices: invoiceRows,
     bills: billRows,
@@ -971,6 +1244,18 @@ export function reviewSnapshot(state: ReviewState, asOf = "2026-10-22") {
         date: item.date,
         documentId: item.allocations[0].documentId,
         amountFils: item.amountFils.toString(),
+        account:
+          state.settlementDetails?.find((detail) => detail.id === item.id)
+            ?.account ||
+          state.accounting.journals
+            .find((journal) => journal.source.id === item.id)
+            ?.lines.find((entry) =>
+              cashAccounts.some((account) => account.id === entry.accountId),
+            )?.accountId ||
+          "bank",
+        reference:
+          state.settlementDetails?.find((detail) => detail.id === item.id)
+            ?.reference || item.id,
       })),
     supplierPayments: state.supplierPayments
       .filter((item): item is PostedSettlement => item.type === "posted")
@@ -979,10 +1264,22 @@ export function reviewSnapshot(state: ReviewState, asOf = "2026-10-22") {
         date: item.date,
         documentId: item.allocations[0].documentId,
         amountFils: item.amountFils.toString(),
+        account:
+          state.settlementDetails?.find((detail) => detail.id === item.id)
+            ?.account ||
+          state.accounting.journals
+            .find((journal) => journal.source.id === item.id)
+            ?.lines.find((entry) =>
+              cashAccounts.some((account) => account.id === entry.accountId),
+            )?.accountId ||
+          "bank",
+        reference:
+          state.settlementDetails?.find((detail) => detail.id === item.id)
+            ?.reference || item.id,
       })),
     accounts: state.accounting.accounts,
     ledger: state.accounting.accounts.map((account) =>
-      buildGeneralLedger(state.accounting, account.id, from, asOf),
+      buildGeneralLedger(state.accounting, account.id, from, to),
     ),
     pnl,
     balance,

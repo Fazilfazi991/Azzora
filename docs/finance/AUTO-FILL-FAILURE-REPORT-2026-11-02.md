@@ -59,7 +59,7 @@ The two observed token counts produce conservative peak-token upper estimates of
 
 Stable Accounts alias remains `dpl_7F7DwZXXLWHsz8WjXUePuDsN4KTb`; Manager `azzora-seven.vercel.app` remains `dpl_F9kD9Vu4ioWTCJrQwD2ev5J6mYmp`; GitHub main remains `fd7754dfe0022f9b64bf875313bd9679cb0144eb`. No push, merge, stable-alias reassignment or production promotion occurred. Browser data and immutable original history remain preserved.
 
-This is approved-fictional-document testing only. The owner's pictured real supplier quotation remains blocked pending document/data-processing approval. Classification/type still require review. Actual billed cost is unverified. VAT policy and production accounting readiness remain pending. The earlier unrelated concurrent Blob503 is not claimed fixed by this work; current scoped hosted tests passed.
+This is approved-fictional-document testing only. The owner's pictured supplier quotation is not identified as an approved fictional sample; whether it is fictional is unverified. It remains blocked pending document/data-processing approval. Classification/type still require review. Actual billed cost is unverified. VAT policy and production accounting readiness remain pending. The earlier unrelated concurrent Blob503 is not claimed fixed by this work; current scoped hosted tests passed.
 
 ## Evidence
 

@@ -1,5 +1,8 @@
 /** Server-only shared fictional staging BFF. No real posting or paid AI path. */
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { prepareManagerFiles, readManagerFile } from "./manager-files";
+import { StagingPolicyError } from "./commercial-commands";
+import { createStagingBackup } from "./backup";
 import { createStagingAuth, type StagingActor } from "./auth";
 import {
   rpc as defaultRpc,
@@ -36,7 +39,7 @@ import {
 } from "../accounts-review/documents/providers";
 import { storePrivateAttachment, readPrivateAttachment } from "./storage";
 
-const json = (status: number, value: unknown) =>
+const json = (status: number, value: unknown, requestId?: string) =>
   new Response(JSON.stringify(value), {
     status,
     headers: {
@@ -44,6 +47,7 @@ const json = (status: number, value: unknown) =>
       "Cache-Control": "no-store, private",
       "X-Content-Type-Options": "nosniff",
       Vary: "Cookie",
+      ...(requestId ? { "X-Azzora-Request-ID": requestId } : {}),
     },
   });
 const fingerprint = (value: unknown): string =>
@@ -113,6 +117,9 @@ export function createStagingHandler(
   const rpc = options.rpc ?? defaultRpc;
   let auth = options.auth;
   return async (request: Request): Promise<Response> => {
+    const requestId = randomUUID(),
+      started = performance.now();
+    let stage = "transport";
     try {
       const url = new URL(request.url);
       const path =
@@ -127,18 +134,23 @@ export function createStagingHandler(
         return json(405, { error: "Method not allowed." });
       auth ??= createStagingAuth({ rpc });
       if (path.startsWith("/auth/")) return auth.handle(request, path);
-      const workspace = path.startsWith("/manager/")
+      const requestedWorkspace = path.startsWith("/manager/")
         ? "manager"
         : path.startsWith("/accounts/")
           ? "accountant"
           : undefined;
-      if (!workspace) return json(404, { error: "Unknown staging route." });
-      let actor = await auth.requireActor(request, workspace);
+      const fileRoute = path.startsWith("/files/");
+      if (!requestedWorkspace && !fileRoute)
+        return json(404, { error: "Unknown staging route." });
+      stage = "authentication";
+      let actor = await auth.requireActor(request, requestedWorkspace);
+      const workspace = requestedWorkspace || actor.workspace;
       const read = () =>
         rpc<Loaded>("staging_company_read", {
           p_session_hash: actor.sessionHash,
           p_workspace: workspace,
         });
+      stage = "read";
       let loaded = await read();
       if (loaded.version === 0) {
         if (actor.role !== "owner_admin" || actor.assurance !== "aal2")
@@ -163,11 +175,103 @@ export function createStagingHandler(
         loaded = await read();
       }
       let state = hydrateCanonical(loaded.data);
+      if (path === "/manager/backup" && request.method === "GET") {
+        if (
+          actor.role !== "owner_admin" ||
+          actor.assurance !== "aal2" ||
+          !actor.capabilities.includes("access.manage")
+        )
+          throw Object.assign(new Error("Owner backup access required"), {
+            status: 403,
+          });
+        const backup = await createStagingBackup(
+          {
+            version: loaded.version,
+            data: loaded.data,
+            companyId: actor.companyId,
+          },
+          (file) => readPrivateAttachment(actor.companyId, file),
+        );
+        const bytes = new TextEncoder().encode(JSON.stringify(backup));
+        let offset = 0;
+        const body = new ReadableStream<Uint8Array>({
+          pull(controller) {
+            if (offset >= bytes.length) {
+              controller.close();
+              return;
+            }
+            const end = Math.min(offset + 65536, bytes.length);
+            controller.enqueue(bytes.subarray(offset, end));
+            offset = end;
+          },
+        });
+        return new Response(body, {
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Disposition":
+              "attachment; filename=AZZORA-fictional-staging-backup.json",
+            "Cache-Control": "no-store, private",
+            "X-Content-Type-Options": "nosniff",
+          },
+        });
+      }
+      if (fileRoute && request.method === "GET") {
+        const id = decodeURIComponent(path.slice(7));
+        const result =
+          workspace === "manager"
+            ? await readManagerFile(state, sharedActor(actor), id)
+            : await (async () => {
+                const file = state.finance.attachments.find(
+                  (value) => value.id === id,
+                );
+                if (!file)
+                  throw new StagingServiceError(
+                    404,
+                    "staging_attachment_not_found",
+                  );
+                return readPrivateAttachment(
+                  actor.companyId,
+                  file as Parameters<typeof readPrivateAttachment>[1],
+                );
+              })();
+        return new Response(Buffer.from(result.bytes), {
+          headers: {
+            "Content-Type": result.mime,
+            "Cache-Control": "no-store, private",
+            "X-Content-Type-Options": "nosniff",
+            "Content-Disposition": `attachment; filename="${result.name.replace(/[^a-zA-Z0-9._-]/g, "_")}"`,
+          },
+        });
+      }
       const snapshot = () =>
         workspace === "manager"
           ? {
               db: sharedManagerView(state, sharedActor(actor)),
               version: loaded.version,
+              accountantBills:
+                actor.role === "site_staff"
+                  ? []
+                  : selectedSnapshot(state.finance, reportSelection(url))
+                      .bills.filter(
+                        (b) =>
+                          !state.manager.operations!.bills.some(
+                            (native) => native.id === b.id,
+                          ) &&
+                          (actor.role === "owner_admin" ||
+                            (b.projectId &&
+                              actor.projectIds.includes(b.projectId))),
+                      )
+                      .map((b) => ({
+                        id: b.id,
+                        reference: b.invoiceReference || b.id,
+                        party: b.party,
+                        projectId: b.projectId,
+                        date: b.date,
+                        due: b.due,
+                        status: b.cancellationDate ? "Cancelled" : b.status,
+                        amountFils: b.amountFils,
+                        outstandingFils: b.outstandingFils,
+                      })),
               expenseSubmissions: sharedExpenseSubmissions(
                 state,
                 sharedActor(actor),
@@ -332,14 +436,21 @@ export function createStagingHandler(
           snapshot: snapshot(),
         });
       } else {
+        stage = "validate";
         const scope = sharedCommandScope(state, command);
         const next = applySharedCommand(state, command, sharedActor(actor));
+        if (workspace === "manager") {
+          stage = "private-file";
+          await prepareManagerFiles(state, next, sharedActor(actor));
+        }
+        selectedSnapshot(next.finance, reportSelection(url));
         for (let i = 0; i < next.finance.attachments.length; i++)
           if (next.finance.attachments[i].data)
             next.finance.attachments[i] = await storePrivateAttachment(
               actor.companyId,
               next.finance.attachments[i],
             );
+        stage = "commit";
         await commit(next, scope);
       }
       actor = await auth.requireActor(request, workspace);
@@ -368,18 +479,49 @@ export function createStagingHandler(
               typeof error.status === "number"
             ? error.status
             : 400;
-      return json(status, {
-        error:
-          status === 409
-            ? "Staging data changed. Your changes are unconfirmed; refresh before retrying with a new action."
-            : status === 401
-              ? "Sign in to continue."
-              : status === 403
-                ? "This action is not permitted."
-                : status >= 500
-                  ? "The staging service is unavailable. No success has been confirmed."
-                  : "Review the entered fields and try again.",
-      });
+      console.warn(
+        JSON.stringify({
+          event: "staging_request_failed",
+          requestId,
+          stage,
+          status,
+          code:
+            error instanceof StagingServiceError ||
+            error instanceof StagingPolicyError
+              ? error.code
+              : "request_rejected",
+          elapsedMs: Math.round(performance.now() - started),
+        }),
+      );
+      if (error instanceof StagingPolicyError)
+        return new Response(
+          JSON.stringify({ error: error.message, code: error.code, requestId }),
+          {
+            status: error.status,
+            headers: {
+              "Content-Type": "application/json",
+              "Cache-Control": "no-store, private",
+              "X-Azzora-Request-ID": requestId,
+            },
+          },
+        );
+      return json(
+        status,
+        {
+          requestId,
+          error:
+            status === 409
+              ? "Staging data changed. Your changes are unconfirmed; refresh before retrying with a new action."
+              : status === 401
+                ? "Sign in to continue."
+                : status === 403
+                  ? "This action is not permitted."
+                  : status >= 500
+                    ? "The staging service is unavailable. No success has been confirmed."
+                    : "Review the entered fields and try again.",
+        },
+        requestId,
+      );
     }
   };
 }

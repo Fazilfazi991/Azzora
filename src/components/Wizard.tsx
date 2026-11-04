@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useStore, runStoreCommand } from "../store";
+import { canStoreAction, useStoreCommand } from "../store";
 import type { Project, Database } from "../domain/model";
 import {
   roles,
@@ -28,6 +28,7 @@ export function Wizard({
   initialLocation = "",
   lockedCustomer = false,
   afterCreate,
+  quotationId,
 }: {
   onClose: () => void;
   onCreated: (id: string) => void;
@@ -36,8 +37,9 @@ export function Wizard({
   initialLocation?: string;
   lockedCustomer?: boolean;
   afterCreate?: (db: Database, project: Project) => void;
+  quotationId?: string;
 }) {
-  const store = useStore(),
+  const { store, run, pending } = useStoreCommand(),
     { db } = store;
   const [step, setStep] = useState(0);
   const [p, setP] = useState<Project>({
@@ -123,11 +125,11 @@ export function Wizard({
     }
     const created = { ...p, status: draft ? "Draft" : "Active" } as Project;
     if (
-      await runStoreCommand(
-        store,
+      await run(
         "project.create",
         {
           project: created,
+          ...(quotationId ? { quotationId } : {}),
           clientName: client,
           clientContact: contact,
           team,
@@ -153,13 +155,16 @@ export function Wizard({
             : "Project created with connected plan and team",
       )
     ) {
-      if (store.mode === "staging" && afterCreate)
-        store.mutate((d) => afterCreate(d, created));
       onCreated(p.id);
     }
   }
   return (
-    <Modal title="New Project" onClose={onClose}>
+    <Modal
+      title="New Project"
+      onClose={() => {
+        if (!pending) onClose();
+      }}
+    >
       <div className="wizard-steps">
         {[
           "Details",
@@ -174,6 +179,8 @@ export function Wizard({
         ))}
       </div>
       <form
+        aria-busy={pending}
+        inert={pending}
         onSubmit={(e) => {
           e.preventDefault();
           if (step < 4) next();
@@ -511,11 +518,18 @@ export function Wizard({
             </button>
           )}
           {step === 4 && (
-            <button type="button" onClick={() => create(true)}>
+            <button
+              type="button"
+              disabled={pending || !canStoreAction(store, "project.write")}
+              onClick={() => create(true)}
+            >
               Save as Draft
             </button>
           )}
-          <button className="primary">
+          <button
+            className="primary"
+            disabled={pending || !canStoreAction(store, "project.write")}
+          >
             {step === 4 ? "Create Project" : "Continue →"}
           </button>
         </div>

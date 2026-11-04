@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Task } from "../domain/model";
 import { taskStatuses, priorities } from "../domain/model";
-import { useStore } from "../store";
+import { canStoreAction, useStore } from "../store";
 import { blankTask } from "../domain/seed";
 import {
   taskProgress,
@@ -56,7 +56,8 @@ export function Tasks({
   projectId?: string;
   onTask: (t: Task) => void;
 }) {
-  const { db } = useStore();
+  const store = useStore(),
+    { db } = store;
   const [project, setProject] = useState(projectId || "");
   const [status, setStatus] = useState("");
   const [assignee, setAssignee] = useState("");
@@ -74,19 +75,20 @@ export function Tasks({
       (!priority || t.priority === priority) &&
       (!assignee || t.assigneeId === assignee) &&
       (!due || t.due <= due) &&
-      (!mine || t.assigneeId === "person-0") &&
+      (!mine ||
+        t.assigneeId ===
+          (store.mode === "staging" ? store.actor?.personId : "person-0")) &&
       t.name.toLowerCase().includes(search.toLowerCase()),
   );
+  const creationProject =
+    db.projects.find((p) => p.id === project) || db.projects[0];
+  const creationPhase = db.phases.find(
+    (phase) => phase.projectId === creationProject?.id,
+  );
   function create() {
-    const p = db.projects.find((p) => p.id === project) || db.projects[0];
-    if (p)
-      onTask(
-        blankTask(
-          p.id,
-          db.phases.find((ph) => ph.projectId === p.id)!.id,
-          p.managerId,
-        ),
-      );
+    const p = creationProject;
+    if (p && creationPhase)
+      onTask(blankTask(p.id, creationPhase.id, p.managerId));
   }
   return (
     <>
@@ -94,11 +96,33 @@ export function Tasks({
         title="Task Workspace"
         description="One shared task register across all project operations."
         action={
-          <button className="primary" onClick={create}>
+          <button
+            className="primary"
+            disabled={
+              store.mode === "staging" &&
+              (!canStoreAction(store, "project.write") || !creationPhase)
+            }
+            onClick={create}
+          >
             + Create Task
           </button>
         }
       />
+      {store.mode === "staging" && !creationPhase && (
+        <p className="muted">
+          Create or review the project's plan phases in{" "}
+          <a
+            href={
+              creationProject
+                ? `#/projects/${creationProject.id}/timeline`
+                : "#/planning"
+            }
+          >
+            Planning
+          </a>{" "}
+          before creating tasks.
+        </p>
+      )}
       <div className="tabs">
         <button
           className={!mine ? "active" : ""}

@@ -3,6 +3,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { createSharedCompanyState } from "./domain";
 import { hydrateCanonical, serializeCanonical } from "./canonical";
 import type { Person } from "../domain/model";
+import {reverseJournal} from "../accounting/core";
 
 interface Database {
   exec(sql: string): Promise<unknown>;
@@ -188,4 +189,46 @@ it("retains immutable journal history on subsequent nonfinancial writes", async 
       )
     ).rows[0].n,
   ).toBe(2);
+});
+
+async function reversalData(){
+ const value=(await db.query("select public.staging_company_read($1,'manager') result",[hash])).rows[0].result as {data:Parameters<typeof hydrateCanonical>[0]};
+ const state=hydrateCanonical(value.data);
+ state.finance.accounting=reverseJournal(state.finance.accounting,{id:"reverse-opening-test",postingKey:"staging:reverse-opening-test",originalId:"staging-opening",date:"2026-11-04",recordedAt:"2026-11-04T12:00:00.000Z",reason:"Fictional rollback guard test"}).state;
+ return serializeCanonical(state);
+}
+async function commitReversal(data:ReturnType<typeof serializeCanonical>,key:string){
+ return db.query("select public.staging_company_commit($1,2,$2,$3,'invoice.cancel',$4::jsonb,$5::jsonb,false) result",[hash,key,"d".repeat(64),JSON.stringify({workspace:"manager",financial:true}),JSON.stringify(data)]);
+}
+it("rolls back a balanced reversal that does not mirror its immutable original",async()=>{
+ const data=await reversalData(),reversal=data.journals.find(v=>v.reversal_of)!;
+ for(const line of reversal.lines){if(line.debit_fils!=="0")line.debit_fils=(BigInt(line.debit_fils)-1n).toString();if(line.credit_fils!=="0")line.credit_fils=(BigInt(line.credit_fils)-1n).toString();}
+ await expect(commitReversal(data,"bad-mirror-test-0001")).rejects.toThrow("mirror immutable");
+ expect((await db.query("select version::int n from azzora.companies where id=$1",[company])).rows[0].n).toBe(2);
+ expect((await db.query("select count(*)::int n from azzora.journals")).rows[0].n).toBe(1);
+});
+it("persists one exact append-only reversal and its original across SQL JSONB reload",async()=>{
+ const result=await commitReversal(await reversalData(),"valid-mirror-test-001");
+ expect(result.rows[0].result).toEqual({version:3,replayed:false});
+ const raw=(await db.query("select public.staging_company_read($1,'manager') result",[hash])).rows[0].result as {data:Parameters<typeof hydrateCanonical>[0]};
+ const identity=(row:unknown)=>{const v=row as Record<string,unknown>;return [v.entity_type||"",v.id||v.entity_id||"",v.revision||""].join(":");};
+ const normalize=(data:typeof raw.data)=>Object.fromEntries(Object.entries(data).map(([key,rows])=>[key,[...rows].sort((a,b)=>identity(a).localeCompare(identity(b)))]));
+ expect(normalize(serializeCanonical(hydrateCanonical(raw.data)))).toEqual(normalize(raw.data));
+ expect(hydrateCanonical(raw.data).finance.accounting.journals.find(v=>v.id==="reverse-opening-test")?.reversalOf).toBe("staging-opening");
+});
+
+it("gives verified Owner company administration while PM remains assignment-scoped",async()=>{
+ await db.query("insert into azzora.projects(company_id,id,payload) values($1,'owner-unassigned','{\"manager\":{\"id\":\"owner-unassigned\"}}')",[company]);
+ await db.query("insert into azzora.companies(id,name) values('22222222-2222-4222-8222-222222222222','Other fictional tenant')");
+ await db.query("insert into azzora.projects(company_id,id,payload) values('22222222-2222-4222-8222-222222222222','foreign-project','{}')");
+ const o=(await db.query("select public.staging_auth_actor($1) a",[hash])).rows[0].a as {projectIds:string[]};
+ expect(o.projectIds).toContain("owner-unassigned");expect(o.projectIds).not.toContain("foreign-project");
+ const pm="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",ps="eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",ph="f".repeat(64);
+ await db.query("insert into auth.users(id,email,raw_app_meta_data,email_confirmed_at) values($1,'manager@staging.azzora.test','{\"azzora_scope\":\"fictional-staging\"}',now())",[pm]);
+ await db.query("insert into auth.sessions values($1,$2,'aal1',now()+interval '1 day')",[ps,pm]);
+ await db.query("select public.staging_auth_fixture_membership($1,$2,'project_manager')",[pm,company]);
+ await db.query("select public.staging_auth_session_put($1,$2,$3,$4,$5,'manager','aal1','local-fixture-encrypted')",[ph,"e".repeat(64),pm,ps,company]);
+ const m=(await db.query("select public.staging_auth_actor($1) a",[ph])).rows[0].a as {projectIds:string[];capabilities:string[]};
+ expect(m.projectIds).toEqual([]);expect(m.capabilities).toContain("document.submit");
+ await expect(db.query("select public.staging_company_commit($1,3,'unassigned-command-01',$2,'site.save',$3::jsonb,'{}'::jsonb,false)",[ph,"d".repeat(64),JSON.stringify({workspace:"manager",projectId:"owner-unassigned",financial:false})])).rejects.toThrow("Assigned project required");
 });

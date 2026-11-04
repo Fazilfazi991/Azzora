@@ -405,7 +405,9 @@ export function sourceFingerprint(db: Database, projectId: string): string {
       completedAt: row.completedAt,
     })).sort((a, b) => a.id.localeCompare(b.id)),
     milestones: db.milestones.filter((row) => row.projectId === projectId).map((row) => ({ id: row.id, due: row.due })).sort((a, b) => a.id.localeCompare(b.id)),
-  });
+  }, (_key, value: unknown) => value && typeof value === "object" && !Array.isArray(value)
+    ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)))
+    : value);
   // Deterministic fingerprint; no secret material or security claim.
   let hash = 2166136261;
   for (let i = 0; i < data.length; i++) hash = Math.imul(hash ^ data.charCodeAt(i), 16777619);

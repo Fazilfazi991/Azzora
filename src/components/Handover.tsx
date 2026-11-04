@@ -1,25 +1,35 @@
 import { useState } from "react";
-import { useStore } from "../store";
+import { canStoreAction, useStoreCommand } from "../store";
 import { handoverState } from "../domain/logic";
 import { record, completeProject } from "../domain/repository";
-import { Header, Progress, Badge, Confirm, Field } from "./ui";
+import { Header, Progress, Badge, Confirm, Field, Empty } from "./ui";
 import { ActorField, WorkflowError } from "../workforce/ui";
 import { operationalReadiness } from "../workforce/readiness";
 import "../workforce/workforce.css";
 import { CommercialClosure } from "../operations/Closure";
 import { closureSummary } from "../operations/closure-domain";
 export function Handover({ projectId }: { projectId?: string }) {
-  const { db, mutate } = useStore();
-  const [selected, setSelected] = useState(projectId || db.projects[0].id);
+  const { store, run, pending } = useStoreCommand(),
+    { db } = store;
+  const [selected, setSelected] = useState(
+    projectId || db.projects[0]?.id || "",
+  );
   const [confirm, setConfirm] = useState(false);
   const [actor, setActor] = useState("");
   const [note, setNote] = useState("");
+  const p = db.projects.find((p) => p.id === selected);
+  if (!p)
+    return (
+      <>
+        <Header title="Project Handover" />
+        <Empty>Select an existing project to review handover.</Empty>
+      </>
+    );
   const state = handoverState(db, selected);
   const financialBlock =
     !!db.operations?.settings.blockOperationalForFinance &&
     !closureSummary(db, selected).commercialClear;
   const operational = operationalReadiness(db, selected);
-  const p = db.projects.find((p) => p.id === selected)!;
   return (
     <>
       <Header
@@ -68,26 +78,33 @@ export function Handover({ projectId }: { projectId?: string }) {
                     type="checkbox"
                     checked={h.complete}
                     disabled={
+                      pending ||
+                      !canStoreAction(store, "project.write") ||
                       !!h.automatic ||
                       h.id.startsWith("operational-") ||
                       p.status === "Completed"
                     }
-                    onChange={(e) =>
-                      mutate((d) => {
-                        d.handover.find((x) => x.id === h.id)!.complete =
-                          e.target.checked;
-                        record(
-                          d,
-                          selected,
-                          "HandoverItem",
-                          h.id,
-                          "Handover item updated",
-                          h.name +
-                            " · " +
-                            (e.target.checked ? "Complete" : "Incomplete"),
-                        );
-                      })
-                    }
+                    onChange={(e) => {
+                      const complete = e.target.checked;
+                      void run(
+                        "handover.check",
+                        { id: h.id, complete },
+                        (d) => {
+                          d.handover.find((x) => x.id === h.id)!.complete =
+                            complete;
+                          record(
+                            d,
+                            selected,
+                            "HandoverItem",
+                            h.id,
+                            "Handover item updated",
+                            h.name +
+                              " · " +
+                              (complete ? "Complete" : "Incomplete"),
+                          );
+                        },
+                      );
+                    }}
                   />
                   <span>
                     {h.name}
@@ -149,7 +166,12 @@ export function Handover({ projectId }: { projectId?: string }) {
       </section>
       <button
         className="primary"
-        disabled={!state.ready || financialBlock || p.status === "Completed"}
+        disabled={
+          !canStoreAction(store, "project.write") ||
+          !state.ready ||
+          financialBlock ||
+          p.status === "Completed"
+        }
         onClick={() => {
           setActor("");
           setNote("");
@@ -168,10 +190,14 @@ export function Handover({ projectId }: { projectId?: string }) {
       {confirm && (
         <Confirm
           title="Complete this project?"
-          onClose={() => setConfirm(false)}
-          onConfirm={() => {
+          onClose={() => {
+            if (!pending) setConfirm(false);
+          }}
+          onConfirm={async () => {
             if (
-              mutate(
+              await run(
+                "project.complete",
+                { id: selected, reason: note },
                 (d) => completeProject(d, selected, actor, note),
                 "Project completed",
               )
@@ -188,7 +214,11 @@ export function Handover({ projectId }: { projectId?: string }) {
             onChange={setActor}
           />
           <Field label="Handover confirmation note">
-            <textarea value={note} onChange={(e) => setNote(e.target.value)} />
+            <textarea
+              disabled={pending}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
           </Field>
         </Confirm>
       )}

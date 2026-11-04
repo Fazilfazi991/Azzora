@@ -88,7 +88,7 @@ export function Decision({
   actor: string;
 }) {
   const store = useStore(),
-    { db, mutate } = store;
+    { db } = store;
   const [comments, setComments] = useState("");
   const a = activeApprovals(db).find(
     (a) => a.entityId === entityId && a.status === "Pending Approval",
@@ -136,19 +136,25 @@ export function Decision({
         >
           Reject / Revise
         </button>
-        {store.mode !== "staging" && a.approverId !== actor && (
-          <button
-            disabled={!comments.trim()}
-            onClick={() =>
-              mutate(
-                (d) => reassignApproval(d, a.id, actor, comments, actor),
-                "Demo approver reassigned",
-              )
-            }
-          >
-            Assign this demo actor
-          </button>
-        )}
+        {(store.mode !== "staging" || store.actor?.role === "owner_admin") &&
+          a.approverId !== actor && (
+            <button
+              disabled={!comments.trim()}
+              onClick={() =>
+                runStoreCommand(
+                  store,
+                  "approval.reassign",
+                  { id: a.id, approverId: actor, reason: comments },
+                  (d) => reassignApproval(d, a.id, actor, comments, actor),
+                  "Approver reassigned",
+                )
+              }
+            >
+              {store.mode === "staging"
+                ? "Assign this approver to me"
+                : "Assign this demo actor"}
+            </button>
+          )}
       </div>
     </div>
   );

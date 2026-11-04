@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Person } from "../domain/model";
 import { uid } from "../domain/logic";
-import { useStore } from "../store";
+import { canStoreAction, useStoreCommand } from "../store";
 import { Field, Modal } from "../components/ui";
 import { ActorField, WorkflowError } from "./ui";
 import { saveEmployee, setEmployeeActive } from "./commands";
@@ -13,7 +13,8 @@ export function EmployeeEditor({
   employee?: Person;
   onClose: () => void;
 }) {
-  const { db, mutate } = useStore();
+  const { store, run, pending } = useStoreCommand(),
+    { db } = store;
   const [draft, setDraft] = useState<Person>(() =>
     employee
       ? structuredClone(employee)
@@ -35,12 +36,23 @@ export function EmployeeEditor({
   return (
     <Modal
       title={existing ? "Edit Employee" : "Add Employee"}
-      onClose={onClose}
+      onClose={() => {
+        if (!pending) onClose();
+      }}
     >
       <form
-        onSubmit={(e) => {
+        aria-busy={pending}
+        inert={pending}
+        onSubmit={async (e) => {
           e.preventDefault();
-          if (mutate((d) => saveEmployee(d, draft, actor), "Employee saved"))
+          if (
+            await run(
+              "employee.save",
+              { employee: draft },
+              (d) => saveEmployee(d, draft, actor),
+              "Employee saved",
+            )
+          )
             onClose();
         }}
       >
@@ -57,6 +69,9 @@ export function EmployeeEditor({
           ).map(([key, label]) => (
             <Field key={key} label={label}>
               <input
+                readOnly={
+                  store.mode === "staging" && existing && key === "email"
+                }
                 required={["name", "email", "department", "role"].includes(key)}
                 type={
                   key === "email" ? "email" : key === "phone" ? "tel" : "text"
@@ -102,8 +117,20 @@ export function EmployeeEditor({
           />
         </Field>
         <ActorField value={actor} onChange={setActor} />
+        {store.mode === "staging" && (
+          <p className="muted">
+            Employee role labels describe staffing and do not grant sign-in
+            permissions. Existing login email changes require the identity
+            administration workflow.
+          </p>
+        )}
         <WorkflowError />
-        <button className="primary">Save Employee</button>
+        <button
+          className="primary"
+          disabled={pending || !canStoreAction(store, "access.manage")}
+        >
+          Save Employee
+        </button>
       </form>
     </Modal>
   );
@@ -115,21 +142,27 @@ export function EmployeeStatus({
   employee: Person;
   onClose: () => void;
 }) {
-  const { mutate } = useStore();
+  const { store, run, pending } = useStoreCommand();
   const [actor, setActor] = useState("");
   const [reason, setReason] = useState("");
   const active = employee.status === "Inactive";
   return (
     <Modal
       title={active ? "Reactivate Employee" : "Deactivate Employee"}
-      onClose={onClose}
+      onClose={() => {
+        if (!pending) onClose();
+      }}
     >
       <form
-        onSubmit={(e) => {
+        aria-busy={pending}
+        inert={pending}
+        onSubmit={async (e) => {
           e.preventDefault();
           if (
-            mutate((d) =>
-              setEmployeeActive(d, employee.id, active, actor, reason),
+            await run(
+              "employee.status",
+              { id: employee.id, active, reason },
+              (d) => setEmployeeActive(d, employee.id, active, actor, reason),
             )
           )
             onClose();
@@ -147,7 +180,10 @@ export function EmployeeStatus({
             onChange={(e) => setReason(e.target.value)}
           />
         </Field>
-        <button className="primary">
+        <button
+          className="primary"
+          disabled={pending || !canStoreAction(store, "access.manage")}
+        >
           {active ? "Reactivate" : "Deactivate"}
         </button>
         <WorkflowError />

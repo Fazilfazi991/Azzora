@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useStore } from "../store";
+import { useStoreCommand } from "../store";
 import { Header, Field, Modal, Badge, Empty } from "../components/ui";
 import { DataTable } from "../commercial/Registers";
 import {
@@ -32,7 +32,8 @@ export function Credits({
   id?: string;
   startNew?: boolean;
 }) {
-  const { db, mutate } = useStore(),
+  const { store, run, pending } = useStoreCommand(),
+    { db } = store,
     op = getOperations(db),
     actors = useActors();
   const [credit, setCredit] = useState<CreditNote | null>(() =>
@@ -180,16 +181,25 @@ export function Credits({
                       </button>
                       <button
                         onClick={() =>
-                          mutate((d) => {
-                            submitApproval(
-                              d,
-                              "Credit Note",
-                              c.id,
-                              "Credit authorization",
-                              actors.actor,
-                              actors.approver,
-                            );
-                          })
+                          run(
+                            "procurement.submit",
+                            {
+                              kind: "Credit Note",
+                              entityId: c.id,
+                              stage: "Credit authorization",
+                              approverId: actors.approver,
+                            },
+                            (d) => {
+                              submitApproval(
+                                d,
+                                "Credit Note",
+                                c.id,
+                                "Credit authorization",
+                                actors.actor,
+                                actors.approver,
+                              );
+                            },
+                          )
                         }
                       >
                         Submit Credit Note
@@ -200,7 +210,7 @@ export function Credits({
                     <button
                       className="primary"
                       onClick={() =>
-                        mutate((d) => {
+                        run("credit.issue", { id: c.id }, (d) => {
                           issueCredit(d, c.id, actors.actor);
                         })
                       }
@@ -275,12 +285,17 @@ export function Credits({
           ])}
       />
       {credit && (
-        <Modal title="Credit Note Draft" onClose={() => setCredit(null)}>
+        <Modal
+          title="Credit Note Draft"
+          onClose={() => {
+            if (!pending) setCredit(null);
+          }}
+        >
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               if (
-                mutate((d) => {
+                await run("credit.save", { credit }, (d) => {
                   saveCredit(d, credit, actors.actor);
                 })
               )
@@ -402,12 +417,17 @@ export function Credits({
         </Modal>
       )}
       {refund && (
-        <Modal title="Customer Refund" onClose={() => setRefund(null)}>
+        <Modal
+          title="Customer Refund"
+          onClose={() => {
+            if (!pending) setRefund(null);
+          }}
+        >
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               if (
-                mutate((d) => {
+                await run("refund.post", { refund }, (d) => {
                   postRefund(d, refund, actors.actor);
                 })
               )
@@ -415,6 +435,13 @@ export function Credits({
               else setFailedAttempts((attempt) => attempt + 1);
             }}
           >
+            {store.mode === "staging" && (
+              <p role="status">
+                Refund and customer-credit ledger treatment await
+                Owner/Accountant policy approval. Posting is blocked in shared
+                staging.
+              </p>
+            )}
             <Field label="Refund invoice">
               <select
                 required
@@ -479,26 +506,39 @@ export function Credits({
               </Empty>
             )}
             <FinancialDialogError attempt={failedAttempts} />
-            <button className="primary" disabled={!refund.invoiceId}>
+            <button
+              className="primary"
+              disabled={
+                pending || !refund.invoiceId || store.mode === "staging"
+              }
+            >
               Post Customer Refund
             </button>
           </form>
         </Modal>
       )}
       {reverse && (
-        <Modal title="Reverse Refund" onClose={() => setReverse("")}>
+        <Modal
+          title="Reverse Refund"
+          onClose={() => {
+            if (!pending) setReverse("");
+          }}
+        >
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               const data = new FormData(e.currentTarget);
               if (
-                mutate((d) =>
-                  reverseRefund(
-                    d,
-                    reverse,
-                    String(data.get("reason")),
-                    actors.actor,
-                  ),
+                await run(
+                  "refund.reverse",
+                  { id: reverse, reason: String(data.get("reason")) },
+                  (d) =>
+                    reverseRefund(
+                      d,
+                      reverse,
+                      String(data.get("reason")),
+                      actors.actor,
+                    ),
                 )
               )
                 setReverse("");

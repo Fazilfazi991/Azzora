@@ -20,7 +20,15 @@ export function ActorField({
   onChange: (id: string) => void;
   label?: string;
 }) {
-  const { db } = useStore();
+  const store = useStore(),
+    { db } = store;
+  if (store.mode === "staging")
+    return (
+      <p className="muted" role="note">
+        Signed in as {store.actor?.email}. The server checks this individual
+        account's permissions and records the acting user.
+      </p>
+    );
   return (
     <Field label={label}>
       <select required value={value} onChange={(e) => onChange(e.target.value)}>

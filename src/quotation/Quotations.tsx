@@ -558,6 +558,7 @@ export function Quotations({
       )}
       {addProject && q && (
         <Wizard
+          quotationId={q.id}
           initialCustomerId={q.customerId}
           initialName={q.projectId ? "" : q.project.name}
           initialLocation={q.projectId ? "" : q.project.location}

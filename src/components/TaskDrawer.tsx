@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Task } from "../domain/model";
 import { priorities, taskStatuses, trades } from "../domain/model";
-import { useStore } from "../store";
+import { canStoreAction, useStoreCommand } from "../store";
 import { saveTask } from "../domain/repository";
 import { today, uid } from "../domain/logic";
 import { Modal, Field, Empty, personName } from "./ui";
@@ -26,33 +26,57 @@ export function TaskDrawer({
   task: Task;
   onClose: () => void;
 }) {
-  const { db, mutate } = useStore();
+  const { store, run, pending } = useStoreCommand(),
+    { db } = store;
   const [draft, setDraft] = useState(structuredClone(task));
   const [comment, setComment] = useState("");
   const [scheduleReason, setScheduleReason] = useState("");
   const [progressNote, setProgressNote] = useState("");
   const [progressDate, setProgressDate] = useState(today());
   const [allowEarlier, setAllowEarlier] = useState(false);
-  const [links, setLinks] = useState<DependencyLink[]>(() => structuredClone(getProjectPlanning(db, task.projectId).links));
+  const [links, setLinks] = useState<DependencyLink[]>(() =>
+    structuredClone(getProjectPlanning(db, task.projectId).links),
+  );
   const initialPlanning = getProjectPlanning(db, task.projectId);
-  const initialTaskPlanning = initialPlanning.taskPlanning.find((item) => item.taskId === task.id);
-  const [constraint, setConstraintDraft] = useState<TaskPlanning | undefined>(initialTaskPlanning ? structuredClone(initialTaskPlanning) : undefined);
+  const initialTaskPlanning = initialPlanning.taskPlanning.find(
+    (item) => item.taskId === task.id,
+  );
+  const [constraint, setConstraintDraft] = useState<TaskPlanning | undefined>(
+    initialTaskPlanning ? structuredClone(initialTaskPlanning) : undefined,
+  );
   const children = db.tasks.filter((t) => t.parentId === task.id);
   const existing = db.tasks.some((item) => item.id === task.id);
+  const planningReadOnly =
+    store.mode === "staging" && !canStoreAction(store, "project.write");
+  const canSave =
+    canStoreAction(store, "project.write") ||
+    (existing &&
+      canStoreAction(store, "task.update") &&
+      task.assigneeId === store.actor?.personId);
   const project = db.projects.find((item) => item.id === task.projectId);
   const planningView = getPlanningView(db, task.projectId);
-  const incoming = links.filter((link) => link.successor.kind === "task" && link.successor.id === task.id);
-  const predecessorOptions = db.tasks.filter((item) => item.projectId === task.projectId && item.id !== task.id);
+  const incoming = links.filter(
+    (link) => link.successor.kind === "task" && link.successor.id === task.id,
+  );
+  const predecessorOptions = db.tasks.filter(
+    (item) => item.projectId === task.projectId && item.id !== task.id,
+  );
   const dateChanged = draft.start !== task.start || draft.due !== task.due;
-  const linksChanged = JSON.stringify(links) !== JSON.stringify(initialPlanning.links);
-  const constraintsChanged = JSON.stringify(constraint) !== JSON.stringify(initialTaskPlanning);
-  const needsProposal = existing && (dateChanged || linksChanged || constraintsChanged);
-  const setConstraint = <K extends keyof TaskPlanning>(key: K, value: TaskPlanning[K]) => {
+  const linksChanged =
+    JSON.stringify(links) !== JSON.stringify(initialPlanning.links);
+  const constraintsChanged =
+    JSON.stringify(constraint) !== JSON.stringify(initialTaskPlanning);
+  const needsProposal =
+    existing && (dateChanged || linksChanged || constraintsChanged);
+  const setConstraint = <K extends keyof TaskPlanning>(
+    key: K,
+    value: TaskPlanning[K],
+  ) => {
     if (constraint) setConstraintDraft({ ...constraint, [key]: value });
   };
   const set = <K extends keyof Task>(key: K, value: Task[K]) =>
     setDraft({ ...draft, [key]: value });
-  function save(complete = false) {
+  async function save(complete = false) {
     const updated = {
       ...draft,
       status: complete ? ("Completed" as const) : draft.status,
@@ -68,46 +92,107 @@ export function TaskDrawer({
           createdAt: new Date().toISOString(),
         },
       ];
-    const progressChanged = existing && (updated.progress !== task.progress || (complete && task.status !== "Completed"));
-    if ((needsProposal || !existing) && scheduleReason.trim().length < 3) return;
+    const progressChanged =
+      existing &&
+      (updated.progress !== task.progress ||
+        (store.mode === "staging" && updated.status !== task.status) ||
+        (complete && task.status !== "Completed"));
+    if ((needsProposal || !existing) && scheduleReason.trim().length < 3)
+      return;
     if (progressChanged && progressNote.trim().length < 3) return;
-    const saved = mutate((next) => {
-      if (!existing) {
-        draftTaskCreation(next, { ...updated, dependencies: [] }, scheduleReason, project?.managerId || "");
-        return;
-      }
-      if (children.length && complete) {
-        next.tasks.filter((item) => item.parentId === task.id).forEach((item) => {
-          if (item.progress < 100) {
-            saveTask(next, { ...item, status: "Completed", progress: 100 });
-            reportTaskProgress(next, item.id, 100, progressDate, project?.managerId || "", progressNote);
-          }
+    const saved = await run(
+      "task.save",
+      {
+        task: draft,
+        comment,
+        complete,
+        scheduleReason,
+        progressNote,
+        progressDate,
+        links,
+        constraint,
+        allowEarlier,
+      },
+      (next) => {
+        if (!existing) {
+          draftTaskCreation(
+            next,
+            { ...updated, dependencies: [] },
+            scheduleReason,
+            project?.managerId || "",
+          );
+          return;
+        }
+        if (children.length && complete) {
+          next.tasks
+            .filter((item) => item.parentId === task.id)
+            .forEach((item) => {
+              if (item.progress < 100) {
+                saveTask(next, { ...item, status: "Completed", progress: 100 });
+                reportTaskProgress(
+                  next,
+                  item.id,
+                  100,
+                  progressDate,
+                  project?.managerId || "",
+                  progressNote,
+                );
+              }
+            });
+        }
+        saveTask(next, {
+          ...updated,
+          start: task.start,
+          due: task.due,
+          dependencies: task.dependencies,
         });
-      }
-      saveTask(next, { ...updated, start: task.start, due: task.due, dependencies: task.dependencies });
-      if (progressChanged) reportTaskProgress(next, task.id, updated.progress, progressDate, project?.managerId || "", progressNote);
-      if (needsProposal) {
-        const projectPlanning = getProjectPlanning(next, task.projectId);
-        const inferredDuration = inclusiveWorkingDuration(projectPlanning.calendar, draft.start, draft.due);
-        const nextTaskPlanning = constraint
-          ? projectPlanning.taskPlanning.map((item) => item.taskId === task.id ? constraint : item)
-          : undefined;
-        draftScheduleProposal(next, {
-          projectId: task.projectId,
-          initiatingNode: { kind: "task", id: task.id },
-          reason: scheduleReason,
-          actorId: project?.managerId || "",
-          edit: {
-            ...(draft.start !== task.start ? { start: draft.start } : {}),
-            ...(draft.due !== task.due ? { finish: draft.due } : {}),
-            ...(draft.start !== task.start && draft.due !== task.due && inferredDuration ? { durationWorkingDays: inferredDuration } : {}),
-            ...(linksChanged ? { links } : {}),
-            ...(constraintsChanged && nextTaskPlanning ? { taskPlanning: nextTaskPlanning } : {}),
-          },
-          considerEarlierDates: allowEarlier,
-        });
-      }
-    }, needsProposal || !existing ? "Schedule proposal drafted for review" : "Task saved");
+        if (progressChanged)
+          reportTaskProgress(
+            next,
+            task.id,
+            updated.progress,
+            progressDate,
+            project?.managerId || "",
+            progressNote,
+          );
+        if (needsProposal) {
+          const projectPlanning = getProjectPlanning(next, task.projectId);
+          const inferredDuration = inclusiveWorkingDuration(
+            projectPlanning.calendar,
+            draft.start,
+            draft.due,
+          );
+          const nextTaskPlanning = constraint
+            ? projectPlanning.taskPlanning.map((item) =>
+                item.taskId === task.id ? constraint : item,
+              )
+            : undefined;
+          draftScheduleProposal(next, {
+            projectId: task.projectId,
+            initiatingNode: { kind: "task", id: task.id },
+            reason: scheduleReason,
+            actorId: project?.managerId || "",
+            edit: {
+              ...(draft.start !== task.start ? { start: draft.start } : {}),
+              ...(draft.due !== task.due ? { finish: draft.due } : {}),
+              ...(draft.start !== task.start &&
+              draft.due !== task.due &&
+              inferredDuration
+                ? { durationWorkingDays: inferredDuration }
+                : {}),
+              ...(linksChanged ? { links } : {}),
+              ...(constraintsChanged && nextTaskPlanning
+                ? { taskPlanning: nextTaskPlanning }
+                : {}),
+            },
+            considerEarlierDates: allowEarlier,
+          });
+        }
+      },
+      needsProposal || !existing
+        ? "Schedule proposal drafted for review"
+        : "Task saved",
+    );
     if (saved) onClose();
   }
   return (
@@ -118,16 +203,21 @@ export function TaskDrawer({
           ? "Task specification"
           : "Create task"
       }
-      onClose={onClose}
+      onClose={() => {
+        if (!pending) onClose();
+      }}
     >
       <form
+        aria-busy={pending}
+        inert={pending}
         onSubmit={(e) => {
           e.preventDefault();
-          save();
+          void save();
         }}
       >
         <Field label="Task name">
           <input
+            readOnly={planningReadOnly}
             required
             minLength={2}
             value={draft.name}
@@ -137,8 +227,15 @@ export function TaskDrawer({
         <p className="muted">
           {db.projects.find((p) => p.id === task.projectId)?.name}
         </p>
+        {planningReadOnly && (
+          <p className="muted">
+            You can report progress, notes and evidence for your assigned task.
+            A Project Manager changes its planning fields and approved schedule.
+          </p>
+        )}
         <Field label="Phase">
           <select
+            disabled={planningReadOnly}
             value={draft.phaseId}
             onChange={(e) => {
               setDraft({
@@ -159,6 +256,7 @@ export function TaskDrawer({
         </Field>
         <Field label="Parent task (optional)">
           <select
+            disabled={planningReadOnly}
             value={draft.parentId || ""}
             onChange={(e) => set("parentId", e.target.value || undefined)}
           >
@@ -186,6 +284,7 @@ export function TaskDrawer({
         </Field>
         <Field label="Assigned to">
           <select
+            disabled={planningReadOnly}
             value={draft.assigneeId}
             onChange={(e) => set("assigneeId", e.target.value)}
           >
@@ -209,6 +308,7 @@ export function TaskDrawer({
         <div className="form-grid">
           <Field label="Start">
             <input
+              readOnly={planningReadOnly}
               type="date"
               required
               value={draft.start}
@@ -217,6 +317,7 @@ export function TaskDrawer({
           </Field>
           <Field label="Due">
             <input
+              readOnly={planningReadOnly}
               type="date"
               required
               min={draft.start}
@@ -236,6 +337,7 @@ export function TaskDrawer({
           </Field>
           <Field label="Priority">
             <select
+              disabled={planningReadOnly}
               value={draft.priority}
               onChange={(e) =>
                 set("priority", e.target.value as Task["priority"])
@@ -256,13 +358,32 @@ export function TaskDrawer({
               onChange={(e) => set("progress", Number(e.target.value))}
             />
           </Field>
-          {existing && <div className="task-progress-report">
-            <Field label="Progress report date"><input type="date" value={progressDate} onChange={(event) => setProgressDate(event.target.value)} /></Field>
-            <Field label="Progress report note"><textarea minLength={3} value={progressNote} onChange={(event) => setProgressNote(event.target.value)} placeholder="Required when progress changes or marking complete" /></Field>
-            <p className="muted">Reported progress is separate from planned progress and inspection approval.</p>
-          </div>}
+          {existing && (
+            <div className="task-progress-report">
+              <Field label="Progress report date">
+                <input
+                  type="date"
+                  value={progressDate}
+                  onChange={(event) => setProgressDate(event.target.value)}
+                />
+              </Field>
+              <Field label="Progress report note">
+                <textarea
+                  minLength={3}
+                  value={progressNote}
+                  onChange={(event) => setProgressNote(event.target.value)}
+                  placeholder="Required when progress changes or marking complete"
+                />
+              </Field>
+              <p className="muted">
+                Reported progress is separate from planned progress and
+                inspection approval.
+              </p>
+            </div>
+          )}
           <Field label="Allocation %">
             <input
+              readOnly={planningReadOnly}
               type="number"
               min={0}
               max={100}
@@ -279,6 +400,7 @@ export function TaskDrawer({
         )}
         <Field label="Trade">
           <select
+            disabled={planningReadOnly}
             value={draft.trade}
             onChange={(e) => set("trade", e.target.value)}
           >
@@ -287,47 +409,260 @@ export function TaskDrawer({
             ))}
           </select>
         </Field>
-        <section className="task-schedule-controls" aria-label="Schedule planning controls">
+        <section
+          className="task-schedule-controls"
+          aria-label="Schedule planning controls"
+        >
           <h3>Schedule relationships</h3>
-          <p className="muted">FS and SS cover everyday handoffs. FF and SF remain available for advanced planning. Every edit becomes a proposal; approved dates stay unchanged until review.</p>
+          <p className="muted">
+            FS and SS cover everyday handoffs. FF and SF remain available for
+            advanced planning. Every edit becomes a proposal; approved dates
+            stay unchanged until review.
+          </p>
           {incoming.map((link) => {
-            const predecessor = planningView.nodes.find((item) => item.node.kind === link.predecessor.kind && item.node.id === link.predecessor.id);
-            const successor = planningView.nodes.find((item) => item.node.kind === "task" && item.node.id === task.id);
+            const predecessor = planningView.nodes.find(
+              (item) =>
+                item.node.kind === link.predecessor.kind &&
+                item.node.id === link.predecessor.id,
+            );
+            const successor = planningView.nodes.find(
+              (item) => item.node.kind === "task" && item.node.id === task.id,
+            );
             let permitted = "";
             try {
-              if (predecessor && successor) permitted = linkFirstPermittedDate(initialPlanning.calendar, link, predecessor.approved, successor.approved.durationWorkingDays);
-            } catch { permitted = ""; }
-            return <div className="task-dependency-row" key={link.id}>
-              <label>Predecessor<select aria-label="Predecessor task" value={link.predecessor.id} onChange={(event) => setLinks(links.map((item) => item.id === link.id ? { ...item, predecessor: { kind: "task", id: event.target.value } } : item))}>
-                {predecessorOptions.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-              </select></label>
-              <label>Relationship<select aria-label="Dependency relationship" value={link.type} onChange={(event) => setLinks(links.map((item) => item.id === link.id ? { ...item, type: event.target.value as LinkType } : item))}>
-                <option value="FS">Finish to Start (FS)</option><option value="SS">Start to Start (SS)</option><option value="FF">Finish to Finish (FF)</option><option value="SF">Start to Finish (SF)</option>
-              </select></label>
-              <label>Working-day lag / lead<input aria-label="Working-day lag or lead" type="number" step={1} value={link.lagWorkingDays} onChange={(event) => setLinks(links.map((item) => item.id === link.id ? { ...item, lagWorkingDays: Number(event.target.value) } : item))} /></label>
-              <button type="button" aria-label={`Remove predecessor ${predecessor?.name || link.predecessor.id}`} onClick={() => setLinks(links.filter((item) => item.id !== link.id))}>Remove</button>
-              <small>{permitted ? `First permitted successor start: ${permitted}` : "Date will be calculated on proposal."}</small>
-            </div>;
+              if (predecessor && successor)
+                permitted = linkFirstPermittedDate(
+                  initialPlanning.calendar,
+                  link,
+                  predecessor.approved,
+                  successor.approved.durationWorkingDays,
+                );
+            } catch {
+              permitted = "";
+            }
+            return (
+              <div className="task-dependency-row" key={link.id}>
+                <label>
+                  Predecessor
+                  <select
+                    aria-label="Predecessor task"
+                    disabled={planningReadOnly}
+                    value={link.predecessor.id}
+                    onChange={(event) =>
+                      setLinks(
+                        links.map((item) =>
+                          item.id === link.id
+                            ? {
+                                ...item,
+                                predecessor: {
+                                  kind: "task",
+                                  id: event.target.value,
+                                },
+                              }
+                            : item,
+                        ),
+                      )
+                    }
+                  >
+                    {predecessorOptions.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Relationship
+                  <select
+                    aria-label="Dependency relationship"
+                    disabled={planningReadOnly}
+                    value={link.type}
+                    onChange={(event) =>
+                      setLinks(
+                        links.map((item) =>
+                          item.id === link.id
+                            ? { ...item, type: event.target.value as LinkType }
+                            : item,
+                        ),
+                      )
+                    }
+                  >
+                    <option value="FS">Finish to Start (FS)</option>
+                    <option value="SS">Start to Start (SS)</option>
+                    <option value="FF">Finish to Finish (FF)</option>
+                    <option value="SF">Start to Finish (SF)</option>
+                  </select>
+                </label>
+                <label>
+                  Working-day lag / lead
+                  <input
+                    aria-label="Working-day lag or lead"
+                    disabled={planningReadOnly}
+                    type="number"
+                    step={1}
+                    value={link.lagWorkingDays}
+                    onChange={(event) =>
+                      setLinks(
+                        links.map((item) =>
+                          item.id === link.id
+                            ? {
+                                ...item,
+                                lagWorkingDays: Number(event.target.value),
+                              }
+                            : item,
+                        ),
+                      )
+                    }
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={planningReadOnly}
+                  aria-label={`Remove predecessor ${predecessor?.name || link.predecessor.id}`}
+                  onClick={() =>
+                    setLinks(links.filter((item) => item.id !== link.id))
+                  }
+                >
+                  Remove
+                </button>
+                <small>
+                  {permitted
+                    ? `First permitted successor start: ${permitted}`
+                    : "Date will be calculated on proposal."}
+                </small>
+              </div>
+            );
           })}
-          {incoming.length === 0 && <p className="muted">No predecessors. Phase grouping does not create a dependency.</p>}
-          <button type="button" disabled={!existing || !predecessorOptions.length} onClick={() => {
-            const candidate = predecessorOptions.find((item) => !incoming.some((link) => link.predecessor.id === item.id));
-            if (!candidate) return;
-            setLinks([...links, { id: uid(), projectId: task.projectId, predecessor: { kind: "task", id: candidate.id }, successor: { kind: "task", id: task.id }, type: "FS", lagWorkingDays: 0, createdAt: new Date().toISOString() }]);
-          }}>+ Add predecessor</button>
-          {!existing && <p className="muted">Create and approve this task first, then add its predecessors in a new schedule proposal.</p>}
-          {incoming.some((link) => link.lagWorkingDays < 0) && <p className="planning-lead-note">Negative lag overlaps predecessor and successor work. Explicit confirmation is required before submission.</p>}
-          {constraint && existing && <details className="task-constraints"><summary>Advanced schedule constraints</summary>
-            <div className="form-grid">
-              <Field label="Start no earlier than"><input type="date" value={constraint.startNoEarlierThan || ""} onChange={(event) => setConstraint("startNoEarlierThan", event.target.value || undefined)} /></Field>
-              <Field label="Finish no later than"><input type="date" value={constraint.finishNoLaterThan || ""} onChange={(event) => setConstraint("finishNoLaterThan", event.target.value || undefined)} /></Field>
-              <Field label="Locked start"><input type="date" value={constraint.lockedStart || ""} onChange={(event) => setConstraint("lockedStart", event.target.value || undefined)} /></Field>
-              <Field label="Locked finish"><input type="date" value={constraint.lockedFinish || ""} onChange={(event) => setConstraint("lockedFinish", event.target.value || undefined)} /></Field>
-            </div>
-          </details>}
-          <label className="task-earlier-option"><input type="checkbox" checked={allowEarlier} onChange={(event) => setAllowEarlier(event.target.checked)} /> Consider earlier successor dates in this proposal (Project Manager review required)</label>
-          {(needsProposal || !existing) && <Field label="Schedule proposal reason"><textarea required minLength={3} value={scheduleReason} onChange={(event) => setScheduleReason(event.target.value)} placeholder="Describe the site change, handoff or new task" /></Field>}
-          {needsProposal && <p role="status" className="planning-lead-note">Your edits will draft a proposal. Approved task dates and links will remain unchanged until Project Manager approval.</p>}
+          {incoming.length === 0 && (
+            <p className="muted">
+              No predecessors. Phase grouping does not create a dependency.
+            </p>
+          )}
+          <button
+            type="button"
+            disabled={
+              planningReadOnly || !existing || !predecessorOptions.length
+            }
+            onClick={() => {
+              const candidate = predecessorOptions.find(
+                (item) =>
+                  !incoming.some((link) => link.predecessor.id === item.id),
+              );
+              if (!candidate) return;
+              setLinks([
+                ...links,
+                {
+                  id: uid(),
+                  projectId: task.projectId,
+                  predecessor: { kind: "task", id: candidate.id },
+                  successor: { kind: "task", id: task.id },
+                  type: "FS",
+                  lagWorkingDays: 0,
+                  createdAt: new Date().toISOString(),
+                },
+              ]);
+            }}
+          >
+            + Add predecessor
+          </button>
+          {!existing && (
+            <p className="muted">
+              Create and approve this task first, then add its predecessors in a
+              new schedule proposal.
+            </p>
+          )}
+          {incoming.some((link) => link.lagWorkingDays < 0) && (
+            <p className="planning-lead-note">
+              Negative lag overlaps predecessor and successor work. Explicit
+              confirmation is required before submission.
+            </p>
+          )}
+          {constraint && existing && (
+            <details className="task-constraints">
+              <summary>Advanced schedule constraints</summary>
+              <div className="form-grid">
+                <Field label="Start no earlier than">
+                  <input
+                    readOnly={planningReadOnly}
+                    type="date"
+                    value={constraint.startNoEarlierThan || ""}
+                    onChange={(event) =>
+                      setConstraint(
+                        "startNoEarlierThan",
+                        event.target.value || undefined,
+                      )
+                    }
+                  />
+                </Field>
+                <Field label="Finish no later than">
+                  <input
+                    readOnly={planningReadOnly}
+                    type="date"
+                    value={constraint.finishNoLaterThan || ""}
+                    onChange={(event) =>
+                      setConstraint(
+                        "finishNoLaterThan",
+                        event.target.value || undefined,
+                      )
+                    }
+                  />
+                </Field>
+                <Field label="Locked start">
+                  <input
+                    readOnly={planningReadOnly}
+                    type="date"
+                    value={constraint.lockedStart || ""}
+                    onChange={(event) =>
+                      setConstraint(
+                        "lockedStart",
+                        event.target.value || undefined,
+                      )
+                    }
+                  />
+                </Field>
+                <Field label="Locked finish">
+                  <input
+                    readOnly={planningReadOnly}
+                    type="date"
+                    value={constraint.lockedFinish || ""}
+                    onChange={(event) =>
+                      setConstraint(
+                        "lockedFinish",
+                        event.target.value || undefined,
+                      )
+                    }
+                  />
+                </Field>
+              </div>
+            </details>
+          )}
+          <label className="task-earlier-option">
+            <input
+              type="checkbox"
+              disabled={planningReadOnly}
+              checked={allowEarlier}
+              onChange={(event) => setAllowEarlier(event.target.checked)}
+            />{" "}
+            Consider earlier successor dates in this proposal (Project Manager
+            review required)
+          </label>
+          {(needsProposal || !existing) && (
+            <Field label="Schedule proposal reason">
+              <textarea
+                required
+                minLength={3}
+                value={scheduleReason}
+                onChange={(event) => setScheduleReason(event.target.value)}
+                placeholder="Describe the site change, handoff or new task"
+              />
+            </Field>
+          )}
+          {needsProposal && (
+            <p role="status" className="planning-lead-note">
+              Your edits will draft a proposal. Approved task dates and links
+              will remain unchanged until Project Manager approval.
+            </p>
+          )}
         </section>
         <Field label="Notes">
           <textarea
@@ -352,11 +687,19 @@ export function TaskDrawer({
           />
         </Field>
         <h3>Planning progress history</h3>
-        {(initialTaskPlanning?.progressHistory || []).map((report) => <p key={report.id}>
-          <b>{report.percent}%</b> · {report.date} · {personName(db, report.actorId)}
-          {report.notes && <> · {report.notes}</>}
-        </p>)}
-        {!initialTaskPlanning?.progressHistory?.length && <p className="muted">No dated planning progress reports yet. Existing task percentages remain unchanged.</p>}
+        {(initialTaskPlanning?.progressHistory || []).map((report) => (
+          <p key={report.id}>
+            <b>{report.percent}%</b> · {report.date} ·{" "}
+            {personName(db, report.actorId)}
+            {report.notes && <> · {report.notes}</>}
+          </p>
+        ))}
+        {!initialTaskPlanning?.progressHistory?.length && (
+          <p className="muted">
+            No dated planning progress reports yet. Existing task percentages
+            remain unchanged.
+          </p>
+        )}
         <h3>Activity</h3>
         {db.activities
           .filter((a) => a.entityId === task.id)
@@ -375,10 +718,35 @@ export function TaskDrawer({
         )}
         <WorkflowError />
         <div className="sticky-actions">
-          <button type="button" disabled={task.status !== "Completed" && progressNote.trim().length < 3 || (needsProposal && scheduleReason.trim().length < 3)} onClick={() => save(true)}>
+          <button
+            type="button"
+            disabled={
+              pending ||
+              !canSave ||
+              (task.status !== "Completed" && progressNote.trim().length < 3) ||
+              (needsProposal && scheduleReason.trim().length < 3)
+            }
+            onClick={() => void save(true)}
+          >
             Mark Complete
           </button>
-          <button className="primary" disabled={((needsProposal || !existing) && scheduleReason.trim().length < 3) || (existing && (draft.progress !== task.progress || draft.status === "Completed" && task.status !== "Completed") && progressNote.trim().length < 3)}>Save Changes</button>
+          <button
+            className="primary"
+            disabled={
+              pending ||
+              !canSave ||
+              ((needsProposal || !existing) &&
+                scheduleReason.trim().length < 3) ||
+              (existing &&
+                (draft.progress !== task.progress ||
+                  (store.mode === "staging" && draft.status !== task.status) ||
+                  (draft.status === "Completed" &&
+                    task.status !== "Completed")) &&
+                progressNote.trim().length < 3)
+            }
+          >
+            Save Changes
+          </button>
         </div>
       </form>
     </Modal>

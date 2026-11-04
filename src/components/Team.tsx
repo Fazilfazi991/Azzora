@@ -3,7 +3,7 @@ import type { Assignment, Person, Task } from "../domain/model";
 import { roles } from "../domain/model";
 import { workload, today, uid } from "../domain/logic";
 import { record } from "../domain/repository";
-import { runStoreCommand, useStore } from "../store";
+import { canStoreAction, useStoreCommand } from "../store";
 import {
   Header,
   Modal,
@@ -28,8 +28,8 @@ export function Team({
   projectId?: string;
   onTask: (t: Task) => void;
 }) {
-  const store = useStore(),
-    { db, mutate } = store;
+  const { store, run, pending } = useStoreCommand(),
+    { db } = store;
   const [personId, setPersonId] = useState("");
   const person = db.people.find((p) => p.id === personId);
   const [employee, setEmployee] = useState<Person | null | undefined>(
@@ -91,10 +91,17 @@ export function Team({
         description="Employee directory, project roles and task allocations."
         action={
           <>
-            <button onClick={() => setEmployee(null)}>+ Add Employee</button>
+            <button
+              disabled={!canStoreAction(store, "access.manage")}
+              onClick={() => setEmployee(null)}
+            >
+              + Add Employee
+            </button>
             <button
               className="primary"
-              disabled={!db.projects.length}
+              disabled={
+                !canStoreAction(store, "project.write") || !db.projects.length
+              }
               onClick={() => edit()}
             >
               + Assign Person
@@ -205,8 +212,18 @@ export function Team({
             <Badge>{a.status}</Badge>
             {a.status === "Active" && (
               <>
-                <button onClick={() => edit(a)}>Edit / replace</button>
-                <button onClick={() => setRemove(a)}>Remove</button>
+                <button
+                  disabled={!canStoreAction(store, "project.write")}
+                  onClick={() => edit(a)}
+                >
+                  Edit / replace
+                </button>
+                <button
+                  disabled={!canStoreAction(store, "project.write")}
+                  onClick={() => setRemove(a)}
+                >
+                  Remove
+                </button>
               </>
             )}
           </div>
@@ -230,7 +247,10 @@ export function Team({
           </p>
           <div className="actions">
             <button
-              disabled={person.status === "Inactive"}
+              disabled={
+                !canStoreAction(store, "access.manage") ||
+                person.status === "Inactive"
+              }
               onClick={() => {
                 setEmployee(person);
                 setPersonId("");
@@ -239,6 +259,7 @@ export function Team({
               Edit Employee
             </button>
             <button
+              disabled={!canStoreAction(store, "access.manage")}
               onClick={() => {
                 setStatusEmployee(person);
                 setPersonId("");
@@ -284,13 +305,19 @@ export function Team({
         />
       )}
       {draft && (
-        <Modal title="Project Assignment" onClose={() => setDraft(null)}>
+        <Modal
+          title="Project Assignment"
+          onClose={() => {
+            if (!pending) setDraft(null);
+          }}
+        >
           <form
+            aria-busy={pending}
+            inert={pending}
             onSubmit={async (e) => {
               e.preventDefault();
               if (
-                await runStoreCommand(
-                  store,
+                await run(
                   "project.assign",
                   { assignment: draft, personId: replacement, reassign },
                   (d) => saveAssignment(d, draft, replacement, reassign, actor),
@@ -396,17 +423,24 @@ export function Team({
               Previous assignments and completed task history are retained.
             </p>
             <WorkflowError />
-            <button className="primary">Save Assignment</button>
+            <button
+              className="primary"
+              disabled={pending || !canStoreAction(store, "project.write")}
+            >
+              Save Assignment
+            </button>
           </form>
         </Modal>
       )}
       {remove && (
         <Confirm
           title="Remove project assignment?"
-          onClose={() => setRemove(null)}
-          onConfirm={() => {
+          onClose={() => {
+            if (!pending) setRemove(null);
+          }}
+          onConfirm={async () => {
             if (
-              mutate((d) => {
+              await run("assignment.remove", { id: remove.id }, (d) => {
                 d.assignments.find((a) => a.id === remove.id)!.status =
                   "Removed";
                 const project = d.projects.find(

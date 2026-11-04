@@ -1,24 +1,32 @@
 import { useState } from "react";
-import { useStore } from "../store";
+import { useStoreCommand } from "../store";
 import { Field } from "../components/ui";
 import { Attachments } from "../components/uploads";
 import { getOperations } from "./migration";
 import { saveSettings } from "./repository";
 export function CompanySettings() {
-  const { db, mutate } = useStore();
+  const { store, run, pending } = useStoreCommand(),
+    { db } = store;
   const [s, setS] = useState(() => structuredClone(getOperations(db).settings)),
     [invoiceNext, setInvoiceNext] = useState(db.commercialNumbering.invoice);
+  const [logoError, setLogoError] = useState("");
   return (
     <section className="panel">
       <h2>Company & Financial Settings</h2>
       <p className="muted">
-        Browser-local demo configuration. Issued/approved records preserve
-        historical company and monetary snapshots.
+        {store.mode === "staging"
+          ? "Shared fictional company configuration. Tax, fiscal-year and financial policy changes remain blocked pending approval."
+          : "Browser-local demo configuration."}{" "}
+        Issued/approved records preserve historical company and monetary
+        snapshots.
       </p>
+      {logoError && <p role="alert">{logoError}</p>}
       <form
-        onSubmit={(e) => {
+        aria-busy={pending}
+        inert={pending}
+        onSubmit={async (e) => {
           e.preventDefault();
-          mutate((d) => {
+          await run("settings.save", { settings: s, invoiceNext }, (d) => {
             if (!Number.isSafeInteger(invoiceNext) || invoiceNext < 1)
               throw Error("Check invoice sequence.");
             saveSettings(
@@ -47,6 +55,7 @@ export function CompanySettings() {
               <Field key={key} label={label}>
                 <input
                   required={key === "name"}
+                  readOnly={store.mode === "staging" && key === "trn"}
                   type={key === "email" ? "email" : "text"}
                   value={s.company[key]}
                   onChange={(e) =>
@@ -84,9 +93,7 @@ export function CompanySettings() {
             onChange={(files) => {
               const f = files[0];
               if (!f || !["image/png", "image/jpeg"].includes(f.type)) {
-                mutate(() => {
-                  throw Error("Use a PNG/JPEG company logo.");
-                });
+                setLogoError("Use a PNG/JPEG company logo.");
                 return;
               }
               setS({ ...s, company: { ...s.company, logo: f.dataUrl! } });
@@ -100,6 +107,13 @@ export function CompanySettings() {
         </details>
         <details>
           <summary>VAT, numbering and closure policy</summary>
+          {store.mode === "staging" && (
+            <p role="status">
+              Real accounting policy remains unapproved. VAT/TRN, fiscal-year,
+              retention and financial handover-policy changes are blocked
+              server-side.
+            </p>
+          )}
           <div className="form-grid">
             <Field label="Default currency">
               <input value="AED" readOnly />
@@ -222,7 +236,9 @@ export function CompanySettings() {
             certification.
           </p>
         </details>
-        <button className="primary">Save Company & Financial Settings</button>
+        <button className="primary" disabled={pending}>
+          Save Company & Financial Settings
+        </button>
       </form>
     </section>
   );

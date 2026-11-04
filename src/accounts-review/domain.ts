@@ -78,6 +78,7 @@ export interface ReviewDocument {
   attachmentId?: string;
   items?: ReviewStoredLine[];
   subtotalFils?: string;
+  discountFils?: string;
   taxFils?: string;
   taxStatus?: "Policy pending";
   projectId?: string;
@@ -109,6 +110,16 @@ export interface ReviewAttachment {
   size: number;
 }
 export interface ReviewState {
+  /** Derived from the same canonical commercial records in shared staging;
+   * never a second persisted credit/financial write path. */
+  commercialAdjustments?: {
+    id: string;
+    documentId: string;
+    side: "receivable" | "payable";
+    date: string;
+    deltaFils: string;
+    kind: "credit" | "cancellation";
+  }[];
   cashAccounts?: ReviewCashAccount[];
   transfers?: ReviewTransfer[];
   settlementDetails?: ReviewSettlementDetail[];
@@ -161,13 +172,24 @@ const positive = (value: unknown): bigint => {
 const document = (
   item: ReviewDocument,
   side: "receivable" | "payable",
+  state?: ReviewState,
+  asOf = "9999-12-31",
 ): SettlementDocument => ({
   id: item.id,
   side,
   partyId: item.party,
   issuedOn: item.date,
   dueOn: item.due,
-  amountFils: BigInt(item.amountFils),
+  amountFils:
+    BigInt(item.amountFils) +
+    (state?.commercialAdjustments || [])
+      .filter(
+        (value) =>
+          value.documentId === item.id &&
+          value.side === side &&
+          value.date <= asOf,
+      )
+      .reduce((sum, value) => sum + BigInt(value.deltaFils), 0n),
 });
 const stamp = (date: string) => `${date}T12:00:00.000Z`;
 function journal(
@@ -1029,7 +1051,9 @@ export function applyReviewAction(
             item.status === "Issued" &&
             (!receivable || item.invoiceType !== "Proforma"),
         )
-        .map((item) => document(item, receivable ? "receivable" : "payable")),
+        .map((item) =>
+          document(item, receivable ? "receivable" : "payable", next, date),
+        ),
       events,
       event,
     );
@@ -1142,10 +1166,27 @@ export function reviewSnapshot(
   const invoiceRows = state.invoices.map((item) => ({
     ...item,
     invoiceType: item.invoiceType ?? "Tax Invoice",
+    cancellationDate: state.commercialAdjustments?.find(
+      (v) =>
+        v.documentId === item.id &&
+        v.side === "receivable" &&
+        v.kind === "cancellation" &&
+        v.date <= asOf,
+    )?.date,
+    creditedFils: (state.commercialAdjustments || [])
+      .filter(
+        (v) =>
+          v.documentId === item.id &&
+          v.side === "receivable" &&
+          v.kind === "credit" &&
+          v.date <= asOf,
+      )
+      .reduce((sum, v) => sum - BigInt(v.deltaFils), 0n)
+      .toString(),
     outstandingFils:
       item.status === "Issued" && item.invoiceType !== "Proforma"
         ? documentOutstanding(
-            document(item, "receivable"),
+            document(item, "receivable", state, asOf),
             state.receipts,
             asOf,
           ).toString()
@@ -1154,12 +1195,12 @@ export function reviewSnapshot(
       item.status === "Issued" && item.invoiceType !== "Proforma"
         ? {
             ...documentAgeing(
-              document(item, "receivable"),
+              document(item, "receivable", state, asOf),
               state.receipts,
               asOf,
             ),
             outstandingFils: documentOutstanding(
-              document(item, "receivable"),
+              document(item, "receivable", state, asOf),
               state.receipts,
               asOf,
             ).toString(),
@@ -1168,10 +1209,17 @@ export function reviewSnapshot(
   }));
   const billRows = state.bills.map((item) => ({
     ...item,
+    cancellationDate: state.commercialAdjustments?.find(
+      (v) =>
+        v.documentId === item.id &&
+        v.side === "payable" &&
+        v.kind === "cancellation" &&
+        v.date <= asOf,
+    )?.date,
     outstandingFils:
       item.status === "Issued"
         ? documentOutstanding(
-            document(item, "payable"),
+            document(item, "payable", state, asOf),
             state.supplierPayments,
             asOf,
           ).toString()
@@ -1180,12 +1228,12 @@ export function reviewSnapshot(
       item.status === "Issued"
         ? {
             ...documentAgeing(
-              document(item, "payable"),
+              document(item, "payable", state, asOf),
               state.supplierPayments,
               asOf,
             ),
             outstandingFils: documentOutstanding(
-              document(item, "payable"),
+              document(item, "payable", state, asOf),
               state.supplierPayments,
               asOf,
             ).toString(),
@@ -1273,6 +1321,12 @@ export function reviewSnapshot(
       .map((item) => ({
         id: item.id,
         date: item.date,
+        reversedOn: state.receipts.find(
+          (value) =>
+            value.type === "reversed" &&
+            value.settlementId === item.id &&
+            value.date <= asOf,
+        )?.date,
         documentId: item.allocations[0].documentId,
         amountFils: item.amountFils.toString(),
         account:
@@ -1293,6 +1347,12 @@ export function reviewSnapshot(
       .map((item) => ({
         id: item.id,
         date: item.date,
+        reversedOn: state.supplierPayments.find(
+          (value) =>
+            value.type === "reversed" &&
+            value.settlementId === item.id &&
+            value.date <= asOf,
+        )?.date,
         documentId: item.allocations[0].documentId,
         amountFils: item.amountFils.toString(),
         account:

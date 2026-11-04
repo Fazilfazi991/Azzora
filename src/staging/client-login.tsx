@@ -6,6 +6,7 @@ import {
   type StagingSession,
 } from "./client";
 import "./staging.css";
+import { StagingRecoveryForm } from "./client-recovery";
 
 export function StagingLogin({
   workspace,
@@ -19,6 +20,7 @@ export function StagingLogin({
   const [step, setStep] = useState<StagingAuthStep | null>(null);
   const [error, setError] = useState(initialError);
   const [busy, setBusy] = useState(false);
+  const [recovering, setRecovering] = useState(false);
   useEffect(() => {
     if (initialError) setError(initialError);
   }, [initialError]);
@@ -101,112 +103,137 @@ export function StagingLogin({
           <span className="eyebrow">
             {accountant ? "ACCOUNTANT WORKSPACE" : "MANAGER WORKSPACE"}
           </span>
-          <h2>
-            {step
-              ? step.status === "mfa-enroll"
-                ? "Set up your authenticator"
-                : "Verify your sign-in"
-              : `Sign in to ${accountant ? "Accounts" : "Manager"}`}
-          </h2>
-          <p>
-            {step
-              ? "Enter the current six-digit code from your authenticator app."
-              : "Use your individual staging account."}
-          </p>
-          <div className="staging-scope-note">
-            <strong>FICTIONAL STAGING</strong>
-            <span>
-              Shared test records only. Real financial posting is disabled.
-            </span>
-          </div>
-          {step?.status === "mfa-enroll" && (
-            <div className="staging-enrollment">
-              {qrSource && (
-                <img
-                  src={qrSource}
-                  alt="Scan this code in your authenticator app"
-                />
-              )}
-              {step.uri && (
-                <details>
-                  <summary>Manual authenticator setup</summary>
-                  <code>{step.uri}</code>
-                </details>
-              )}
+          {recovering ? (
+            <StagingRecoveryForm
+              workspace={workspace}
+              onBack={() => setRecovering(false)}
+            />
+          ) : (
+            <>
+              <h2>
+                {step
+                  ? step.status === "mfa-enroll"
+                    ? "Set up your authenticator"
+                    : "Verify your sign-in"
+                  : `Sign in to ${accountant ? "Accounts" : "Manager"}`}
+              </h2>
               <p>
-                This enrollment belongs to your authenticated sign-in. Keep the
-                setup details private.
+                {step
+                  ? "Enter the current six-digit code from your authenticator app."
+                  : "Use your individual staging account."}
               </p>
-            </div>
-          )}
-          <form onSubmit={submit} aria-busy={busy}>
-            {!step ? (
-              <>
-                <label htmlFor={`staging-${workspace}-email`}>Email</label>
-                <input
-                  id={`staging-${workspace}-email`}
-                  type="email"
-                  name="email"
-                  autoComplete="username"
-                  required
+              <div className="staging-scope-note">
+                <strong>FICTIONAL STAGING</strong>
+                <span>
+                  Shared test records only. Real financial posting is disabled.
+                </span>
+              </div>
+              {step?.status === "mfa-enroll" && (
+                <div className="staging-enrollment">
+                  {qrSource && (
+                    <img
+                      src={qrSource}
+                      alt="Scan this code in your authenticator app"
+                    />
+                  )}
+                  {step.uri && (
+                    <details>
+                      <summary>Manual authenticator setup</summary>
+                      <code>{step.uri}</code>
+                    </details>
+                  )}
+                  <p>
+                    This enrollment belongs to your authenticated sign-in. Keep
+                    the setup details private.
+                  </p>
+                </div>
+              )}
+              <form onSubmit={submit} aria-busy={busy}>
+                {!step ? (
+                  <>
+                    <label htmlFor={`staging-${workspace}-email`}>Email</label>
+                    <input
+                      id={`staging-${workspace}-email`}
+                      type="email"
+                      name="email"
+                      autoComplete="username"
+                      required
+                      disabled={busy}
+                    />
+                    <label htmlFor={`staging-${workspace}-password`}>
+                      Password
+                    </label>
+                    <input
+                      id={`staging-${workspace}-password`}
+                      type="password"
+                      name="password"
+                      autoComplete="current-password"
+                      required
+                      disabled={busy}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <label htmlFor={`staging-${workspace}-code`}>
+                      Authenticator code
+                    </label>
+                    <input
+                      id={`staging-${workspace}-code`}
+                      name="code"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      pattern="[0-9]{6}"
+                      maxLength={6}
+                      required
+                      autoFocus
+                      disabled={busy}
+                    />
+                  </>
+                )}
+                <button className="primary" type="submit" disabled={busy}>
+                  {busy
+                    ? "Checking…"
+                    : step
+                      ? "Verify and continue"
+                      : "Sign in"}
+                </button>
+              </form>
+              {step && (
+                <button
+                  type="button"
+                  className="staging-text-button"
                   disabled={busy}
-                />
-                <label htmlFor={`staging-${workspace}-password`}>
-                  Password
-                </label>
-                <input
-                  id={`staging-${workspace}-password`}
-                  type="password"
-                  name="password"
-                  autoComplete="current-password"
-                  required
-                  disabled={busy}
-                />
-              </>
-            ) : (
-              <>
-                <label htmlFor={`staging-${workspace}-code`}>
-                  Authenticator code
-                </label>
-                <input
-                  id={`staging-${workspace}-code`}
-                  name="code"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  pattern="[0-9]{6}"
-                  maxLength={6}
-                  required
-                  autoFocus
-                  disabled={busy}
-                />
-              </>
-            )}
-            <button className="primary" type="submit" disabled={busy}>
-              {busy ? "Checking…" : step ? "Verify and continue" : "Sign in"}
-            </button>
-          </form>
-          {step && (
-            <button
-              type="button"
-              className="staging-text-button"
-              disabled={busy}
-              onClick={() => {
-                setStep(null);
-                setError("");
-              }}
-            >
-              Use another account
-            </button>
+                  onClick={() => {
+                    setStep(null);
+                    setError("");
+                  }}
+                >
+                  Use another account
+                </button>
+              )}
+              {error && (
+                <p role="alert" className="staging-error">
+                  {error}
+                </p>
+              )}
+              <button
+                type="button"
+                className="staging-text-button"
+                disabled={busy}
+                onClick={() => {
+                  setRecovering(true);
+                  setStep(null);
+                  setError("");
+                }}
+              >
+                Use an Owner recovery code
+              </button>
+              <p className="staging-login-foot">
+                Individual access is verified by the staging identity service.
+                Production use and real accounting remain unavailable.
+              </p>
+            </>
           )}
-          {error && (
-            <p role="alert" className="staging-error">
-              {error}
-            </p>
-          )}
-          <p className="staging-login-foot">
-            Individual access is verified by the staging identity service.
-            Production use and real accounting remain unavailable.
-          </p>
         </div>
       </section>
     </main>

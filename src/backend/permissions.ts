@@ -11,7 +11,11 @@ export type BackendAction =
   | "finance.draft"
   | "finance.simulate"
   | "finance.post"
-  | "access.manage";
+  | "access.manage"
+  | "task.update"
+  | "site.submit"
+  | "document.submit"
+  | "qa.update";
 export interface AccessGrant {
   userId: string;
   companyId: string;
@@ -78,6 +82,10 @@ export function authorize(
       "project.write",
       "expense.submit",
       "expense.approve",
+      "task.update",
+      "site.submit",
+      "document.submit",
+      "qa.update",
     ].includes(action)
   ) {
     if (!grant.workspaces.includes("manager"))
@@ -101,5 +109,14 @@ export function authorize(
       )
         throw new AccessDenied("approval_denied");
     }
+    if (
+      ["task.update", "site.submit", "document.submit", "qa.update"].includes(
+        action,
+      ) &&
+      grant.roles.includes("site_staff") &&
+      resource.submittedBy &&
+      resource.submittedBy !== actor.userId
+    )
+      throw new AccessDenied("assigned_record_required");
   }
 }

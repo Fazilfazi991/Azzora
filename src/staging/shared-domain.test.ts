@@ -274,6 +274,38 @@ beforeEach(() => {
 });
 afterEach(() => vi.useRealTimers());
 describe("shared fictional company domain and canonical projections", () => {
+  it("atomically links a new project only to an editable quotation for the same registered customer", () => {
+    const f = fixture();
+    f.run("quotation.new", { projectId: "p1" });
+    const quotation = f.state().manager.quotations[0];
+    const project = {
+      ...newProjectDetails(
+        f.state().manager,
+        "c1",
+        "Fictional linked project",
+        "Fictional site",
+      ),
+      id: "linked-project",
+      managerId: "pm",
+    };
+    f.run("project.create", {
+      project,
+      quotationId: quotation.id,
+      planMode: "empty",
+    });
+    expect(f.state().manager.quotations[0].projectId).toBe(project.id);
+    expect(f.state().manager.quotations[0].project.name).toBe(project.name);
+    const accepted = sale();
+    const before = structuredClone(accepted.state());
+    expect(() =>
+      accepted.run("project.create", {
+        project: { ...project, id: "forbidden-project" },
+        quotationId: accepted.quotationId,
+        planMode: "empty",
+      }),
+    ).toThrow(/draft quotation/);
+    expect(accepted.state()).toEqual(before);
+  });
   it("classifies staff approval and genuine self-approval as forbidden while preserving validation errors", () => {
     const f = fixture();
     const submission = {

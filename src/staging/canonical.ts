@@ -9,6 +9,7 @@ import type { Database } from "../domain/model";
 import type { ReviewState } from "../accounts-review/domain";
 import { cashAccountsFor, departments } from "../accounts-review/banking";
 import { createSharedCompanyState, type SharedCompanyState } from "./domain";
+import { refreshCommercialView } from "./commercial-commands";
 
 export interface CanonicalRecord {
   entity_type: string;
@@ -26,6 +27,7 @@ export interface CanonicalJournal {
   source_id: string;
   source_action: string;
   domain_source: JournalEntry["source"];
+  reversal_of?: string;
   posting_date: string;
   period_id: string;
   memo: string;
@@ -239,6 +241,7 @@ export function serializeCanonical(state: SharedCompanyState): CanonicalData {
   delete financeMeta.cashAccounts;
   delete financeMeta.accounting;
   delete financeMeta.documentCatalog;
+  delete financeMeta.commercialAdjustments;
   for (const attachment of state.finance.attachments)
     add("document", `attachment:${attachment.id}`, "attachment", attachment);
   delete financeMeta.attachments;
@@ -328,8 +331,22 @@ export function serializeCanonical(state: SharedCompanyState): CanonicalData {
       );
     return matches[0].id;
   };
-  const sourceType = (entry: JournalEntry) => {
-    if (entry.source.kind === "cash_account") return "cash_account";
+  const sourceRecord = (
+    entry: JournalEntry,
+    visited = new Set<string>(),
+  ): { type: string; id: string } => {
+    if (visited.has(entry.id))
+      throw Error("Journal reversal source contains a cycle.");
+    visited.add(entry.id);
+    if (entry.reversalOf || entry.source.kind === "Journal Reversal") {
+      const original = state.finance.accounting.journals.find(
+        (value) => value.id === (entry.reversalOf || entry.source.id),
+      );
+      if (!original) throw Error("Journal reversal original is missing.");
+      return sourceRecord(original, visited);
+    }
+    if (entry.source.kind === "cash_account")
+      return { type: "cash_account", id: entry.source.id };
     const candidates = allRecords.filter(
       (record) =>
         record.id === entry.source.id &&
@@ -340,11 +357,13 @@ export function serializeCanonical(state: SharedCompanyState): CanonicalData {
           "supplier_payment",
           "expense",
           "transfer",
+          "credit_note",
+          "refund",
         ].includes(record.entity_type),
     );
     if (candidates.length !== 1)
       throw Error(`Journal ${entry.id} has no unique canonical source.`);
-    return candidates[0].entity_type;
+    return { type: candidates[0].entity_type, id: candidates[0].id };
   };
   const snapshots: CanonicalData["snapshots"] = [];
   for (const record of allRecords) {
@@ -375,6 +394,22 @@ export function serializeCanonical(state: SharedCompanyState): CanonicalData {
         sha256: digest(submission.approvalSnapshot),
       });
   }
+  const retained = new Map<string, CanonicalData["snapshots"][number]>();
+  for (const snapshot of [...(state.canonicalSnapshots || []), ...snapshots]) {
+    const key = JSON.stringify([
+      snapshot.entity_type,
+      snapshot.entity_id,
+      snapshot.revision,
+    ]);
+    const existing = retained.get(key);
+    if (
+      existing &&
+      (existing.sha256 !== snapshot.sha256 ||
+        sorted(existing.payload) !== sorted(snapshot.payload))
+    )
+      throw Error("Immutable canonical snapshot changed.");
+    retained.set(key, structuredClone(snapshot));
+  }
   return {
     parties: [...parties.values()],
     projects: state.manager.projects.map((project) => ({
@@ -401,10 +436,11 @@ export function serializeCanonical(state: SharedCompanyState): CanonicalData {
     journals: state.finance.accounting.journals.map((entry) => ({
       id: entry.id,
       posting_key: entry.postingKey,
-      source_type: sourceType(entry),
-      source_id: entry.source.id,
+      source_type: sourceRecord(entry).type,
+      source_id: sourceRecord(entry).id,
       source_action: entry.source.action,
       domain_source: entry.source,
+      ...(entry.reversalOf ? { reversal_of: entry.reversalOf } : {}),
       posting_date: entry.date,
       period_id: entry.periodId,
       memo: entry.memo,
@@ -432,7 +468,7 @@ export function serializeCanonical(state: SharedCompanyState): CanonicalData {
         },
       })),
     })),
-    snapshots,
+    snapshots: [...retained.values()],
   };
 }
 
@@ -453,6 +489,7 @@ export function hydrateCanonical(data: CanonicalData): SharedCompanyState {
       "Document entry metadata is incompatible; preserve the original records for recovery.",
     );
   const state = createSharedCompanyState();
+  state.canonicalSnapshots = structuredClone(data.snapshots || []);
   state.manager = revive<Database>({
     ...(meta.manager as object),
     operations: { ...(meta.operations as object) },
@@ -545,6 +582,7 @@ export function hydrateCanonical(data: CanonicalData): SharedCompanyState {
     memo: entry.memo,
     currency: entry.currency,
     recordedAt: entry.recorded_at,
+    ...(entry.reversal_of ? { reversalOf: entry.reversal_of } : {}),
     lines: [...entry.lines]
       .sort((a, b) => a.line_no - b.line_no)
       .map((line) => ({
@@ -573,5 +611,6 @@ export function hydrateCanonical(data: CanonicalData): SharedCompanyState {
     })),
     products: [],
   };
+  refreshCommercialView(state);
   return state;
 }

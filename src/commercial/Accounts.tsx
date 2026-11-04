@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useStore, runStoreCommand } from "../store";
+import { useStore, runStoreCommand, useStoreCommand } from "../store";
 import { Header, Badge, Empty, Modal, Field } from "../components/ui";
 import type { Invoice } from "./model";
 import { emptyFilter, expenseCategories } from "./model";
@@ -257,8 +257,8 @@ export function CommercialDashboard() {
 }
 
 function InvoiceDetail({ invoice: i }: { invoice: Invoice }) {
-  const store = useStore(),
-    { db, mutate } = store;
+  const { store, run, pending } = useStoreCommand(),
+    { db } = store;
   const [edit, setEdit] = useState(false),
     [payment, setPayment] = useState(false),
     [cancel, setCancel] = useState(false),
@@ -471,7 +471,12 @@ function InvoiceDetail({ invoice: i }: { invoice: Invoice }) {
         <PaymentForm invoiceId={i.id} onClose={() => setPayment(false)} />
       )}
       {cancel && (
-        <Modal title="Cancel Invoice" onClose={() => setCancel(false)}>
+        <Modal
+          title="Cancel Invoice"
+          onClose={() => {
+            if (!pending) setCancel(false);
+          }}
+        >
           <p>
             Reverse any allocated receipts first. The invoice snapshot and
             cancellation history are retained.
@@ -485,8 +490,12 @@ function InvoiceDetail({ invoice: i }: { invoice: Invoice }) {
           <button
             disabled={!reason.trim()}
             className="primary"
-            onClick={() => {
-              if (mutate((d) => cancelInvoice(d, i.id, reason)))
+            onClick={async () => {
+              if (
+                await run("invoice.cancel", { id: i.id, reason }, (d) =>
+                  cancelInvoice(d, i.id, reason),
+                )
+              )
                 setCancel(false);
             }}
           >
@@ -505,7 +514,8 @@ export function Accounts({
   section?: string;
   recordId?: string;
 }) {
-  const { db, mutate } = useStore();
+  const { store, run, pending } = useStoreCommand(),
+    { db } = store;
   const [f, setF] = useState({ ...emptyFilter }),
     [search, setSearch] = useState(""),
     [category, setCategory] = useState("");
@@ -736,15 +746,42 @@ export function Accounts({
                             </a>
                           ) : (
                             <button
-                              onClick={() => {
+                              onClick={async () => {
+                                if (store.mode === "staging") {
+                                  const before = new Set(
+                                    db.invoices.map((v) => v.id),
+                                  );
+                                  if (
+                                    await run(
+                                      "invoice.from-quotation",
+                                      {
+                                        quotationId: q.id,
+                                        milestoneId: term.id,
+                                      },
+                                      () => {},
+                                    )
+                                  ) {
+                                    const created = store
+                                      .latestDb?.()
+                                      .invoices.find((v) => !before.has(v.id));
+                                    if (created)
+                                      location.hash = `/accounts/invoices/${created.id}`;
+                                  }
+                                  return;
+                                }
                                 let id = "";
                                 if (
-                                  mutate((d) => {
-                                    id = saveInvoice(
-                                      d,
-                                      invoiceFromQuotation(d, q.id, term.id),
-                                    ).id;
-                                  }, "Milestone invoice draft created")
+                                  await run(
+                                    "invoice.from-quotation",
+                                    { quotationId: q.id, milestoneId: term.id },
+                                    (d) => {
+                                      id = saveInvoice(
+                                        d,
+                                        invoiceFromQuotation(d, q.id, term.id),
+                                      ).id;
+                                    },
+                                    "Milestone invoice draft created",
+                                  )
                                 )
                                   location.hash = `/accounts/invoices/${id}`;
                               }}
@@ -889,7 +926,12 @@ export function Accounts({
         />
       )}
       {reverseId && (
-        <Modal title="Reverse Payment" onClose={() => setReverseId("")}>
+        <Modal
+          title="Reverse Payment"
+          onClose={() => {
+            if (!pending) setReverseId("");
+          }}
+        >
           <p>
             The receipt remains in history. Its allocation is removed; post a
             replacement receipt to correct the amount or reference.
@@ -903,8 +945,12 @@ export function Accounts({
           <button
             className="primary"
             disabled={!reason.trim()}
-            onClick={() => {
-              if (mutate((d) => reversePayment(d, reverseId, reason)))
+            onClick={async () => {
+              if (
+                await run("payment.reverse", { id: reverseId, reason }, (d) =>
+                  reversePayment(d, reverseId, reason),
+                )
+              )
                 setReverseId("");
             }}
           >

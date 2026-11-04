@@ -594,6 +594,48 @@ export function Procurement({
         />
       ) : section === "bills" ? (
         <>
+          {store.mode === "staging" &&
+            (store.accountantBills || []).some(
+              (b) => !filter || b.projectId === filter,
+            ) && (
+              <section className="panel">
+                <h3>Accountant-entered purchase bills</h3>
+                <p className="muted">
+                  These are the same bills shown in Accounts. Ask the accountant
+                  to correct an Accountant-entered bill.
+                </p>
+                <DataTable
+                  headers={[
+                    "Bill",
+                    "Supplier",
+                    "Project",
+                    "Date / Due",
+                    "Amount",
+                    "Outstanding",
+                    "Status",
+                  ]}
+                  rows={(store.accountantBills || [])
+                    .filter(
+                      (b) =>
+                        (!filter || b.projectId === filter) &&
+                        (!supplierId ||
+                          b.party ===
+                            op.suppliers.find((s) => s.id === supplierId)
+                              ?.name),
+                    )
+                    .map((b) => [
+                      b.reference,
+                      b.party,
+                      db.projects.find((p) => p.id === b.projectId)?.name ||
+                        "Company",
+                      `${b.date} / ${b.due}`,
+                      aed(BigInt(b.amountFils)),
+                      aed(BigInt(b.outstandingFils)),
+                      b.status,
+                    ])}
+                />
+              </section>
+            )}
           <DataTable
             headers={[
               "Bill / Supplier Invoice",

@@ -163,6 +163,8 @@ export function reviewPdf(
         : "Customer receipt voucher - demo",
     );
     row("Voucher reference", settlement.id, true);
+    if (settlement.reversedOn)
+      row("Status", `Reversed ${settlement.reversedOn}`);
     row(payment ? "Supplier" : "Customer", allocated.party);
     row("Date", settlement.date);
     row("Payment reference", settlement.reference);
@@ -249,12 +251,17 @@ export function reviewPdf(
             ? "Normal invoice"
             : "Tax invoice - demo",
     );
-    row("Reference", invoice.id, true);
+    row("Reference", invoice.invoiceReference || invoice.id, true);
     row(
       "Document type",
       bill ? "Purchase bill" : (invoice.invoiceType ?? "Tax Invoice"),
     );
-    row("Status", invoice.status);
+    row(
+      "Status",
+      invoice.cancellationDate
+        ? `Cancelled ${invoice.cancellationDate}`
+        : invoice.status,
+    );
     row(bill ? "Supplier" : "Customer", invoice.party);
     row(bill ? "Bill date" : "Invoice date", invoice.date);
     row("Due date", invoice.due);
@@ -272,6 +279,7 @@ export function reviewPdf(
     if (invoice.items) {
       itemTable(invoice.items);
       row("Subtotal", money(invoice.subtotalFils || invoice.amountFils));
+      if(BigInt(invoice.discountFils||"0")>0n)row("Approved discount",money(invoice.discountFils!));
       row("VAT - policy pending", money(invoice.taxFils || "0"));
       row("Grand total", money(invoice.amountFils), true);
       row("Tax policy", "Not applied in this fictional review");

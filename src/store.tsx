@@ -40,11 +40,37 @@ export interface Store {
   ) => Promise<boolean>;
   flush?: () => Promise<void>;
   latestDb?: () => Database;
-  actor?: { userId: string; personId?: string; email: string; role: string };
+  actor?: {
+    userId: string;
+    personId?: string;
+    email: string;
+    role: string;
+    capabilities?: string[];
+    projectIds?: string[];
+    workspace?: "manager" | "accountant";
+  };
   expenseSubmissions?: StagingExpenseSubmission[];
+  accountantBills?: {
+    id: string;
+    reference: string;
+    party: string;
+    projectId?: string;
+    date: string;
+    due: string;
+    status: string;
+    amountFils: string;
+    outstandingFils: string;
+  }[];
 }
 export const StoreContext = createContext<Store | null>(null);
 const Context = StoreContext;
+/** UI affordance only. The server independently authorizes every command. */
+export function canStoreAction(store: Store, capability: string) {
+  return (
+    store.mode !== "staging" ||
+    store.actor?.capabilities?.includes(capability) === true
+  );
+}
 
 /** Existing local workflows remain synchronous; staging forms await an authorized command. */
 export async function runStoreCommand(
@@ -62,6 +88,29 @@ export async function runStoreCommand(
     return store.command(kind, payload, message);
   }
   return store.mutate(local, message);
+}
+/** One form action at a time; failed server confirmation leaves its caller's draft intact. */
+export function useStoreCommand() {
+  const store = useStore();
+  const locked = useRef(false);
+  const [pending, setPending] = useState(false);
+  async function run(
+    kind: string,
+    payload: unknown,
+    local: (db: Database) => void,
+    message?: string,
+  ) {
+    if (locked.current) return false;
+    locked.current = true;
+    setPending(true);
+    try {
+      return await runStoreCommand(store, kind, payload, local, message);
+    } finally {
+      locked.current = false;
+      setPending(false);
+    }
+  }
+  return { store, run, pending };
 }
 const KEY = "azzora-demo-v1";
 function bootstrap() {

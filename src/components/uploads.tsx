@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Attachment } from "../domain/model";
+import { stagingEnabled } from "../staging/client";
 import { uid } from "../domain/logic";
 export function Attachments({
   files,
@@ -22,6 +23,17 @@ export function Attachments({
         if (file.size > 750000)
           throw Error(
             "Please use files smaller than 750 KB in this browser demo.",
+          );
+        if (
+          stagingEnabled &&
+          ![
+            "image/png",
+            "image/jpeg",
+            ...(!photos ? ["application/pdf"] : []),
+          ].includes(file.type)
+        )
+          throw Error(
+            "Shared staging supports PDF, PNG and JPEG originals only.",
           );
         if (photos && !file.type.startsWith("image/"))
           throw Error("Choose image files.");
@@ -72,7 +84,15 @@ export function Attachments({
       <input
         aria-label={photos ? "Upload photos" : "Attach files"}
         type="file"
-        accept={photos ? "image/*" : undefined}
+        accept={
+          stagingEnabled
+            ? photos
+              ? "image/png,image/jpeg"
+              : "application/pdf,image/png,image/jpeg"
+            : photos
+              ? "image/*"
+              : undefined
+        }
         multiple
         disabled={busy}
         onChange={(e) => {

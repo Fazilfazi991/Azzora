@@ -10,6 +10,8 @@ export type StagingSession = {
   workspace: "manager" | "accountant";
   csrf: string;
   mode?: string;
+  capabilities?: string[];
+  projectIds?: string[];
 };
 export type StagingAuthStep = {
   status: "mfa-enroll" | "mfa-challenge" | "authenticated";

@@ -1,0 +1,482 @@
+import { createHash } from "node:crypto";
+import { readFile, readdir } from "node:fs/promises";
+import { describe, expect, it, vi } from "vitest";
+import { PGlite } from "@electric-sql/pglite";
+import {
+  createStagingBackup,
+  verifyStagingBackup,
+  stableBackupJson,
+  canonicalBusinessSha256,
+  type StagingBackup,
+} from "./backup";
+import {
+  createSharedCompanyState,
+  applySharedCommand,
+  type SharedActor,
+} from "./domain";
+import {
+  serializeCanonical,
+  hydrateCanonical,
+  type CanonicalData,
+} from "./canonical";
+import { blankCustomer } from "../commercial/customer-domain";
+import { blankInvoice, newProjectDetails } from "../commercial/repository";
+import { buildTrialBalance } from "../accounting/reports";
+
+const companyId = "11111111-1111-4111-8111-111111111111",
+  ownerId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const actor: SharedActor = {
+  userId: ownerId,
+  personId: ownerId,
+  companyId,
+  sessionId: "not-exported",
+  assurance: "aal2",
+  grant: {
+    userId: ownerId,
+    companyId,
+    active: true,
+    roles: ["owner"],
+    workspaces: ["manager", "accountant"],
+    projectIds: ["project"],
+    capabilities: [
+      "project.write",
+      "finance.simulate",
+      "finance.draft",
+      "access.manage",
+    ],
+  },
+};
+const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3]),
+  digest = createHash("sha256").update(bytes).digest("hex"),
+  objectKey = `${companyId}/${digest}.png`;
+function fixture() {
+  let state = createSharedCompanyState([
+    {
+      id: ownerId,
+      name: "Fictional backup owner",
+      role: "Project Manager",
+      demoRole: "Owner",
+      email: "owner@staging.azzora.test",
+      phone: "",
+      status: "Active",
+      capacity: 100,
+    },
+  ]);
+  const run = (kind: string, payload: unknown) => {
+    state = applySharedCommand(state, { kind, payload }, actor);
+  };
+  run("customer.save", {
+    customer: {
+      ...blankCustomer(),
+      id: "client",
+      name: "Fictional Backup Client",
+      contact: "Fictional",
+    },
+  });
+  run("project.create", {
+    project: {
+      ...newProjectDetails(
+        state.manager,
+        "client",
+        "Fictional Backup Project",
+        "Fictional site",
+      ),
+      id: "project",
+      managerId: ownerId,
+    },
+    standard: false,
+    planMode: "empty",
+  });
+  run("invoice.save", {
+    invoice: {
+      ...blankInvoice("client", "project"),
+      id: "invoice",
+      date: "2026-11-04",
+      due: "2026-11-30",
+      description: "Fictional backup source",
+      vatPercentage: "0",
+      lines: [
+        {
+          id: "line",
+          description: "Fictional service",
+          quantity: "1",
+          rate: "100",
+          tax: "Zero Rated",
+        },
+      ],
+    },
+  });
+  run("invoice.issue", { id: "invoice" });
+  state.finance.attachments.push({
+    id: "finance-original",
+    name: "Fictional finance original.png",
+    mime: "image/png",
+    size: bytes.length,
+    data: "",
+    storageObjectKey: objectKey,
+  } as (typeof state.finance.attachments)[number]);
+  state.manager.documents.push({
+    id: "manager-document",
+    projectId: "project",
+    name: "Fictional manager document",
+    category: "Design Drawings",
+    status: "Draft",
+    version: 1,
+    uploadedAt: "2026-11-04",
+    uploadedBy: ownerId,
+    attachment: {
+      id: "manager-original",
+      name: "Fictional Manager original.png",
+      type: "image/png",
+      size: bytes.length,
+      category: "Drawing",
+      dataUrl: "/api/staging/files/manager-original",
+      storageObjectKey: objectKey,
+    } as NonNullable<(typeof state.manager.documents)[number]["attachment"]>,
+  });
+  return { version: 42, data: serializeCanonical(state), companyId };
+}
+export async function freshRehearsalDatabase() {
+  const db = new PGlite();
+  await db.exec(`create role anon;create role authenticated;create role service_role;
+ create schema auth;create table auth.users(id uuid primary key,email text,raw_app_meta_data jsonb,email_confirmed_at timestamptz,banned_until timestamptz,is_anonymous boolean default false);
+ create table auth.sessions(id uuid primary key,user_id uuid,aal text,not_after timestamptz);create table auth.mfa_factors(id uuid primary key,user_id uuid,status text,factor_type text);
+ create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+ create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);`);
+  const migrations = (
+    await readdir(new URL("../../supabase/migrations/", import.meta.url))
+  )
+    .filter((name) => name.endsWith(".sql"))
+    .sort();
+  for (const file of migrations)
+    await db.exec(
+      await readFile(
+        new URL(`../../supabase/migrations/${file}`, import.meta.url),
+        "utf8",
+      ),
+    );
+  return { db, migrations };
+}
+/** Test-only fresh restore. Never exported by the application or connected to a cloud client. */
+export async function restoreIntoFreshRehearsal(db: PGlite, input: unknown) {
+  const backup = verifyStagingBackup(input),
+    data = backup.data,
+    company = backup.companyId || companyId;
+  const existing = await db.query<{ n: number }>(
+    "select count(*)::int n from azzora.records",
+  );
+  if (existing.rows[0].n !== 0)
+    throw Error(
+      "Restore rehearsal requires an empty business database; never overwrite history.",
+    );
+  const execute = (sql: string, params: unknown[]) => db.query(sql, params);
+  await db.exec("begin");
+  try {
+    // Fresh offline fixture identity only: no exported Auth user, password or session is restored.
+    await execute(
+      "insert into auth.users(id,email,raw_app_meta_data,email_confirmed_at) values($1,'offline-owner@rehearsal.test','{\"azzora_scope\":\"fictional-staging\"}',now()) on conflict do nothing",
+      [ownerId],
+    );
+    await execute(
+      "insert into azzora.companies(id,name,data_mode,version) values($1,'Fictional offline restore','fictional-staging',$2) on conflict(id) do update set version=excluded.version",
+      [company, backup.capturedCompanyVersion],
+    );
+    for (const v of data.parties)
+      await execute(
+        "insert into azzora.parties(company_id,id,kind,payload) values($1,$2,$3,$4::jsonb)",
+        [company, v.id, v.kind, JSON.stringify(v.payload)],
+      );
+    for (const v of data.departments)
+      await execute(
+        "insert into azzora.departments(company_id,id,name) values($1,$2,$3)",
+        [company, v.id, v.name],
+      );
+    for (const v of data.projects)
+      await execute(
+        "insert into azzora.projects(company_id,id,customer_id,payload) values($1,$2,$3,$4::jsonb)",
+        [company, v.id, v.customer_id, JSON.stringify(v.payload)],
+      );
+    for (const v of data.records)
+      await execute(
+        "insert into azzora.records(company_id,entity_type,id,project_id,party_id,department_id,payload,status) values($1,$2,$3,$4,$5,$6,$7::jsonb,$8)",
+        [
+          company,
+          v.entity_type,
+          v.id,
+          v.project_id,
+          v.party_id,
+          v.department_id,
+          JSON.stringify(v.payload),
+          v.status,
+        ],
+      );
+    for (const v of data.accounts)
+      await execute(
+        "insert into azzora.accounts(company_id,id,code,name,type,postable,active) values($1,$2,$3,$4,$5,$6,$7)",
+        [company, v.id, v.code, v.name, v.type, v.postable, v.active],
+      );
+    for (const v of data.periods)
+      await execute(
+        "insert into azzora.accounting_periods(company_id,id,start_date,end_date,locked) values($1,$2,$3,$4,$5)",
+        [company, v.id, v.start_date, v.end_date, v.locked],
+      );
+    const hasReversal =
+      (
+        await db.query<{ n: number }>(
+          "select count(*)::int n from information_schema.columns where table_schema='azzora' and table_name='journals' and column_name='reversal_of'",
+        )
+      ).rows[0].n > 0;
+    for (const v of data.journals) {
+      if (v.reversal_of && !hasReversal)
+        throw Error("Reversal migration required before restore.");
+      await execute(
+        `insert into azzora.journals(company_id,id,posting_key,source_type,source_id,source_action,domain_source,posting_date,period_id,memo,currency,recorded_at,actor_id${hasReversal ? ",reversal_of" : ""}) values($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11,$12,$13${hasReversal ? ",$14" : ""})`,
+        [
+          company,
+          v.id,
+          v.posting_key,
+          v.source_type,
+          v.source_id,
+          v.source_action,
+          JSON.stringify(v.domain_source),
+          v.posting_date,
+          v.period_id,
+          v.memo,
+          v.currency,
+          v.recorded_at,
+          ownerId,
+          ...(hasReversal ? [v.reversal_of || null] : []),
+        ],
+      );
+      for (const l of v.lines)
+        await execute(
+          "insert into azzora.journal_lines(company_id,journal_id,line_no,account_id,debit_fils,credit_fils,project_id,party_id,department_id,domain_dimensions) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb)",
+          [
+            company,
+            v.id,
+            l.line_no,
+            l.account_id,
+            l.debit_fils,
+            l.credit_fils,
+            l.project_id,
+            l.party_id,
+            l.department_id,
+            JSON.stringify(l.domain_dimensions || {}),
+          ],
+        );
+    }
+    for (const v of data.snapshots)
+      await execute(
+        "insert into azzora.snapshots(company_id,entity_type,entity_id,revision,payload,sha256,captured_by) values($1,$2,$3,$4,$5::jsonb,$6,$7)",
+        [
+          company,
+          v.entity_type,
+          v.entity_id,
+          v.revision,
+          JSON.stringify(v.payload),
+          v.sha256,
+          ownerId,
+        ],
+      );
+    const allocationProjector = (
+      await db.query<{ present: boolean }>(
+        "select to_regprocedure('azzora.project_staging_allocations(uuid)') is not null present",
+      )
+    ).rows[0].present;
+    if (allocationProjector)
+      await execute("select azzora.project_staging_allocations($1)", [company]);
+    else if (backup.manifest.counts.allocations)
+      throw Error("Allocation migration required before restore.");
+    await db.exec("commit");
+  } catch (error) {
+    await db.exec("rollback");
+    throw error;
+  }
+  // Offline file map represents restored private originals, never a public object URL.
+  return {
+    originals: new Map(
+      backup.originals.map((file) => [
+        file.objectKey,
+        Buffer.from(file.base64, "base64"),
+      ]),
+    ),
+    capturedVersion: backup.capturedCompanyVersion,
+  };
+}
+describe("fictional business backup integrity and isolated restore", () => {
+  it("captures raw canonical rows, immutable snapshots, version and deduplicated originals", async () => {
+    const source = fixture(),
+      read = vi.fn(async () => bytes),
+      backup = await createStagingBackup(
+        source,
+        read,
+        "2026-11-04T14:00:00.000Z",
+      );
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(backup.originals[0].references).toHaveLength(2);
+    expect(backup.capturedCompanyVersion).toBe(42);
+    expect(backup.data).toEqual(source.data);
+    expect(verifyStagingBackup(JSON.parse(JSON.stringify(backup)))).toEqual(
+      backup,
+    );
+    expect(JSON.stringify(backup)).not.toContain("not-exported");
+    expect(backup.manifest.counts.journals).toBe(2);
+    const reordered = structuredClone(backup.data);
+    reordered.records.reverse();
+    expect(canonicalBusinessSha256(reordered)).toBe(
+      canonicalBusinessSha256(backup.data),
+    );
+    const changed = structuredClone(backup.data);
+    changed.records[0].status = "tampered";
+    expect(canonicalBusinessSha256(changed)).not.toBe(
+      canonicalBusinessSha256(backup.data),
+    );
+  });
+  it("rejects changed records, corrupted originals, omitted files, credentials and nonfictional scope", async () => {
+    const backup = await createStagingBackup(fixture(), async () => bytes);
+    const changed = structuredClone(backup);
+    changed.data.records[0].status = "tampered";
+    expect(() => verifyStagingBackup(changed)).toThrow(/manifest/);
+    const corrupt = structuredClone(backup);
+    corrupt.originals[0].base64 = "YmFk";
+    expect(() => verifyStagingBackup(corrupt)).toThrow(/content/);
+    const omitted = structuredClone(backup);
+    omitted.originals = [];
+    expect(() => verifyStagingBackup(omitted)).toThrow(/originals/);
+    expect(() => verifyStagingBackup({ ...backup, sessions: [] })).toThrow(
+      /unexpected/,
+    );
+    const secrets = fixture();
+    (secrets.data.records[0].payload as Record<string, unknown>).apiKey =
+      "never export";
+    await expect(
+      createStagingBackup(secrets, async () => bytes),
+    ).rejects.toThrow(/credential/);
+    const production = structuredClone(backup);
+    production.mode = "production" as StagingBackup["mode"];
+    expect(() => verifyStagingBackup(production)).toThrow(/scope/);
+  });
+  it("fails closed on missing, cross-company or hash-mismatched original bytes", async () => {
+    await expect(
+      createStagingBackup(fixture(), async () => new Uint8Array([1])),
+    ).rejects.toThrow(/hash or size/);
+    await expect(
+      createStagingBackup(fixture(), async () => {
+        throw Error("storage unavailable");
+      }),
+    ).rejects.toThrow(/unavailable/);
+    await expect(
+      createStagingBackup(
+        { ...fixture(), companyId: "22222222-2222-4222-8222-222222222222" },
+        async () => bytes,
+      ),
+    ).rejects.toThrow(/cross-company/);
+  });
+  it("restores into fresh local PostgreSQL constraints with exact counts, version, histories and file hashes", async () => {
+    const backup = await createStagingBackup(fixture(), async () => bytes),
+      { db, migrations } = await freshRehearsalDatabase();
+    try {
+      const restored = await restoreIntoFreshRehearsal(db, backup);
+      expect(migrations.length).toBeGreaterThanOrEqual(6);
+      expect(restored.capturedVersion).toBe(42);
+      expect(restored.originals.get(objectKey)).toEqual(Buffer.from(bytes));
+      for (const [name, section] of [
+        ["parties", "parties"],
+        ["projects", "projects"],
+        ["records", "records"],
+        ["accounts", "accounts"],
+        ["accounting_periods", "periods"],
+        ["journals", "journals"],
+        ["snapshots", "snapshots"],
+      ] as const)
+        expect(
+          (
+            await db.query<{ n: number }>(
+              `select count(*)::int n from azzora.${name}`,
+            )
+          ).rows[0].n,
+        ).toBe(backup.data[section].length);
+      expect(
+        (
+          await db.query<{ version: number }>(
+            "select version::int from azzora.companies where id=$1",
+            [companyId],
+          )
+        ).rows[0].version,
+      ).toBe(42);
+      const loaded = (
+        await db.query<{ data: CanonicalData }>(
+          "select azzora.staging_canonical_data($1) data",
+          [companyId],
+        )
+      ).rows[0].data;
+      const normalize = (data: CanonicalData) => ({
+        ...data,
+        parties: [...data.parties].sort((a, b) => a.id.localeCompare(b.id)),
+        projects: [...data.projects].sort((a, b) => a.id.localeCompare(b.id)),
+        departments: [...data.departments].sort((a, b) =>
+          a.id.localeCompare(b.id),
+        ),
+        records: [...data.records].sort(
+          (a, b) =>
+            a.entity_type.localeCompare(b.entity_type) ||
+            a.id.localeCompare(b.id),
+        ),
+        accounts: [...data.accounts].sort((a, b) => a.id.localeCompare(b.id)),
+        periods: [...data.periods].sort((a, b) => a.id.localeCompare(b.id)),
+        journals: data.journals.map((v) => ({
+          ...v,
+          recorded_at: new Date(v.recorded_at).toISOString(),
+        })),
+      });
+      expect(
+        stableBackupJson(
+          normalize(serializeCanonical(hydrateCanonical(loaded))),
+        ),
+      ).toBe(stableBackupJson(normalize(backup.data)));
+      expect(
+        buildTrialBalance(
+          hydrateCanonical(loaded).finance.accounting,
+          "2026-11-04",
+        ).balanced,
+      ).toBe(true);
+      await expect(restoreIntoFreshRehearsal(db, backup)).rejects.toThrow(
+        /empty business database/,
+      );
+    } finally {
+      await db.close();
+    }
+  }, 30_000);
+  it("rolls back an FK-invalid restore without leaving partial business records", async () => {
+    const source = fixture();
+    source.data.projects[0].customer_id = "missing-party";
+    const backup = await createStagingBackup(source, async () => bytes),
+      { db } = await freshRehearsalDatabase();
+    try {
+      await expect(restoreIntoFreshRehearsal(db, backup)).rejects.toThrow();
+      expect(
+        (
+          await db.query<{ n: number }>(
+            "select count(*)::int n from azzora.records",
+          )
+        ).rows[0].n,
+      ).toBe(0);
+      expect(
+        (
+          await db.query<{ n: number }>(
+            "select count(*)::int n from azzora.parties",
+          )
+        ).rows[0].n,
+      ).toBe(0);
+      expect(
+        (
+          await db.query<{ n: number }>(
+            "select count(*)::int n from azzora.journals",
+          )
+        ).rows[0].n,
+      ).toBe(0);
+    } finally {
+      await db.close();
+    }
+  }, 30_000);
+});

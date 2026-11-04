@@ -25,7 +25,7 @@ import {
   GitBranch,
 } from "lucide-react";
 import type { Task } from "./domain/model";
-import { useStore } from "./store";
+import { canStoreAction, useStoreCommand } from "./store";
 import { record } from "./domain/repository";
 import { today } from "./domain/logic";
 import { Dashboard } from "./components/Dashboard";
@@ -115,7 +115,7 @@ function exportData(data: string, name: string, type: string) {
   URL.revokeObjectURL(url);
 }
 export default function App() {
-  const store = useStore(),
+  const { store, run, pending } = useStoreCommand(),
     { db, toast, error, clear, mutate, reset, exportOriginal } = store;
   const [route, setRoute] = useState(location.hash.slice(2) || "dashboard");
   const [collapsedGroups, setCollapsedGroups] = useState<string[]>(() =>
@@ -194,6 +194,9 @@ export default function App() {
   const [profile, setProfile] = useState(false);
   const [resetConfirm, setResetConfirm] = useState(false);
   const [weights, setWeights] = useState<number[] | null>(null);
+  const [numberingDraft, setNumberingDraft] = useState<
+    typeof db.quotationNumbering | null
+  >(null);
   const [weightProject, setWeightProject] = useState(db.projects[0]?.id || "");
   useEffect(() => {
     const fn = () => {
@@ -468,13 +471,22 @@ export default function App() {
       <>
         <Header
           title="Settings"
-          description="Demo persistence, programme weights and backend readiness."
+          description={
+            store.mode === "staging"
+              ? "Shared fictional staging, company configuration and programme weights."
+              : "Demo persistence, programme weights and backend readiness."
+          }
         />
         <section className="panel">
-          <h2>Browser Demo</h2>
+          <h2>
+            {store.mode === "staging"
+              ? "Shared fictional staging"
+              : "Browser Demo"}
+          </h2>
           <p>
-            Changes are saved to localStorage on this device. No authentication,
-            server authorization, multi-user sync or backup is configured.
+            {store.mode === "staging"
+              ? "Individual sign-in and server permissions protect shared fictional records. Real financial posting and paid AI are disabled. Browser-local demo records remain separate."
+              : "Changes are saved to localStorage on this device. No authentication, server authorization, multi-user sync or backup is configured."}
           </p>
           <div className="actions">
             <button onClick={exportOriginal}>Export original saved data</button>
@@ -489,46 +501,97 @@ export default function App() {
             >
               Export demo data
             </button>
-            <button onClick={() => setResetConfirm(true)}>
-              Reset demo data
-            </button>
+            {store.mode !== "staging" && (
+              <button onClick={() => setResetConfirm(true)}>
+                Reset demo data
+              </button>
+            )}
           </div>
           <p>
             Fonts: Inter and Space Grotesk assets were not supplied. System
             sans-serif fallbacks are used.
           </p>
           <p>
-            Current demo user: Sarah Mansoor · Project Manager. Role labels are
-            demo behavior only.
+            {store.mode === "staging"
+              ? `Signed in as ${store.actor?.email}. Roles are enforced on the server; shared records cannot be reset from this workspace.`
+              : "Current demo user: Sarah Mansoor · Project Manager. Role labels are demo behavior only."}
           </p>
         </section>
         <CompanySettings />
         <section className="panel">
           <h2>Quotation numbering</h2>
-          <Field label="Quotation number prefix">
-            <input
-              value={db.quotationNumbering.prefix}
-              onChange={(e) =>
-                mutate((d) => {
-                  d.quotationNumbering.prefix = e.target.value;
-                }, "")
-              }
-            />
-          </Field>
-          <Field label="Next quotation sequence">
-            <input
-              type="number"
-              min="1"
-              value={db.quotationNumbering.next}
-              onChange={(e) => {
-                const next = Number(e.target.value);
-                if (Number.isSafeInteger(next) && next > 0)
+          <form
+            aria-busy={pending}
+            inert={pending}
+            onSubmit={async (event) => {
+              event.preventDefault();
+              if (
+                store.mode === "staging" &&
+                (await run(
+                  "settings.save",
+                  {
+                    quotationNumbering: numberingDraft || db.quotationNumbering,
+                  },
+                  () => {},
+                  "Quotation numbering saved",
+                ))
+              )
+                setNumberingDraft(null);
+            }}
+          >
+            <Field label="Quotation number prefix">
+              <input
+                readOnly={!canStoreAction(store, "access.manage")}
+                value={numberingDraft?.prefix ?? db.quotationNumbering.prefix}
+                onChange={(e) => {
+                  if (store.mode === "staging") {
+                    setNumberingDraft({
+                      ...(numberingDraft || db.quotationNumbering),
+                      prefix: e.target.value,
+                    });
+                    return;
+                  }
                   mutate((d) => {
-                    d.quotationNumbering.next = next;
+                    d.quotationNumbering.prefix = e.target.value;
                   }, "");
-              }}
-            />
-          </Field>
+                }}
+              />
+            </Field>
+            <Field label="Next quotation sequence">
+              <input
+                readOnly={!canStoreAction(store, "access.manage")}
+                type="number"
+                min="1"
+                value={numberingDraft?.next ?? db.quotationNumbering.next}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  if (store.mode === "staging") {
+                    setNumberingDraft({
+                      ...(numberingDraft || db.quotationNumbering),
+                      next,
+                    });
+                    return;
+                  }
+                  if (Number.isSafeInteger(next) && next > 0)
+                    mutate((d) => {
+                      d.quotationNumbering.next = next;
+                    }, "");
+                }}
+              />
+            </Field>
+            {store.mode === "staging" && (
+              <button
+                className="primary"
+                disabled={
+                  pending ||
+                  !canStoreAction(store, "access.manage") ||
+                  !numberingDraft
+                }
+              >
+                Save quotation numbering
+              </button>
+            )}
+          </form>
         </section>
         <section className="panel">
           <h2>Phase Weights</h2>
@@ -548,34 +611,47 @@ export default function App() {
             </select>
           </Field>
           <form
-            onSubmit={(e) => {
+            aria-busy={pending}
+            inert={pending}
+            onSubmit={async (e) => {
               e.preventDefault();
               const phases = db.phases.filter(
                 (p) => p.projectId === weightProject,
               );
               const values = weights || phases.map((p) => p.weight);
               if (
-                mutate((d) => {
-                  if (
-                    values.reduce((s, n) => s + n, 0) !== 100 ||
-                    values.some((n) => n < 0)
-                  )
-                    throw Error(
-                      "Phase weights must be non-negative and total 100%.",
+                await run(
+                  "project.weights",
+                  {
+                    projectId: weightProject,
+                    weights: phases.map((phase, index) => ({
+                      id: phase.id,
+                      weight: values[index],
+                    })),
+                  },
+                  (d) => {
+                    if (
+                      values.reduce((s, n) => s + n, 0) !== 100 ||
+                      values.some((n) => n < 0)
+                    )
+                      throw Error(
+                        "Phase weights must be non-negative and total 100%.",
+                      );
+                    phases.forEach(
+                      (p, i) =>
+                        (d.phases.find((x) => x.id === p.id)!.weight =
+                          values[i]),
                     );
-                  phases.forEach(
-                    (p, i) =>
-                      (d.phases.find((x) => x.id === p.id)!.weight = values[i]),
-                  );
-                  record(
-                    d,
-                    weightProject,
-                    "Project",
-                    weightProject,
-                    "Weights updated",
-                    values.join(", "),
-                  );
-                })
+                    record(
+                      d,
+                      weightProject,
+                      "Project",
+                      weightProject,
+                      "Weights updated",
+                      values.join(", "),
+                    );
+                  },
+                )
               )
                 setWeights(null);
             }}
@@ -586,6 +662,7 @@ export default function App() {
                 .map((p, i) => (
                   <Field key={p.id} label={p.name + " %"}>
                     <input
+                      readOnly={!canStoreAction(store, "project.write")}
                       type="number"
                       min={0}
                       max={100}
@@ -606,7 +683,12 @@ export default function App() {
                   </Field>
                 ))}
             </div>
-            <button className="primary">Save Weights</button>
+            <button
+              className="primary"
+              disabled={pending || !canStoreAction(store, "project.write")}
+            >
+              Save Weights
+            </button>
           </form>
         </section>
       </>
@@ -903,6 +985,24 @@ export default function App() {
             ].map((action) => (
               <button
                 key={action}
+                disabled={
+                  store.mode === "staging" &&
+                  action === "Task" &&
+                  (!canStoreAction(store, "project.write") ||
+                    !db.phases.some(
+                      (phase) =>
+                        phase.projectId ===
+                        (
+                          db.projects.find((project) => project.id === id) ||
+                          db.projects[0]
+                        )?.id,
+                    ))
+                }
+                title={
+                  store.mode === "staging" && action === "Task"
+                    ? "A Project Manager and a project with reviewed plan phases are required to create a task."
+                    : undefined
+                }
                 onClick={() => {
                   setQuickAdd(false);
                   if (action === "Project") setWizard(true);

@@ -344,20 +344,20 @@ function Invoices({
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("All document types");
   const [statusFilter, setStatusFilter] = useState("All statuses");
-  const issued = data.invoices.filter((item) => item.status === "Issued");
+  const issued = data.invoices.filter((item) => item.status === "Issued"&&!item.cancellationDate);
   const outstanding = issued.reduce(
     (total, item) => total + BigInt(item.outstandingFils),
     0n,
   );
   const rows = data.invoices.filter((item) => {
-    const matchesQuery = `${item.id} ${item.party} ${item.description}`
+    const matchesQuery = `${item.id} ${item.invoiceReference||""} ${item.party} ${item.description}`
       .toLocaleLowerCase()
       .includes(query.trim().toLocaleLowerCase());
     const matchesType =
       typeFilter === "All document types" ||
       (item.invoiceType ?? "Tax Invoice") === typeFilter;
     const matchesStatus =
-      statusFilter === "All statuses" || item.status === statusFilter;
+      statusFilter === "All statuses" || (item.cancellationDate?"Cancelled":item.status) === statusFilter;
     return matchesQuery && matchesType && matchesStatus;
   });
   return (
@@ -427,7 +427,7 @@ function Invoices({
                 onChange={(event) => setStatusFilter(event.target.value)}
               >
                 <option>All statuses</option>
-                <option>Issued</option>
+                <option>Issued</option><option>Cancelled</option>
                 <option>Draft</option>
               </select>
             </label>
@@ -438,7 +438,7 @@ function Invoices({
         {rows.map((item) => (
           <tr key={item.id}>
             <td>
-              <strong>{item.id}</strong>
+              <strong>{item.invoiceReference || item.id}</strong>
               <small>{item.description}</small>
             </td>
             <td>{item.party}</td>
@@ -615,6 +615,9 @@ function Settlement({
             <td>
               <strong>{item.id}</strong>
               {item.reference && <small>{item.reference}</small>}
+              {item.reversedOn && (
+                <small>Reversed � {date(item.reversedOn)}</small>
+              )}
             </td>
             <td>{date(item.date)}</td>
             <td>{item.documentId}</td>

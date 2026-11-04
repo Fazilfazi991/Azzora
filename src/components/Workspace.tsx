@@ -1,6 +1,6 @@
 import { Quotations } from "../quotation/LazyQuotations";
 import { useState } from "react";
-import { useStore } from "../store";
+import { canStoreAction, useStoreCommand } from "../store";
 import type { Task, Project } from "../domain/model";
 import {
   currentPhase,
@@ -50,7 +50,8 @@ export function Workspace({
   subtab?: string;
   onTask: (t: Task) => void;
 }) {
-  const { db, mutate } = useStore();
+  const { store, run, pending } = useStoreCommand(),
+    { db } = store;
   const [edit, setEdit] = useState<Project | null>(null);
   const p = db.projects.find((p) => p.id === id);
   if (!p)
@@ -76,7 +77,10 @@ export function Workspace({
         action={
           <>
             <Badge>{p.status === "Draft" ? "Draft" : health(db, id)}</Badge>
-            <button onClick={() => setEdit(structuredClone(p))}>
+            <button
+              disabled={!canStoreAction(store, "project.write")}
+              onClick={() => setEdit(structuredClone(p))}
+            >
               Edit Project
             </button>
           </>
@@ -277,12 +281,19 @@ export function Workspace({
         <Empty>Workspace tab not found.</Empty>
       )}
       {edit && (
-        <Modal title="Edit Project" onClose={() => setEdit(null)}>
+        <Modal
+          title="Edit Project"
+          onClose={() => {
+            if (!pending) setEdit(null);
+          }}
+        >
           <form
-            onSubmit={(e) => {
+            aria-busy={pending}
+            inert={pending}
+            onSubmit={async (e) => {
               e.preventDefault();
               if (
-                mutate((d) => {
+                await run("project.update", { project: edit }, (d) => {
                   projectSchema.parse(edit);
                   Object.assign(
                     d.projects.find((x) => x.id === edit.id)!,
@@ -310,6 +321,7 @@ export function Workspace({
             </Field>
             <Field label="Start">
               <input
+                readOnly={store.mode === "staging"}
                 type="date"
                 required
                 value={edit.start}
@@ -318,6 +330,7 @@ export function Workspace({
             </Field>
             <Field label="Target completion">
               <input
+                readOnly={store.mode === "staging"}
                 type="date"
                 required
                 min={edit.start}
@@ -343,8 +356,15 @@ export function Workspace({
             </Field>
             <p className="muted">
               Complete projects through the handover checklist.
+              {store.mode === "staging" &&
+                " Change approved schedule dates through Planning proposals; this form preserves the approved project dates."}
             </p>
-            <button className="primary">Save Project</button>
+            <button
+              className="primary"
+              disabled={pending || !canStoreAction(store, "project.write")}
+            >
+              Save Project
+            </button>
           </form>
         </Modal>
       )}

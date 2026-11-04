@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from "react";
-import { useStore } from "../store";
+import { canStoreAction, useStore, useStoreCommand } from "../store";
 import type { SiteUpdate, Snag, SnagStatus } from "../domain/model";
 import { priorities, snagStatuses } from "../domain/model";
 import { uid, today, addDays, dateLabel } from "../domain/logic";
@@ -33,13 +33,15 @@ function ProjectSelect({
   );
 }
 export function SiteUpdates({ projectId }: { projectId?: string }) {
-  const { db, mutate } = useStore();
+  const { store, run, pending } = useStoreCommand(),
+    { db } = store;
   const [filter, setFilter] = useState(projectId || "");
   const [draft, setDraft] = useState<SiteUpdate | null>(null);
   const [actor, setActor] = useState("");
   const [review, setReview] = useState<SiteUpdate | null>(null);
   const [reason, setReason] = useState("");
   function create() {
+    if (!db.projects.length) return;
     setActor("");
     setDraft({
       id: uid(),
@@ -64,7 +66,18 @@ export function SiteUpdates({ projectId }: { projectId?: string }) {
         title="Site Updates"
         description="Daily site records, progress photography and field issues."
         action={
-          <button className="primary" onClick={create}>
+          <button
+            className="primary"
+            disabled={
+              pending ||
+              !(
+                canStoreAction(store, "project.write") ||
+                canStoreAction(store, "site.submit")
+              ) ||
+              !db.projects.length
+            }
+            onClick={create}
+          >
             + Post Site Update
           </button>
         }
@@ -119,7 +132,7 @@ export function SiteUpdates({ projectId }: { projectId?: string }) {
             <Badge>{u.reviewStatus || "Pending"}</Badge>
             <div className="workflow-actions">
               <button
-                onClick={() => {
+                onClick={async () => {
                   setReview(u);
                   setActor("");
                   setReason("");
@@ -159,7 +172,9 @@ export function SiteUpdates({ projectId }: { projectId?: string }) {
         <Modal
           drawer
           title="Supervisory Site Review"
-          onClose={() => setReview(null)}
+          onClose={() => {
+            if (!pending) setReview(null);
+          }}
         >
           <p>{review.completed}</p>
           <p>{review.issue || "No issues reported"}</p>
@@ -173,6 +188,12 @@ export function SiteUpdates({ projectId }: { projectId?: string }) {
               />
               <Field label="Supervision note / reason">
                 <textarea
+                  disabled={
+                    pending ||
+                    !canStoreAction(store, "project.write") ||
+                    (store.mode === "staging" &&
+                      review.authorId === store.actor?.personId)
+                  }
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                 />
@@ -180,16 +201,25 @@ export function SiteUpdates({ projectId }: { projectId?: string }) {
               <div className="workflow-actions">
                 <button
                   className="primary"
-                  onClick={() => {
+                  disabled={
+                    pending ||
+                    !canStoreAction(store, "project.write") ||
+                    (store.mode === "staging" &&
+                      review.authorId === store.actor?.personId)
+                  }
+                  onClick={async () => {
                     if (
-                      mutate((d) =>
-                        reviewSiteUpdate(
-                          d,
-                          review.id,
-                          "Approved",
-                          actor,
-                          reason,
-                        ),
+                      await run(
+                        "site.review",
+                        { id: review.id, status: "Approved", reason },
+                        (d) =>
+                          reviewSiteUpdate(
+                            d,
+                            review.id,
+                            "Approved",
+                            actor,
+                            reason,
+                          ),
                       )
                     )
                       setReview(null);
@@ -198,16 +228,20 @@ export function SiteUpdates({ projectId }: { projectId?: string }) {
                   Approve Site Record
                 </button>
                 <button
-                  onClick={() => {
+                  disabled={pending}
+                  onClick={async () => {
                     if (
-                      mutate((d) =>
-                        reviewSiteUpdate(
-                          d,
-                          review.id,
-                          "Changes Requested",
-                          actor,
-                          reason,
-                        ),
+                      await run(
+                        "site.review",
+                        { id: review.id, status: "Changes Requested", reason },
+                        (d) =>
+                          reviewSiteUpdate(
+                            d,
+                            review.id,
+                            "Changes Requested",
+                            actor,
+                            reason,
+                          ),
                       )
                     )
                       setReview(null);
@@ -224,14 +258,26 @@ export function SiteUpdates({ projectId }: { projectId?: string }) {
       )}
 
       {draft && (
-        <Modal title="Daily Site Update" onClose={() => setDraft(null)}>
+        <Modal
+          title="Daily Site Update"
+          onClose={() => {
+            if (!pending) setDraft(null);
+          }}
+        >
           <form
-            onSubmit={(e) => {
+            aria-busy={pending}
+            inert={pending}
+            onSubmit={async (e) => {
               e.preventDefault();
               if (
-                mutate((d) => {
-                  saveSiteUpdate(d, draft, actor);
-                }, "Site update posted")
+                await run(
+                  "site.save",
+                  { update: draft },
+                  (d) => {
+                    saveSiteUpdate(d, draft, actor);
+                  },
+                  "Site update posted",
+                )
               )
                 setDraft(null);
             }}
@@ -303,7 +349,8 @@ export function SiteUpdates({ projectId }: { projectId?: string }) {
   );
 }
 export function Snags({ projectId }: { projectId?: string }) {
-  const { db, mutate } = useStore();
+  const { store, run, pending } = useStoreCommand(),
+    { db } = store;
   const [filter, setFilter] = useState(projectId || "");
   const [status, setStatus] = useState("");
   const [draft, setDraft] = useState<Snag | null>(null);
@@ -314,6 +361,16 @@ export function Snags({ projectId }: { projectId?: string }) {
     (s) =>
       (!filter || s.projectId === filter) && (!status || s.status === status),
   );
+  const staffQa =
+    store.mode === "staging" && !canStoreAction(store, "project.write");
+  const storedSnag = db.snags.find((item) => item.id === draft?.id);
+  const permittedStaffSave =
+    !staffQa ||
+    (draft?.assigneeId === store.actor?.personId &&
+      (!storedSnag
+        ? nextStatus === "Open"
+        : storedSnag.status !== "Open" &&
+          ["Rectification", "Ready for Inspection"].includes(nextStatus)));
   function open(s: Snag) {
     setActor("");
     setReason("");
@@ -321,6 +378,7 @@ export function Snags({ projectId }: { projectId?: string }) {
     setNextStatus(s.status);
   }
   function create() {
+    if (!db.projects.length) return;
     open({
       id: uid(),
       reference:
@@ -334,7 +392,7 @@ export function Snags({ projectId }: { projectId?: string }) {
       projectId: filter || db.projects[0].id,
       area: "",
       description: "",
-      assigneeId: "",
+      assigneeId: staffQa ? store.actor?.personId || "" : "",
       priority: "Normal",
       createdAt: new Date().toISOString(),
       due: addDays(today(), 7),
@@ -351,7 +409,18 @@ export function Snags({ projectId }: { projectId?: string }) {
         title="Snags & Quality Assurance"
         description="Track rectification through inspection and retain the record."
         action={
-          <button className="primary" onClick={create}>
+          <button
+            className="primary"
+            disabled={
+              pending ||
+              !(
+                canStoreAction(store, "project.write") ||
+                canStoreAction(store, "qa.update")
+              ) ||
+              !db.projects.length
+            }
+            onClick={create}
+          >
             + Create Snag
           </button>
         }
@@ -410,22 +479,23 @@ export function Snags({ projectId }: { projectId?: string }) {
         <Modal
           drawer
           title={draft.reference + " · Snag record"}
-          onClose={() => setDraft(null)}
+          onClose={() => {
+            if (!pending) setDraft(null);
+          }}
         >
           <form
-            onSubmit={(e) => {
+            aria-busy={pending}
+            inert={pending}
+            onSubmit={async (e) => {
               e.preventDefault();
-              if (nextStatus !== "Open" && !draft.assigneeId) {
-                return mutate(() => {
-                  throw Error(
-                    "Assign a responsible person before advancing the snag.",
-                  );
-                });
-              }
               if (
-                mutate((d) => {
-                  saveSnag(d, draft, nextStatus, actor, reason);
-                })
+                await run(
+                  "snag.save",
+                  { snag: draft, status: nextStatus, reason },
+                  (d) => {
+                    saveSnag(d, draft, nextStatus, actor, reason);
+                  },
+                )
               )
                 setDraft(null);
             }}
@@ -452,6 +522,7 @@ export function Snags({ projectId }: { projectId?: string }) {
             </Field>
             <Field label="Responsible person">
               <select
+                disabled={staffQa}
                 value={draft.assigneeId}
                 onChange={(e) =>
                   setDraft({ ...draft, assigneeId: e.target.value })
@@ -496,19 +567,43 @@ export function Snags({ projectId }: { projectId?: string }) {
             </div>
             <Field label="Status">
               <select
+                disabled={staffQa && storedSnag?.status === "Open"}
                 value={nextStatus}
                 onChange={(e) => setNextStatus(e.target.value as SnagStatus)}
               >
                 {snagStatuses.map((s) => (
-                  <option key={s}>{s}</option>
+                  <option
+                    key={s}
+                    disabled={
+                      store.mode === "staging" &&
+                      ((s === "Closed" &&
+                        (!canStoreAction(store, "project.write") ||
+                          draft.assigneeId === store.actor?.personId)) ||
+                        (staffQa &&
+                          (storedSnag
+                            ? s === "Open" || s === "Assigned"
+                            : s !== "Open")))
+                    }
+                  >
+                    {s}
+                  </option>
                 ))}
               </select>
             </Field>
             <p className="muted">
               Advance one step at a time. Closure requires inspection notes and
-              a demo inspector different from the responsible person. Return
-              failed inspections to Rectification.
+              {store.mode === "staging"
+                ? "an authorized inspector"
+                : "a demo inspector"}{" "}
+              different from the responsible person. Return failed inspections
+              to Rectification.
             </p>
+            {staffQa && storedSnag?.status === "Open" && (
+              <p className="muted">
+                A Project Manager assigns this reported snag before staff begins
+                rectification. Its original report and evidence remain saved.
+              </p>
+            )}
             <h3>Before photos</h3>
             <Attachments
               photos
@@ -558,7 +653,19 @@ export function Snags({ projectId }: { projectId?: string }) {
                 ))}
             </details>
             <WorkflowError />
-            <button className="primary">Save Snag</button>
+            <button
+              className="primary"
+              disabled={
+                pending ||
+                !permittedStaffSave ||
+                !(
+                  canStoreAction(store, "project.write") ||
+                  canStoreAction(store, "qa.update")
+                )
+              }
+            >
+              Save Snag
+            </button>
           </form>
         </Modal>
       )}

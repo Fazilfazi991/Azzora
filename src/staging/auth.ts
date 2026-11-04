@@ -6,8 +6,10 @@ import {
   randomBytes,
   timingSafeEqual,
 } from "node:crypto";
+import {stagingRuntimeOrigins} from "./deployment";
 import { rpc as configuredRpc } from "./supabase.js";
 import { createSupabaseTokenVerifier } from "../backend/auth-supabase.js";
+import { createStagingRecovery } from "./auth-recovery.js";
 
 export interface StagingActor {
   userId: string;
@@ -104,6 +106,7 @@ export function createStagingAuth(
     url?: string;
     publishableKey?: string;
     encryptionKey?: string;
+    serviceKey?: string;
   } = {},
 ) {
   const rpc = options.rpc || configuredRpc;
@@ -122,11 +125,7 @@ export function createStagingAuth(
     throw new Error("Staging session encryption must be configured.");
   const origins =
     options.allowedOrigins ||
-    new Set(
-      (process.env.AZZORA_STAGING_ALLOWED_ORIGINS || "")
-        .split(",")
-        .filter(Boolean),
-    );
+    stagingRuntimeOrigins();
   if (!origins.size) throw new Error("Explicit staging origins are required.");
   const verifyToken = createSupabaseTokenVerifier({
     url,
@@ -301,6 +300,7 @@ export function createStagingAuth(
           p_ciphertext: encrypt(refreshed, sessionHash),
         });
         t = refreshed;
+        stored = { ...stored, version: stored.version + 1 };
       } catch {
         stored = await rpc("staging_auth_session_get", { p_hash: sessionHash });
         t = decrypt<Tokens>(stored.ciphertext, sessionHash);
@@ -319,8 +319,25 @@ export function createStagingAuth(
       p_session_hash: sessionHash,
     });
     await rpc("staging_auth_session_touch", { p_hash: sessionHash });
-    return { actor, token, t };
+    return { actor, token, t, version: stored.version };
   }
+  const recovery = createStagingRecovery({
+    rpc,
+    load,
+    provider,
+    verifyToken,
+    tokens,
+    encrypt,
+    decrypt,
+    csrf,
+    requireCsrf,
+    boundary,
+    input,
+    transport,
+    url,
+    serviceKey: () =>
+      options.serviceKey || process.env.AZZORA_STAGING_SERVICE_KEY || "",
+  });
   return {
     async requireActor(request: Request, workspace?: "manager" | "accountant") {
       const state = await load(request);
@@ -331,6 +348,8 @@ export function createStagingAuth(
     async handle(request: Request, path: string): Promise<Response> {
       try {
         boundary(request, request.method !== "GET");
+        if (path.startsWith("/auth/recovery/"))
+          return recovery.handle(request, path);
         if (path === "/auth/login" && request.method === "POST") {
           const data = await input(request);
           const email =

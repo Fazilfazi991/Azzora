@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useStore } from "../store";
+import { useStoreCommand } from "../store";
 import { Header, Field, Modal, Badge, Empty } from "../components/ui";
 import { Attachments } from "../components/uploads";
 import { DataTable } from "../commercial/Registers";
@@ -32,7 +32,8 @@ export function Variations({
   id?: string;
   startNew?: boolean;
 }) {
-  const { db, mutate } = useStore(),
+  const { store, run, pending } = useStoreCommand(),
+    { db } = store,
     op = getOperations(db),
     actors = useActors();
   const [filter, setFilter] = useState(projectId),
@@ -188,16 +189,25 @@ export function Variations({
                 </button>
                 <button
                   onClick={() =>
-                    mutate((d) => {
-                      submitApproval(
-                        d,
-                        "Variation",
-                        v.id,
-                        "Internal",
-                        actors.actor,
-                        actors.approver,
-                      );
-                    })
+                    run(
+                      "procurement.submit",
+                      {
+                        kind: "Variation",
+                        entityId: v.id,
+                        stage: "Internal",
+                        approverId: actors.approver,
+                      },
+                      (d) => {
+                        submitApproval(
+                          d,
+                          "Variation",
+                          v.id,
+                          "Internal",
+                          actors.actor,
+                          actors.approver,
+                        );
+                      },
+                    )
                   }
                 >
                   Submit Variation
@@ -207,16 +217,25 @@ export function Variations({
             {v.status === "Internally Approved" && (
               <button
                 onClick={() =>
-                  mutate((d) => {
-                    submitApproval(
-                      d,
-                      "Variation",
-                      v.id,
-                      "Client",
-                      actors.actor,
-                      actors.approver,
-                    );
-                  })
+                  run(
+                    "procurement.submit",
+                    {
+                      kind: "Variation",
+                      entityId: v.id,
+                      stage: "Client",
+                      approverId: actors.approver,
+                    },
+                    (d) => {
+                      submitApproval(
+                        d,
+                        "Variation",
+                        v.id,
+                        "Client",
+                        actors.actor,
+                        actors.approver,
+                      );
+                    },
+                  )
                 }
               >
                 Send to Client
@@ -225,10 +244,25 @@ export function Variations({
             {v.status === "Approved" &&
               (BigInt(v.gross!) > 0n ? (
                 <button
-                  onClick={() => {
+                  onClick={async () => {
+                    if (store.mode === "staging") {
+                      const before = new Set(
+                        db.invoices.map((item) => item.id),
+                      );
+                      if (
+                        await run("variation.invoice", { id: v.id }, () => {})
+                      ) {
+                        const created = store
+                          .latestDb?.()
+                          .invoices.find((item) => !before.has(item.id));
+                        if (created)
+                          location.hash = `/accounts/invoices/${created.id}`;
+                      }
+                      return;
+                    }
                     let next = "";
                     if (
-                      mutate((d) => {
+                      await run("variation.invoice", { id: v.id }, (d) => {
                         next = generateVariationInvoice(d, v.id).id;
                       })
                     )
@@ -266,12 +300,17 @@ export function Variations({
         </Empty>
       )}
       {draft && (
-        <Modal title="Variation Draft" onClose={() => setDraft(null)}>
+        <Modal
+          title="Variation Draft"
+          onClose={() => {
+            if (!pending) setDraft(null);
+          }}
+        >
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               if (
-                mutate((d) => {
+                await run("variation.save", { variation: draft }, (d) => {
                   saveVariation(d, draft, actors.actor);
                 })
               )
@@ -411,21 +450,27 @@ export function Variations({
       {revision && (
         <Modal
           title="Request Variation Revision"
-          onClose={() => setRevision("")}
+          onClose={() => {
+            if (!pending) setRevision("");
+          }}
         >
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               const data = new FormData(e.currentTarget);
               if (
-                mutate((d) => {
-                  reviseVariation(
-                    d,
-                    revision,
-                    String(data.get("reason")),
-                    actors.actor,
-                  );
-                })
+                await run(
+                  "variation.revise",
+                  { id: revision, reason: String(data.get("reason")) },
+                  (d) => {
+                    reviseVariation(
+                      d,
+                      revision,
+                      String(data.get("reason")),
+                      actors.actor,
+                    );
+                  },
+                )
               )
                 setRevision("");
             }}

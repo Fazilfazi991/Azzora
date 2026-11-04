@@ -19,11 +19,13 @@ import {
   type StagingSession,
 } from "./client";
 import "./staging.css";
+import { OwnerRecoveryPanel } from "./client-recovery";
 
 type ManagerSnapshot = {
   db: Database;
   version: number;
   expenseSubmissions?: StagingExpenseSubmission[];
+  accountantBills?: Store["accountantBills"];
 };
 type Intent = { kind: string; payload: unknown };
 /** A narrow compatibility bridge for the accepted quotation autosave UI only.
@@ -79,11 +81,8 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
   const failure = useRef("");
   const retries = useRef<Intent[]>([]);
   const generation = useRef(0);
-  const attempt = useRef<{
-    fingerprint: string;
-    key: string;
-    version: number;
-  } | null>(null);
+  const attempts = useRef(new Map<string, { key: string; version: number }>());
+  const inFlightCommands = useRef(new Map<string, Promise<boolean>>());
   const activeCommands = useRef(0);
   const apply = useCallback((next: ManagerSnapshot) => {
     current.current = next;
@@ -142,8 +141,16 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
     if (!user || version === undefined)
       throw Error("Sign in before saving changes.");
     const fingerprint = JSON.stringify(intent);
-    if (attempt.current?.fingerprint !== fingerprint)
-      attempt.current = { fingerprint, key: crypto.randomUUID(), version };
+    const identityKey = user.userId + ":" + fingerprint;
+    let attempt = attempts.current.get(identityKey);
+    if (!attempt) {
+      if (attempts.current.size >= 100)
+        throw Error(
+          "Resolve the unconfirmed staging requests before submitting more changes.",
+        );
+      attempt = { key: crypto.randomUUID(), version };
+      attempts.current.set(identityKey, attempt);
+    }
     const result = await stagingRequest<
       ManagerSnapshot & { snapshot?: ManagerSnapshot }
     >(
@@ -151,8 +158,8 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
       stagingJson(
         {
           ...intent,
-          idempotencyKey: attempt.current.key,
-          expectedVersion: attempt.current.version,
+          idempotencyKey: attempt.key,
+          expectedVersion: attempt.version,
         },
         user.csrf,
       ),
@@ -160,7 +167,7 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
     const next = result.snapshot || result;
     if (!next.db || !Number.isSafeInteger(next.version))
       throw Error("The server did not confirm the saved record.");
-    attempt.current = null;
+    attempts.current.delete(identityKey);
     return next;
   }
   function enqueue(intent: Intent, optimistic: Database) {
@@ -215,6 +222,10 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
     payload: unknown,
     message = "Changes saved to shared staging",
   ) {
+    const identity = sessionRef.current;
+    const key = identity?.userId + ":" + JSON.stringify({ kind, payload });
+    const pendingCommand = inFlightCommands.current.get(key);
+    if (pendingCommand) return pendingCommand;
     setError("");
     activeCommands.current += 1;
     setPending((value) => value + 1);
@@ -222,7 +233,15 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
     const operation = tail.current.then(async () => {
       try {
         if (failure.current) throw Error(failure.current);
+        if (identity !== sessionRef.current)
+          throw Error(
+            "Your staging identity changed. Sign in before retrying.",
+          );
         const next = await send({ kind, payload });
+        if (identity !== sessionRef.current)
+          throw Error(
+            "The prior identity response was discarded. Refresh your authorized records.",
+          );
         apply(next);
         setToast(message);
         return true;
@@ -238,6 +257,8 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
         setPending((value) => Math.max(0, value - 1));
       }
     });
+    inFlightCommands.current.set(key, operation);
+    void operation.finally(() => inFlightCommands.current.delete(key));
     tail.current = operation.then(() => {});
     return operation;
   }
@@ -327,7 +348,7 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
       await tail.current;
       retries.current = [];
       failure.current = "";
-      attempt.current = null;
+      attempts.current.clear();
       setPending(0);
       await load();
       setError("");
@@ -363,6 +384,7 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
     latestDb: () => current.current!.db,
     actor: session,
     expenseSubmissions: snapshot.expenseSubmissions,
+    accountantBills: snapshot.accountantBills,
     mutate(fn, message = "") {
       if (activeCommands.current) {
         setError(
@@ -419,6 +441,11 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
           <span>Real posting disabled</span>
         </div>
         <div>
+          {session.role === "owner_admin" && (
+            <a className="button" href="/api/staging/manager/backup" download>
+              Download staging backup
+            </a>
+          )}
           <button
             type="button"
             disabled={pending > 0}
@@ -449,6 +476,9 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
             </>
           )}
         </div>
+      )}
+      {session.role === "owner_admin" && (
+        <OwnerRecoveryPanel session={session} />
       )}
       {children}
     </StoreContext.Provider>

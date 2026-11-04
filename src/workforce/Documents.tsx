@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Attachment, DocumentRecord } from "../domain/model";
 import { categories } from "../domain/model";
 import { today, uid } from "../domain/logic";
-import { useStore } from "../store";
+import { canStoreAction, useStoreCommand } from "../store";
 import {
   Badge,
   Empty,
@@ -18,7 +18,8 @@ import { reviseDocument, reviewDocument, saveDocumentDraft } from "./commands";
 import "./workforce.css";
 
 export function Documents({ projectId }: { projectId?: string }) {
-  const { db, mutate } = useStore();
+  const { store, run, pending } = useStoreCommand(),
+    { db } = store;
   const [filter, setFilter] = useState(projectId || "");
   const [category, setCategory] = useState("");
   const [draft, setDraft] = useState<DocumentRecord | null>(null);
@@ -32,6 +33,14 @@ export function Documents({ projectId }: { projectId?: string }) {
       (!category || d.category === category),
   );
   const stored = db.documents.find((d) => d.id === draft?.id);
+  const canSubmit =
+    canStoreAction(store, "project.write") ||
+    canStoreAction(store, "document.submit");
+  const canReview =
+    canStoreAction(store, "project.write") &&
+    (store.mode !== "staging" ||
+      ((stored?.submittedBy || stored?.uploadedBy) !== store.actor?.personId &&
+        (!stored?.reviewerId || stored.reviewerId === store.actor?.personId)));
   const editable = !stored || stored.status === "Draft";
   const family = draft
     ? db.documents
@@ -44,25 +53,39 @@ export function Documents({ projectId }: { projectId?: string }) {
     setActor("");
     setNote("");
   }
-  function review(status: "Pending" | "Approved" | "Rejected") {
+  async function review(status: "Pending" | "Approved" | "Rejected") {
     if (!draft) return;
     if (
-      mutate((d) => {
-        if (status === "Pending")
-          saveDocumentDraft(
-            d,
-            {
-              ...draft,
-              attachment: files[0],
-              reviewerId:
-                draft.reviewerId ||
-                db.people.find((p) => p.status !== "Inactive" && p.id !== actor)
-                  ?.id,
-            },
-            actor,
-          );
-        reviewDocument(d, draft.id, status, actor, note);
-      }, "Review action recorded")
+      await run(
+        "document.review",
+        {
+          id: draft.id,
+          status,
+          reason: note,
+          reviewerId: draft.reviewerId,
+          ...(status === "Pending"
+            ? { document: { ...draft, attachment: files[0] } }
+            : {}),
+        },
+        (d) => {
+          if (status === "Pending")
+            saveDocumentDraft(
+              d,
+              {
+                ...draft,
+                attachment: files[0],
+                reviewerId:
+                  draft.reviewerId ||
+                  db.people.find(
+                    (p) => p.status !== "Inactive" && p.id !== actor,
+                  )?.id,
+              },
+              actor,
+            );
+          reviewDocument(d, draft.id, status, actor, note);
+        },
+        "Review action recorded",
+      )
     )
       setDraft(null);
   }
@@ -74,7 +97,7 @@ export function Documents({ projectId }: { projectId?: string }) {
         action={
           <button
             className="primary"
-            disabled={!db.projects.length}
+            disabled={!canSubmit || !db.projects.length}
             onClick={() =>
               open({
                 id: uid(),
@@ -93,9 +116,10 @@ export function Documents({ projectId }: { projectId?: string }) {
         }
       />
       <p className="notice">
-        Browser-local documents and explicit demo reviewers. Seeded records
-        contain metadata only. A submitted revision is locked; corrections
-        create a new revision.
+        {store.mode === "staging"
+          ? "Shared fictional documents use private storage and authenticated, independently assigned reviewers."
+          : "Browser-local documents and explicit demo reviewers. Seeded records contain metadata only."}{" "}
+        A submitted revision is locked; corrections create a new revision.
       </p>
       <div className="filters">
         {!projectId && (
@@ -168,7 +192,9 @@ export function Documents({ projectId }: { projectId?: string }) {
         <Modal
           drawer
           title={`${draft.name || "New document"} · Revision ${draft.version}`}
-          onClose={() => setDraft(null)}
+          onClose={() => {
+            if (!pending) setDraft(null);
+          }}
         >
           <Badge>{stored?.status || "Draft"}</Badge>
           <p>
@@ -177,10 +203,14 @@ export function Documents({ projectId }: { projectId?: string }) {
             {stored?.submittedAt || stored?.uploadedAt || "Not submitted"}
           </p>
           <form
-            onSubmit={(e) => {
+            aria-busy={pending}
+            inert={pending}
+            onSubmit={async (e) => {
               e.preventDefault();
               if (
-                mutate(
+                await run(
+                  "document.save",
+                  { document: { ...draft, attachment: files[0] } },
                   (d) =>
                     saveDocumentDraft(
                       d,
@@ -262,17 +292,28 @@ export function Documents({ projectId }: { projectId?: string }) {
                   <select
                     value={
                       draft.reviewerId ||
-                      db.people.find(
-                        (p) => p.status !== "Inactive" && p.id !== actor,
-                      )?.id ||
-                      ""
+                      (store.mode === "staging"
+                        ? ""
+                        : db.people.find(
+                            (p) => p.status !== "Inactive" && p.id !== actor,
+                          )?.id || "")
                     }
                     onChange={(e) =>
                       setDraft({ ...draft, reviewerId: e.target.value })
                     }
                   >
+                    {store.mode === "staging" && (
+                      <option value="">Choose an independent reviewer…</option>
+                    )}
                     {db.people
-                      .filter((p) => p.status !== "Inactive" && p.id !== actor)
+                      .filter(
+                        (p) =>
+                          p.status !== "Inactive" &&
+                          p.id !==
+                            (store.mode === "staging"
+                              ? store.actor?.personId
+                              : actor),
+                      )
                       .map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.name}
@@ -281,14 +322,21 @@ export function Documents({ projectId }: { projectId?: string }) {
                   </select>
                 </Field>
                 <div className="workflow-actions">
-                  <button className="primary" disabled={files.length > 1}>
+                  <button
+                    className="primary"
+                    disabled={pending || !canSubmit || files.length > 1}
+                  >
                     Save Draft
                   </button>
                 </div>
               </>
             )}
           </form>
-          <section className="workflow-review">
+          <section
+            className="workflow-review"
+            aria-busy={pending}
+            inert={pending}
+          >
             <h3>{editable ? "Submit for review" : "Review decision"}</h3>
             {!editable && (
               <ActorField
@@ -308,7 +356,12 @@ export function Documents({ projectId }: { projectId?: string }) {
               {editable ? (
                 <button
                   className="primary"
-                  disabled={files.length > 1}
+                  disabled={
+                    pending ||
+                    !canSubmit ||
+                    files.length > 1 ||
+                    (store.mode === "staging" && !draft.reviewerId)
+                  }
                   onClick={() => review("Pending")}
                 >
                   Submit Revision
@@ -317,26 +370,46 @@ export function Documents({ projectId }: { projectId?: string }) {
                 <>
                   <button
                     className="primary"
+                    disabled={pending || !canReview}
                     onClick={() => review("Approved")}
                   >
                     Approve Revision
                   </button>
-                  <button onClick={() => review("Rejected")}>
+                  <button
+                    disabled={pending || !canReview}
+                    onClick={() => review("Rejected")}
+                  >
                     Reject Revision
                   </button>
                 </>
               ) : (
                 <button
                   className="primary"
-                  disabled={family.some((d) => d.version > draft.version)}
-                  onClick={() => {
+                  disabled={
+                    !canSubmit || family.some((d) => d.version > draft.version)
+                  }
+                  onClick={async () => {
                     let next: DocumentRecord | undefined;
                     if (
-                      mutate((d) => {
-                        next = reviseDocument(d, draft.id, actor, note);
-                      })
-                    )
-                      open(next!);
+                      await run(
+                        "document.revise",
+                        { id: draft.id, reason: note },
+                        (d) => {
+                          next = reviseDocument(d, draft.id, actor, note);
+                        },
+                      )
+                    ) {
+                      if (store.mode === "staging")
+                        next = store
+                          .latestDb?.()
+                          .documents.filter(
+                            (item) =>
+                              (item.familyId || item.id) ===
+                              (draft.familyId || draft.id),
+                          )
+                          .sort((a, b) => b.version - a.version)[0];
+                      if (next) open(next);
+                    }
                   }}
                 >
                   Create Revision
@@ -344,9 +417,12 @@ export function Documents({ projectId }: { projectId?: string }) {
               )}
             </div>
             <p className="muted">
-              Review requires an active demo actor and a note. Reviewers must
-              differ from the submitter. Approved files remain in revision
-              history.
+              Review requires{" "}
+              {store.mode === "staging"
+                ? "an authorized individual account"
+                : "an active demo actor"}{" "}
+              and a note. Reviewers must differ from the submitter. Approved
+              files remain in revision history.
             </p>
           </section>
           <WorkflowError />

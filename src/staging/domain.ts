@@ -1,4 +1,17 @@
-import type { AuthorizedActor, Workspace } from "../backend/permissions";
+import type {
+  AuthorizedActor,
+  BackendAction,
+  Workspace,
+} from "../backend/permissions";
+import { applyManagerCommand, managerCommandScope } from "./manager-commands";
+import {
+  isCommercialCommand,
+  commercialCommandScope,
+  applyCommercialCommand,
+  refreshCommercialView,
+  syncFinanceBillCosts,
+  StagingPolicyError,
+} from "./commercial-commands";
 import { AccessDenied } from "../backend/permissions";
 import type {
   Assignment,
@@ -22,7 +35,11 @@ import {
   postPayment,
   saveInvoice,
 } from "../commercial/repository";
-import { amountString, invoiceTotals } from "../commercial/calculations";
+import {
+  amountString,
+  invoiceTotals,
+  invoiceCreditLines,
+} from "../commercial/calculations";
 import type { Invoice, Payment } from "../commercial/model";
 import {
   changeQuotationStatus,
@@ -76,6 +93,7 @@ export interface SharedCompanyState {
   manager: Database;
   finance: ReviewState;
   expenseSubmissions: ExpenseSubmission[];
+  canonicalSnapshots?: import("./canonical").CanonicalData["snapshots"];
 }
 export interface SharedCommand {
   kind: string;
@@ -87,6 +105,7 @@ export interface SharedCommandScope {
   projectId?: string;
   submittedBy?: string;
   financial: boolean;
+  capability?: BackendAction;
 }
 const object = (value: unknown): Record<string, unknown> => {
   if (!value || typeof value !== "object" || Array.isArray(value))
@@ -248,6 +267,10 @@ export function sharedCommandScope(
   state: SharedCompanyState,
   command: SharedCommand,
 ): SharedCommandScope {
+  const managerScope = managerCommandScope(state, command);
+  if (managerScope) return managerScope;
+  if (isCommercialCommand(command.kind))
+    return commercialCommandScope(state, command);
   const p = object(command.payload);
   if (command.kind === "accounts.action") {
     const action = object(p.action);
@@ -357,7 +380,8 @@ function syncManagerInvoice(state: SharedCompanyState, id: string) {
   const invoice = state.manager.invoices.find((item) => item.id === id)!;
   const total = invoiceTotals(invoice);
   if (invoice.status === "Issued" && total.vat !== 0n)
-    throw Error(
+    throw new StagingPolicyError(
+      "vat_policy_pending",
       "VAT policy is pending. Tax-bearing documents must remain drafts in staging.",
     );
   const old = state.finance.invoices.find((item) => item.id === id);
@@ -379,7 +403,25 @@ function syncManagerInvoice(state: SharedCompanyState, id: string) {
   };
   state.finance = applyReviewAction(state.finance, fields);
   const projected = state.finance.invoices.find((item) => item.id === id)!;
-  projected.subtotalFils = total.net.toString();
+  projected.invoiceReference = invoice.number;
+  const allocations = invoiceCreditLines(invoice);
+  projected.items = invoice.lines.map((line) => {
+    const value = allocations.find((item) => item.itemId === line.id)!;
+    return {
+      description: line.description,
+      quantity: line.quantity,
+      unit: "",
+      rate: line.rate,
+      amountFils: value.net.toString(),
+      ...(value.discount > 0n
+        ? {
+            details: `Approved discount allocation AED ${amountString(value.discount)}`,
+          }
+        : {}),
+    };
+  });
+  projected.subtotalFils = total.subtotal.toString();
+  projected.discountFils = total.discount.toString();
   projected.taxFils = total.vat.toString();
   projected.taxStatus = "Policy pending";
 }
@@ -422,21 +464,33 @@ function syncFinanceInvoice(state: SharedCompanyState, item: ReviewDocument) {
     date: item.date,
     due: item.due,
     description: item.description,
-    lines: [
-      {
-        id: `${item.id}-line`,
-        description: item.description,
-        quantity: "1",
-        rate: amountString(BigInt(item.amountFils)),
-        tax: "Zero Rated",
-      },
-    ],
+    lines: item.items?.length
+      ? item.items.map((line, index) => ({
+          id: `${item.id}-line-${index + 1}`,
+          description: line.description,
+          quantity: line.quantity,
+          rate: line.rate,
+          tax: "Zero Rated" as const,
+        }))
+      : [
+          {
+            id: `${item.id}-line`,
+            description: item.description,
+            quantity: "1",
+            rate: amountString(BigInt(item.amountFils)),
+            tax: "Zero Rated",
+          },
+        ],
     discount: "0",
     vatPercentage: "0",
     status: "Draft",
   };
   // Proformas remain finance-only non-posting documents; do not create an ordinary Manager AR invoice.
   if (item.invoiceType === "Proforma") return;
+  if (invoiceTotals(invoice).grand.toString() !== item.amountFils)
+    throw Error(
+      "Accountant itemization does not reconcile with its authoritative total; no Manager projection was saved.",
+    );
   saveInvoice(state.manager, invoice);
   const saved = state.manager.invoices.find(
     (value) => value.id === item.id,
@@ -576,6 +630,7 @@ function applyAccounts(
     }
   }
   state.finance = applyReviewAction(state.finance, action);
+  syncFinanceBillCosts(state);
   if (
     ["invoice", "update-invoice-draft", "issue-invoice"].includes(action.kind)
   ) {
@@ -647,7 +702,7 @@ export function applySharedCommand(
       throw new AccessDenied(
         "Explicit staging finance capability is required.",
       );
-  } else {
+  } else if (!managerCommandScope(previous, command)) {
     const capability =
       command.kind === "expense.submit"
         ? "expense.submit"
@@ -672,6 +727,22 @@ export function applySharedCommand(
       );
   }
   const next = structuredClone(previous);
+  refreshCommercialView(next);
+  if (applyManagerCommand(next, command, actor)) {
+    refreshCommercialView(next);
+    refreshCatalog(next);
+    return next;
+  }
+  if (isCommercialCommand(command.kind)) {
+    const invoices = new Set(next.manager.invoices.map((value) => value.id));
+    applyCommercialCommand(next, command, actor);
+    if (command.kind === "variation.invoice")
+      for (const invoice of next.manager.invoices)
+        if (!invoices.has(invoice.id)) syncManagerInvoice(next, invoice.id);
+    refreshCommercialView(next);
+    refreshCatalog(next);
+    return next;
+  }
   const p = object(command.payload);
   switch (command.kind) {
     case "customer.save": {
@@ -720,6 +791,27 @@ export function applySharedCommand(
     }
     case "project.create": {
       const project = object(p.project) as unknown as Project;
+      const linkedQuotation =
+        typeof p.quotationId === "string"
+          ? next.manager.quotations.find((value) => value.id === p.quotationId)
+          : undefined;
+      if (p.quotationId !== undefined) {
+        if (
+          !linkedQuotation ||
+          linkedQuotation.status !== "Draft" ||
+          linkedQuotation.customerId !== project.clientId
+        )
+          throw Error(
+            "Link only a draft quotation for the selected registered customer.",
+          );
+        if (
+          linkedQuotation.projectId &&
+          next.manager.projects.some(
+            (value) => value.id === linkedQuotation.projectId,
+          )
+        )
+          requireProject(next, actor, linkedQuotation.projectId);
+      }
       if (next.manager.projects.some((item) => item.id === project.id))
         throw Error("Project ID already exists.");
       if (!owner(actor) && project.managerId !== person(next, actor))
@@ -755,6 +847,15 @@ export function applySharedCommand(
         p.standard !== false,
         p.planMode === "empty" ? "empty" : "legacy",
       );
+      if (linkedQuotation) {
+        linkedQuotation.projectId = project.id;
+        linkedQuotation.project = {
+          ...linkedQuotation.project,
+          name: project.name,
+          location: project.location,
+        };
+        linkedQuotation.updatedAt = new Date().toISOString();
+      }
       break;
     }
     case "project.assign": {
@@ -1032,7 +1133,8 @@ export function applySharedCommand(
         person(next, actor),
       );
       if (BigInt(bill.vat) !== 0n)
-        throw Error(
+        throw new StagingPolicyError(
+          "vat_policy_pending",
           "VAT-bearing supplier bills remain blocked pending tax policy.",
         );
       refreshCatalog(next);
@@ -1166,6 +1268,7 @@ export function applySharedCommand(
         "This action is not supported by the shared staging command boundary.",
       );
   }
+  refreshCommercialView(next);
   refreshCatalog(next);
   return next;
 }
@@ -1179,6 +1282,7 @@ export function sharedManagerView(
   const db = structuredClone(state.manager);
   const allowed = new Set(actor.grant.projectIds);
   db.projects = db.projects.filter((item) => allowed.has(item.id));
+  db.planning = db.planning?.filter((item) => allowed.has(item.projectId));
   const clients = new Set(db.projects.map((item) => item.clientId));
   db.clients = db.clients.filter(
     (item) =>

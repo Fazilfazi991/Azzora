@@ -1,6 +1,6 @@
 import { activeApprovals } from "../workforce/document-approvals";
 import { useState } from "react";
-import { useStore } from "../store";
+import { useStore, useStoreCommand } from "../store";
 import { Header, Field, Modal, Badge } from "../components/ui";
 import { DataTable } from "../commercial/Registers";
 import { aed } from "../commercial/calculations";
@@ -11,7 +11,8 @@ import { saveBudget } from "./repository";
 import { projectCosts, supplierBalance, orderReceived } from "./calculations";
 import { History } from "./Controls";
 export function Budgets({ projectId = "" }: { projectId?: string }) {
-  const { db, mutate } = useStore();
+  const { store, run, pending } = useStoreCommand(),
+    { db } = store;
   const [selected, setSelected] = useState(
       projectId || db.projects[0]?.id || "",
     ),
@@ -117,12 +118,17 @@ export function Budgets({ projectId = "" }: { projectId?: string }) {
       />
       {s.budget && <History id={s.budget.id} />}
       {draft && (
-        <Modal title="Project Cost Budget" onClose={() => setDraft(null)}>
+        <Modal
+          title="Project Cost Budget"
+          onClose={() => {
+            if (!pending) setDraft(null);
+          }}
+        >
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               if (
-                mutate((d) => {
+                await run("budget.save", { budget: draft }, (d) => {
                   saveBudget(
                     d,
                     draft,

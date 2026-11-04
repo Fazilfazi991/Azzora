@@ -78,6 +78,8 @@ export function createStagingRpc(
       const body = (await response.json().catch(() => null)) as {
         code?: string;
       } | null;
+      if (response.status === 429 || body?.code === "PT429")
+        throw new StagingServiceError(429, "staging_rate_limited");
       if (
         response.status === 409 ||
         ["40001", "23505", "PT409"].includes(body?.code || "")

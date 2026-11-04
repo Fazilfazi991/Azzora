@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { useStore } from "../store";
+import { useStoreCommand } from "../store";
 import { Field, Badge } from "../components/ui";
 import { aed } from "../commercial/calculations";
 import { getOperations } from "./migration";
 import { closureSummary, closeCommercial } from "./closure-domain";
 import { downloadCsv } from "../commercial/reports-data";
 export function CommercialClosure({ projectId }: { projectId: string }) {
-  const { db, mutate } = useStore();
+  const { store, run, pending } = useStoreCommand(),
+    { db } = store;
   const s = closureSummary(db, projectId),
     op = getOperations(db);
   const [notes, setNotes] = useState("");
@@ -86,9 +87,9 @@ export function CommercialClosure({ projectId }: { projectId: string }) {
             />
           </Field>
           <button
-            disabled={!s.commercialClear || !notes.trim()}
+            disabled={pending || !s.commercialClear || !notes.trim()}
             onClick={() =>
-              mutate((d) =>
+              run("closure.record", { projectId, notes }, (d) =>
                 closeCommercial(
                   d,
                   projectId,

@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { createStagingHandler } from "./server";
+import { createStagingHandler, stagingAction } from "./server";
 import { createSharedCompanyState } from "./domain";
 import { serializeCanonical } from "./canonical";
 import type { createStagingAuth, StagingActor } from "./auth";
@@ -102,4 +102,51 @@ it("rejects plaintext transport before loading authentication", async () => {
     ).status,
   ).toBe(403);
   expect(calls).not.toHaveBeenCalled();
+});
+it("assigns creation IDs consistently across retries without conflating actors or document types", () => {
+  const input = {
+    kind: "invoice",
+    invoiceType: "Normal Invoice",
+    party: "Fictional Client",
+  };
+  const first = stagingAction(input, actor, "a-new-action-key-0001");
+  expect(first.id).toMatch(/^NOR-STG-[A-F0-9]{20}$/);
+  expect(stagingAction(input, actor, "a-new-action-key-0001")).toEqual(first);
+  expect(
+    stagingAction(
+      input,
+      { ...actor, userId: "different" },
+      "a-new-action-key-0001",
+    ).id,
+  ).not.toBe(first.id);
+  expect(
+    stagingAction(
+      { ...input, invoiceType: "Proforma" },
+      actor,
+      "a-new-action-key-0001",
+    ).id,
+  ).toMatch(/^PRO-STG-/);
+  expect(
+    stagingAction(
+      { ...input, invoiceType: "Tax Invoice" },
+      actor,
+      "a-new-action-key-0001",
+    ).id,
+  ).toMatch(/^INV-STG-/);
+});
+it("never invents a replacement ID for an existing-resource action", () => {
+  expect(
+    stagingAction(
+      { kind: "update-invoice-draft" },
+      actor,
+      "a-new-action-key-0001",
+    ).id,
+  ).toBeUndefined();
+  expect(
+    stagingAction(
+      { kind: "receipt", id: "existing-source" },
+      actor,
+      "a-new-action-key-0001",
+    ).id,
+  ).toBe("existing-source");
 });

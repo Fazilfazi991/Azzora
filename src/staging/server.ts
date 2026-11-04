@@ -67,6 +67,43 @@ export function sharedActor(actor: StagingActor): SharedActor {
   };
 }
 type Loaded = { version: number; data: CanonicalData };
+/** Existing Accounts forms omit IDs for creations. Derive them on the trusted
+ * server from the actor-bound action key, so an uncertain retry is identical. */
+export function stagingAction(
+  input: Record<string, unknown>,
+  actor: StagingActor,
+  key: string,
+): Record<string, unknown> {
+  if (input.id !== undefined) return input;
+  const prefixes: Record<string, string> = {
+    invoice:
+      input.invoiceType === "Normal Invoice"
+        ? "NOR"
+        : input.invoiceType === "Proforma"
+          ? "PRO"
+          : "INV",
+    bill: "BILL",
+    receipt: "RCPT",
+    "supplier-payment": "PAY",
+    expense: "EXP",
+    "create-expense-ledger": "LEDGER",
+    "create-cash-account": "CASH",
+    transfer: "TRANSFER",
+    "create-expense-from-review": "EXP",
+    "create-bill-from-review": "BILL",
+    "document-draft": "DOC",
+  };
+  const prefix = prefixes[String(input.kind)];
+  if (!prefix) return input; // Existing-resource actions must supply their real ID.
+  const suffix = fingerprint({
+    company: actor.companyId,
+    actor: actor.userId,
+    key,
+  })
+    .slice(0, 20)
+    .toUpperCase();
+  return { ...input, id: `${prefix}-STG-${suffix}` };
+}
 export function createStagingHandler(
   options: {
     rpc?: StagingRpc;
@@ -236,6 +273,10 @@ export function createStagingHandler(
           error: "A version and unique action key are required.",
         });
       const isUpload = path === "/accounts/documents/extract";
+      const action =
+        workspace === "accountant" && !isUpload
+          ? stagingAction(input, actor, key)
+          : input;
       if (
         path !== "/manager/command" &&
         path !== "/accounts/action" &&
@@ -247,7 +288,7 @@ export function createStagingHandler(
           ? { kind: String(input.kind), payload: input.payload }
           : {
               kind: isUpload ? "document.upload" : "accounts.action",
-              payload: isUpload ? input : { action: input },
+              payload: isUpload ? input : { action },
             };
       const print = fingerprint({ workspace, command });
       const commit = async (
@@ -310,7 +351,7 @@ export function createStagingHandler(
               value.sha256 ===
               digestOf(extractionInputSchema.parse(input).file),
           )?.id
-        : input.id;
+        : action.id;
       return json(
         200,
         workspace === "manager"

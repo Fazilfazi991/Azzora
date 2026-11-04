@@ -617,7 +617,11 @@ export function PurchaseBills({ data, act, editingId }: Props) {
                         </button>
                       </>
                     ) : (
-                      <span className="badge badge-success">Issued</span>
+                      <span
+                        className={`badge ${bill.cancellationDate ? "badge-neutral" : "badge-success"}`}
+                      >
+                        {bill.cancellationDate ? "Cancelled" : "Issued"}
+                      </span>
                     )}
                     <small>
                       <a href={apiFile("pdf", bill.id)}>Download bill PDF</a>

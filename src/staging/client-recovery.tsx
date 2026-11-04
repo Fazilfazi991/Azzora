@@ -197,7 +197,7 @@ export function OwnerRecoveryPanel({ session }: { session: StagingSession }) {
     }
   }
   return (
-    <details className="staging-scope-note">
+    <details className="staging-scope-note staging-owner-recovery">
       <summary>Owner-assisted account recovery</summary>
       <div className="staging-login-card">
         <p>

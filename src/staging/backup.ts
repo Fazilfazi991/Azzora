@@ -128,6 +128,13 @@ function noCredentials(value: unknown) {
   }
 }
 function privateReferences(data: CanonicalData, companyId?: string) {
+  const historicalInline: {
+    id: string;
+    name: string;
+    mime: string;
+    size: number;
+    digest: string;
+  }[] = [];
   const files = new Map<
     string,
     {
@@ -135,7 +142,7 @@ function privateReferences(data: CanonicalData, companyId?: string) {
       references: { id: string; name: string }[];
     }
   >();
-  function walk(value: unknown) {
+  function walk(value: unknown, historical = false, field = "") {
     if (
       typeof value === "string" &&
       value.startsWith("{") &&
@@ -147,12 +154,12 @@ function privateReferences(data: CanonicalData, companyId?: string) {
       } catch {
         return;
       }
-      walk(parsed);
+      walk(parsed, historical || field === "snapshot");
       return;
     }
     if (!value || typeof value !== "object") return;
     if (Array.isArray(value)) {
-      value.forEach(walk);
+      value.forEach((item) => walk(item, historical));
       return;
     }
     const row = value as Record<string, unknown>;
@@ -163,10 +170,33 @@ function privateReferences(data: CanonicalData, companyId?: string) {
       (row.mime || row.type) &&
       ((typeof row.data === "string" && row.data) ||
         (typeof row.dataUrl === "string" && row.dataUrl.startsWith("data:")))
-    )
-      invalid(
-        "inline originals must be stored privately before business export",
-      );
+    ) {
+      if (!historical)
+        invalid(
+          "inline originals must be stored privately before business export",
+        );
+      const mime = String(row.mime || row.type),
+        raw = String(row.data || row.dataUrl);
+      const match = /^data:([^;,]+);base64,([A-Za-z0-9+/]*={0,2})$/.exec(raw);
+      if (!match || match[1] !== mime || !Object.hasOwn(mimeExtensions, mime))
+        invalid("historical original MIME is invalid");
+      const bytes = Buffer.from(match![2], "base64");
+      if (
+        bytes.length !== row.size ||
+        bytes.length <= 0 ||
+        bytes.length > maximumOriginalBytes ||
+        bytes.toString("base64") !== match![2]
+      )
+        invalid("historical original size or encoding is invalid");
+      verifyOriginalSignature(bytes, mime as StoredStagingAttachment["mime"]);
+      historicalInline.push({
+        id: String(row.id),
+        name: String(row.name),
+        mime,
+        size: bytes.length,
+        digest: sha(bytes),
+      });
+    }
     if (row.storageObjectKey !== undefined) {
       const key = row.storageObjectKey,
         mime = row.mime || row.type;
@@ -212,9 +242,29 @@ function privateReferences(data: CanonicalData, companyId?: string) {
       files.set(typedKey, entry);
     }
     for (const [key, item] of Object.entries(row))
-      if (!/^(?:base64|data|dataUrl)$/.test(key)) walk(item);
+      if (!/^(?:base64|data|dataUrl)$/.test(key)) walk(item, historical, key);
   }
   walk(data);
+  for (const inline of historicalInline) {
+    const found = [...files.values()].find(
+      (entry) =>
+        entry.references.some((ref) => ref.id === inline.id) &&
+        entry.file.mime === inline.mime &&
+        entry.file.size === inline.size &&
+        entry.file.storageObjectKey.split("/")[1].split(".")[0] ===
+          inline.digest,
+    );
+    if (!found)
+      return invalid(
+        "historical original has no matching private pointer and content hash",
+      );
+    if (
+      !found.references.some(
+        (ref) => ref.id === inline.id && ref.name === inline.name,
+      )
+    )
+      found.references.push({ id: inline.id, name: inline.name });
+  }
   if (new Set([...files.keys()].map((key) => key.split("/")[0])).size > 1)
     invalid("multiple company prefixes");
   return [...files.values()].sort((a, b) =>

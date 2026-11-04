@@ -304,6 +304,47 @@ export async function restoreIntoFreshRehearsal(db: PGlite, input: unknown) {
   };
 }
 describe("fictional business backup integrity and isolated restore", () => {
+  it("preserves historical snapshot bytes while verifying inline originals against private pointers", async () => {
+    const source = fixture();
+    const record = source.data.records.find(
+      (row) => row.id === "manager-document",
+    )!;
+    const historical = JSON.stringify({
+      attachment: {
+        id: "manager-original",
+        name: "Fictional Manager original.png",
+        type: "image/png",
+        size: bytes.length,
+        dataUrl: `data:image/png;base64,${Buffer.from(bytes).toString("base64")}`,
+      },
+    });
+    (record.payload as Record<string, unknown>).snapshot = historical;
+    const backup = await createStagingBackup(source, async () => bytes);
+    expect(
+      backup.data.records.find((row) => row.id === record.id)!.payload.snapshot,
+    ).toBe(historical);
+    expect(backup.originals).toHaveLength(1);
+    expect(verifyStagingBackup(backup)).toEqual(backup);
+    const tampered = fixture();
+    const altered = new Uint8Array(bytes);
+    altered[altered.length - 1] ^= 1;
+    (
+      tampered.data.records.find((row) => row.id === record.id)!
+        .payload as Record<string, unknown>
+    ).snapshot = historical.replace(
+      Buffer.from(bytes).toString("base64"),
+      Buffer.from(altered).toString("base64"),
+    );
+    await expect(
+      createStagingBackup(tampered, async () => bytes),
+    ).rejects.toThrow(/matching private pointer/);
+    (record.payload as Record<string, unknown>).snapshot = undefined;
+    (record.payload as Record<string, unknown>).unexpectedCurrentAttachment =
+      JSON.parse(historical).attachment;
+    await expect(
+      createStagingBackup(source, async () => bytes),
+    ).rejects.toThrow(/inline originals/);
+  });
   it("captures raw canonical rows, immutable snapshots, version and deduplicated originals", async () => {
     const source = fixture(),
       read = vi.fn(async () => bytes),

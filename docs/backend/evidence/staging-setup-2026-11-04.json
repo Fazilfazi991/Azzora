@@ -1,0 +1,124 @@
+{
+  "projectRef": "hkhomrrvxtcxnxvdlkoh",
+  "organizationRef": "kyhishmkityakkdcyhzk",
+  "migrationSourcesCommit": "f32ed90524ad46f5e0a8604528beff5e5e10068c",
+  "migrationApplications": [
+    {
+      "version": "20261104081228",
+      "sourceSha256": "c83dd4bdf6e5159af1a49757e85e29199021ecdb6e2e5e3a717e6b28ad607770",
+      "result": "Success. No rows returned",
+      "successObservedAt": "2026-11-04T11:35:43.876Z"
+    },
+    {
+      "version": "20261104113610",
+      "sourceSha256": "d03adb84322210dbe38edb2bd2b55c00b78c57a2f151305664a15dfb285de104",
+      "result": "Success. No rows returned",
+      "successObservedAt": "2026-11-04T11:41:15.353Z"
+    }
+  ],
+  "hostedSecurityProof": {
+    "sourceSha256": "0cbf5a0cfd50ddefc24e3227308abcaa075620a7491187c26520711e23aaac48",
+    "gitCommit": "8a37ea512228143ee863fa9078c11b8f1f23c6f8",
+    "assertionGroups": 15,
+    "exactEditorInputVerified": true,
+    "exactScriptCompleted": true,
+    "sqlError": false,
+    "individualCheckRowsCaptured": false,
+    "visiblePassedCountCaptured": false,
+    "finalMembershipReceipt": {
+      "api_grants_to_sql_admin": 1,
+      "original_admin_only_grants": 1,
+      "unexpected_persisted_set_or_inherit_grants": 0
+    },
+    "runRequestedAt": "2026-11-04T11:46:34.213Z",
+    "scope": "Database denial/metadata tests; does not establish live login/MFA/authenticated server behavior"
+  },
+  "attestation": {
+    "sourceSha256": "c28d4412eeb0ab3182b79dbc92b4f2eaab0f24cd9bcf549ddaa3505a9b4b1159",
+    "runRequestedAt": "2026-11-04T11:50:07.321Z",
+    "managedCliMigrationHistoryModified": false
+  },
+  "postSecurityAdvisor": {
+    "errors": 0,
+    "warnings": 0,
+    "informationalNotices": 10,
+    "noticeType": "RLS Enabled No Policy on deliberately closed internal tables"
+  },
+  "finalCloudMetadata": {
+    "bucket": {
+      "public": false,
+      "file_size_limit": 2097152,
+      "allowed_mime_types": [
+        "application/pdf",
+        "image/png",
+        "image/jpeg"
+      ]
+    },
+    "tables": 21,
+    "records": 0,
+    "journals": 0,
+    "companies": 0,
+    "checked_at": "2026-11-04T17:20:33.072967+05:30",
+    "rls_tables": 21,
+    "environment": "synthetic-staging",
+    "project_ref": "hkhomrrvxtcxnxvdlkoh",
+    "current_user": "postgres",
+    "real_posting": false,
+    "session_user": "postgres",
+    "bucket_objects": 0,
+    "real_processing": false,
+    "policy_approvals": 0,
+    "role_memberships": [
+      {
+        "role": "azzora_api",
+        "member": "postgres",
+        "grantor": "supabase_admin",
+        "set_option": false,
+        "admin_option": true,
+        "inherit_option": false
+      }
+    ],
+    "storage_policies": 0,
+    "audit_attestations": 2,
+    "attestation_details": [
+      {
+        "git_sha": "f32ed90524ad46f5e0a8604528beff5e5e10068c",
+        "version": "20261104081228",
+        "filename": "20261104081228_canonical_backend_foundation.sql",
+        "applied_via": "supabase-sql-editor",
+        "project_ref": "hkhomrrvxtcxnxvdlkoh",
+        "recorded_at": "2026-11-04T17:20:08.636221+05:30",
+        "source_sha256": "c83dd4bdf6e5159af1a49757e85e29199021ecdb6e2e5e3a717e6b28ad607770"
+      },
+      {
+        "git_sha": "f32ed90524ad46f5e0a8604528beff5e5e10068c",
+        "version": "20261104113610",
+        "filename": "20261104113610_synthetic_staging_boundary.sql",
+        "applied_via": "supabase-sql-editor",
+        "project_ref": "hkhomrrvxtcxnxvdlkoh",
+        "recorded_at": "2026-11-04T17:20:08.636221+05:30",
+        "source_sha256": "d03adb84322210dbe38edb2bd2b55c00b78c57a2f151305664a15dfb285de104"
+      }
+    ],
+    "postgres_createrole": true
+  },
+  "liveDeploymentsChanged": false,
+  "realDataImported": false,
+  "localVerification": {
+    "TestedSHA": "75f4b9db829b2ef546c83945fc1cea6f5c98b37a",
+    "UnitTestsPassed": 823,
+    "UnitFilesPassed": 54,
+    "BackendTestsPassed": 65,
+    "LocalSqlChecksPassed": 28,
+    "TypeScriptExit": 0,
+    "ESLintExit": 0,
+    "BuildExit": 0
+  },
+  "preservedBoundaries": {
+    "ManagerDeployment": "dpl_F9kD9Vu4ioWTCJrQwD2ev5J6mYmp",
+    "AccountsDeployment": "dpl_ESphaGfTKeRK8wzRt7AcYiaWwSjy",
+    "GitHubMain": "fd7754dfe0022f9b64bf875313bd9679cb0144eb",
+    "PushPerformed": false,
+    "DeploymentPerformed": false
+  }
+}

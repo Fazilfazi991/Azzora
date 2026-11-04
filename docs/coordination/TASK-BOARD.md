@@ -1,5 +1,19 @@
 # Task board
 
+## Approved Supabase staging execution — 4 November 2026
+
+| Scope | Verified status |
+| --- | --- |
+| Existing approved target | Azzora Free/Singapore `hkhomrrvxtcxnxvdlkoh`; no paid provisioning |
+| Database + storage foundation | Two migrations applied; 21/21 RLS tables; private 2 MiB PDF/PNG/JPEG bucket |
+| Closed scope | Real posting and real-document processing disabled; no business records or files seeded |
+| Hosted DB proof | Exact guarded script completed; original role options restored; final receipt captured, individual 15 rows not captured |
+| Provenance | Two append-only source attestations; managed CLI history untouched; reconcile before future CLI push |
+| Regression | 823 unit tests, 28 local SQL checks, TypeScript, ESLint and combined build pass at 75f4b9d |
+| Remaining | Individual hosted auth, shared adapters, private file handlers, workflows A–E, restore and business policies; production NO-GO |
+
+[Consolidated staging evidence](../backend/STAGING-SETUP-REPORT.md).
+
 ## Backend launch preparation — 4 November 2026
 
 | Scope | Status |

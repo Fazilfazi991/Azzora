@@ -2,6 +2,8 @@
 
 4 November 2026. **Production NO-GO. Gate 1 decision package ready; Gates 2–5 not passed.**
 
+**Subsequent owner-approved infrastructure checkpoint:** the owner approved the existing Singapore project for fictional staging. Both migrations are now applied and verified, with21/21RLS tables, private2MiB originals bucket, closed real-posting/processing flags and2immutable source attestations. Revised hosted guard script completed without SQL errors; independent verification confirms rollback cleanup and unchanged role permissions. Frozen local `75f4b9db829b2ef546c83945fc1cea6f5c98b37a` passes823tests,28localSQL checks, TypeScript, ESLint and combined build. The later [staging setup report](STAGING-SETUP-REPORT.md) supersedes earlier infrastructure/access blockers below. Application identity/shared-record integration, business policy approvals and Gates2–5 remain incomplete; live deployments remain unchanged.
+
 ## Source and preservation
 
 - Integration worktree: `C:/Users/USER/Desktop/Projects/Azzora/azzora-production-backend`.

@@ -1,5 +1,9 @@
 # Controlled integration plan and executed checkpoints
 
+## Executed fictional Supabase staging — 4 November 2026
+
+Owner explicitly approved using existing project `hkhomrrvxtcxnxvdlkoh` for fictional staging. Applied the exact foundation and scope migrations, verified private/RLS/no-write boundaries, ran the reviewed rollback-only proof and recorded two immutable source attestations. SQL Editor does not register CLI migration history; reconcile it before any CLI push and never reset or replay blindly. Frozen local revision 75f4b9d passes 823 unit tests, 28 SQL checks, TypeScript, ESLint and build. Next integrate individual identity/session/directory and canonical application adapters against isolated synthetic data, then execute workflows A–E and owner acceptance. No live Manager/Accounts changes, real posting or production authorization occurred. [Executed results](../backend/STAGING-SETUP-REPORT.md).
+
 ## Production backend — controlled local foundation, 4 November 2026
 
 Start from preserved Accounts baseline `02ab580` in isolated `codex/azzora-production-backend`. Integrate disjoint schema/auth/migration files and coordinator transaction boundary; preserve existing demo/UI/domain/API/hosting files. Frozen source/test `5481ac0dddc595a5492c444af1b6db21fcafc649` passes 823 units, 23 local SQL checks, TypeScript, lint and combined build. Gate 1 decision report and handoff are prepared. Correct Supabase target permissions and approve architecture/region/budget/policies before staging writes; implement durable adapters and test shared workflows A–E before any owner staging acceptance or production authorization. No shared persistence or new live login has been enabled. [Decision](../backend/DECISION-REPORT.md), [handoff](../backend/COORDINATOR-HANDOFF.md).

@@ -1,5 +1,9 @@
 # AZZORA MASTER STATUS
 
+## Owner-approved fictional Supabase staging — 4 November 2026
+
+The owner approved existing Singapore project `hkhomrrvxtcxnxvdlkoh` for fictional staging. Both reviewed migrations are applied: 21 private tables with RLS, a private 2 MiB originals bucket, immutable scope flags disabling real posting/processing, and two exact-file source attestations. The hosted guarded security script completed without errors, restored original role permissions and left zero permanent business fixtures or files. SQL Editor exposed only its final receipt; the individual 15 result rows were not captured. Frozen local revision `75f4b9db829b2ef546c83945fc1cea6f5c98b37a` passes 823 unit tests, 28 SQL checks, TypeScript, ESLint and the combined build. Live Manager/Accounts deployments and GitHub main remain unchanged. Individual identity, shared-record adapters, staging workflows, business policies and production gates remain pending. [Actual staging report](../backend/STAGING-SETUP-REPORT.md).
+
 ## Production backend foundation — 4 November 2026
 
 Latest access update: owner signed into the correct **Azzora Free** organization `kyhishmkityakkdcyhzk`. Browser inspection verifies target `hkhomrrvxtcxnxvdlkoh`, Singapore, Nano/Healthy, public schema0tables. No cloud writes. Correct browser access supersedes the earlier account blocker; Gate 1 architecture/policy approval and explicit synthetic-staging designation remain pending before applying cloud migrations.

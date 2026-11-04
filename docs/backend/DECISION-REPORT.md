@@ -2,6 +2,8 @@
 
 4 November 2026. Gate 1 decision package; no paid provisioning, cloud mutations or real-data access authorized by this report.
 
+**Later owner authorization and execution:** the owner subsequently approved using the supplied existing project for fictional staging with real posting disabled. The two reviewed migrations and private bucket are now applied and verified on that exact target; this report's earlier approval request is historical. No paid provisioning, real data, live deployment changes or production permission followed. See [STAGING-SETUP-REPORT.md](STAGING-SETUP-REPORT.md) for actual results and remaining integration gates.
+
 ## Recommended decision
 
 Keep both accepted Vercel applications and their domain/calculation engines. Add one dedicated AZZORA Supabase PostgreSQL project per environment, Supabase Auth for individual identities and private Storage for originals. Use a same-origin Vercel backend-for-frontend for each application, sharing one canonical command/query implementation and database. Separate Accountant login/navigation remains; neither app maintains a second company ledger.

@@ -262,6 +262,12 @@
     margin-left: 235px;
   }
 }
+@media (max-width: 1024px) {
+  .staging-session-bar,
+  .staging-session-status {
+    margin-left: 210px;
+  }
+}
 @media (max-width: 767px) {
   .staging-session-bar,
   .staging-session-status {

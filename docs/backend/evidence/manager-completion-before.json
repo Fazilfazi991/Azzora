@@ -1,0 +1,30 @@
+{
+  "tables": 24,
+  "parties": 4,
+  "records": 70,
+  "journals": 6,
+  "policies": 0,
+  "projects": 2,
+  "companies": 1,
+  "snapshots": 4,
+  "checked_at": "2026-11-04T14:14:03.188637+00:00",
+  "lines_hash": "b183df9deb2bd002a4b3be5e3c4b5fd2",
+  "rls_tables": 24,
+  "allocations": 0,
+  "project_ref": "hkhomrrvxtcxnxvdlkoh",
+  "public_rpcs": 23,
+  "real_posting": false,
+  "records_hash": "b7719b171817298af9e858a97e90262f",
+  "journal_lines": 12,
+  "journals_hash": "64ffb6c3fb3c1a0e171346ba755a0850",
+  "real_processing": false,
+  "browser_callable": 0,
+  "company_versions": [
+    {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "version": 66
+    }
+  ],
+  "service_callable": 23,
+  "expected_settlement_allocations": 2
+}

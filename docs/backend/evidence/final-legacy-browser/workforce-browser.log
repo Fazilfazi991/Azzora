@@ -1,0 +1,17 @@
+PASS Add employee and keyboard dialog containment/activation/Escape
+PASS Edit employee department, role and capacity with stable ID
+PASS Assign employee to project
+PASS Task assignment shares project relationships and employee workload
+PASS Submit drawing with browser-local attachment
+PASS Reject drawing with explicit reviewer/reason; prevent self approval
+PASS Resubmit corrected drawing and approve v2 without overwriting v1
+PASS Historical revision file and review history remain accessible
+PASS Post, return, correct, resubmit and supervise site record
+PASS Create, assign, rectify, inspect and close QA snag with resolution history
+PASS Deactivate employee while retaining project and task assignments
+PASS Operational handover derives site/QA/document readiness and preserves existing checklist
+PASS Keyboard access with reduced motion at mobile width
+PASS Complete handover with reviewer and note; reload all workflows and legacy employee IDs
+PASS Duplicate employee validation is visible inside the dialog
+PASS Failed storage writes preserve saved employees and show an inline error
+40 checks passed; zero browser errors

@@ -1,0 +1,51 @@
+{
+  "checkedAtUtc": "2026-11-04T14:33:07.300Z",
+  "source": "npm registry Bulk Advisory endpoint; package-lock.json only",
+  "packagesSubmitted": 308,
+  "affectedAdvisories": 1,
+  "productionAdvisories": 0,
+  "developmentOnlyAdvisories": 1,
+  "affected": [
+    {
+      "package": "minimatch",
+      "id": 1244012,
+      "title": "minimatch has potential denial of service via globparts amplification",
+      "url": "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "severity": "moderate",
+      "vulnerableRange": "<11.0.1",
+      "versions": [
+        "10.2.6",
+        "3.1.5"
+      ],
+      "productionAffected": false,
+      "affectedInstances": 2
+    }
+  ],
+  "patches": [
+    {
+      "package": "minimatch",
+      "current": "10.2.6",
+      "minimumNonAffectedSameMajor": null,
+      "minimumNonAffectedAvailable": "11.0.1",
+      "latest": "11.0.4"
+    },
+    {
+      "package": "minimatch",
+      "current": "3.1.5",
+      "minimumNonAffectedSameMajor": null,
+      "minimumNonAffectedAvailable": "11.0.1",
+      "latest": "11.0.4"
+    }
+  ],
+  "installedOrChangedPackages": false,
+  "limitations": [
+    "Registry advisories are not a source-code exploitability or complete supply-chain review",
+    "Minimum versions exclude only the advisories returned in this audit and still require compatibility/build/regression checks"
+  ],
+  "lockfileSha256": "8ac66cf64c87810a139f24ca881bb488659e46ac47cc2006e0aeaa4d37ff5bd5",
+  "remediatedVersions": {
+    "vite": "6.4.5",
+    "vitest": "4.1.12",
+    "mocker": "4.1.12"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "passed": true,
+  "origin": "https://127.0.0.1:5365",
+  "provider": "actual Supabase staging",
+  "checks": [
+    {
+      "name": "existing_engineer_session_valid_before_recovery",
+      "passed": true
+    },
+    {
+      "name": "site_staff_cannot_issue_recovery",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "genuine_owner_totp_stepup_and_provider_recovery_generation_no_mail",
+      "passed": true
+    },
+    {
+      "name": "recovery_cannot_cross_into_accountant_workspace",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "actual_provider_recovery_token_verified_server_side",
+      "passed": true
+    },
+    {
+      "name": "one_time_handoff_replay_denied",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "name": "password_change_without_recovery_csrf_denied",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "actual_provider_password_changed_and_global_logout_confirmed",
+      "passed": true
+    },
+    {
+      "name": "all_old_engineer_app_sessions_denied_after_reset",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "name": "old_password_rejected_by_actual_provider",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "name": "new_password_genuine_individual_login_succeeds",
+      "passed": true
+    },
+    {
+      "name": "original_password_restored_and_fresh_engineer_session_verified",
+      "passed": true
+    }
+  ],
+  "passwordRestored": true,
+  "emailsSent": 0,
+  "otherIdentitiesChanged": false,
+  "businessRecordsTouched": false
+}

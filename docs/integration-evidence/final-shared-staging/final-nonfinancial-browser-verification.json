@@ -1,0 +1,513 @@
+{
+  "applicationSha": "a6a4ccf9c7cc109d5f1687ce37390a7e0f8698c2",
+  "environment": "Actual shared Supabase staging through https://127.0.0.1:5365 loopback HTTPS BFF; no hosted preview or live deployment change",
+  "fictionalDataOnly": true,
+  "paidAiCalls": 0,
+  "workflowAssertionCount": 26,
+  "workflowAssertions": {
+    "nonfinancial": [
+      "Owner creates employee via server command before modal closes",
+      "Employee metadata edits persist while existing email is readonly",
+      "Owner deactivates a separate employee preserving history",
+      "Owner creates explicit custom-plan project with real PM and Engineer assignments",
+      "Project metadata saves and approved schedule date controls remain readonly",
+      "New Task Drawer save drafts proposal without adding unapproved task record"
+    ],
+    "planning": [
+      "Persisted old task draft is explicitly superseded, not silently rewritten",
+      "New-task proposal survives Postgres JSONB and actual PM Submit/Approve creates one task",
+      "Superseded proposal and approval history remain preserved",
+      "Explicit authorized baseline capture succeeds after task approval"
+    ],
+    "documents": [
+      "Manager document Save Draft stores private original, removes inline bytes, and denies anonymous download",
+      "Current document draft and review submission commit atomically",
+      "Assigned authenticated PM independently approves document revision",
+      "Create Revision opens server-confirmed v2 and preserves approved v1",
+      "PM rejection preserves prior approved revision and explicit correction history"
+    ],
+    "staff": [
+      "Staff My Tasks uses authenticated identity and task creation is visibly restricted",
+      "Assigned Staff records dated40percent progress/evidence without changing approved dates",
+      "Staff completion preserves private evidence and trusted progress history actor",
+      "Staff posts private-photo site record and cannot approve own supervisory record",
+      "Separate PM correction→Staff resubmission→PM approval preserves site history"
+    ],
+    "qa": [
+      "PM assigns the existing Staff-reported Open snag without duplicating it",
+      "Assigned Staff rectifies and requests inspection with retained private before/after evidence; cannot close",
+      "Independent PM closes QA with inspection, trusted actors and private evidence history"
+    ],
+    "handover": [
+      "Manual handover confirmations persist but unresolved latest document revision still blocks completion",
+      "Corrected v3 is independently approved while approvedv1 and rejectedv2 remain intact",
+      "Designated PM completes project only after task/site/QA/document/manual handover gates pass"
+    ]
+  },
+  "routeResponsiveAcceptance": {
+    "sha": "88306ee0c84d337a1d8fe3a316ecdd424b3ae4af",
+    "routes": [
+      {
+        "role": "owner",
+        "path": "/#/dashboard",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/customers",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/projects",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/quotations",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/accounts",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/planning",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/tasks",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/team",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/site-updates",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/snags-qa",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/documents",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/variations",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/suppliers",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/procurement",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/approvals",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/budgets",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/handover",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/reports",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/settings",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/accountant-preview",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/procurement/materials",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/procurement/requests",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/procurement/rfqs",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/procurement/comparison",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/procurement/orders",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/procurement/deliveries",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/procurement/bills",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/procurement/payments",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/accounts/overview",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/accounts/invoices",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/accounts/payments",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/accounts/expenses",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/accounts/receivables",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/accounts/project-financials",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/accounts/credit-notes",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/accounts/refunds",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/projects/f6838afc-508c-47a3-842e-e1d73955286e/overview",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/projects/f6838afc-508c-47a3-842e-e1d73955286e/timeline",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/projects/f6838afc-508c-47a3-842e-e1d73955286e/tasks",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/projects/f6838afc-508c-47a3-842e-e1d73955286e/team",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/projects/f6838afc-508c-47a3-842e-e1d73955286e/site-updates",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/projects/f6838afc-508c-47a3-842e-e1d73955286e/documents",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/projects/f6838afc-508c-47a3-842e-e1d73955286e/quotations",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/projects/f6838afc-508c-47a3-842e-e1d73955286e/financials",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/projects/f6838afc-508c-47a3-842e-e1d73955286e/variations",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/projects/f6838afc-508c-47a3-842e-e1d73955286e/procurement",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/projects/f6838afc-508c-47a3-842e-e1d73955286e/approvals",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/projects/f6838afc-508c-47a3-842e-e1d73955286e/snags-qa",
+        "pass": true
+      },
+      {
+        "role": "owner",
+        "path": "/#/projects/f6838afc-508c-47a3-842e-e1d73955286e/handover",
+        "pass": true
+      },
+      {
+        "role": "accountant",
+        "path": "/accountant.html#/dashboard",
+        "pass": true
+      },
+      {
+        "role": "accountant",
+        "path": "/accountant.html#/invoices",
+        "pass": true
+      },
+      {
+        "role": "accountant",
+        "path": "/accountant.html#/new-invoice",
+        "pass": true
+      },
+      {
+        "role": "accountant",
+        "path": "/accountant.html#/bills",
+        "pass": true
+      },
+      {
+        "role": "accountant",
+        "path": "/accountant.html#/document-entry",
+        "pass": true
+      },
+      {
+        "role": "accountant",
+        "path": "/accountant.html#/receipts",
+        "pass": true
+      },
+      {
+        "role": "accountant",
+        "path": "/accountant.html#/supplier-payments",
+        "pass": true
+      },
+      {
+        "role": "accountant",
+        "path": "/accountant.html#/expenses",
+        "pass": true
+      },
+      {
+        "role": "accountant",
+        "path": "/accountant.html#/banking",
+        "pass": true
+      },
+      {
+        "role": "accountant",
+        "path": "/accountant.html#/ledger",
+        "pass": true
+      },
+      {
+        "role": "accountant",
+        "path": "/accountant.html#/pnl",
+        "pass": true
+      },
+      {
+        "role": "accountant",
+        "path": "/accountant.html#/balance",
+        "pass": true
+      },
+      {
+        "role": "accountant",
+        "path": "/accountant.html#/trial",
+        "pass": true
+      },
+      {
+        "role": "accountant",
+        "path": "/accountant.html#/project-reports",
+        "pass": true
+      },
+      {
+        "role": "accountant",
+        "path": "/accountant.html#/aging",
+        "pass": true
+      }
+    ],
+    "widths": [
+      {
+        "role": "manager",
+        "width": 1440,
+        "viewport": 1440,
+        "document": 1440,
+        "body": 1440,
+        "pass": true
+      },
+      {
+        "role": "manager",
+        "width": 1024,
+        "viewport": 1024,
+        "document": 1024,
+        "body": 1024,
+        "pass": true
+      },
+      {
+        "role": "manager",
+        "width": 768,
+        "viewport": 768,
+        "document": 768,
+        "body": 768,
+        "pass": true
+      },
+      {
+        "role": "manager",
+        "width": 390,
+        "viewport": 390,
+        "document": 390,
+        "body": 390,
+        "pass": true
+      },
+      {
+        "role": "accountant",
+        "width": 1440,
+        "viewport": 1440,
+        "document": 1440,
+        "body": 1440,
+        "pass": true
+      },
+      {
+        "role": "accountant",
+        "width": 1024,
+        "viewport": 1024,
+        "document": 1024,
+        "body": 1024,
+        "pass": true
+      },
+      {
+        "role": "accountant",
+        "width": 768,
+        "viewport": 768,
+        "document": 768,
+        "body": 768,
+        "pass": true
+      },
+      {
+        "role": "accountant",
+        "width": 390,
+        "viewport": 390,
+        "document": 390,
+        "body": 390,
+        "pass": true
+      }
+    ],
+    "mobileNavigation": [
+      {
+        "role": "manager",
+        "openEscapeRestoresFocus": true
+      },
+      {
+        "role": "accountant",
+        "openClose": true
+      }
+    ],
+    "runtimeErrors": [],
+    "passed": true,
+    "applicationSha": "88306ee0c84d337a1d8fe3a316ecdd424b3ae4af",
+    "scopeNote": "64route+8width+2navigation acceptance ran88306ee; finala6a4ccf changed only scoped displayed labels, recovery margin and backup implementation, verified separately below."
+  },
+  "resolvedFailures": [
+    {
+      "source": "Initial planning UI",
+      "failure": "Command HTTP400: Review the entered fields and try again.",
+      "resolution": "Canonical recursive object-key serialization stabilizes schedule fingerprint across JSONB. Existing draft explicitly recalculated; fresh submission/approval and49 relevant regression checks passed."
+    },
+    {
+      "source": "Initial Staff QA UI",
+      "failure": "Command HTTP403: This action is not permitted.",
+      "resolution": "Staff attempt to assign an Open snag correctly denied403. UI now makes independent PM assignment explicit. Same snag then PM assigned, Staff rectified with private evidence, PM closed."
+    },
+    {
+      "source": "Final visual review",
+      "failure": "Owner recovery summary hidden behind desktop sidebar; cancelled invoice/bill displayed Issued and reversed receipt separator was malformed.",
+      "resolution": "Stage-only recovery margin follows280/235/210/0 shell breakpoints; cancellation-aware labels and status filter; readable reversal separator. Actual7 scoped browser/PDF assertions pass on finala6a4ccf."
+    }
+  ],
+  "limitations": [
+    "26 workflow assertions cover the listed actual UI paths, not full CRUD on every command or route.",
+    "Trailing read-only financial comparison in handover harness returned401 after idle Accountant session expiry; handover3 assertions passed. Financial reconciliation and receipt concurrency separately verified by domain worker.",
+    "Visual evidence covers desktop/tablet/mobile render and local card horizontal scrolling. This is not a claim of production accounting or external-hosted acceptance."
+  ],
+  "artifacts": [
+    "document-final-1440.png",
+    "document-final-390.png",
+    "handover-complete-1440.png",
+    "handover-complete-390.png",
+    "qa-closed-1440.png",
+    "qa-closed-390.png",
+    "final-manager-1440.png",
+    "final-manager-1024.png",
+    "final-manager-768.png",
+    "final-manager-390.png",
+    "final-accountant-1440.png",
+    "final-accountant-1024.png",
+    "final-accountant-768.png",
+    "final-accountant-390.png",
+    "final-cancelled-invoice-detail-1440.png",
+    "final-cancelled-invoice-detail-390.png",
+    "final-cancelled-bill-detail-1440.png",
+    "final-cancelled-bill-detail-390.png",
+    "final-reversed-receipt-detail-1440.png",
+    "final-reversed-receipt-detail-390.png",
+    "final-owner-recovery-1440.png",
+    "final-owner-recovery-1024.png",
+    "final-owner-recovery-768.png",
+    "final-owner-recovery-390.png"
+  ],
+  "finalScopedAcceptance": {
+    "passed": true,
+    "applicationSha": "a6a4ccf9c7cc109d5f1687ce37390a7e0f8698c2",
+    "checks": [
+      "Cancelled invoice badge and PDF preserve exact cancellation date",
+      "Cancelled invoice status filter includes cancelled row",
+      "Cancelled purchase bill has neutral Cancelled badge",
+      "Cancelled bill PDF preserves exact cancellation date",
+      "Reversed receipt label uses readable separator with no replacement characters",
+      "Reversed receipt PDF preserves exact reversal date",
+      "Owner recovery summary is visible at1440/1024/768/390 and opens/closes without overlap"
+    ]
+  }
+}

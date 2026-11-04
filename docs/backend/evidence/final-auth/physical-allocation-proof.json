@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "fictionalOnly": true,
+  "rows": [
+    {
+      "journal_id": "J-finmw27jvgm-receipt",
+      "amount_fils": "25000",
+      "document_id": "7201170b-03af-4f02-a66b-d0394db480c0",
+      "settlement_id": "finmw27jvgm-receipt",
+      "settlement_type": "receipt"
+    },
+    {
+      "journal_id": "J-finmw27jvgm-supplier-payment",
+      "amount_fils": "4000",
+      "document_id": "finmw27jvgm-bill",
+      "settlement_id": "finmw27jvgm-supplier-payment",
+      "settlement_type": "supplier_payment"
+    }
+  ],
+  "checkedAtUtc": "2026-11-04T14:37:20.262Z"
+}

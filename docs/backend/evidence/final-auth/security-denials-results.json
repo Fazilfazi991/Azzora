@@ -1,0 +1,69 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "unauthenticated_session_denied",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "name": "forged_opaque_session_denied",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "name": "manager_cookie_cannot_open_accountant_records",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "accountant_cookie_cannot_open_manager_records",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "staff_private_attachment_access_denied_before_object_lookup",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "logout_without_csrf_denied",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "cross_origin_write_denied",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "rejected_csrf_requests_did_not_mutate_session",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "real_authenticated_provider_jwt_cannot_call_service_only_auth_rpc",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "real_authenticated_provider_jwt_cannot_call_service_only_recovery_rpc",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "private_azzora_schema_not_exposed_to_data_api",
+      "passed": true,
+      "status": 406
+    },
+    {
+      "name": "real_authenticated_browser_role_sees_no_private_storage_objects",
+      "passed": true,
+      "status": 200
+    }
+  ],
+  "provider": "actual Supabase staging",
+  "businessWrites": 0,
+  "passwordsChanged": 0,
+  "rawTokensStoredOrPrinted": false
+}

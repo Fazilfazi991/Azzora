@@ -1,5 +1,22 @@
 # Task board
 
+## Final shared staging checkpoint — 4 November 2026
+
+| Scope | Status |
+| --- | --- |
+| Existing Manager write-route audit / finite backend commands | Complete; local-demo branches retained separately |
+| Cross-portal sales, purchasing, receipts/corrections and shared reports | Verified fictional journeys; same authoritative journal |
+| Task/site/documents/QA/handover and private history | Verified actual authenticated workflow chain |
+| Four individual roles, MFA policy, recovery and revocation | Tested; no real invitations or verified email recovery claim |
+| Concurrent financial writes, idempotency and reconciliation | Passed actual receipt races and physical allocation checks |
+| Final business backup / isolated restore / migration | Passed version 139, 20 journals, 9 snapshots, 6 allocations, 3 originals |
+| Combined regression / final source |962 units, 2 fixtures, typing/lint/both builds; exact browser matrix in report; SHA a6a4ccf9 |
+| Protected Vercel staging | Configuration ready; Owner approval before publication, then actual hosted acceptance |
+| Eight accounting/cutover policy decisions | Pending Owner/Accountant decisions; real posting blocked |
+| Production, stable aliases, main | Unchanged; production NO-GO |
+
+[Final report and evidence](../backend/FINAL-SHARED-STAGING-INTEGRATION-REPORT.md), [coverage](../backend/FINAL-FEATURE-COVERAGE.md), [deployment proposal](../backend/PROTECTED-STAGING-DEPLOYMENT-PLAN.md), [business decisions](../backend/FINAL-BUSINESS-POLICY-DECISIONS.md).
+
 ## Shared staging integration — 4 November 2026
 
 | Scope | Verified status |

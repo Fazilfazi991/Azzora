@@ -1,0 +1,20 @@
+{
+  "checkedAt": "2026-11-04T15:05:32.883813+00:00",
+  "readOnly": true,
+  "aliases": [
+    {
+      "alias": "azzora-seven.vercel.app",
+      "deploymentId": "dpl_F9kD9Vu4ioWTCJrQwD2ev5J6mYmp",
+      "projectId": "prj_IvRzemrf0OSGWVBrp6Jm9M9TyAfX"
+    },
+    {
+      "alias": "azzora-accounts-client-review-faziils-projects.vercel.app",
+      "deploymentId": "dpl_ESphaGfTKeRK8wzRt7AcYiaWwSjy",
+      "projectId": "prj_inNGMsufKkeDUTS1Sn5whmwIVWuw"
+    }
+  ],
+  "githubMain": "fd7754dfe0022f9b64bf875313bd9679cb0144eb",
+  "changesMade": false,
+  "applicationSha": "a6a4ccf9c7cc109d5f1687ce37390a7e0f8698c2",
+  "finalReadOnlyRecheck": "Both deployment IDs and GitHub main exactly match the original checkpoint"
+}

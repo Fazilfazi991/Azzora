@@ -1,0 +1,13 @@
+
+  VITE v6.4.5  ready in 865 ms
+
+  ➜  Local:   http://127.0.0.1:5367/
+8:08:27 PM [vite] (client) hmr update /src/workforce/Documents.tsx
+8:08:28 PM [vite] (client) hmr update /src/workforce/Documents.tsx
+8:08:59 PM [vite] (client) page reload tmp/build-staging/accountant.html
+8:08:59 PM [vite] (client) page reload tmp/build-staging/index.html
+8:09:17 PM [vite] (client) page reload tmp/build-default/accountant.html
+8:09:17 PM [vite] (client) page reload tmp/build-default/index.html
+8:14:17 PM [vite] (client) hmr update /src/components/Operations.tsx
+8:14:28 PM [vite] (client) hmr update /src/components/Operations.tsx
+8:14:29 PM [vite] (client) hmr update /src/components/Operations.tsx

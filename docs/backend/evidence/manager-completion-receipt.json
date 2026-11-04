@@ -1,0 +1,131 @@
+{
+  "migration": "20261104134923_staging_manager_completion.sql",
+  "sha256": "9afd8f7156f20104b500e648380095ea74bca944a2a7730528f51c4c8f713f13",
+  "projectRef": "hkhomrrvxtcxnxvdlkoh",
+  "sourceFullNormalizedMatch": true,
+  "appliedOnce": true,
+  "before": {
+    "tables": 24,
+    "parties": 4,
+    "records": 70,
+    "journals": 6,
+    "policies": 0,
+    "projects": 2,
+    "companies": 1,
+    "snapshots": 4,
+    "checked_at": "2026-11-04T14:14:03.188637+00:00",
+    "lines_hash": "b183df9deb2bd002a4b3be5e3c4b5fd2",
+    "rls_tables": 24,
+    "allocations": 0,
+    "project_ref": "hkhomrrvxtcxnxvdlkoh",
+    "public_rpcs": 23,
+    "real_posting": false,
+    "records_hash": "b7719b171817298af9e858a97e90262f",
+    "journal_lines": 12,
+    "journals_hash": "64ffb6c3fb3c1a0e171346ba755a0850",
+    "real_processing": false,
+    "browser_callable": 0,
+    "company_versions": [
+      {
+        "id": "11111111-1111-4111-8111-111111111111",
+        "version": 66
+      }
+    ],
+    "service_callable": 23,
+    "expected_settlement_allocations": 2
+  },
+  "after": {
+    "tables": 24,
+    "parties": 4,
+    "records": 70,
+    "journals": 6,
+    "policies": 0,
+    "projects": 2,
+    "companies": 1,
+    "snapshots": 4,
+    "checked_at": "2026-11-04T14:16:59.561535+00:00",
+    "lines_hash": "b183df9deb2bd002a4b3be5e3c4b5fd2",
+    "rls_tables": 24,
+    "allocations": 2,
+    "project_ref": "hkhomrrvxtcxnxvdlkoh",
+    "public_rpcs": 23,
+    "real_posting": false,
+    "records_hash": "b7719b171817298af9e858a97e90262f",
+    "journal_lines": 12,
+    "journals_hash": "64ffb6c3fb3c1a0e171346ba755a0850",
+    "real_processing": false,
+    "browser_callable": 0,
+    "company_versions": [
+      {
+        "id": "11111111-1111-4111-8111-111111111111",
+        "version": 66
+      }
+    ],
+    "service_callable": 23,
+    "expected_settlement_allocations": 2
+  },
+  "preservedFields": [
+    "project_ref",
+    "companies",
+    "company_versions",
+    "parties",
+    "projects",
+    "records",
+    "records_hash",
+    "journals",
+    "journals_hash",
+    "journal_lines",
+    "lines_hash",
+    "snapshots",
+    "tables",
+    "rls_tables",
+    "public_rpcs",
+    "browser_callable",
+    "service_callable",
+    "real_posting",
+    "real_processing",
+    "policies"
+  ],
+  "roleSecurity": {
+    "project_ref": "hkhomrrvxtcxnxvdlkoh",
+    "real_posting": false,
+    "real_processing": false,
+    "reversal_unique": true,
+    "reversal_deferred": true,
+    "operational_fixture_roles": [
+      {
+        "role": "accountant",
+        "finance_post": false,
+        "operational_caps": false
+      },
+      {
+        "role": "owner_admin",
+        "finance_post": false,
+        "operational_caps": true
+      },
+      {
+        "role": "project_manager",
+        "finance_post": false,
+        "operational_caps": true
+      },
+      {
+        "role": "site_staff",
+        "finance_post": false,
+        "operational_caps": true
+      }
+    ],
+    "owner_scope_company_query": true,
+    "private_helper_executable": 0,
+    "manager_staff_assignment_query": true
+  },
+  "ownerScope": {
+    "owner_projects": 2,
+    "foreign_project_ids": 0,
+    "own_company_projects": 2,
+    "active_owner_sessions": 1
+  },
+  "limitations": [
+    "Role scope SQL aggregation checks actual current Owner actor; local regression includes foreign-company and unassigned-Owner/PM cases.",
+    "No production flags, approved financial policies, Auth settings or deployments changed."
+  ]
+}

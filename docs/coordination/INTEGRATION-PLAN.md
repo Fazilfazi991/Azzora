@@ -1,5 +1,17 @@
 # Controlled integration plan and executed checkpoints
 
+## Final shared staging execution — 4 November 2026
+
+1. Preserve accepted application6c838f9 and report3426d40; create isolated `codex/azzora-final-shared-staging` worktree. No reset, production change or main merge.
+2. Reconcile typed Manager command adapters, independent individual identity/recovery, private originals, canonical immutable history and shared commercial corrections. Apply only reviewed, exact-file additive fictional staging migrations; retain receipts and policy locks.
+3. Integrate code/tests/config as88306ee0c84d337a1d8fe3a316ecdd424b3ae4af. Verify actual financial procurement/credit/correction journey, private documents, scheduling, Staff/site/QA/handover and individual revocation.
+4. Final receipt race exposes no duplicate/overpayment. Fresh export detects immutable history's inline original; preserve it byte-for-byte and verify against matching private pointer. Correct cancellation badges and Owner recovery alignment. Refreeze application as **a6a4ccf9c7cc109d5f1687ce37390a7e0f8698c2**.
+5. Run full final units, fixtures, typing/lint, default/staging builds, applicable browser regressions and visual PDF/screenshots. Actual Owner backup/isolated seven-migration restore at version139 preserves20journals,9snapshots,6allocations,3originals and reconciled statements. Documentation/evidence delivery follows without application edits.
+6. Present the [dedicated protected Preview configuration](../backend/PROTECTED-STAGING-DEPLOYMENT-PLAN.md) for required Owner approval **before publication**. Only afterward provision/publish and verify hosted protection, origin/runtime, sessions, files and end-to-end acceptance on the exact deployment. Do not reuse stable URLs or production credentials.
+7. Real posting/cutover remains blocked by business policies, identity/email/security/recovery acceptance, actual hosted testing and explicit production authorization. CLI migration-history reconciliation is required before any automated pipeline; do not replay applied SQL.
+
+[Consolidated final report](../backend/FINAL-SHARED-STAGING-INTEGRATION-REPORT.md).
+
 ## Executed individual login and core shared data — 4 November 2026
 
 Isolated `codex/azzora-shared-staging` progresses through domain/auth/UI checkpoint `382c48b`, shared BFF/storage `2ec4bc7`, actual UI missing-ID correction `9cdcc40`, local review prefix correction `911f0df` and CSS-only final responsive alignment `6c838f9dcbcef8ac55c68bbdab18e5a575877d40`. Three additional exact-file migrations were applied only to owner-approved fictional Supabase staging; the deferred balance guard correction did not open schema access. Actual provider authentication, shared journeys, private originals, stable no-ID retries and simultaneous CAS were verified, followed by 887 units, two fixture tests, typing/lint/builds and the affected browser regressions. Preserve source/evidence and do not deploy or promote automatically. Remaining Manager mutation adapters and production identity, financial policies, migration/restore and hosted-runtime acceptance remain explicit gates. [Report](../backend/SHARED-STAGING-INTEGRATION-REPORT.md), [runbook](../backend/SHARED-STAGING-RUNBOOK.md).

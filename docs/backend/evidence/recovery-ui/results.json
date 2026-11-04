@@ -1,0 +1,42 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "workspace": "manager",
+      "width": 1440,
+      "passed": true,
+      "keyboard": true,
+      "noOverflow": true,
+      "noSecretEntered": true,
+      "pageErrors": 0
+    },
+    {
+      "workspace": "accountant",
+      "width": 1440,
+      "passed": true,
+      "keyboard": true,
+      "noOverflow": true,
+      "noSecretEntered": true,
+      "pageErrors": 0
+    },
+    {
+      "workspace": "manager",
+      "width": 390,
+      "passed": true,
+      "keyboard": true,
+      "noOverflow": true,
+      "noSecretEntered": true,
+      "pageErrors": 0
+    },
+    {
+      "workspace": "accountant",
+      "width": 390,
+      "passed": true,
+      "keyboard": true,
+      "noOverflow": true,
+      "noSecretEntered": true,
+      "pageErrors": 0
+    }
+  ],
+  "providerMutations": 0
+}

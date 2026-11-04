@@ -1,0 +1,32 @@
+{
+  "project_ref": "hkhomrrvxtcxnxvdlkoh",
+  "real_posting": false,
+  "real_processing": false,
+  "reversal_unique": true,
+  "reversal_deferred": true,
+  "operational_fixture_roles": [
+    {
+      "role": "accountant",
+      "finance_post": false,
+      "operational_caps": false
+    },
+    {
+      "role": "owner_admin",
+      "finance_post": false,
+      "operational_caps": true
+    },
+    {
+      "role": "project_manager",
+      "finance_post": false,
+      "operational_caps": true
+    },
+    {
+      "role": "site_staff",
+      "finance_post": false,
+      "operational_caps": true
+    }
+  ],
+  "owner_scope_company_query": true,
+  "private_helper_executable": 0,
+  "manager_staff_assignment_query": true
+}

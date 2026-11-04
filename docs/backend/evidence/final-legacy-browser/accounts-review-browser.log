@@ -1,0 +1,20 @@
+{
+  "checks": [
+    "unauthenticated API denied; Manager identity denied",
+    "dedicated login routes to reconciled Accountant dashboard",
+    "invoice draft and issue update canonical demo journal once",
+    "purchase bill and protected sample attachment recorded",
+    "receipt and supplier payment target selected documents",
+    "paid expense updates fictional bank and expense ledger",
+    "CSRF and idempotent action replay enforced by local API",
+    "ledger, P&L, balance sheet and aging routes reconcile",
+    "invoice browser download and both financial report PDFs pass",
+    "logout revokes session; Manager CRM browser key preserved",
+    "1024px: login, dashboard, bill upload, no page overflow",
+    "768px: login, dashboard, bill upload, no page overflow",
+    "390px: login, dashboard, bill upload, no page overflow",
+    "390px: exact uploaded bill persists after refresh in the local demo store"
+  ],
+  "errors": [],
+  "screenshots": "tmp/final-legacy-accounts"
+}

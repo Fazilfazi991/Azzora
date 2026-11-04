@@ -1,0 +1,98 @@
+{
+  "checkedAtUtc": "2026-11-04T13:35:36.608Z",
+  "source": "npm registry Bulk Advisory endpoint; package-lock.json only",
+  "packagesSubmitted": 308,
+  "affectedAdvisories": 4,
+  "productionAdvisories": 0,
+  "developmentOnlyAdvisories": 4,
+  "affected": [
+    {
+      "package": "minimatch",
+      "id": 1244012,
+      "title": "minimatch has potential denial of service via globparts amplification",
+      "url": "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "severity": "moderate",
+      "vulnerableRange": "<11.0.1",
+      "versions": [
+        "10.2.6",
+        "3.1.5"
+      ],
+      "productionAffected": false,
+      "affectedInstances": 2
+    },
+    {
+      "package": "@vitest/mocker",
+      "id": 1242767,
+      "title": "Vitest: Code injection via unauthenticated manual mock registration",
+      "url": "https://github.com/advisories/GHSA-qxg6-89mg-rqv8",
+      "severity": "moderate",
+      "vulnerableRange": ">=2.1.0-beta.7 <4.1.12",
+      "versions": [
+        "4.1.11"
+      ],
+      "productionAffected": false,
+      "affectedInstances": 1
+    },
+    {
+      "package": "@vitest/mocker",
+      "id": 1242769,
+      "title": "Vitest: Windows backslash traversal bypasses the @vitest/mocker redirect allowlist fix",
+      "url": "https://github.com/advisories/GHSA-xp26-3454-mjgp",
+      "severity": "moderate",
+      "vulnerableRange": ">=4.1.11 <4.1.12",
+      "versions": [
+        "4.1.11"
+      ],
+      "productionAffected": false,
+      "affectedInstances": 1
+    },
+    {
+      "package": "vite",
+      "id": 1243858,
+      "title": "Vite: `server.fs.deny` bypassed with queries",
+      "url": "https://github.com/advisories/GHSA-8g5g-mxqh-grgj",
+      "severity": "moderate",
+      "vulnerableRange": "=6.4.4",
+      "versions": [
+        "6.4.4"
+      ],
+      "productionAffected": false,
+      "affectedInstances": 1
+    }
+  ],
+  "patches": [
+    {
+      "package": "minimatch",
+      "current": "10.2.6",
+      "minimumNonAffectedSameMajor": null,
+      "minimumNonAffectedAvailable": "11.0.1",
+      "latest": "11.0.4"
+    },
+    {
+      "package": "minimatch",
+      "current": "3.1.5",
+      "minimumNonAffectedSameMajor": null,
+      "minimumNonAffectedAvailable": "11.0.1",
+      "latest": "11.0.4"
+    },
+    {
+      "package": "@vitest/mocker",
+      "current": "4.1.11",
+      "minimumNonAffectedSameMajor": "4.1.12",
+      "minimumNonAffectedAvailable": "4.1.12",
+      "latest": "5.1.0"
+    },
+    {
+      "package": "vite",
+      "current": "6.4.4",
+      "minimumNonAffectedSameMajor": "6.4.5",
+      "minimumNonAffectedAvailable": "6.4.5",
+      "latest": "8.3.5"
+    }
+  ],
+  "installedOrChangedPackages": false,
+  "limitations": [
+    "Registry advisories are not a source-code exploitability or complete supply-chain review",
+    "Minimum versions exclude only the advisories returned in this audit and still require compatibility/build/regression checks"
+  ]
+}

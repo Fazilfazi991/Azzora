@@ -1,0 +1,62 @@
+{
+  "origin": "http://127.0.0.1:5367",
+  "defaultMode": true,
+  "isolatedBrowserContexts": true,
+  "results": [
+    {
+      "suite": "browser",
+      "exitCode": 0
+    },
+    {
+      "suite": "commercial-browser",
+      "exitCode": 0
+    },
+    {
+      "suite": "operational-browser",
+      "exitCode": 0
+    },
+    {
+      "suite": "workforce-browser",
+      "exitCode": 0
+    },
+    {
+      "suite": "recovery-browser",
+      "exitCode": 0
+    },
+    {
+      "suite": "quotation-browser",
+      "exitCode": 0
+    },
+    {
+      "suite": "accounts-review-browser",
+      "exitCode": 0
+    },
+    {
+      "suite": "timeline-independent-browser",
+      "exitCode": 0
+    },
+    {
+      "suite": "timeline-date-position-browser",
+      "exitCode": 0
+    }
+  ],
+  "testedSha": "a6a4ccf9c7cc109d5f1687ce37390a7e0f8698c2",
+  "explicitlyNumberedChecks": {
+    "browser": 66,
+    "commercial-browser": 129,
+    "operational-browser": 136,
+    "workforce-browser": 40,
+    "recovery-browser": 25,
+    "accounts-review-browser": 14
+  },
+  "totalExplicitlyNumberedChecks": 410,
+  "unnumberedPassingSuites": [
+    "quotation-browser",
+    "timeline-independent-browser",
+    "timeline-date-position-browser"
+  ],
+  "existingUserBrowserDataAccessed": false,
+  "serverStopped": true,
+  "reviewPasswordEphemeral": true,
+  "paidAiDisabled": true
+}

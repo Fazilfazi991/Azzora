@@ -1,0 +1,64 @@
+{
+  "passed": true,
+  "completedAt": "2026-11-04T14:54:32.919Z",
+  "fictionalOnly": true,
+  "paidAi": false,
+  "beforeVersion": 136,
+  "invoiceIssueVersion": 137,
+  "itemizedAccountantToManager": {
+    "lines": 2,
+    "descriptionsQuantitiesRatesMatch": true
+  },
+  "afterRaceVersion": 138,
+  "finalVersion": 139,
+  "invoiceId": "receipt-race-mw28m5u1-invoice",
+  "winningReceiptId": "receipt-race-mw28m5u1-receipt60",
+  "winningAmount": "60",
+  "losingAmount": "70",
+  "raceStatuses": [
+    409,
+    200
+  ],
+  "sameExpectedVersion": 137,
+  "raceVersionIncrements": 1,
+  "freshLoserStatus": 400,
+  "overpaymentRejectedWithoutPosting": true,
+  "originalKeyReplayStatus": 200,
+  "originalReplayVersionUnchanged": true,
+  "identicalMissingIdStatuses": [
+    200,
+    200
+  ],
+  "generatedReceiptId": "RCPT-STG-D2A5FA2562B0018E7E1D",
+  "sameKeyVersionIncrements": 1,
+  "financialSourceJournalCounts": {
+    "invoice": 1,
+    "winningReceipt": 1,
+    "idlessReceipt": 1
+  },
+  "newInvoiceOutstandingFils": "3000",
+  "beforeMetrics": {
+    "revenueFils": "190000",
+    "costOfSalesFils": "20500",
+    "operatingExpensesFils": "0",
+    "grossProfitFils": "169500",
+    "netProfitFils": "169500",
+    "receivablesFils": "165000",
+    "payablesFils": "9000",
+    "bankFils": "10013500",
+    "cashFils": "0"
+  },
+  "finalMetrics": {
+    "revenueFils": "200000",
+    "costOfSalesFils": "20500",
+    "operatingExpensesFils": "0",
+    "grossProfitFils": "179500",
+    "netProfitFils": "179500",
+    "receivablesFils": "168000",
+    "payablesFils": "9000",
+    "bankFils": "10020500",
+    "cashFils": "0"
+  },
+  "trialBalanced": true,
+  "balanceSheetBalanced": true
+}

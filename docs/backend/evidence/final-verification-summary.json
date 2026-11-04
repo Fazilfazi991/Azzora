@@ -1,0 +1,47 @@
+{
+  "applicationSha": "a6a4ccf9c7cc109d5f1687ce37390a7e0f8698c2",
+  "checkedAt": "2026-11-04T15:13:08.678Z",
+  "unitTests": {
+    "passed": 962,
+    "failed": 0,
+    "files": 75
+  },
+  "fixtureTests": {
+    "passed": 2,
+    "failed": 0
+  },
+  "typescript": {
+    "exitCode": 0
+  },
+  "eslint": {
+    "exitCode": 0
+  },
+  "productionBuilds": {
+    "default": {
+      "exitCode": 0,
+      "largeChunkWarning": true
+    },
+    "sharedStaging": {
+      "exitCode": 0
+    }
+  },
+  "sourceChangesAfterFreeze": false,
+  "hostedDeployment": false,
+  "legacyBrowserSuites": {
+    "passed": 9,
+    "failed": 0,
+    "explicitlyNumberedChecks": 410,
+    "unnumberedSuites": [
+      "quotation-browser",
+      "timeline-independent-browser",
+      "timeline-date-position-browser"
+    ],
+    "evidence": "frozen-a6a4-legacy-browser/results.json"
+  },
+  "actualSharedBackend": {
+    "companyVersion": 139,
+    "backupRestored": true,
+    "realPostingEnabled": false,
+    "paidAiCalls": 0
+  }
+}

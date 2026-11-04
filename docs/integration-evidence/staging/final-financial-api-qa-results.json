@@ -1,0 +1,487 @@
+{
+  "passed": true,
+  "runId": "finmw27jvgm",
+  "completedAt": "2026-11-04T14:33:37.382Z",
+  "sourceHead": "3426d409b513a2ffdc5334b35c8223a3e53d8d30",
+  "sourceWorkingTree": true,
+  "fictionalOnly": true,
+  "paidAi": false,
+  "checkpoints": {
+    "initial": {
+      "version": 66,
+      "metrics": {
+        "revenueFils": "100000",
+        "costOfSalesFils": "17500",
+        "operatingExpensesFils": "0",
+        "grossProfitFils": "82500",
+        "netProfitFils": "82500",
+        "receivablesFils": "75000",
+        "payablesFils": "6000",
+        "bankFils": "10013500",
+        "cashFils": "0"
+      }
+    },
+    "projectId": "a60b660b-f4df-41cf-a776-34b6e9c11121",
+    "invoiceId": "7201170b-03af-4f02-a66b-d0394db480c0",
+    "quotationId": "0133478f-8992-41e9-b1f2-e9e9d9bd6958",
+    "afterCredit": {
+      "version": 82,
+      "metrics": {
+        "revenueFils": "190000",
+        "costOfSalesFils": "17500",
+        "operatingExpensesFils": "0",
+        "grossProfitFils": "172500",
+        "netProfitFils": "172500",
+        "receivablesFils": "140000",
+        "payablesFils": "6000",
+        "bankFils": "10038500",
+        "cashFils": "0"
+      }
+    },
+    "afterCorrections": {
+      "version": 107,
+      "metrics": {
+        "revenueFils": "190000",
+        "costOfSalesFils": "17500",
+        "operatingExpensesFils": "0",
+        "grossProfitFils": "172500",
+        "netProfitFils": "172500",
+        "receivablesFils": "165000",
+        "payablesFils": "6000",
+        "bankFils": "10013500",
+        "cashFils": "0"
+      }
+    },
+    "accountantOriginBill": {
+      "sharedManagerCostRows": 1,
+      "sourceBillId": "finmw27jvgm-accountant-bill",
+      "amountFils": "3000",
+      "metrics": {
+        "revenueFils": "190000",
+        "costOfSalesFils": "20500",
+        "operatingExpensesFils": "0",
+        "grossProfitFils": "169500",
+        "netProfitFils": "169500",
+        "receivablesFils": "165000",
+        "payablesFils": "9000",
+        "bankFils": "10013500",
+        "cashFils": "0"
+      }
+    }
+  },
+  "finalVersion": 110,
+  "finalMetrics": {
+    "revenueFils": "190000",
+    "costOfSalesFils": "20500",
+    "operatingExpensesFils": "0",
+    "grossProfitFils": "169500",
+    "netProfitFils": "169500",
+    "receivablesFils": "165000",
+    "payablesFils": "9000",
+    "bankFils": "10013500",
+    "cashFils": "0"
+  },
+  "deltaFromInitialFils": {
+    "revenue": "90000",
+    "receivables": "90000",
+    "costOfSales": "3000",
+    "payables": "3000",
+    "bank": "0",
+    "netProfit": "87000"
+  },
+  "trialBalanced": true,
+  "balanceSheetBalanced": true,
+  "canonicalSingleSources": 7,
+  "appendOnlyReversals": 4,
+  "policyGates": {
+    "refund": 423,
+    "overpaidCredit": 423,
+    "VAT": 423
+  },
+  "results": [
+    {
+      "test": "customer.save",
+      "role": "manager",
+      "status": 200,
+      "version": 67,
+      "expectedStatus": 200
+    },
+    {
+      "test": "project.create",
+      "role": "manager",
+      "status": 200,
+      "version": 68,
+      "expectedStatus": 200
+    },
+    {
+      "test": "quotation.new",
+      "role": "manager",
+      "status": 200,
+      "version": 69,
+      "expectedStatus": 200
+    },
+    {
+      "test": "quotation.save",
+      "role": "manager",
+      "status": 200,
+      "version": 70,
+      "expectedStatus": 200
+    },
+    {
+      "test": "quotation.status",
+      "role": "manager",
+      "status": 200,
+      "version": 71,
+      "expectedStatus": 200
+    },
+    {
+      "test": "quotation.status",
+      "role": "manager",
+      "status": 200,
+      "version": 72,
+      "expectedStatus": 200
+    },
+    {
+      "test": "quotation.status",
+      "role": "manager",
+      "status": 200,
+      "version": 73,
+      "expectedStatus": 200
+    },
+    {
+      "test": "quotation.convert",
+      "role": "manager",
+      "status": 200,
+      "version": 74,
+      "expectedStatus": 200
+    },
+    {
+      "test": "invoice.from-quotation",
+      "role": "manager",
+      "status": 200,
+      "version": 75,
+      "expectedStatus": 200
+    },
+    {
+      "test": "invoice.save",
+      "role": "manager",
+      "status": 200,
+      "version": 76,
+      "expectedStatus": 200
+    },
+    {
+      "test": "invoice.issue",
+      "role": "manager",
+      "status": 200,
+      "version": 77,
+      "expectedStatus": 200
+    },
+    {
+      "test": "accounts.receipt",
+      "role": "accountant",
+      "status": 200,
+      "version": 78,
+      "expectedStatus": 200
+    },
+    {
+      "test": "credit.save",
+      "role": "owner",
+      "status": 200,
+      "version": 79,
+      "expectedStatus": 200
+    },
+    {
+      "test": "procurement.submit",
+      "role": "owner",
+      "status": 200,
+      "version": 80,
+      "expectedStatus": 200
+    },
+    {
+      "test": "procurement.decide",
+      "role": "manager",
+      "status": 200,
+      "version": 81,
+      "expectedStatus": 200
+    },
+    {
+      "test": "credit.issue",
+      "role": "owner",
+      "status": 200,
+      "version": 82,
+      "expectedStatus": 200
+    },
+    {
+      "test": "refund.post",
+      "role": "owner",
+      "status": 423,
+      "expectedStatus": 423
+    },
+    {
+      "test": "credit.save",
+      "role": "owner",
+      "status": 200,
+      "version": 83,
+      "expectedStatus": 200
+    },
+    {
+      "test": "procurement.submit",
+      "role": "owner",
+      "status": 200,
+      "version": 84,
+      "expectedStatus": 200
+    },
+    {
+      "test": "procurement.decide",
+      "role": "manager",
+      "status": 200,
+      "version": 85,
+      "expectedStatus": 200
+    },
+    {
+      "test": "credit.issue",
+      "role": "owner",
+      "status": 423,
+      "expectedStatus": 423
+    },
+    {
+      "test": "payment.reverse",
+      "role": "owner",
+      "status": 200,
+      "version": 86,
+      "expectedStatus": 200
+    },
+    {
+      "test": "invoice.save",
+      "role": "manager",
+      "status": 200,
+      "version": 87,
+      "expectedStatus": 200
+    },
+    {
+      "test": "invoice.issue",
+      "role": "manager",
+      "status": 200,
+      "version": 88,
+      "expectedStatus": 200
+    },
+    {
+      "test": "invoice.cancel",
+      "role": "owner",
+      "status": 200,
+      "version": 89,
+      "expectedStatus": 200
+    },
+    {
+      "test": "invoice.save",
+      "role": "manager",
+      "status": 200,
+      "version": 90,
+      "expectedStatus": 200
+    },
+    {
+      "test": "invoice.issue",
+      "role": "manager",
+      "status": 400,
+      "expectedStatus": 423,
+      "resolvedByStatus": 423
+    },
+    {
+      "test": "invoice.issue",
+      "role": "manager",
+      "status": 423,
+      "expectedStatus": 423
+    },
+    {
+      "test": "supplier.save",
+      "role": "manager",
+      "status": 200,
+      "version": 91,
+      "expectedStatus": 200
+    },
+    {
+      "test": "procurement.material",
+      "role": "manager",
+      "status": 200,
+      "version": 92,
+      "expectedStatus": 200
+    },
+    {
+      "test": "procurement.request",
+      "role": "manager",
+      "status": 200,
+      "version": 93,
+      "expectedStatus": 200
+    },
+    {
+      "test": "procurement.submit",
+      "role": "manager",
+      "status": 200,
+      "version": 94,
+      "expectedStatus": 200
+    },
+    {
+      "test": "procurement.decide",
+      "role": "owner",
+      "status": 200,
+      "version": 95,
+      "expectedStatus": 200
+    },
+    {
+      "test": "procurement.rfqs",
+      "role": "manager",
+      "status": 200,
+      "version": 96,
+      "expectedStatus": 200
+    },
+    {
+      "test": "procurement.quote",
+      "role": "manager",
+      "status": 200,
+      "version": 97,
+      "expectedStatus": 200
+    },
+    {
+      "test": "procurement.submit",
+      "role": "manager",
+      "status": 200,
+      "version": 98,
+      "expectedStatus": 200
+    },
+    {
+      "test": "procurement.decide",
+      "role": "owner",
+      "status": 200,
+      "version": 99,
+      "expectedStatus": 200
+    },
+    {
+      "test": "procurement.order",
+      "role": "manager",
+      "status": 200,
+      "version": 100,
+      "expectedStatus": 200
+    },
+    {
+      "test": "procurement.submit",
+      "role": "manager",
+      "status": 200,
+      "version": 101,
+      "expectedStatus": 200
+    },
+    {
+      "test": "procurement.decide",
+      "role": "owner",
+      "status": 200,
+      "version": 102,
+      "expectedStatus": 200
+    },
+    {
+      "test": "procurement.delivery",
+      "role": "manager",
+      "status": 200,
+      "version": 103,
+      "expectedStatus": 200
+    },
+    {
+      "test": "procurement.bill",
+      "role": "manager",
+      "status": 200,
+      "version": 104,
+      "expectedStatus": 200
+    },
+    {
+      "test": "accounts.supplier-payment",
+      "role": "accountant",
+      "status": 200,
+      "version": 105,
+      "expectedStatus": 200
+    },
+    {
+      "test": "procurement.reverse-payment",
+      "role": "owner",
+      "status": 200,
+      "version": 106,
+      "expectedStatus": 200
+    },
+    {
+      "test": "procurement.cancel-bill",
+      "role": "owner",
+      "status": 200,
+      "version": 107,
+      "expectedStatus": 200
+    },
+    {
+      "test": "accounts.bill",
+      "role": "accountant",
+      "status": 200,
+      "version": 108,
+      "expectedStatus": 200
+    },
+    {
+      "test": "simultaneous CAS different keys",
+      "statuses": [
+        200,
+        409
+      ],
+      "versionIncrement": 1
+    },
+    {
+      "test": "simultaneous missing-ID same-key replay",
+      "statuses": [
+        200,
+        200
+      ],
+      "versionIncrement": 1
+    },
+    {
+      "test": "actual invoice PDF",
+      "status": 200,
+      "bytes": 7465
+    },
+    {
+      "test": "actual pnl PDF",
+      "status": 200,
+      "bytes": 4968
+    },
+    {
+      "test": "actual balance PDF",
+      "status": 200,
+      "bytes": 5757
+    }
+  ],
+  "physicalAllocationProof": {
+    "passed": true,
+    "checkedAtUtc": "2026-11-04T14:37:20.262Z",
+    "rows": [
+      {
+        "journal_id": "J-finmw27jvgm-receipt",
+        "amount_fils": "25000",
+        "document_id": "7201170b-03af-4f02-a66b-d0394db480c0",
+        "settlement_id": "finmw27jvgm-receipt",
+        "settlement_type": "receipt"
+      },
+      {
+        "journal_id": "J-finmw27jvgm-supplier-payment",
+        "amount_fils": "4000",
+        "document_id": "finmw27jvgm-bill",
+        "settlement_id": "finmw27jvgm-supplier-payment",
+        "settlement_type": "supplier_payment"
+      }
+    ]
+  },
+  "historicalFailures": [
+    {
+      "stage": "Accountant session before business mutations",
+      "status": 401,
+      "resolved": "Only Accountant login/MFA renewed"
+    },
+    {
+      "stage": "VAT policy response",
+      "status": 400,
+      "expected": 423,
+      "resolvedByStatus": 423,
+      "financialPosting": false
+    }
+  ]
+}

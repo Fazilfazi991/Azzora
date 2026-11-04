@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "checks": [
+    "Engineer genuine app session active before status change",
+    "Owner employee.status command deactivates fictional Engineer",
+    "Previously valid Engineer app session denied after employee deactivation",
+    "Engineer Manager API denied after employee deactivation",
+    "Owner restores fictional Engineer active profile",
+    "Old Engineer session remains revoked after reactivation"
+  ],
+  "restoredActive": true,
+  "temporaryTarget": "fictional Engineer only",
+  "passwordsChanged": false,
+  "otherIdentityStatusesChanged": false
+}

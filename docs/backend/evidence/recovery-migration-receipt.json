@@ -1,0 +1,19 @@
+{
+  "file": "20261104132914_staging_manual_recovery.sql",
+  "sourceSha256": "96a337dc0243ef8104ce7d3e159098423b1e87af3f0544f86c7a36f06212fe70",
+  "editorMatchedSourceIgnoringLineEndings": true,
+  "appliedVia": "supabase-sql-editor",
+  "catalog": {
+    "tables": 24,
+    "checked_at": "2026-11-04T13:48:07.347443+00:00",
+    "rls_tables": 24,
+    "project_ref": "hkhomrrvxtcxnxvdlkoh",
+    "real_posting": false,
+    "recovery_flows": 0,
+    "real_processing": false,
+    "browser_callable": 0,
+    "service_callable": 8,
+    "recovery_functions": 8,
+    "recovery_table_rls": true
+  }
+}

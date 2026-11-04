@@ -1,3 +1,9 @@
+import { stagingEnabled, StagingRequestError } from "../staging/client";
+
+let stagingVersion: number | undefined;
+export function accountsUrl(path: string) {
+  return `${stagingEnabled ? "/api/staging/accounts" : "/api/accounts-review"}${path}`;
+}
 /** Transport only: financial retries remain an explicit user action. */
 export async function accountsRequest(path: string, options: RequestInit = {}) {
   const actionPost =
@@ -7,10 +13,23 @@ export async function accountsRequest(path: string, options: RequestInit = {}) {
     "Unable to confirm whether the submission was saved. It may already be saved. Retry with the same details, or refresh and check the ledger before submitting again.";
   let response: Response;
   try {
-    response = await fetch(`/api/accounts-review${path}`, {
+    const authPath =
+      stagingEnabled &&
+      ["/login", "/session", "/logout"].includes(path.split("?")[0]);
+    const address = authPath ? `/api/staging/auth${path}` : accountsUrl(path);
+    const headers = new Headers(options.headers);
+    if (
+      stagingEnabled &&
+      options.method?.toUpperCase() === "POST" &&
+      !authPath &&
+      stagingVersion !== undefined
+    )
+      headers.set("X-Azzora-Expected-Version", String(stagingVersion));
+    response = await fetch(address, {
       credentials: "same-origin",
       cache: "no-store",
       ...options,
+      headers,
     });
   } catch {
     throw Error(
@@ -36,6 +55,17 @@ export async function accountsRequest(path: string, options: RequestInit = {}) {
     );
   });
   if (actionPost && response.status >= 500) throw Error(uncertainty + suffix);
-  if (!response.ok) throw Error((result?.error || "Request failed.") + suffix);
+  if (!response.ok) {
+    if (stagingEnabled)
+      throw new StagingRequestError(
+        (result?.error || "Request failed.") + suffix,
+        response.status,
+      );
+    throw Error((result?.error || "Request failed.") + suffix);
+  }
+  if (stagingEnabled) {
+    const version = result?.snapshot?.version ?? result?.version;
+    if (Number.isSafeInteger(version)) stagingVersion = version;
+  }
   return result;
 }

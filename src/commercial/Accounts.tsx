@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useStore } from "../store";
+import { useStore, runStoreCommand } from "../store";
 import { Header, Badge, Empty, Modal, Field } from "../components/ui";
 import type { Invoice } from "./model";
 import { emptyFilter, expenseCategories } from "./model";
@@ -36,6 +36,7 @@ import { invoiceDetails, invoicePdf, printInvoice } from "./document";
 import { reportData } from "./reports-data";
 import { discountAmount, totals } from "../quotation/calculations";
 import { today } from "../domain/logic";
+import { StagingExpenseQueue } from "../staging/client-expenses";
 
 import { Budgets } from "../operations/Budgets";
 import {
@@ -256,7 +257,8 @@ export function CommercialDashboard() {
 }
 
 function InvoiceDetail({ invoice: i }: { invoice: Invoice }) {
-  const { db, mutate } = useStore();
+  const store = useStore(),
+    { db, mutate } = store;
   const [edit, setEdit] = useState(false),
     [payment, setPayment] = useState(false),
     [cancel, setCancel] = useState(false),
@@ -283,7 +285,10 @@ function InvoiceDetail({ invoice: i }: { invoice: Invoice }) {
                 <button
                   className="primary"
                   onClick={() =>
-                    mutate(
+                    runStoreCommand(
+                      store,
+                      "invoice.issue",
+                      { id: i.id },
                       (d) => issueInvoice(d, i.id),
                       "Invoice issued with preserved snapshot",
                     )
@@ -796,6 +801,7 @@ export function Accounts({
         </>
       ) : section === "expenses" ? (
         <>
+          <StagingExpenseQueue />
           <p className="muted">
             Recorded costs are incurred expenses. Paid amounts track cash
             separately.

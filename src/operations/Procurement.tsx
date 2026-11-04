@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useStore } from "../store";
+import { useRef, useState } from "react";
+import { useStore, runStoreCommand } from "../store";
 import { Header, Field, Modal, Badge, Empty } from "../components/ui";
 import { Attachments } from "../components/uploads";
 import { DataTable } from "../commercial/Registers";
@@ -62,7 +62,8 @@ export function Procurement({
   embedded?: boolean;
   initialAction?: string;
 }) {
-  const { db, mutate } = useStore(),
+  const store = useStore(),
+    { db } = store,
     op = getOperations(db),
     actors = useActors();
   const [filter, setFilter] = useState(projectId),
@@ -250,16 +251,26 @@ export function Procurement({
                   {["Draft", "Rejected"].includes(r.status) && (
                     <button
                       onClick={() =>
-                        mutate((d) => {
-                          submitApproval(
-                            d,
-                            "Purchase Request",
-                            r.id,
-                            "Purchase Request",
-                            actors.actor,
-                            actors.approver,
-                          );
-                        })
+                        runStoreCommand(
+                          store,
+                          "procurement.submit",
+                          {
+                            kind: "Purchase Request",
+                            entityId: r.id,
+                            stage: "Purchase Request",
+                            approverId: actors.approver,
+                          },
+                          (d) => {
+                            submitApproval(
+                              d,
+                              "Purchase Request",
+                              r.id,
+                              "Purchase Request",
+                              actors.actor,
+                              actors.approver,
+                            );
+                          },
+                        )
                       }
                     >
                       Submit Purchase Request
@@ -319,21 +330,26 @@ export function Procurement({
                 {r.status !== "Closed" && (
                   <button
                     onClick={() =>
-                      mutate((d) => {
-                        const f = d.operations!.rfqs.find(
-                          (x) => x.id === r.id,
-                        )!;
-                        f.status = "Closed";
-                        audit(
-                          d,
-                          r.projectId,
-                          "RFQ",
-                          r.id,
-                          "RFQ closed",
-                          r.number,
-                          actors.actor,
-                        );
-                      })
+                      runStoreCommand(
+                        store,
+                        "procurement.close-rfq",
+                        { id: r.id },
+                        (d) => {
+                          const f = d.operations!.rfqs.find(
+                            (x) => x.id === r.id,
+                          )!;
+                          f.status = "Closed";
+                          audit(
+                            d,
+                            r.projectId,
+                            "RFQ",
+                            r.id,
+                            "RFQ closed",
+                            r.number,
+                            actors.actor,
+                          );
+                        },
+                      )
                     }
                   >
                     Close RFQ
@@ -394,16 +410,26 @@ export function Procurement({
                 {["Received", "Rejected"].includes(q.status) && (
                   <button
                     onClick={() =>
-                      mutate((d) => {
-                        submitApproval(
-                          d,
-                          "Supplier Quotation",
-                          q.id,
-                          "Preferred supplier selection",
-                          actors.actor,
-                          actors.approver,
-                        );
-                      })
+                      runStoreCommand(
+                        store,
+                        "procurement.submit",
+                        {
+                          kind: "Supplier Quotation",
+                          entityId: q.id,
+                          stage: "Preferred supplier selection",
+                          approverId: actors.approver,
+                        },
+                        (d) => {
+                          submitApproval(
+                            d,
+                            "Supplier Quotation",
+                            q.id,
+                            "Preferred supplier selection",
+                            actors.actor,
+                            actors.approver,
+                          );
+                        },
+                      )
                     }
                   >
                     Select Preferred Supplier
@@ -445,16 +471,26 @@ export function Procurement({
                   {["Draft", "Rejected"].includes(o.status) && (
                     <button
                       onClick={() =>
-                        mutate((d) => {
-                          submitApproval(
-                            d,
-                            "Purchase Order",
-                            o.id,
-                            "PO authorization",
-                            actors.actor,
-                            actors.approver,
-                          );
-                        })
+                        runStoreCommand(
+                          store,
+                          "procurement.submit",
+                          {
+                            kind: "Purchase Order",
+                            entityId: o.id,
+                            stage: "PO authorization",
+                            approverId: actors.approver,
+                          },
+                          (d) => {
+                            submitApproval(
+                              d,
+                              "Purchase Order",
+                              o.id,
+                              "PO authorization",
+                              actors.actor,
+                              actors.approver,
+                            );
+                          },
+                        )
                       }
                     >
                       Submit Purchase Order
@@ -689,8 +725,10 @@ export function ProcurementForm({
   actor: string;
   onClose: () => void;
 }) {
-  const { db, mutate } = useStore(),
+  const store = useStore(),
+    { db, mutate } = store,
     op = getOperations(db);
+  const stagedId = useRef(uid());
   const [values, setValues] = useState<Record<string, string>>({
     projectId: projectId || db.projects[0]?.id || "",
     name: "",
@@ -784,7 +822,154 @@ export function ProcurementForm({
         "supplier-payment": "Supplier Payment",
       } as Record<string, string>
     )[type] || "Record Correction";
-  function submit() {
+  async function submit() {
+    if (store.mode === "staging") {
+      const entityId = stagedId.current;
+      let intent: { kind: string; payload: unknown };
+      if (type === "material")
+        intent = {
+          kind: "procurement.material",
+          payload: {
+            entity: {
+              id: entityId,
+              number: "",
+              projectId: values.projectId,
+              name: values.name,
+              specification: values.specification,
+              unit: values.unit,
+              quantity: values.quantity,
+              requiredDate: values.requiredDate,
+              requesterId: actor,
+              priority: values.priority,
+              notes: values.notes,
+              attachments,
+            },
+          },
+        };
+      else if (type === "request")
+        intent = {
+          kind: "procurement.request",
+          payload: {
+            entity: {
+              id: entityId,
+              number: "",
+              projectId: id
+                ? op.materials.find((item) => item.id === id)!.projectId
+                : values.projectId,
+              materialIds: selected,
+              requesterId: actor,
+              date: today(),
+              notes: values.notes,
+              status: "Draft",
+            },
+          },
+        };
+      else if (type === "rfq")
+        intent = {
+          kind: "procurement.rfqs",
+          payload: {
+            requestId: id,
+            supplierIds: selected,
+            deliveryDate: values.deliveryDate,
+            deadline: values.deadline,
+          },
+        };
+      else if (type === "quote")
+        intent = {
+          kind: "procurement.quote",
+          payload: {
+            entity: {
+              id: entityId,
+              number: "",
+              rfqId: id,
+              projectId: rfq!.projectId,
+              supplierId: rfq!.supplierId,
+              items,
+              deliveryCharge: values.deliveryCharge,
+              vatPercentage: op.settings.vatPercentage,
+              leadDays: Number(values.quantity),
+              terms: values.notes,
+              remarks: values.specification,
+              status: "Received",
+            },
+          },
+        };
+      else if (type === "order")
+        intent = {
+          kind: "procurement.order",
+          payload: {
+            supplierQuoteId: values.quoteId,
+            location: values.location,
+            date: values.deliveryDate,
+          },
+        };
+      else if (type === "delivery")
+        intent = {
+          kind: "procurement.delivery",
+          payload: {
+            delivery: {
+              id: entityId,
+              number: "",
+              poId: id,
+              projectId: po!.projectId,
+              date: values.date,
+              quantities: quantities.filter(
+                (item) => Number(item.quantity) !== 0,
+              ),
+              receiverId: actor,
+              reference: values.reference,
+              remarks: values.notes,
+            },
+          },
+        };
+      else if (type === "bill")
+        intent = {
+          kind: "procurement.bill",
+          payload: {
+            bill: {
+              id: entityId,
+              reference: values.reference,
+              poId: id,
+              projectId: po!.projectId,
+              supplierId: po!.supplierId,
+              date: values.date,
+              due: values.due,
+              quantities: quantities.filter(
+                (item) => Number(item.quantity) !== 0,
+              ),
+              deliveryCharge: values.deliveryCharge,
+              status: "Issued",
+            },
+          },
+        };
+      else if (type === "supplier-payment") {
+        const bill = op.bills.find((item) => item.id === id)!;
+        intent = {
+          kind: "procurement.payment",
+          payload: {
+            payment: {
+              id: entityId,
+              number: "",
+              billId: id,
+              supplierId: bill.supplierId,
+              projectId: bill.projectId,
+              date: values.date,
+              amount: values.amount,
+              method: values.method,
+              reference: values.reference,
+              bank: values.bank,
+              notes: values.notes,
+            },
+          },
+        };
+      } else
+        intent = {
+          kind: `procurement.${type}`,
+          payload: { id, reason: values.reason },
+        };
+      if (await store.command?.(intent.kind, intent.payload)) onClose();
+      return;
+    }
     if (
       mutate((d) => {
         if (type === "material")

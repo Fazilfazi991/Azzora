@@ -10,7 +10,21 @@ import type { Database } from "./domain/model";
 import { decodeSavedData, localRepository } from "./domain/repository";
 import { seed } from "./domain/seed";
 import { initializeCommercial } from "./commercial/migration";
-interface Store {
+export interface StagingExpenseSubmission {
+  id: string;
+  projectId: string;
+  date: string;
+  description: string;
+  amount: string;
+  payee: string;
+  submittedBy: string;
+  submittedPersonId?: string;
+  status: "Submitted" | "Approved" | "Rejected" | "Posted";
+  comments?: string;
+  ledgerId?: string;
+  departmentId?: string;
+}
+export interface Store {
   db: Database;
   mutate: (fn: (db: Database) => void, message?: string) => boolean;
   toast: string;
@@ -18,8 +32,37 @@ interface Store {
   clear: () => void;
   reset: () => void;
   exportOriginal: () => void;
+  mode?: "local" | "staging";
+  command?: (
+    kind: string,
+    payload: unknown,
+    message?: string,
+  ) => Promise<boolean>;
+  flush?: () => Promise<void>;
+  latestDb?: () => Database;
+  actor?: { userId: string; personId?: string; email: string; role: string };
+  expenseSubmissions?: StagingExpenseSubmission[];
 }
-const Context = createContext<Store | null>(null);
+export const StoreContext = createContext<Store | null>(null);
+const Context = StoreContext;
+
+/** Existing local workflows remain synchronous; staging forms await an authorized command. */
+export async function runStoreCommand(
+  store: Store,
+  kind: string,
+  payload: unknown,
+  local: (db: Database) => void,
+  message?: string,
+) {
+  if (store.mode === "staging") {
+    if (!store.command)
+      throw Error(
+        "The authorized staging service is unavailable. No browser data was changed.",
+      );
+    return store.command(kind, payload, message);
+  }
+  return store.mutate(local, message);
+}
 const KEY = "azzora-demo-v1";
 function bootstrap() {
   let raw: string | null = null;

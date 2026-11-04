@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { useStore } from "../store";
+import { useStore, runStoreCommand } from "../store";
 import { Field, Modal, Badge, Empty } from "../components/ui";
 import { Attachments } from "../components/uploads";
 import { today, uid, addDays } from "../domain/logic";
@@ -299,7 +299,8 @@ export function InvoiceForm({
   onClose: () => void;
   onSaved: (id: string) => void;
 }) {
-  const { db, mutate } = useStore();
+  const store = useStore(),
+    { db } = store;
   const [i, setI] = useState(() => {
     const result = structuredClone(
       invoice || blankInvoice(initialCustomerId, initialProjectId),
@@ -343,16 +344,22 @@ export function InvoiceForm({
       onClose={onClose}
     >
       <form
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
           if (sourceError) return;
           let id = "";
           if (
-            mutate((d) => {
-              id = saveInvoice(d, i).id;
-            }, "Invoice draft saved")
+            await runStoreCommand(
+              store,
+              "invoice.save",
+              { invoice: i },
+              (d) => {
+                id = saveInvoice(d, i).id;
+              },
+              "Invoice draft saved",
+            )
           )
-            onSaved(id);
+            onSaved(store.mode === "staging" ? i.id : id);
         }}
       >
         <div className="form-grid">
@@ -624,7 +631,8 @@ export function PaymentForm({
   invoiceId?: string;
   onClose: () => void;
 }) {
-  const { db, mutate } = useStore();
+  const store = useStore(),
+    { db } = store;
   const eligible = db.invoices.filter(
     (i) => i.status === "Issued" && balanceDue(db, i) > 0n,
   );
@@ -649,12 +657,18 @@ export function PaymentForm({
   return (
     <Modal title="Record Payment" onClose={onClose}>
       <form
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
           if (
-            mutate((d) => {
-              postPayment(d, p);
-            }, "Payment recorded")
+            await runStoreCommand(
+              store,
+              "payment.record",
+              { payment: p },
+              (d) => {
+                postPayment(d, p);
+              },
+              "Payment recorded",
+            )
           )
             onClose();
         }}
@@ -771,7 +785,8 @@ export function ExpenseForm({
   projectId?: string;
   onClose: () => void;
 }) {
-  const { db, mutate } = useStore();
+  const store = useStore(),
+    { db } = store;
   const [e, setE] = useState<Expense>(() =>
     structuredClone(
       expense || {
@@ -798,26 +813,49 @@ export function ExpenseForm({
       onClose={onClose}
     >
       <form
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           event.preventDefault();
           if (
-            mutate((d) => {
-              saveExpense(d, e);
-            }, "Expense saved")
+            await runStoreCommand(
+              store,
+              "expense.submit",
+              {
+                id: e.id,
+                projectId: e.projectId,
+                description: e.description,
+                amount: e.amount,
+                date: e.date,
+                payee: e.supplier,
+              },
+              (d) => {
+                saveExpense(d, e);
+              },
+              store.mode === "staging"
+                ? "Expense submitted for independent approval. No posting."
+                : "Expense saved",
+            )
           )
             onClose();
         }}
       >
+        {store.mode === "staging" && (
+          <p className="muted">
+            This fictional project expense is submitted for independent
+            approval. Entering it here does not pay or post an expense.
+          </p>
+        )}
         <div className="form-grid">
-          <Field label="Expense reference">
-            <input
-              placeholder="Automatically assigned"
-              value={e.reference}
-              onChange={(event) =>
-                setE({ ...e, reference: event.target.value })
-              }
-            />
-          </Field>
+          {store.mode !== "staging" && (
+            <Field label="Expense reference">
+              <input
+                placeholder="Automatically assigned"
+                value={e.reference}
+                onChange={(event) =>
+                  setE({ ...e, reference: event.target.value })
+                }
+              />
+            </Field>
+          )}
           <Field label="Expense project">
             <select
               required
@@ -834,16 +872,20 @@ export function ExpenseForm({
               ))}
             </select>
           </Field>
-          <Field label="Expense category">
-            <select
-              value={e.category}
-              onChange={(event) => setE({ ...e, category: event.target.value })}
-            >
-              {expenseCategories.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-          </Field>
+          {store.mode !== "staging" && (
+            <Field label="Expense category">
+              <select
+                value={e.category}
+                onChange={(event) =>
+                  setE({ ...e, category: event.target.value })
+                }
+              >
+                {expenseCategories.map((s) => (
+                  <option key={s}>{s}</option>
+                ))}
+              </select>
+            </Field>
+          )}
           <Field label="Supplier/vendor">
             <input
               required
@@ -865,36 +907,47 @@ export function ExpenseForm({
               ["vat", "Expense VAT AED"],
               ["paidAmount", "Expense paid amount incl. VAT AED"],
             ] as const
-          ).map(([key, label]) => (
-            <Field key={key} label={label}>
+          )
+            .filter(([key]) => store.mode !== "staging" || key === "amount")
+            .map(([key, label]) => (
+              <Field key={key} label={label}>
+                <input
+                  inputMode="decimal"
+                  required
+                  value={e[key]}
+                  onChange={(event) =>
+                    setE({ ...e, [key]: event.target.value })
+                  }
+                />
+              </Field>
+            ))}
+          {store.mode !== "staging" && (
+            <Field label="Expense payment method">
+              <select
+                value={e.method}
+                onChange={(event) =>
+                  setE({
+                    ...e,
+                    method: event.target.value as Expense["method"],
+                  })
+                }
+              >
+                {paymentMethods.map((s) => (
+                  <option key={s}>{s}</option>
+                ))}
+              </select>
+            </Field>
+          )}
+          {store.mode !== "staging" && (
+            <Field label="Attachment/reference">
               <input
-                inputMode="decimal"
-                required
-                value={e[key]}
-                onChange={(event) => setE({ ...e, [key]: event.target.value })}
+                value={e.attachmentReference}
+                onChange={(event) =>
+                  setE({ ...e, attachmentReference: event.target.value })
+                }
               />
             </Field>
-          ))}
-          <Field label="Expense payment method">
-            <select
-              value={e.method}
-              onChange={(event) =>
-                setE({ ...e, method: event.target.value as Expense["method"] })
-              }
-            >
-              {paymentMethods.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Attachment/reference">
-            <input
-              value={e.attachmentReference}
-              onChange={(event) =>
-                setE({ ...e, attachmentReference: event.target.value })
-              }
-            />
-          </Field>
+          )}
         </div>
         <Field label="Expense description">
           <textarea
@@ -905,19 +958,25 @@ export function ExpenseForm({
             }
           />
         </Field>
-        <p className="muted">
-          Recorded cost excludes VAT. Paid amount records cash expenditure
-          separately. Corrections retain prior values in activity history.
-        </p>
-        <Attachments
-          files={e.attachments}
-          onChange={(attachments) => setE({ ...e, attachments })}
-        />
+        {store.mode !== "staging" && (
+          <p className="muted">
+            Recorded cost excludes VAT. Paid amount records cash expenditure
+            separately. Corrections retain prior values in activity history.
+          </p>
+        )}
+        {store.mode !== "staging" && (
+          <Attachments
+            files={e.attachments}
+            onChange={(attachments) => setE({ ...e, attachments })}
+          />
+        )}
         <div className="sticky-actions">
           <button type="button" onClick={onClose}>
             Cancel
           </button>
-          <button className="primary">Save Expense</button>
+          <button className="primary">
+            {store.mode === "staging" ? "Submit for approval" : "Save Expense"}
+          </button>
         </div>
       </form>
     </Modal>

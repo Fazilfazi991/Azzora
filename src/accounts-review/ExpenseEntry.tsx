@@ -2,6 +2,9 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { reviewSnapshot } from "./domain";
 import "./expense-entry.css";
 import { cashAccountsFor, type CompletionSnapshot } from "./completion-ui";
+import { accountsUrl } from "./http";
+import { stagingEnabled } from "../staging/client";
+import type { StagingExpenseSubmission } from "../store";
 
 type Snapshot = ReturnType<typeof reviewSnapshot>;
 type ExpenseGroup =
@@ -88,6 +91,16 @@ export function ExpenseEntry({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [approvedAccount, setApprovedAccount] = useState("bank");
+  const [approvedLedger, setApprovedLedger] = useState(
+    ledgers.find((item) => item.group === "Direct Expense")?.id || "",
+  );
+  const approvedSubmissions = stagingEnabled
+    ? (
+        (data as Snapshot & { expenseSubmissions?: StagingExpenseSubmission[] })
+          .expenseSubmissions || []
+      ).filter((item) => item.status === "Approved")
+    : [];
   const pendingLedger = useRef("");
   const createButton = useRef<HTMLButtonElement>(null);
   const ledgerNameInput = useRef<HTMLInputElement>(null);
@@ -225,6 +238,40 @@ export function ExpenseEntry({
       setBusy(false);
     }
   }
+  async function recordApproved(item: StagingExpenseSubmission) {
+    if (busy || !(item.ledgerId || approvedLedger)) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      if (
+        await act({
+          kind: "expense",
+          id: item.id,
+          projectId: item.projectId,
+          scope: "project",
+          payee: item.payee,
+          amount: item.amount,
+          date: item.date,
+          description: item.description,
+          ledgerId: item.ledgerId || approvedLedger,
+          departmentId: item.departmentId || "",
+          account: approvedAccount,
+        })
+      )
+        setNotice(
+          "Approved expense recorded once in the shared fictional ledger.",
+        );
+    } catch (problem) {
+      setError(
+        problem instanceof Error
+          ? problem.message
+          : "The approved expense could not be recorded.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <>
@@ -253,12 +300,82 @@ export function ExpenseEntry({
         </div>
       </div>
       <div className="prototype-note" role="note">
-        <strong>CLIENT REVIEW · FICTIONAL DATA</strong>
+        <strong>
+          {stagingEnabled
+            ? "SHARED STAGING · FICTIONAL DATA"
+            : "CLIENT REVIEW · FICTIONAL DATA"}
+        </strong>
         <span>
-          Actions update only this isolated demo ledger. No Manager CRM records
-          or real money are changed.
+          {stagingEnabled
+            ? "Approved project expenses are shared with Manager. Real financial posting remains disabled."
+            : "Actions update only this isolated demo ledger. No Manager CRM records or real money are changed."}
         </span>
       </div>
+      {approvedSubmissions.length > 0 && (
+        <section
+          className="panel review-card"
+          aria-label="Approved project expense submissions"
+        >
+          <h2>Approved project expenses</h2>
+          <p>
+            Review the approved source and choose its payment account. Recording
+            is an explicit fictional transaction.
+          </p>
+          <div className="field-grid">
+            <label>
+              Approved expense paid from
+              <select
+                value={approvedAccount}
+                onChange={(event) => setApprovedAccount(event.target.value)}
+                disabled={busy}
+              >
+                {accounts.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Approved expense ledger
+              <select
+                value={approvedLedger}
+                onChange={(event) => setApprovedLedger(event.target.value)}
+                disabled={busy}
+              >
+                <option value="">Select direct expense ledger</option>
+                {ledgers
+                  .filter((item) => item.group === "Direct Expense")
+                  .map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          </div>
+          {approvedSubmissions.map((item) => (
+            <div className="review-row" key={item.id}>
+              <span>
+                <strong>{item.description}</strong>
+                <small>
+                  {projects.find((project) => project.id === item.projectId)
+                    ?.name || item.projectId}{" "}
+                  · {item.payee} · AED {item.amount} · {item.date}
+                </small>
+              </span>
+              <button
+                className="button"
+                type="button"
+                disabled={busy || !(item.ledgerId || approvedLedger)}
+                onClick={() => void recordApproved(item)}
+              >
+                Record approved expense
+              </button>
+            </div>
+          ))}
+        </section>
+      )}
       <form
         id="expense-manual-form"
         className="panel review-form expense-entry"
@@ -634,7 +751,9 @@ export function ExpenseEntry({
                       {item.attachmentId && (
                         <small>
                           <a
-                            href={`/api/accounts-review/attachment/${encodeURIComponent(item.attachmentId)}`}
+                            href={accountsUrl(
+                              `/attachment/${encodeURIComponent(item.attachmentId)}`,
+                            )}
                           >
                             Download receipt
                           </a>

@@ -9,6 +9,7 @@ import {
 } from "./item-lines";
 import { purchasePriceWarnings } from "./review-purchase-prices";
 import type { CompletionSnapshot } from "./completion-ui";
+import { accountsUrl } from "./http";
 
 type Snapshot = ReturnType<typeof reviewSnapshot>;
 type Props = {
@@ -18,7 +19,7 @@ type Props = {
 };
 const money = (value: string) => "AED " + reviewFilsToDecimal(value);
 const apiFile = (kind: string, id: string) =>
-  "/api/accounts-review/" + kind + "/" + encodeURIComponent(id);
+  accountsUrl("/" + kind + "/" + encodeURIComponent(id));
 const documentItems = (
   document: ReviewDocument | undefined,
   invoice: boolean,

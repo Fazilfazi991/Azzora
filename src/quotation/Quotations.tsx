@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ChevronDown } from "lucide-react";
-import { useStore } from "../store";
+import { useStore, runStoreCommand } from "../store";
 import { Header, Field, Badge, Confirm, Modal, Empty } from "../components/ui";
 import type { Quotation, QuotationLineItem } from "./model";
 import { pricingTypes, quotationStatuses } from "./model";
@@ -256,14 +256,15 @@ export function Quotations({
   mode?: string;
   projectId?: string;
 }) {
-  const { db, mutate } = useStore();
+  const store = useStore(),
+    { db, mutate } = store;
   const [search, setSearch] = useState(""),
     [status, setStatus] = useState(""),
     [client, setClient] = useState(""),
     [project, setProject] = useState(projectId || "");
   const [confirmation, setConfirmation] = useState<{
     title: string;
-    action: () => void;
+    action: () => void | boolean | Promise<void | boolean>;
   } | null>(null);
   const [revision, setRevision] = useState(false),
     [returnDraft, setReturnDraft] = useState(false),
@@ -303,7 +304,17 @@ export function Quotations({
       }
     });
   }
-  function create() {
+  async function create() {
+    if (store.mode === "staging") {
+      const existing = new Set(db.quotations.map((item) => item.id));
+      if (await store.command?.("quotation.new", { projectId })) {
+        const created = store
+          .latestDb?.()
+          .quotations.find((item) => !existing.has(item.id));
+        if (created) open(created.id);
+      }
+      return;
+    }
     let created = "";
     if (
       mutate((d) => {
@@ -386,7 +397,23 @@ export function Quotations({
       }
     }
   }
-  function duplicate(id: string, rev = false) {
+  async function duplicate(id: string, rev = false) {
+    if (store.mode === "staging") {
+      const existing = new Set(db.quotations.map((item) => item.id));
+      if (
+        await store.command?.("quotation.copy", { id, revision: rev, notes })
+      ) {
+        const created = store
+          .latestDb?.()
+          .quotations.find((item) => !existing.has(item.id));
+        if (created) {
+          setRevision(false);
+          setNotes("");
+          open(created.id);
+        }
+      }
+      return;
+    }
     let next = "";
     if (
       mutate(
@@ -420,20 +447,26 @@ export function Quotations({
       setError(String(e));
     }
   };
-  const confirm = (title: string, action: () => void) =>
-    setConfirmation({ title, action });
+  const confirm = (
+    title: string,
+    action: () => void | boolean | Promise<void | boolean>,
+  ) => setConfirmation({ title, action });
   const confirmations = (
     <>
       {confirmation && (
         <Confirm
           title={confirmation.title}
           onClose={() => setConfirmation(null)}
-          onConfirm={() => {
-            confirmation.action();
-            setConfirmation(null);
+          onConfirm={async () => {
+            const result = await confirmation.action();
+            if (result !== false) setConfirmation(null);
           }}
         >
-          This action is recorded in this browser.
+          This action is recorded{" "}
+          {store.mode === "staging"
+            ? "in shared fictional staging"
+            : "in this browser"}
+          .
         </Confirm>
       )}
       {revision && q && (
@@ -467,9 +500,14 @@ export function Quotations({
           </Field>
           <button
             disabled={!notes.trim()}
-            onClick={() => {
+            onClick={async () => {
               if (
-                mutate((d) => changeQuotationStatus(d, q.id, "Draft", notes))
+                await runStoreCommand(
+                  store,
+                  "quotation.status",
+                  { id: q.id, status: "Draft", notes },
+                  (d) => changeQuotationStatus(d, q.id, "Draft", notes),
+                )
               ) {
                 setReturnDraft(false);
                 setNotes("");
@@ -544,19 +582,31 @@ export function Quotations({
             Invoice creation is a separate action.
           </p>
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               let projectId = "";
               if (
-                mutate((d) => {
-                  projectId = convertQuotation(
-                    d,
-                    q.id,
-                    conversionNew?.id || conversionProject,
-                    conversionNew || undefined,
-                  ).projectId;
-                }, "Accepted quotation linked as project contract")
+                await runStoreCommand(
+                  store,
+                  "quotation.convert",
+                  {
+                    quotationId: q.id,
+                    projectId: conversionNew?.id || conversionProject,
+                    newProject: conversionNew || undefined,
+                  },
+                  (d) => {
+                    projectId = convertQuotation(
+                      d,
+                      q.id,
+                      conversionNew?.id || conversionProject,
+                      conversionNew || undefined,
+                    ).projectId;
+                  },
+                  "Accepted quotation linked as project contract",
+                )
               ) {
+                if (store.mode === "staging")
+                  projectId = conversionNew?.id || conversionProject;
                 setConvert(false);
                 location.hash = `/projects/${projectId}/financials`;
               }
@@ -803,7 +853,12 @@ export function Quotations({
                       <button
                         onClick={() =>
                           confirm("Delete draft " + q.number + "?", () =>
-                            mutate((d) => deleteDraft(d, q.id)),
+                            runStoreCommand(
+                              store,
+                              "quotation.delete",
+                              { id: q.id },
+                              (d) => deleteDraft(d, q.id),
+                            ),
                           )
                         }
                       >
@@ -943,8 +998,11 @@ export function Quotations({
                           "Resolve the validation issues below before finalizing. Your draft remains editable.",
                         )
                       : confirm("Finalize quotation?", () =>
-                          mutate((d) =>
-                            changeQuotationStatus(d, q.id, "Finalized"),
+                          runStoreCommand(
+                            store,
+                            "quotation.status",
+                            { id: q.id, status: "Finalized" },
+                            (d) => changeQuotationStatus(d, q.id, "Finalized"),
                           ),
                         )
                   }
@@ -961,12 +1019,16 @@ export function Quotations({
                 value={q.status}
                 disabled={q.status === "Accepted"}
                 onChange={(e) =>
-                  mutate((d) =>
-                    changeQuotationStatus(
-                      d,
-                      q.id,
-                      e.target.value as Quotation["status"],
-                    ),
+                  void runStoreCommand(
+                    store,
+                    "quotation.status",
+                    { id: q.id, status: e.target.value },
+                    (d) =>
+                      changeQuotationStatus(
+                        d,
+                        q.id,
+                        e.target.value as Quotation["status"],
+                      ),
                   )
                 }
               >

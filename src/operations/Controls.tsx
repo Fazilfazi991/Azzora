@@ -1,6 +1,6 @@
 import { activeApprovals, approvalView } from "../workforce/document-approvals";
 import { useState } from "react";
-import { useStore } from "../store";
+import { useStore, runStoreCommand } from "../store";
 import { Field, Empty, Badge, Header } from "../components/ui";
 import { DataTable } from "../commercial/Registers";
 import { decideApproval, reassignApproval } from "./repository";
@@ -8,41 +8,61 @@ import type { PricedItem } from "./model";
 import { uid } from "../domain/logic";
 import { price } from "./calculations";
 import { aed } from "../commercial/calculations";
+import { StagingExpenseQueue } from "../staging/client-expenses";
 export function useActors() {
-  const { db } = useStore();
+  const store = useStore(),
+    { db } = store;
   const initial = db.people.find((p) => p.status !== "Inactive")?.id || "";
   const [actor, setActor] = useState(initial),
     [approver, setApprover] = useState(initial);
-  return { actor, setActor, approver, setApprover };
+  return {
+    actor:
+      store.mode === "staging"
+        ? store.actor?.personId || store.actor?.userId || ""
+        : actor,
+    setActor,
+    approver,
+    setApprover,
+  };
 }
 export function ActorFields({
   actors,
 }: {
   actors: ReturnType<typeof useActors>;
 }) {
-  const { db } = useStore();
+  const store = useStore(),
+    { db } = store;
   return (
     <div className="panel">
       <p className="muted">
-        Demo approval actors — recorded identities only; no authentication or
-        secure role enforcement.
+        {store.mode === "staging"
+          ? `Signed in as ${store.actor?.email}. Decisions are checked against your current server permissions.`
+          : "Demo approval actors — recorded identities only; no authentication or secure role enforcement."}
       </p>
       <div className="form-grid">
-        <Field label="Demo actor">
-          <select
-            value={actors.actor}
-            onChange={(e) => actors.setActor(e.target.value)}
-          >
-            {db.people
-              .filter((p) => p.status !== "Inactive")
-              .map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} · {p.demoRole || p.role}
-                </option>
-              ))}
-          </select>
-        </Field>
-        <Field label="Assigned demo approver">
+        {store.mode !== "staging" && (
+          <Field label="Demo actor">
+            <select
+              value={actors.actor}
+              onChange={(e) => actors.setActor(e.target.value)}
+            >
+              {db.people
+                .filter((p) => p.status !== "Inactive")
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} · {p.demoRole || p.role}
+                  </option>
+                ))}
+            </select>
+          </Field>
+        )}
+        <Field
+          label={
+            store.mode === "staging"
+              ? "Assigned approver"
+              : "Assigned demo approver"
+          }
+        >
           <select
             value={actors.approver}
             onChange={(e) => actors.setApprover(e.target.value)}
@@ -67,7 +87,8 @@ export function Decision({
   entityId: string;
   actor: string;
 }) {
-  const { db, mutate } = useStore();
+  const store = useStore(),
+    { db, mutate } = store;
   const [comments, setComments] = useState("");
   const a = activeApprovals(db).find(
     (a) => a.entityId === entityId && a.status === "Pending Approval",
@@ -86,9 +107,15 @@ export function Decision({
         <button
           disabled={!comments.trim()}
           onClick={() =>
-            mutate((d) => {
-              decideApproval(d, a.id, true, comments, actor);
-            }, "Approval recorded")
+            runStoreCommand(
+              store,
+              "procurement.decide",
+              { approvalId: a.id, approved: true, comments },
+              (d) => {
+                decideApproval(d, a.id, true, comments, actor);
+              },
+              "Approval recorded",
+            )
           }
         >
           Approve
@@ -96,14 +123,20 @@ export function Decision({
         <button
           disabled={!comments.trim()}
           onClick={() =>
-            mutate((d) => {
-              decideApproval(d, a.id, false, comments, actor);
-            }, "Rejection recorded")
+            runStoreCommand(
+              store,
+              "procurement.decide",
+              { approvalId: a.id, approved: false, comments },
+              (d) => {
+                decideApproval(d, a.id, false, comments, actor);
+              },
+              "Rejection recorded",
+            )
           }
         >
           Reject / Revise
         </button>
-        {a.approverId !== actor && (
+        {store.mode !== "staging" && a.approverId !== actor && (
           <button
             disabled={!comments.trim()}
             onClick={() =>
@@ -263,6 +296,7 @@ export function Approvals({ projectId }: { projectId?: string }) {
         description="Submitted snapshots, assigned reviewers and recorded decisions."
       />
       <ActorFields actors={actors} />
+      <StagingExpenseQueue />
       <Field label="Approval state">
         <select value={state} onChange={(e) => setState(e.target.value)}>
           <option value="">All decisions</option>

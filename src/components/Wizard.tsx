@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useStore } from "../store";
+import { useStore, runStoreCommand } from "../store";
 import type { Project, Database } from "../domain/model";
 import {
   roles,
@@ -37,7 +37,8 @@ export function Wizard({
   lockedCustomer?: boolean;
   afterCreate?: (db: Database, project: Project) => void;
 }) {
-  const { db, mutate } = useStore();
+  const store = useStore(),
+    { db } = store;
   const [step, setStep] = useState(0);
   const [p, setP] = useState<Project>({
     id: uid(),
@@ -113,7 +114,7 @@ export function Wizard({
     setError("");
     setStep(step + 1);
   }
-  function create(draft = false) {
+  async function create(draft = false) {
     if (duplicateProject) {
       setError(
         `A project with this name and location already exists for ${client}. Select it from the quotation instead.`,
@@ -122,7 +123,17 @@ export function Wizard({
     }
     const created = { ...p, status: draft ? "Draft" : "Active" } as Project;
     if (
-      mutate(
+      await runStoreCommand(
+        store,
+        "project.create",
+        {
+          project: created,
+          clientName: client,
+          clientContact: contact,
+          team,
+          standard: planMode === "standard",
+          planMode: planMode === "empty" ? "empty" : "legacy",
+        },
         (d) => {
           createProject(
             d,
@@ -141,8 +152,11 @@ export function Wizard({
             ? "Project created; add its reviewed timeline plan"
             : "Project created with connected plan and team",
       )
-    )
+    ) {
+      if (store.mode === "staging" && afterCreate)
+        store.mutate((d) => afterCreate(d, created));
       onCreated(p.id);
+    }
   }
   return (
     <Modal title="New Project" onClose={onClose}>

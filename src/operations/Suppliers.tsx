@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useStore } from "../store";
+import { useStore, runStoreCommand } from "../store";
 import { Header, Field, Modal, Badge, Empty } from "../components/ui";
 import { DataTable } from "../commercial/Registers";
 import { aed } from "../commercial/calculations";
@@ -35,7 +35,7 @@ export function SupplierForm({
   supplier?: Supplier;
   onClose: () => void;
 }) {
-  const { mutate } = useStore();
+  const store = useStore();
   const [s, setS] = useState(() =>
     structuredClone(supplier || blankSupplier()),
   );
@@ -45,12 +45,17 @@ export function SupplierForm({
       onClose={onClose}
     >
       <form
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
           if (
-            mutate((d) => {
-              saveSupplier(d, s);
-            })
+            await runStoreCommand(
+              store,
+              "supplier.save",
+              { supplier: s },
+              (d) => {
+                saveSupplier(d, s);
+              },
+            )
           )
             onClose();
         }}
@@ -110,7 +115,8 @@ export function Suppliers({
   id?: string;
   tab?: string;
 }) {
-  const { db, mutate } = useStore(),
+  const store = useStore(),
+    { db } = store,
     op = getOperations(db);
   const [search, setSearch] = useState(""),
     [editing, setEditing] = useState<Supplier | "new" | null>(null);
@@ -140,12 +146,22 @@ export function Suppliers({
               <button onClick={() => setEditing(s)}>Edit Supplier</button>
               <button
                 onClick={() =>
-                  mutate((d) => {
-                    saveSupplier(d, {
-                      ...s,
-                      status: s.status === "Active" ? "Archived" : "Active",
-                    });
-                  })
+                  void runStoreCommand(
+                    store,
+                    "supplier.save",
+                    {
+                      supplier: {
+                        ...s,
+                        status: s.status === "Active" ? "Archived" : "Active",
+                      },
+                    },
+                    (d) => {
+                      saveSupplier(d, {
+                        ...s,
+                        status: s.status === "Active" ? "Archived" : "Active",
+                      });
+                    },
+                  )
                 }
               >
                 {s.status === "Active"

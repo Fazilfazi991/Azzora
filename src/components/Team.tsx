@@ -3,7 +3,7 @@ import type { Assignment, Person, Task } from "../domain/model";
 import { roles } from "../domain/model";
 import { workload, today, uid } from "../domain/logic";
 import { record } from "../domain/repository";
-import { useStore } from "../store";
+import { runStoreCommand, useStore } from "../store";
 import {
   Header,
   Modal,
@@ -28,7 +28,8 @@ export function Team({
   projectId?: string;
   onTask: (t: Task) => void;
 }) {
-  const { db, mutate } = useStore();
+  const store = useStore(),
+    { db, mutate } = store;
   const [personId, setPersonId] = useState("");
   const person = db.people.find((p) => p.id === personId);
   const [employee, setEmployee] = useState<Person | null | undefined>(
@@ -285,11 +286,14 @@ export function Team({
       {draft && (
         <Modal title="Project Assignment" onClose={() => setDraft(null)}>
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               if (
-                mutate((d) =>
-                  saveAssignment(d, draft, replacement, reassign, actor),
+                await runStoreCommand(
+                  store,
+                  "project.assign",
+                  { assignment: draft, personId: replacement, reassign },
+                  (d) => saveAssignment(d, draft, replacement, reassign, actor),
                 )
               )
                 setDraft(null);
@@ -380,7 +384,14 @@ export function Team({
               />
               Reassign active tasks when replacing this person
             </label>
-            <ActorField value={actor} onChange={setActor} />
+            {store.mode === "staging" ? (
+              <p className="muted">
+                Signed in as {store.actor?.email}. Permissions and assignment
+                history are checked on the server.
+              </p>
+            ) : (
+              <ActorField value={actor} onChange={setActor} />
+            )}
             <p className="muted">
               Previous assignments and completed task history are retained.
             </p>

@@ -9,6 +9,7 @@ export type BackendAction =
   | "expense.approve"
   | "finance.read"
   | "finance.draft"
+  | "finance.simulate"
   | "finance.post"
   | "access.manage";
 export interface AccessGrant {

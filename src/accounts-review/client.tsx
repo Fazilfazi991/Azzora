@@ -18,12 +18,18 @@ import { OperationalReports } from "./OperationalReports";
 import { ReportDates } from "./ReportDates";
 import { cashAccountsFor, type CompletionSnapshot } from "./completion-ui";
 import type { Upload } from "./documents/model";
-import { accountsRequest as api } from "./http";
+import { accountsRequest as api, accountsUrl } from "./http";
+import {
+  stagingEnabled,
+  StagingRequestError,
+  type StagingSession,
+} from "../staging/client";
+import { StagingLogin } from "../staging/client-login";
 
 type Snapshot = ReturnType<typeof reviewSnapshot>;
 type Session = {
   email: string;
-  role: "accountant";
+  role: string;
   csrf: string;
   mode: string;
 };
@@ -140,10 +146,15 @@ function Head({
 function Note() {
   return (
     <div className="prototype-note" role="note">
-      <strong>CLIENT REVIEW · DEMO LEDGER</strong>
+      <strong>
+        {stagingEnabled
+          ? "SHARED STAGING · FICTIONAL DATA"
+          : "CLIENT REVIEW · DEMO LEDGER"}
+      </strong>
       <span>
-        Actions update only this isolated demo ledger. No Manager CRM records or
-        real money are changed.
+        {stagingEnabled
+          ? "These fictional records are shared with the staging Manager workspace. Real financial posting is disabled."
+          : "Actions update only this isolated demo ledger. No Manager CRM records or real money are changed."}
       </span>
     </div>
   );
@@ -463,9 +474,7 @@ function Invoices({
                 </span>
               )}
               <small>
-                <a
-                  href={`/api/accounts-review/pdf/${encodeURIComponent(item.id)}`}
-                >
+                <a href={accountsUrl(`/pdf/${encodeURIComponent(item.id)}`)}>
                   Download demo PDF
                 </a>
               </small>
@@ -618,7 +627,9 @@ function Settlement({
             <td>
               <a
                 className="text-link"
-                href={`/api/accounts-review/pdf/${encodeURIComponent(`${supplier ? "payment" : "receipt"}:${item.id}`)}?${new URLSearchParams({ from: data.period.from, to: data.period.to, asOf: data.asOf })}`}
+                href={accountsUrl(
+                  `/pdf/${encodeURIComponent(`${supplier ? "payment" : "receipt"}:${item.id}`)}?${new URLSearchParams({ from: data.period.from, to: data.period.to, asOf: data.asOf })}`,
+                )}
               >
                 Download {supplier ? "payment" : "receipt"} voucher
               </a>
@@ -717,7 +728,9 @@ function Statement({
       >
         <a
           className="button button-secondary"
-          href={`/api/accounts-review/pdf/${balance ? "balance" : "pnl"}?${new URLSearchParams({ from: data.period.from, to: data.period.to, asOf: data.asOf }).toString()}`}
+          href={accountsUrl(
+            `/pdf/${balance ? "balance" : "pnl"}?${new URLSearchParams({ from: data.period.from, to: data.period.to, asOf: data.asOf }).toString()}`,
+          )}
         >
           Download demo PDF
         </a>
@@ -885,14 +898,55 @@ function App() {
   const inFlight = useRef(false);
   const retryAction = useRef<{ fingerprint: string; key: string } | null>(null);
   const documentPending = useRef(false);
+  const sessionEpoch = useRef(0);
   const onDocumentPending = useCallback((value: boolean) => {
     documentPending.current = value;
   }, []);
   useEffect(() => {
+    if (!stagingEnabled || !session) return;
+    const refresh = async () => {
+      if (
+        inFlight.current ||
+        documentPending.current ||
+        document.visibilityState !== "visible"
+      )
+        return;
+      try {
+        const epoch = sessionEpoch.current;
+        const next = await api("/snapshot");
+        if (epoch === sessionEpoch.current) setSnapshot(next);
+      } catch (problem) {
+        if (
+          problem instanceof StagingRequestError &&
+          [401, 403].includes(problem.status)
+        ) {
+          setSession(null);
+          setSnapshot(null);
+          sessionEpoch.current += 1;
+        }
+        setError(
+          problem instanceof Error
+            ? problem.message
+            : "Shared records could not be refreshed.",
+        );
+      }
+    };
+    window.addEventListener("focus", refresh);
+    const timer = window.setInterval(refresh, 15_000);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      clearInterval(timer);
+    };
+  }, [session]);
+  useEffect(() => {
+    const epoch = sessionEpoch.current;
     api("/session")
       .then(async (result) => {
+        if (stagingEnabled && epoch !== sessionEpoch.current) return;
+        const next = await api("/snapshot");
+        if (stagingEnabled && epoch !== sessionEpoch.current) return;
         setSession(result);
-        setSnapshot(await api("/snapshot"));
+        setSnapshot(next);
       })
       .catch(() => {});
     let previous = location.hash;
@@ -954,6 +1008,7 @@ function App() {
         method: "POST",
         headers: { "X-Azzora-CSRF": session.csrf },
       });
+      sessionEpoch.current += 1;
       setSession(null);
       setSnapshot(null);
       setMessage("");
@@ -1020,6 +1075,22 @@ function App() {
     window.addEventListener("keydown", close);
     return () => window.removeEventListener("keydown", close);
   }, []);
+  if (stagingEnabled && (!session || !snapshot))
+    return (
+      <StagingLogin
+        workspace="accountant"
+        initialError={error}
+        onAuthenticated={async (value: StagingSession) => {
+          const epoch = ++sessionEpoch.current;
+          const next = await api("/snapshot");
+          if (epoch !== sessionEpoch.current) return;
+          setSession({ ...value, mode: "synthetic-staging" });
+          setSnapshot(next);
+          setError("");
+          location.hash = link("dashboard");
+        }}
+      />
+    );
   if (!session || !snapshot)
     return (
       <main className="login-layout">
@@ -1230,7 +1301,9 @@ function App() {
           <span className="workspace-mark">A</span>
           <div>
             <strong>Accountant portal</strong>
-            <small>Client review</small>
+            <small>
+              {stagingEnabled ? "Shared fictional staging" : "Client review"}
+            </small>
           </div>
         </div>
         <nav aria-label="Finance modules">
@@ -1257,7 +1330,9 @@ function App() {
         <div className="sidebar-bottom">
           <div className="avatar">FA</div>
           <div>
-            <strong>Demo Accountant</strong>
+            <strong>
+              {stagingEnabled ? session.email : "Demo Accountant"}
+            </strong>
             <small>Fictional ledger</small>
           </div>
           <button className="signout" type="button" onClick={logout}>
@@ -1282,7 +1357,9 @@ function App() {
             <strong>{titles[current]}</strong>
           </div>
           <div className="topbar-right">
-            <span className="period-chip">CLIENT REVIEW</span>
+            <span className="period-chip">
+              {stagingEnabled ? "FICTIONAL STAGING" : "CLIENT REVIEW"}
+            </span>
             <span className="top-avatar" aria-hidden="true">
               FA
             </span>

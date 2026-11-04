@@ -17,6 +17,7 @@ import { fieldsSchema } from "./model";
 import { inspectFields, scopeFor } from "./review";
 import "./entry.css";
 import { cashAccountsFor, type CompletionSnapshot } from "../completion-ui";
+import { accountsUrl } from "../http";
 
 const PdfPreview = lazy(() => import("./PdfPreview"));
 type Snapshot = ReturnType<typeof reviewSnapshot> & CompletionSnapshot;
@@ -79,10 +80,10 @@ export function DocumentEntry({
     }
     const controller = new AbortController();
     let objectUrl = "";
-    fetch(
-      `/api/accounts-review/attachment/${encodeURIComponent(doc.attachmentId)}`,
-      { signal: controller.signal, credentials: "same-origin" },
-    )
+    fetch(accountsUrl(`/attachment/${encodeURIComponent(doc.attachmentId)}`), {
+      signal: controller.signal,
+      credentials: "same-origin",
+    })
       .then((r) => {
         if (!r.ok) throw Error("Document preview unavailable.");
         return r.blob();

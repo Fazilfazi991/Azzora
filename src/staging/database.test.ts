@@ -1,0 +1,72 @@
+import { afterAll, beforeAll, expect, it } from "vitest";
+import { readFile, readdir } from "node:fs/promises";
+import { createSharedCompanyState } from "./domain";
+import { hydrateCanonical, serializeCanonical } from "./canonical";
+import type { Person } from "../domain/model";
+
+interface Database {
+  exec(sql: string): Promise<unknown>;
+  query(sql: string, args?: unknown[]): Promise<{ rows: Record<string, unknown>[] }>;
+  close(): Promise<void>;
+}
+let db: Database;
+const company = "11111111-1111-4111-8111-111111111111";
+const owner = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const session = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+const hash = "a".repeat(64);
+const people: Person[] = [{ id: owner, name: "Fictional Owner", role: "Project Manager", email: "owner@staging.azzora.test", phone: "", capacity: 100, status: "Active" }];
+async function commit(expected: number, key: string, data = serializeCanonical(createSharedCompanyState(people)), bootstrap = false) {
+  return (await db.query("select public.staging_company_commit($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8) result",
+    [hash, expected, key, "b".repeat(64), bootstrap ? "fixture.initialize" : "customer.save", JSON.stringify({ workspace: "manager", financial: false }), JSON.stringify(data), bootstrap])).rows[0].result as { version: number; replayed: boolean };
+}
+beforeAll(async () => {
+  const path = process.env.AZZORA_PGLITE_MODULE;
+  if (!path) throw Error("Set AZZORA_PGLITE_MODULE for real local PostgreSQL tests; do not silently mock the database.");
+  const { PGlite } = await import(/* @vite-ignore */ path);
+  db = new PGlite() as Database;
+  await db.exec(`create role anon; create role authenticated; create role service_role;
+    create schema auth; create table auth.users(id uuid primary key,email text,raw_app_meta_data jsonb,email_confirmed_at timestamptz,banned_until timestamptz,is_anonymous boolean default false);
+    create table auth.sessions(id uuid primary key,user_id uuid,aal text,not_after timestamptz);
+    create table auth.mfa_factors(id uuid primary key,user_id uuid,status text,factor_type text);
+    create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+    create schema storage; create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);`);
+  for (const name of (await readdir(new URL("../../supabase/migrations/", import.meta.url))).filter(name => name.endsWith(".sql")).sort())
+    await db.exec(await readFile(new URL(`../../supabase/migrations/${name}`, import.meta.url), "utf8"));
+  await db.query("insert into auth.users(id,email,raw_app_meta_data,email_confirmed_at) values($1,'owner@staging.azzora.test','{\"azzora_scope\":\"fictional-staging\"}',now())", [owner]);
+  await db.query("insert into auth.sessions values($1,$2,'aal2',now()+interval '1 day')", [session, owner]);
+  await db.query("insert into auth.mfa_factors values('dddddddd-dddd-4ddd-8ddd-dddddddddddd',$1,'verified','totp')", [owner]);
+  await db.query("select public.staging_auth_fixture_membership($1,$2,'owner_admin')", [owner, company]);
+  await db.query("select public.staging_auth_session_put($1,$2,$3,$4,$5,'manager','aal2','encrypted-unit-fixture')", [hash, "b".repeat(64), owner, session, company]);
+}, 30_000);
+afterAll(async () => { if (db) await db.close(); });
+
+it("applies the actual shared schema with no browser-callable auth or command RPC", async () => {
+  const rows = (await db.query("select p.proname,has_function_privilege('anon',p.oid,'execute') a,has_function_privilege('authenticated',p.oid,'execute') b from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and (p.proname like 'staging_auth_%' or p.proname like 'staging_company_%')")).rows;
+  expect(rows.length).toBeGreaterThan(10); expect(rows.every(row => !row.a && !row.b)).toBe(true);
+});
+it("initializes fictional canonical records and one opening journal through one atomic transaction", async () => {
+  const result = await commit(0, "fixture-init-00000001", undefined, true);
+  expect(result).toEqual({ version: 1, replayed: false });
+  const value = (await db.query("select public.staging_company_read($1,'manager') result", [hash])).rows[0].result as { version: number; data: Parameters<typeof hydrateCanonical>[0] };
+  const restored = hydrateCanonical(value.data);
+  expect(restored.mode).toBe("fictional-staging");
+  expect(restored.finance.accounting.journals).toHaveLength(1);
+  expect(restored.manager.people[0].id).toBe(owner);
+});
+it("replays the same actor-bound command without posting or auditing twice", async () => {
+  expect(await commit(0, "fixture-init-00000001", undefined, true)).toEqual({ version: 1, replayed: true });
+  expect((await db.query("select count(*)::int n from azzora.journals")).rows[0].n).toBe(1);
+  expect((await db.query("select count(*)::int n from azzora.audit_events where action='fixture.initialize'")).rows[0].n).toBe(1);
+});
+it("rejects stale writes and preserves the exact canonical state", async () => {
+  await expect(commit(0, "stale-command-0000001")).rejects.toThrow("version conflict");
+  expect((await db.query("select version::int n from azzora.companies where id=$1", [company])).rows[0].n).toBe(1);
+});
+it("retains immutable journal history on subsequent nonfinancial writes", async () => {
+  const value = (await db.query("select public.staging_company_read($1,'manager') result", [hash])).rows[0].result as { data: Parameters<typeof hydrateCanonical>[0] };
+  const data = serializeCanonical(hydrateCanonical(value.data));
+  expect(await commit(1, "unchanged-record-00001", data)).toEqual({ version: 2, replayed: false });
+  data.journals[0].memo = "tampered";
+  await expect(commit(2, "tampered-record-00001", data)).rejects.toThrow("Immutable journal changed");
+  expect((await db.query("select version::int n from azzora.companies where id=$1", [company])).rows[0].n).toBe(2);
+});

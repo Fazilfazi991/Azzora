@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Client, Database } from "../domain/model";
 import { emirates } from "../domain/model";
-import { useStore } from "../store";
+import { useStore, runStoreCommand } from "../store";
 import { Header, Field, Modal, Badge, Empty, Confirm } from "../components/ui";
 import {
   blankCustomer,
@@ -26,7 +26,8 @@ export function CustomerForm({
   onSaved: (id: string, customer: Client) => void;
   afterSave?: (db: Database, customer: Client) => void;
 }) {
-  const { db, mutate } = useStore();
+  const store = useStore(),
+    { db } = store;
   const [c, setC] = useState<Client>(() =>
     structuredClone(customer || blankCustomer()),
   );
@@ -39,16 +40,29 @@ export function CustomerForm({
       onClose={onClose}
     >
       <form
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
           let saved = c;
           if (
-            mutate((d) => {
-              saved = saveCustomer(d, c, ack, reason);
-              afterSave?.(d, saved);
-            }, "Customer saved")
-          )
+            await runStoreCommand(
+              store,
+              "customer.save",
+              { customer: c, allowDuplicate: ack, reason },
+              (d) => {
+                saved = saveCustomer(d, c, ack, reason);
+                afterSave?.(d, saved);
+              },
+              "Customer saved",
+            )
+          ) {
+            if (store.mode === "staging") {
+              saved =
+                store.latestDb?.().clients.find((item) => item.id === c.id) ||
+                c;
+              if (afterSave) store.mutate((d) => afterSave(d, saved));
+            }
             onSaved(c.id, saved);
+          }
         }}
       >
         <div className="form-grid">
@@ -235,7 +249,8 @@ export function Customers({
   id?: string;
   tab?: string;
 }) {
-  const { db, mutate } = useStore();
+  const store = useStore(),
+    { db } = store;
   const [search, setSearch] = useState(""),
     [status, setStatus] = useState("");
   const [editing, setEditing] = useState<Client | "new" | null>(null),
@@ -525,20 +540,33 @@ export function Customers({
               : "Archive customer?"
           }
           onClose={() => setArchive(null)}
-          onConfirm={() => {
+          onConfirm={async () => {
             if (
-              mutate((d) => {
-                saveCustomer(
-                  d,
-                  {
+              await runStoreCommand(
+                store,
+                "customer.save",
+                {
+                  customer: {
                     ...archive,
                     status:
                       archive.status === "Archived" ? "Active" : "Archived",
                   },
-                  true,
-                  "Status change to existing record",
-                );
-              })
+                  allowDuplicate: true,
+                  reason: "Status change to existing record",
+                },
+                (d) => {
+                  saveCustomer(
+                    d,
+                    {
+                      ...archive,
+                      status:
+                        archive.status === "Archived" ? "Active" : "Archived",
+                    },
+                    true,
+                    "Status change to existing record",
+                  );
+                },
+              )
             )
               setArchive(null);
           }}

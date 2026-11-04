@@ -2,6 +2,8 @@
 
 ## Production backend foundation — 4 November 2026
 
+Latest access update: owner signed into the correct **Azzora Free** organization `kyhishmkityakkdcyhzk`. Browser inspection verifies target `hkhomrrvxtcxnxvdlkoh`, Singapore, Nano/Healthy, public schema0tables. No cloud writes. Correct browser access supersedes the earlier account blocker; Gate 1 architecture/policy approval and explicit synthetic-staging designation remain pending before applying cloud migrations.
+
 Local integration branch `codex/azzora-production-backend`, frozen source/test SHA `5481ac0dddc595a5492c444af1b6db21fcafc649`. Parallel database/auth/integration/migration/QA work prepared 19 private RLS tables, server authorization/session contracts, a shared transaction boundary reusing the existing finance engine and lossless offline migration rehearsal. 823/823 unit tests, 23/23 local PostgreSQL checks, TypeScript, ESLint and combined build pass. Neither live application is wired to these interfaces. Owner supplied Supabase target `hkhomrrvxtcxnxvdlkoh`; all connected accounts deny metadata access. Gate 1 architecture/policy approval and correct project access remain pending. No cloud write, real import, paid AI request, push, deploy or main merge. Production **NO-GO**; [full handoff](../backend/COORDINATOR-HANDOFF.md), [decision package](../backend/DECISION-REPORT.md).
 
 ## Finance checkpoint 2 — controlled local integration, 21 October 2026

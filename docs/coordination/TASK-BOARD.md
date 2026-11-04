@@ -8,7 +8,7 @@
 | Individual authentication/permissions | Local contracts + controlled tests pass; durable provider/session/UI adapters pending |
 | Manager/Accountant shared records | Canonical mapping and transaction contract prepared; actual app adapters pending |
 | Migration/QA | Original-byte archive/rehearsal and 823 full tests pass; real import/staging workflows not executed |
-| Supabase target | Owner supplied `hkhomrrvxtcxnxvdlkoh`; current connections lack permission; reconnect required |
+| Supabase target | Browser verified Azzora Free org `kyhishmkityakkdcyhzk`, project `hkhomrrvxtcxnxvdlkoh`, Singapore/Nano/Healthy, public0tables; connector access unchanged; staging designation/Gate1 approval pending |
 | Production release | NO-GO; Gates 1–5 not completed; both live deployments unchanged |
 
 [Consolidated evidence and remaining gates](../backend/COORDINATOR-HANDOFF.md).

@@ -270,6 +270,12 @@ export function accountsReviewPlugin() {
                 : json(res, 409, {
                     error: "Action key was reused with different details.",
                   });
+            const invoicePrefix =
+              action.invoiceType === "Normal Invoice"
+                ? "NOR"
+                : action.invoiceType === "Proforma"
+                  ? "PRO"
+                  : "INV";
             const id = [
               "issue-invoice",
               "issue-bill",
@@ -277,7 +283,9 @@ export function accountsReviewPlugin() {
               "update-bill-draft",
             ].includes(action.kind)
               ? action.id
-              : `DEMO-${randomUUID().slice(0, 8).toUpperCase()}`;
+              : action.kind === "invoice"
+                ? `${invoicePrefix}-26${randomUUID().slice(0, 6).toUpperCase()}`
+                : `DEMO-${randomUUID().slice(0, 8).toUpperCase()}`;
             const next = applyReviewAction(finance, { ...action, id });
             selectedSnapshot(next, selection); // Reconcile before committing the in-memory transaction.
             finance = next;

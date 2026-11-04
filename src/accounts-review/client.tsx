@@ -897,6 +897,7 @@ function App() {
   const [navOpen, setNavOpen] = useState(false);
   const inFlight = useRef(false);
   const retryAction = useRef<{ fingerprint: string; key: string } | null>(null);
+  const retryUpload = useRef<{ fingerprint: string; key: string } | null>(null);
   const documentPending = useRef(false);
   const sessionEpoch = useRef(0);
   const onDocumentPending = useCallback((value: boolean) => {
@@ -1224,26 +1225,47 @@ function App() {
         onPendingChange={onDocumentPending}
         act={act}
         extract={async (file: Upload, mode?: "auto" | "manual") => {
-          const reportQuery = new URLSearchParams({
-            from: snapshot.period.from,
-            to: snapshot.period.to,
-            asOf: snapshot.asOf,
-          }).toString();
-          const result = await api(`/documents/extract?${reportQuery}`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Azzora-CSRF": session.csrf,
-            },
-            body: JSON.stringify({ file, ...(mode ? { mode } : {}) }),
-          });
-          setMessage(
-            result.reused
-              ? "This exact file was already uploaded. Opened its existing review without creating a duplicate."
-              : "",
-          );
-          setSnapshot(result.snapshot);
-          return result.id;
+          if (stagingEnabled && inFlight.current)
+            throw Error(
+              "Wait for the current shared staging change to finish.",
+            );
+          const body = JSON.stringify({ file, ...(mode ? { mode } : {}) });
+          if (stagingEnabled) {
+            if (retryUpload.current?.fingerprint !== body)
+              retryUpload.current = {
+                fingerprint: body,
+                key: crypto.randomUUID(),
+              };
+            inFlight.current = true;
+          }
+          try {
+            const reportQuery = new URLSearchParams({
+              from: snapshot.period.from,
+              to: snapshot.period.to,
+              asOf: snapshot.asOf,
+            }).toString();
+            const result = await api(`/documents/extract?${reportQuery}`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Azzora-CSRF": session.csrf,
+                ...(stagingEnabled && retryUpload.current
+                  ? { "X-Azzora-Idempotency-Key": retryUpload.current.key }
+                  : {}),
+              },
+              body,
+            });
+            setMessage(
+              result.reused
+                ? "This exact file was already uploaded. Opened its existing review without creating a duplicate."
+                : "",
+            );
+            setSnapshot(result.snapshot);
+            if (stagingEnabled) retryUpload.current = null;
+            return result.id;
+          } finally {
+            if (stagingEnabled) inFlight.current = false;
+          }
         }}
       />
     ),
@@ -1278,7 +1300,9 @@ function App() {
     aging: <Aging data={snapshot} filters={reportDates} />,
   };
   return (
-    <div className={`shell ${navOpen ? "nav-open" : ""}`}>
+    <div
+      className={`shell ${stagingEnabled ? "staging-accounts" : ""} ${navOpen ? "nav-open" : ""}`}
+    >
       <div className="mobile-shade" onClick={() => setNavOpen(false)}></div>
       <aside className="sidebar" aria-label="Accountant navigation">
         <div className="brand-lockup">
@@ -1379,8 +1403,9 @@ function App() {
           {content[current]}
         </main>
         <footer className="site-footer">
-          AZZORA Accounts · Fictional demo ledger · No production posting or CRM
-          record changes
+          {stagingEnabled
+            ? "AZZORA Accounts · Shared fictional staging · Real financial posting disabled"
+            : "AZZORA Accounts · Fictional demo ledger · No production posting or CRM record changes"}
         </footer>
       </div>
     </div>

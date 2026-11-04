@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ChevronDown } from "lucide-react";
 import { useStore, runStoreCommand } from "../store";
 import { Header, Field, Badge, Confirm, Modal, Empty } from "../components/ui";
+import { StagingNewQuotation } from "../staging/client-new-quotation";
 import type { Quotation, QuotationLineItem } from "./model";
 import { pricingTypes, quotationStatuses } from "./model";
 import {
@@ -271,6 +272,7 @@ export function Quotations({
     [notes, setNotes] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
+  const [newStagingQuotation, setNewStagingQuotation] = useState(false);
   const q = db.quotations.find((q) => q.id === id);
   const [advancedChoice, setAdvancedChoice] = useState<boolean | null>(null);
   const [showExample, setShowExample] = useState(false);
@@ -306,13 +308,7 @@ export function Quotations({
   }
   async function create() {
     if (store.mode === "staging") {
-      const existing = new Set(db.quotations.map((item) => item.id));
-      if (await store.command?.("quotation.new", { projectId })) {
-        const created = store
-          .latestDb?.()
-          .quotations.find((item) => !existing.has(item.id));
-        if (created) open(created.id);
-      }
+      setNewStagingQuotation(true);
       return;
     }
     let created = "";
@@ -453,6 +449,16 @@ export function Quotations({
   ) => setConfirmation({ title, action });
   const confirmations = (
     <>
+      {newStagingQuotation && (
+        <StagingNewQuotation
+          projectId={projectId}
+          onClose={() => setNewStagingQuotation(false)}
+          onCreated={(created) => {
+            setNewStagingQuotation(false);
+            open(created);
+          }}
+        />
+      )}
       {confirmation && (
         <Confirm
           title={confirmation.title}

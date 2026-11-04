@@ -1,0 +1,28 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "functions": {
+    "api/staging.ts": {
+      "maxDuration": 60,
+      "includeFiles": "node_modules/{pdfjs-dist/legacy/build/pdf.worker.mjs,@napi-rs/canvas/**,@napi-rs/canvas-linux-x64-gnu/**}"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/staging/:route*",
+      "destination": "/api/staging?route=:route*"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "no-referrer" },
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+      ]
+    }
+  ]
+}

@@ -253,6 +253,7 @@ export function serializeCanonical(state: SharedCompanyState): CanonicalData {
     manager: managerMeta,
     operations: operationMeta,
     finance: financeMeta,
+    documentEntryVersion: state.finance.documentEntries?.version || 1,
     documentDefaults: state.finance.documentEntries?.defaults || [],
   });
 
@@ -444,6 +445,13 @@ export function hydrateCanonical(data: CanonicalData): SharedCompanyState {
   )?.payload.metadata as Record<string, unknown> | undefined;
   if (!meta || meta.mode !== "fictional-staging" || meta.version !== 1)
     throw Error("Fictional company metadata is missing or incompatible.");
+  if (
+    meta.documentEntryVersion !== undefined &&
+    meta.documentEntryVersion !== 1
+  )
+    throw Error(
+      "Document entry metadata is incompatible; preserve the original records for recovery.",
+    );
   const state = createSharedCompanyState();
   state.manager = revive<Database>({
     ...(meta.manager as object),

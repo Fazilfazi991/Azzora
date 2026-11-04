@@ -1,6 +1,9 @@
 // Explicit fictional staging bootstrap. Run manually; never imported by browser/app.
 // Provider accounts are created using the supported Auth Admin API, not managed-table SQL.
 import { randomBytes } from "node:crypto";
+import process from "node:process";
+import { URL } from "node:url";
+import console from "node:console";
 import { readFile, writeFile, appendFile, mkdir } from "node:fs/promises";
 const envPath = new URL("../../.env.staging.local", import.meta.url);
 process.loadEnvFile(envPath);
@@ -27,7 +30,7 @@ try {
     throw Error("Private identity file is unreadable.");
 }
 async function admin(path, method = "GET", body) {
-  const response = await fetch(url + "/auth/v1/admin" + path, {
+  const response = await globalThis.fetch(url + "/auth/v1/admin" + path, {
     method,
     headers: {
       apikey: key,
@@ -36,7 +39,7 @@ async function admin(path, method = "GET", body) {
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
     redirect: "error",
-    signal: AbortSignal.timeout(15000),
+    signal: globalThis.AbortSignal.timeout(15000),
   });
   if (!response.ok)
     throw Error(
@@ -95,7 +98,7 @@ console.log(
 );
 if (process.argv.includes("--memberships")) {
   for (const entry of Object.values(stored)) {
-    const response = await fetch(
+    const response = await globalThis.fetch(
       url + "/rest/v1/rpc/staging_auth_fixture_membership",
       {
         method: "POST",
@@ -110,7 +113,7 @@ if (process.argv.includes("--memberships")) {
           p_role: entry.role,
         }),
         redirect: "error",
-        signal: AbortSignal.timeout(15000),
+        signal: globalThis.AbortSignal.timeout(15000),
       },
     );
     if (!response.ok)

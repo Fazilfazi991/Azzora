@@ -44,6 +44,7 @@ import { Accounts } from "./commercial/Accounts";
 import { Reports } from "./commercial/Reports";
 import { InvoiceForm, ExpenseForm } from "./commercial/Registers";
 import { newQuotation } from "./quotation/repository";
+import { StagingNewQuotation } from "./staging/client-new-quotation";
 import { blankTask } from "./domain/seed";
 import { Suppliers, SupplierForm } from "./operations/Suppliers";
 import { Variations } from "./operations/Variations";
@@ -114,7 +115,8 @@ function exportData(data: string, name: string, type: string) {
   URL.revokeObjectURL(url);
 }
 export default function App() {
-  const { db, toast, error, clear, mutate, reset, exportOriginal } = useStore();
+  const store = useStore(),
+    { db, toast, error, clear, mutate, reset, exportOriginal } = store;
   const [route, setRoute] = useState(location.hash.slice(2) || "dashboard");
   const [collapsedGroups, setCollapsedGroups] = useState<string[]>(() =>
     navigationGroups
@@ -433,16 +435,34 @@ export default function App() {
   else if (page === "handover") content = <Handover />;
   else if (page === "reports") content = <Reports />;
   else if (page === "accountant-preview")
-    content = (
-      <AccountantWorkspace
-        key={id || "records"}
-        db={db}
-        finance={db.finance}
-        asOf={today()}
-        legacyArAp={id === "demo" ? undefined : legacyArApView(db, today())}
-        showDemo={id === "demo"}
-      />
-    );
+    content =
+      store.mode === "staging" ? (
+        <>
+          <Header
+            title="Independent Accountant workspace"
+            description="Accounts uses its separate individual sign-in and shared staging records."
+          />
+          <section className="panel">
+            <p>
+              Financial staging records are available through the independent
+              Accountant Portal. This legacy Manager preview is unavailable in
+              shared staging.
+            </p>
+            <a className="button" href="/accountant.html">
+              Open Accountant sign-in
+            </a>
+          </section>
+        </>
+      ) : (
+        <AccountantWorkspace
+          key={id || "records"}
+          db={db}
+          finance={db.finance}
+          asOf={today()}
+          legacyArAp={id === "demo" ? undefined : legacyArApView(db, today())}
+          showDemo={id === "demo"}
+        />
+      );
   else if (page === "settings")
     content = (
       <>
@@ -668,18 +688,24 @@ export default function App() {
                   </button>
                 </h2>
                 <div id={`nav-${group.key}`} hidden={!expanded}>
-                  {group.items.map(([key, label, Icon]) => (
-                    <a
-                      key={key}
-                      href={"#/" + key}
-                      onClick={() => setMenu(false)}
-                      aria-current={page === key ? "page" : undefined}
-                      className={page === key ? "active" : undefined}
-                    >
-                      <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
-                      <span>{label}</span>
-                    </a>
-                  ))}
+                  {group.items
+                    .filter(
+                      ([key]) =>
+                        store.mode !== "staging" ||
+                        key !== "accountant-preview",
+                    )
+                    .map(([key, label, Icon]) => (
+                      <a
+                        key={key}
+                        href={"#/" + key}
+                        onClick={() => setMenu(false)}
+                        aria-current={page === key ? "page" : undefined}
+                        className={page === key ? "active" : undefined}
+                      >
+                        <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
+                        <span>{label}</span>
+                      </a>
+                    ))}
                 </div>
               </section>
             );
@@ -687,7 +713,11 @@ export default function App() {
         </nav>
         <footer>
           <small>Dubai HQ Studio</small>
-          <span>GST +4 · Browser demo</span>
+          <span>
+            {store.mode === "staging"
+              ? "GST +4 · Shared fictional staging"
+              : "GST +4 · Browser demo"}
+          </span>
           <a href="/assets/azzora-logo.png" target="_blank" rel="noreferrer">
             View supplied logo
           </a>
@@ -765,14 +795,29 @@ export default function App() {
             aria-label="User profile"
             onClick={() => setProfile(true)}
           >
-            SM
+            {store.mode === "staging"
+              ? (
+                  db.people.find(
+                    (person) => person.id === store.actor?.personId,
+                  )?.name ||
+                  store.actor?.email ||
+                  "User"
+                )
+                  .split(/[\s@.]+/)
+                  .slice(0, 2)
+                  .map((part) => part[0])
+                  .join("")
+                  .toUpperCase()
+              : "SM"}
           </button>
         </header>
         <main>
           {content}
           <footer className="page-footer">
-            AZZORA Project Control · {today()} · Demo data, local to this
-            browser
+            AZZORA Project Control · {today()} ·{" "}
+            {store.mode === "staging"
+              ? "Shared fictional staging · Real posting disabled"
+              : "Demo data, local to this browser"}
           </footer>
         </main>
       </div>
@@ -862,6 +907,10 @@ export default function App() {
                   setQuickAdd(false);
                   if (action === "Project") setWizard(true);
                   else if (action === "Quotation") {
+                    if (store.mode === "staging") {
+                      setQuickForm("Quotation");
+                      return;
+                    }
                     let id = "";
                     if (
                       mutate((d) => {
@@ -896,6 +945,15 @@ export default function App() {
           onSaved={(id) => {
             setQuickForm("");
             location.hash = `/customers/${id}/overview`;
+          }}
+        />
+      )}
+      {store.mode === "staging" && quickForm === "Quotation" && (
+        <StagingNewQuotation
+          onClose={() => setQuickForm("")}
+          onCreated={(created) => {
+            setQuickForm("");
+            location.hash = `/quotations/${created}/edit`;
           }}
         />
       )}
@@ -955,9 +1013,30 @@ export default function App() {
         </Modal>
       )}
       {profile && (
-        <Modal title="Demo User" onClose={() => setProfile(false)}>
-          <p>Sarah Mansoor · Project Manager</p>
-          <p>This browser demo has no sign-in or server permissions.</p>
+        <Modal
+          title={
+            store.mode === "staging" ? "Signed-in staging user" : "Demo User"
+          }
+          onClose={() => setProfile(false)}
+        >
+          {store.mode === "staging" ? (
+            <>
+              <p>{store.actor?.email}</p>
+              <p>
+                {store.actor?.role.replaceAll("_", " ")} · Individual
+                authenticated staging account.
+              </p>
+              <p>
+                Permissions are enforced by the server. All company records in
+                this environment are fictional; real posting is disabled.
+              </p>
+            </>
+          ) : (
+            <>
+              <p>Sarah Mansoor · Project Manager</p>
+              <p>This browser demo has no sign-in or server permissions.</p>
+            </>
+          )}
         </Modal>
       )}
       {resetConfirm && (

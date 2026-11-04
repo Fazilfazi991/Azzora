@@ -55,3 +55,28 @@ it("does not allow a generic SQL or arbitrary public RPC transport", async () =>
     "unsupported_staging_rpc",
   );
 });
+it.each([204, 200])(
+  "accepts a successful void RPC with HTTP %s and an empty body",
+  async (status) => {
+    let calls = 0;
+    const call = createStagingRpc(config, (async () => {
+      calls++;
+      return new Response(null, { status });
+    }) as typeof fetch);
+    await expect(call("staging_auth_pending_put", {})).resolves.toBeUndefined();
+    expect(calls).toBe(1);
+  },
+);
+it("rejects invalid success JSON with a safe error and no automatic retry", async () => {
+  let calls = 0;
+  const call = createStagingRpc(config, (async () => {
+    calls++;
+    return new Response("private SQL response that is not JSON", {
+      status: 200,
+    });
+  }) as typeof fetch);
+  await expect(call("staging_auth_session_get", {})).rejects.toThrow(
+    "staging_response_invalid",
+  );
+  expect(calls).toBe(1);
+});

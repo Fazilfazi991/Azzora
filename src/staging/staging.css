@@ -245,6 +245,17 @@
 .staging-expense-row p {
   overflow-wrap: anywhere;
 }
+.staging-accounts .sidebar-bottom > div:nth-child(2) {
+  min-width: 0;
+  flex: 1;
+}
+.staging-accounts .sidebar-bottom strong {
+  overflow-wrap: anywhere;
+}
+.staging-accounts .sidebar-bottom .avatar,
+.staging-accounts .signout {
+  flex-shrink: 0;
+}
 @media (max-width: 1280px) {
   .staging-session-bar,
   .staging-session-status {

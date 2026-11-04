@@ -92,7 +92,14 @@ export function createStagingRpc(
         throw new StagingServiceError(400, "staging_validation_failed");
       throw new StagingServiceError(503, "staging_service_unavailable");
     }
-    return (await response.json()) as T;
+    if (response.status === 204) return undefined as T;
+    const value = await response.text();
+    if (!value.trim()) return undefined as T;
+    try {
+      return JSON.parse(value) as T;
+    } catch {
+      throw new StagingServiceError(503, "staging_response_invalid");
+    }
   };
 }
 /** Lazy so ordinary Manager/Accounts builds never require staging credentials. */

@@ -7,6 +7,7 @@ import { balanceDue } from "../commercial/calculations";
 import { supplierBalance, projectCosts } from "../operations/calculations";
 import { reviewSnapshot } from "../accounts-review/domain";
 import { blankFields } from "../accounts-review/documents/model";
+import { AccessDenied } from "../backend/permissions";
 import {
   applySharedCommand,
   createSharedCompanyState,
@@ -273,6 +274,66 @@ beforeEach(() => {
 });
 afterEach(() => vi.useRealTimers());
 describe("shared fictional company domain and canonical projections", () => {
+  it("classifies staff approval and genuine self-approval as forbidden while preserving validation errors", () => {
+    const f = fixture();
+    const submission = {
+      id: "permission-expense",
+      projectId: "p1",
+      date: "2026-11-04",
+      payee: "Fictional shop",
+      description: "Fictional evidence",
+      amount: "10",
+    };
+    f.run("expense.submit", submission, actor("pm"));
+    const decide = (user: SharedActor, comments = "Fictional review") =>
+      f.run(
+        "expense.approve",
+        { id: submission.id, approved: true, comments },
+        user,
+      );
+    for (const user of [actor("staff"), actor("pm")]) {
+      try {
+        decide(user);
+        throw Error("Expected forbidden approval");
+      } catch (error) {
+        expect(error).toBeInstanceOf(AccessDenied);
+        expect((error as AccessDenied).status).toBe(403);
+      }
+    }
+    try {
+      decide(actor("owner"), "");
+      throw Error("Expected invalid comments");
+    } catch (error) {
+      expect(error).not.toBeInstanceOf(AccessDenied);
+      expect((error as Error).message).toMatch(/comments/i);
+    }
+    expect(f.state().expenseSubmissions[0].status).toBe("Submitted");
+    expect(f.state().finance.expenses).toEqual([]);
+  });
+  it("classifies workspace, revoked capability and unrelated-project denials as forbidden", () => {
+    const f = fixture(),
+      revoked = actor("pm"),
+      unrelated = actor("pm");
+    revoked.grant.capabilities = [];
+    unrelated.grant.projectIds = [];
+    for (const [user, kind, payload] of [
+      [
+        actor("accountant"),
+        "customer.save",
+        { customer: f.state().manager.clients[0] },
+      ],
+      [revoked, "quotation.new", { projectId: "p1" }],
+      [unrelated, "quotation.new", { projectId: "p1" }],
+    ] as const) {
+      try {
+        f.run(kind, payload, user);
+        throw Error("Expected forbidden command");
+      } catch (error) {
+        expect(error).toBeInstanceOf(AccessDenied);
+        expect((error as AccessDenied).status).toBe(403);
+      }
+    }
+  });
   it("bootstraps no reference quotation, customer, invoice or real financial record", () => {
     const state = createSharedCompanyState(people);
     expect(state.manager.quotations).toEqual([]);
@@ -504,6 +565,31 @@ describe("shared fictional company domain and canonical projections", () => {
     expect(f.state().finance.documentEntries!.defaults[0].supplier).toBe(
       "Fictional shop",
     );
+    const normalized = serializeCanonical(f.state());
+    const documents = normalized.records.filter(
+      (item) => item.entity_type === "document",
+    );
+    expect(documents).toHaveLength(2);
+    expect(
+      documents.find((item) => item.id === "attachment:attachment")!.payload
+        .attachment,
+    ).toEqual(f.state().finance.attachments[0]);
+    expect(documents.find((item) => item.id === "review:review")!.status).toBe(
+      "draft",
+    );
+    const metadata = normalized.records.find(
+      (item) => item.entity_type === "workspace_metadata",
+    )!.payload.metadata as {
+      finance: Record<string, unknown>;
+      documentDefaults: unknown;
+      documentEntryVersion: number;
+    };
+    expect(metadata.finance).not.toHaveProperty("attachments");
+    expect(metadata.finance).not.toHaveProperty("documentEntries");
+    expect(metadata.documentDefaults).toEqual(
+      f.state().finance.documentEntries!.defaults,
+    );
+    expect(metadata.documentEntryVersion).toBe(1);
     expect(
       serializeCanonical(hydrateCanonical(serializeCanonical(f.state()))),
     ).toEqual(serializeCanonical(f.state()));
@@ -523,6 +609,21 @@ describe("shared fictional company domain and canonical projections", () => {
         actor("accountant"),
       ),
     ).toThrow(/review drafts only/);
+    // The server strips inline content after private Storage upload; the codec preserves its opaque pointer.
+    const stored = structuredClone(normalized);
+    const attachment = stored.records.find(
+      (item) => item.id === "attachment:attachment",
+    )!.payload.attachment as Record<string, unknown>;
+    attachment.data = "";
+    attachment.storageObjectKey = "fictional-company/private-attachment";
+    expect(serializeCanonical(hydrateCanonical(stored))).toEqual(stored);
+    const incompatible = structuredClone(stored);
+    (
+      incompatible.records.find(
+        (item) => item.entity_type === "workspace_metadata",
+      )!.payload.metadata as Record<string, unknown>
+    ).documentEntryVersion = 99;
+    expect(() => hydrateCanonical(incompatible)).toThrow(/incompatible/);
   });
   it("keeps Accountant invoice itemization authoritative rather than flattening it through Manager edits", () => {
     const f = fixture();

@@ -1,4 +1,5 @@
 import type { AuthorizedActor, Workspace } from "../backend/permissions";
+import { AccessDenied } from "../backend/permissions";
 import type {
   Assignment,
   Client,
@@ -112,12 +113,12 @@ function requireWorkspace(actor: SharedActor, workspace: Workspace) {
     actor.grant.companyId !== actor.companyId ||
     !actor.grant.workspaces.includes(workspace)
   )
-    throw Error("Workspace access denied.");
+    throw new AccessDenied("Workspace access denied.");
   if (
     role(actor, ["owner", "admin", "accountant"]) &&
     actor.assurance !== "aal2"
   )
-    throw Error("MFA is required.");
+    throw new AccessDenied("MFA is required.");
 }
 function requireProject(
   state: SharedCompanyState,
@@ -127,7 +128,7 @@ function requireProject(
   if (!state.manager.projects.some((project) => project.id === projectId))
     throw Error("Project does not exist.");
   if (!actor.grant.projectIds.includes(projectId))
-    throw Error("Assigned project access is required.");
+    throw new AccessDenied("Assigned project access is required.");
 }
 function person(state: SharedCompanyState, actor: SharedActor): string {
   const id = actor.personId || actor.userId;
@@ -136,7 +137,7 @@ function person(state: SharedCompanyState, actor: SharedActor): string {
       (item) => item.id === id && item.status === "Active",
     )
   )
-    throw Error(
+    throw new AccessDenied(
       "The authenticated user needs an explicit active employee mapping.",
     );
   return id;
@@ -637,13 +638,15 @@ export function applySharedCommand(
   requireWorkspace(actor, scope.workspace);
   if (scope.workspace === "accountant") {
     if (!role(actor, ["owner", "admin", "accountant"]))
-      throw Error("Accountant permission is required.");
+      throw new AccessDenied("Accountant permission is required.");
     if (
       !actor.grant.capabilities.includes(
         scope.financial ? "finance.simulate" : "finance.draft",
       )
     )
-      throw Error("Explicit staging finance capability is required.");
+      throw new AccessDenied(
+        "Explicit staging finance capability is required.",
+      );
   } else {
     const capability =
       command.kind === "expense.submit"
@@ -652,19 +655,19 @@ export function applySharedCommand(
           ? "expense.approve"
           : "project.write";
     if (!actor.grant.capabilities.includes(capability))
-      throw Error("Manager command capability is required.");
+      throw new AccessDenied("Manager command capability is required.");
     if (command.kind === "expense.submit") {
       if (!role(actor, ["owner", "admin", "project_manager", "site_staff"]))
-        throw Error("Expense submission access denied.");
+        throw new AccessDenied("Expense submission access denied.");
     } else if (!role(actor, ["owner", "admin", "project_manager"]))
-      throw Error("Manager write access denied.");
+      throw new AccessDenied("Manager write access denied.");
     if (scope.projectId) requireProject(previous, actor, scope.projectId);
     if (
       !owner(actor) &&
       command.kind.startsWith("quotation.") &&
       !scope.projectId
     )
-      throw Error(
+      throw new AccessDenied(
         "Project Managers must select an assigned project for quotation commands.",
       );
   }
@@ -687,7 +690,7 @@ export function applySharedCommand(
             actor.grant.projectIds.includes(project.id),
         )
       )
-        throw Error(
+        throw new AccessDenied(
           "Customer access is limited to assigned projects or your own unassigned customer drafts.",
         );
       let saved: Client;
@@ -720,7 +723,7 @@ export function applySharedCommand(
       if (next.manager.projects.some((item) => item.id === project.id))
         throw Error("Project ID already exists.");
       if (!owner(actor) && project.managerId !== person(next, actor))
-        throw Error(
+        throw new AccessDenied(
           "Project Managers can create projects assigned to themselves.",
         );
       const client = next.manager.clients.find(
@@ -740,7 +743,7 @@ export function applySharedCommand(
             actor.grant.projectIds.includes(item.id),
         )
       )
-        throw Error(
+        throw new AccessDenied(
           "Customer access is limited to assigned projects or your own unassigned customer drafts.",
         );
       createProject(
@@ -988,8 +991,13 @@ export function applySharedCommand(
       const approval = next.manager.operations!.approvals.find(
         (item) => item.id === id,
       );
-      if (!approval || approval.requesterId === person(next, actor))
-        throw Error("An independent approver is required.");
+      if (!approval) throw Error("Approval not found.");
+      if (approval.requesterId === person(next, actor))
+        throw new AccessDenied("An independent approver is required.");
+      if (approval.approverId !== person(next, actor))
+        throw new AccessDenied(
+          "Only the assigned approver may record this decision.",
+        );
       operations.decideApproval(
         next.manager,
         id,
@@ -1114,12 +1122,10 @@ export function applySharedCommand(
       const submission = next.expenseSubmissions.find(
         (item) => item.id === p.id,
       );
-      if (
-        !submission ||
-        submission.status !== "Submitted" ||
-        submission.submittedBy === actor.userId
-      )
-        throw Error(
+      if (!submission || submission.status !== "Submitted")
+        throw Error("Choose a pending expense submission.");
+      if (submission.submittedBy === actor.userId)
+        throw new AccessDenied(
           "Only an independent approver may decide a pending expense.",
         );
       requireProject(next, actor, submission.projectId);

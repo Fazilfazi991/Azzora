@@ -9,9 +9,12 @@ export function StagingExpenseQueue() {
   const [busy, setBusy] = useState("");
   if (store.mode !== "staging") return null;
   const entries = store.expenseSubmissions || [];
-  const canApprove = ["owner", "admin", "project_manager"].includes(
-    store.actor?.role || "",
-  );
+  const canApprove = [
+    "owner",
+    "owner_admin",
+    "admin",
+    "project_manager",
+  ].includes(store.actor?.role || "");
   async function decide(id: string, approved: boolean) {
     setBusy(id);
     try {

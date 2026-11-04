@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-11-04T13:02:26.509Z",
+  "aliases": [
+    {
+      "alias": "azzora-seven.vercel.app",
+      "deploymentId": "dpl_F9kD9Vu4ioWTCJrQwD2ev5J6mYmp"
+    },
+    {
+      "alias": "azzora-accounts-client-review-faziils-projects.vercel.app",
+      "deploymentId": "dpl_ESphaGfTKeRK8wzRt7AcYiaWwSjy"
+    }
+  ],
+  "githubMain": "fd7754dfe0022f9b64bf875313bd9679cb0144eb",
+  "pushed": false,
+  "deployed": false,
+  "aliasesChanged": false
+}

@@ -1,0 +1,42 @@
+{
+  "passed": true,
+  "testedSha": "911f0df50e01a19da4fec7a71b2f05e48b377749",
+  "sourceCleanBeforeAndAfter": true,
+  "completedAt": "2026-11-04T12:57:33.513Z",
+  "fictionalOnly": true,
+  "paidAi": false,
+  "requestCount": 4,
+  "workflowChecks": 2,
+  "tests": [
+    {
+      "test": "simultaneous different commands with same expected version",
+      "requests": 2,
+      "statuses": [
+        200,
+        409
+      ],
+      "beforeVersion": 39,
+      "afterVersion": 40,
+      "versionIncrements": 1,
+      "createdLedgerCount": 1,
+      "metricsUnchanged": true,
+      "journalsUnchanged": true,
+      "trialUnchanged": true
+    },
+    {
+      "test": "simultaneous same-key same-body idempotent replay with server-generated ID",
+      "requests": 2,
+      "statuses": [
+        200,
+        200
+      ],
+      "beforeVersion": 40,
+      "afterVersion": 41,
+      "versionIncrements": 1,
+      "createdLedgerCount": 1,
+      "metricsUnchanged": true,
+      "journalsUnchanged": true,
+      "trialUnchanged": true
+    }
+  ]
+}

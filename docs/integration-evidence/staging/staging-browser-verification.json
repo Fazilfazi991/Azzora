@@ -1,0 +1,948 @@
+{
+  "schemaVersion": 1,
+  "completedAt": "2026-11-04T13:06:19.953Z",
+  "testedApplicationSha": "6c838f9dcbcef8ac55c68bbdab18e5a575877d40",
+  "applicationSourceClean": true,
+  "environment": {
+    "app": "https://127.0.0.1:5361",
+    "backend": "Actual approved fictional-data Supabase staging via HTTPS loopback BFF",
+    "externalHostedPreview": false,
+    "realFinancialPosting": false,
+    "paidAiEnabled": false,
+    "liveDeploymentsChanged": false
+  },
+  "passed": true,
+  "routeRendering": {
+    "passed": true,
+    "cases": 70,
+    "managerRoutes": 20,
+    "accountantRoutes": 15,
+    "widths": [
+      1440,
+      390
+    ],
+    "runtimeErrors": [],
+    "pageOverflowCases": [],
+    "unlabelledFormControlCases": [],
+    "browserDatabaseKeyAccesses": 0,
+    "results": [
+      {
+        "role": "owner",
+        "route": "dashboard",
+        "width": 1440,
+        "heading": "Executive Overview",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "customers",
+        "width": 1440,
+        "heading": "Customers",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "projects",
+        "width": 1440,
+        "heading": "Project Directory",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "quotations",
+        "width": 1440,
+        "heading": "Quotations",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "accounts",
+        "width": 1440,
+        "heading": "Accounts",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "planning",
+        "width": 1440,
+        "heading": "Planning & Timeline",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "tasks",
+        "width": 1440,
+        "heading": "Task Workspace",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "team",
+        "width": 1440,
+        "heading": "Team & Resource Allocation",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "site-updates",
+        "width": 1440,
+        "heading": "Site Updates",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "snags-qa",
+        "width": 1440,
+        "heading": "Snags & Quality Assurance",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "documents",
+        "width": 1440,
+        "heading": "Document Register",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "variations",
+        "width": 1440,
+        "heading": "Variations",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "suppliers",
+        "width": 1440,
+        "heading": "Suppliers",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "procurement",
+        "width": 1440,
+        "heading": "Procurement",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "approvals",
+        "width": 1440,
+        "heading": "Approvals",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "budgets",
+        "width": 1440,
+        "heading": "Budget & Forecast",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "handover",
+        "width": 1440,
+        "heading": "Project Handover",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "reports",
+        "width": 1440,
+        "heading": "Portfolio Reports",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "settings",
+        "width": 1440,
+        "heading": "Settings",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "accountant-preview",
+        "width": 1440,
+        "heading": "Independent Accountant workspace",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "dashboard",
+        "width": 390,
+        "heading": "Executive Overview",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "customers",
+        "width": 390,
+        "heading": "Customers",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "projects",
+        "width": 390,
+        "heading": "Project Directory",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "quotations",
+        "width": 390,
+        "heading": "Quotations",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "accounts",
+        "width": 390,
+        "heading": "Accounts",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "planning",
+        "width": 390,
+        "heading": "Planning & Timeline",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "tasks",
+        "width": 390,
+        "heading": "Task Workspace",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "team",
+        "width": 390,
+        "heading": "Team & Resource Allocation",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "site-updates",
+        "width": 390,
+        "heading": "Site Updates",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "snags-qa",
+        "width": 390,
+        "heading": "Snags & Quality Assurance",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "documents",
+        "width": 390,
+        "heading": "Document Register",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "variations",
+        "width": 390,
+        "heading": "Variations",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "suppliers",
+        "width": 390,
+        "heading": "Suppliers",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "procurement",
+        "width": 390,
+        "heading": "Procurement",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "approvals",
+        "width": 390,
+        "heading": "Approvals",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "budgets",
+        "width": 390,
+        "heading": "Budget & Forecast",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "handover",
+        "width": 390,
+        "heading": "Project Handover",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "reports",
+        "width": 390,
+        "heading": "Portfolio Reports",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "settings",
+        "width": 390,
+        "heading": "Settings",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "owner",
+        "route": "accountant-preview",
+        "width": 390,
+        "heading": "Independent Accountant workspace",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "dashboard",
+        "width": 1440,
+        "heading": "Financial dashboard",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "invoices",
+        "width": 1440,
+        "heading": "Sales invoices",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "new-invoice",
+        "width": 1440,
+        "heading": "New invoice",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "bills",
+        "width": 1440,
+        "heading": "Purchase bills",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "document-entry",
+        "width": 1440,
+        "heading": "Read a bill",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "receipts",
+        "width": 1440,
+        "heading": "Customer receipts",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "supplier-payments",
+        "width": 1440,
+        "heading": "Supplier payments",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "expenses",
+        "width": 1440,
+        "heading": "Expenses",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "banking",
+        "width": 1440,
+        "heading": "Bank & cash",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "ledger",
+        "width": 1440,
+        "heading": "General ledger",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "pnl",
+        "width": 1440,
+        "heading": "Profit & loss",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "balance",
+        "width": 1440,
+        "heading": "Balance sheet",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "trial",
+        "width": 1440,
+        "heading": "Trial balance",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "project-reports",
+        "width": 1440,
+        "heading": "Project & department reports",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "aging",
+        "width": 1440,
+        "heading": "Receivable & payable aging",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "dashboard",
+        "width": 390,
+        "heading": "Financial dashboard",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "invoices",
+        "width": 390,
+        "heading": "Sales invoices",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "new-invoice",
+        "width": 390,
+        "heading": "New invoice",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "bills",
+        "width": 390,
+        "heading": "Purchase bills",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "document-entry",
+        "width": 390,
+        "heading": "Read a bill",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "receipts",
+        "width": 390,
+        "heading": "Customer receipts",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "supplier-payments",
+        "width": 390,
+        "heading": "Supplier payments",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "expenses",
+        "width": 390,
+        "heading": "Expenses",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "banking",
+        "width": 390,
+        "heading": "Bank & cash",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "ledger",
+        "width": 390,
+        "heading": "General ledger",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "pnl",
+        "width": 390,
+        "heading": "Profit & loss",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "balance",
+        "width": 390,
+        "heading": "Balance sheet",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "trial",
+        "width": 390,
+        "heading": "Trial balance",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "project-reports",
+        "width": 390,
+        "heading": "Project & department reports",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      },
+      {
+        "role": "accountant",
+        "route": "aging",
+        "width": 390,
+        "heading": "Receivable & payable aging",
+        "overflow": false,
+        "storage": [],
+        "missingLabels": [],
+        "errors": []
+      }
+    ]
+  },
+  "responsive": {
+    "passed": true,
+    "workspaceWidthCases": 8,
+    "mobileNavigationCases": 2,
+    "widths": [
+      1440,
+      1024,
+      768,
+      390
+    ],
+    "results": [
+      {
+        "role": "owner",
+        "width": 1440,
+        "overflow": false,
+        "heading": "Executive Overview"
+      },
+      {
+        "role": "owner",
+        "width": 1024,
+        "overflow": false,
+        "heading": "Executive Overview"
+      },
+      {
+        "role": "owner",
+        "width": 768,
+        "overflow": false,
+        "heading": "Executive Overview"
+      },
+      {
+        "role": "owner",
+        "width": 390,
+        "overflow": false,
+        "heading": "Executive Overview"
+      },
+      {
+        "role": "owner",
+        "mobileNav": true,
+        "visible": true
+      },
+      {
+        "role": "accountant",
+        "width": 1440,
+        "overflow": false,
+        "heading": "Financial dashboard"
+      },
+      {
+        "role": "accountant",
+        "width": 1024,
+        "overflow": false,
+        "heading": "Financial dashboard"
+      },
+      {
+        "role": "accountant",
+        "width": 768,
+        "overflow": false,
+        "heading": "Financial dashboard"
+      },
+      {
+        "role": "accountant",
+        "width": 390,
+        "overflow": false,
+        "heading": "Financial dashboard"
+      },
+      {
+        "role": "accountant",
+        "mobileNav": true,
+        "visible": true
+      }
+    ]
+  },
+  "authentication": {
+    "realProvider": true,
+    "newEnrollmentDuringBrowserChecks": false,
+    "mfa": [
+      {
+        "role": "owner",
+        "login": 200,
+        "mfaVerify": 200,
+        "session": 200,
+        "assurance": "aal2",
+        "workspace": "manager",
+        "personMapped": true
+      },
+      {
+        "role": "accountant",
+        "login": 200,
+        "mfaVerify": 200,
+        "session": 200,
+        "assurance": "aal2",
+        "workspace": "accountant",
+        "personMapped": true
+      }
+    ],
+    "engineer": {
+      "passwordFormStatus": 200,
+      "sessionStatus": 200,
+      "trustedPersonIdMatched": true,
+      "logoutApiStatus": 200,
+      "subsequentSessionStatus": 401
+    },
+    "workspaceBoundary": {
+      "managerToAccountantApi": 403,
+      "accountantToManagerApi": 403
+    },
+    "note": "Logout was verified through the authenticated API using Origin and CSRF; this is not a claim that every role-specific UI path was exercised."
+  },
+  "actualUiWorkflows": {
+    "projectChooser": [
+      {
+        "name": "PM global quotation requires explicit project selection",
+        "passed": true
+      },
+      {
+        "name": "Assigned project enables draft creation",
+        "passed": true
+      },
+      {
+        "name": "Quick Add uses same project chooser",
+        "passed": true
+      }
+    ],
+    "manager": {
+      "passedChecks": [
+        "Customer UI save persisted before modal closed",
+        "Explicit-project quotation UI creates real shared draft",
+        "Quotation autosave survives full authenticated reload",
+        "Stale version409 retains unsaved quotation visibly without overwrite",
+        "Explicit confirmed reload restores committed draft"
+      ],
+      "note": "The original combined test runner stopped later on an overly strict Expense Group selector; the five listed Manager assertions had completed successfully. Separate corrected ledger runner passed."
+    },
+    "expenseLedger": {
+      "passed": true,
+      "checks": [
+        "Accountant creates classified ledger and reuses exactly once after full reload"
+      ]
+    },
+    "manualDocumentReview": {
+      "passed": true,
+      "checks": [
+        "Mobile fictional photo upload reaches staging backend with idempotency and version headers",
+        "Stored private original image renders through authenticated attachment handler",
+        "Reviewed document draft saves without adding any financial journal",
+        "Saved document correction and private original survive refresh"
+      ]
+    },
+    "itemizedInvoiceAndBillDrafts": {
+      "passed": true,
+      "checks": [
+        "Tax Invoice itemized UI draft saved, generated ID and exact total verified",
+        "Normal Invoice itemized UI draft saved, generated ID and exact total verified",
+        "Proforma itemized UI draft saved, generated ID and exact total verified",
+        "Supplier bill itemized UI draft saved without financial posting",
+        "All four draft saves preserve financial metrics and balanced trial exactly",
+        "New itemized supplier bill persists after authenticated refresh"
+      ]
+    },
+    "financialImpact": "Draft, document-review and ledger-definition UI writes added no financial journals. Metrics and trial were asserted unchanged for the four itemized document draft saves."
+  },
+  "initialActualUiFailure": {
+    "status": 400,
+    "action": "create-expense-ledger",
+    "rootCause": "Existing Accounts creation forms omit record IDs and rely on server assignment. The first staging BFF sent them directly to a domain command requiring an ID.",
+    "resolutionCommit": "9cdcc40",
+    "resolution": "Server assigns retry-stable IDs from company and idempotency key; existing-record update IDs remain mandatory.",
+    "verifiedAfterFix": [
+      "Classified ledger creation and reuse after reload",
+      "Tax Invoice draft",
+      "Normal Invoice draft",
+      "Proforma draft",
+      "Supplier bill draft"
+    ]
+  },
+  "visualCorrections": {
+    "sidebarFooter": "Long staging email wraps within sidebar; avatar and Logout do not shrink or overlap main content.",
+    "managerStatusStrip": "Stage-only max1024 margin is210px, matching existing Manager sidebar; mobile max767 remains0. Final CSS-only commit 6c838f9dcbcef8ac55c68bbdab18e5a575877d40",
+    "reviewedWidths": [
+      1440,
+      1024,
+      768,
+      390
+    ]
+  },
+  "evidence": {
+    "directory": "docs/integration-evidence/staging",
+    "routeScreenshots": "routes/{owner|accountant}-{route}-{1440|390}.png",
+    "representativeScreenshots": [
+      "owner-dashboard-1440-final.png",
+      "owner-dashboard-1024-final.png",
+      "owner-dashboard-768-final.png",
+      "owner-dashboard-390-final.png",
+      "accountant-dashboard-1440-final.png",
+      "accountant-dashboard-1024-final.png",
+      "accountant-dashboard-768-final.png",
+      "accountant-dashboard-390-final.png",
+      "owner-mobile-navigation-final.png",
+      "accountant-mobile-navigation-final.png",
+      "quotation-project-choice-1440.png",
+      "quotation-project-choice-390.png",
+      "quotation-conflict-retained-1440.png",
+      "expense-ledger-created-1440.png",
+      "expense-ledger-created-390.png",
+      "manual-upload-reviewed-1440.png",
+      "manual-upload-reviewed-390.png",
+      "invoice-drafts-1440.png",
+      "purchase-bill-draft-1440.png"
+    ]
+  },
+  "limitations": [
+    "Route cases certify rendering, labels and overflow, not full CRUD on all Manager routes.",
+    "Actual transactional UI tests covered the listed customer, quotation, invoice/bill draft, expense-ledger and reviewed-document paths. Procurement, approvals, receipt/payment journal workflows have separate domain-agent evidence.",
+    "No new monetary postings were made in the final UI test window.",
+    "Development Vite WebSocket reports closed-without-opened in the loopback harness; application routes, refresh, auth and APIs work.",
+    "No Vercel deployment or externally shareable staging URL was created.",
+    "This fictional staging verification does not certify production accounting, real-data migration, tax policy or paid AI readiness."
+  ]
+}

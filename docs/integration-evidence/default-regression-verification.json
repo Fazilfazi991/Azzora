@@ -1,0 +1,86 @@
+{
+  "verifiedAtUtc": "2026-11-04T12:55:09.5581427Z",
+  "scope": "default browser-local CRM and isolated default Accounts demo",
+  "url": "http://127.0.0.1:5363",
+  "stagingFlag": false,
+  "paidAiEnabled": false,
+  "cloudUsed": false,
+  "crmSuites": [
+    {
+      "suite": "core",
+      "exitCode": 0,
+      "passed": true,
+      "elapsedSeconds": 29,
+      "checks": 66,
+      "browserErrors": 0,
+      "evidence": "docs/browser-validation.json",
+      "summary": "PASS: 66 route/viewport checks, no overflow or console errors, complete project-to-handover journey."
+    },
+    {
+      "suite": "commercial",
+      "exitCode": 0,
+      "passed": true,
+      "elapsedSeconds": 67,
+      "checks": 129,
+      "browserErrors": 0,
+      "evidence": "tmp/default-crm-regression/commercial/browser-results.json",
+      "summary": "PASS: 129 commercial journey and responsive checks; no browser errors."
+    },
+    {
+      "suite": "operational",
+      "exitCode": 0,
+      "passed": true,
+      "elapsedSeconds": 130,
+      "checks": 136,
+      "browserErrors": 0,
+      "evidence": "tmp/default-crm-regression/operational/browser-results.json",
+      "summary": "PASS: 136 operational journey/responsive checks; no browser errors."
+    },
+    {
+      "suite": "workforce",
+      "exitCode": 0,
+      "passed": true,
+      "elapsedSeconds": 15,
+      "checks": 40,
+      "browserErrors": 0,
+      "evidence": "docs/workforce-evidence/browser-results.json",
+      "summary": "PASS Complete handover with reviewer and note; reload all workflows and legacy employee IDs\nPASS Duplicate employee validation is visible inside the dialog\nPASS Failed storage writes preserve saved employees and show an inline error\n40 checks passed; zero browser errors"
+    },
+    {
+      "suite": "recovery",
+      "exitCode": 0,
+      "passed": true,
+      "elapsedSeconds": 41,
+      "checks": 25,
+      "browserErrors": 0,
+      "evidence": "docs/integration-evidence/recovery/results.json",
+      "summary": "PASS 25 recovery/rollback browser cases; 0 page errors."
+    },
+    {
+      "suite": "quotation",
+      "exitCode": 0,
+      "passed": true,
+      "elapsedSeconds": 60,
+      "checks": 4,
+      "browserErrors": 0,
+      "evidence": "tmp/quotation-qa/browser-results.json",
+      "summary": "PASS: desktop and mobile quotation workflows, PDF downloads, print, lifecycle and persistence."
+    }
+  ],
+  "crmPassedGroups": 400,
+  "crmBrowserErrors": 0,
+  "accounts": {
+    "passed": true,
+    "exitCode": 0,
+    "checks": 14,
+    "browserErrors": 0,
+    "evidence": "tmp/default-crm-regression/accounts/results.json",
+    "initialFailure": "Toast expected NOR prefix but local API generated DEMO invoice ID; original failed log preserved",
+    "initialFailureEvidence": "tmp/default-crm-regression/accounts-initial-prefix-failure.log",
+    "correction": "Local review server generates NOR/PRO/INV references for new invoices using the already-existing hosted pattern; other action IDs unchanged",
+    "verification": "Existing unmodified Accounts browser suite rerun passed after correction"
+  },
+  "ownServerClosed": true,
+  "liveServer5361Unchanged": true,
+  "sourceStatus": "Working tree under integration, not a new frozen commit"
+}

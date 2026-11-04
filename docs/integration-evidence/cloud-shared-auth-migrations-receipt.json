@@ -1,0 +1,66 @@
+{
+  "projectRef": "hkhomrrvxtcxnxvdlkoh",
+  "sourceCommit": "382c48b8e1d2a36c7c7c9193b28c908090be5254",
+  "appliedVia": "supabase-sql-editor",
+  "managedMigrationRegistryModified": false,
+  "applications": [
+    {
+      "filename": "20261104120412_shared_staging_transactions.sql",
+      "sha256": "9d61956c6db81913b1fe2d447432a3d973a6d7544e218642c8ade6236acc1b66",
+      "exactEditorContentVerified": true,
+      "runRequestedAt": "2026-11-04T12:28:31.063Z",
+      "successObservedAt": "2026-11-04T12:28:37.474Z",
+      "result": "Success. No rows returned"
+    },
+    {
+      "filename": "20261104120507_staging_individual_auth.sql",
+      "sha256": "6e78f94e86b219ccfa143bcf168c7917301270e3d177465a15fee4ae03b3832a",
+      "exactEditorContentVerified": true,
+      "runRequestedAt": "2026-11-04T12:28:57.254Z",
+      "successObservedAt": "2026-11-04T12:29:02.962Z",
+      "result": "Success. No rows returned"
+    }
+  ],
+  "postVerification": {
+    "tables": 23,
+    "records": 0,
+    "journals": 0,
+    "auth_flows": 0,
+    "auth_users": 4,
+    "checked_at": "2026-11-04T12:29:39.737717+00:00",
+    "rls_tables": 23,
+    "memberships": 0,
+    "project_ref": "hkhomrrvxtcxnxvdlkoh",
+    "real_posting": false,
+    "company_count": 1,
+    "api_rpc_execute": 0,
+    "company_version": 0,
+    "real_processing": false,
+    "anon_rpc_execute": 0,
+    "company_data_mode": "fictional-staging",
+    "auth_login_attempts": 0,
+    "public_rpc_execute_acl": 0,
+    "public_staging_rpc_count": 15,
+    "service_role_rpc_execute": 15,
+    "authenticated_rpc_execute": 0,
+    "fictional_test_auth_users": 4
+  },
+  "advisors": {
+    "health": {
+      "errors": 0,
+      "warnings": 0,
+      "info": 0
+    },
+    "security": {
+      "errors": 0,
+      "warnings": 1,
+      "info": "RLS Enabled No Policy on intentionally closed internal tables",
+      "warning": "Leaked Password Protection Disabled: Auth leaked password protection is currently disabled."
+    }
+  },
+  "credentialsAccessed": false,
+  "managedUsersCreatedByThisAgent": false,
+  "membershipsBootstrappedByThisAgent": false,
+  "businessRpcCallsMadeByThisAgent": false,
+  "liveDeploymentsModified": false
+}

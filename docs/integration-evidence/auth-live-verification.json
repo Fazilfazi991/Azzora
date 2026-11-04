@@ -1,0 +1,113 @@
+{
+  "verifiedAtUtc": "2026-11-04T12:36:57.8399905Z",
+  "projectRef": "hkhomrrvxtcxnxvdlkoh",
+  "scope": "approved fictional staging only",
+  "source": "real Supabase Auth and durable staging RPCs through local server handler",
+  "browserEvidence": false,
+  "authPassed": true,
+  "authChecks": [
+    {
+      "check": "owner_genuine_totp_mfa",
+      "passed": true
+    },
+    {
+      "check": "owner_individual_durable_session",
+      "passed": true
+    },
+    {
+      "check": "owner_handler_restart_persistence",
+      "passed": true
+    },
+    {
+      "check": "manager_individual_durable_session",
+      "passed": true
+    },
+    {
+      "check": "manager_handler_restart_persistence",
+      "passed": true
+    },
+    {
+      "check": "manager_wrong_workspace_denied",
+      "passed": true
+    },
+    {
+      "check": "accountant_genuine_totp_mfa",
+      "passed": true
+    },
+    {
+      "check": "accountant_individual_durable_session",
+      "passed": true
+    },
+    {
+      "check": "accountant_handler_restart_persistence",
+      "passed": true
+    },
+    {
+      "check": "accountant_wrong_workspace_denied",
+      "passed": true
+    },
+    {
+      "check": "engineer_individual_durable_session",
+      "passed": true
+    },
+    {
+      "check": "engineer_handler_restart_persistence",
+      "passed": true
+    },
+    {
+      "check": "engineer_wrong_workspace_denied",
+      "passed": true
+    },
+    {
+      "check": "engineer_durable_logout_revocation",
+      "passed": true
+    }
+  ],
+  "refresh": {
+    "passed": true,
+    "actualRefreshRequests": 1,
+    "encryptedStorageVersionAdvanced": true,
+    "sameUserAndProviderSession": true,
+    "financialRecordsTouched": false
+  },
+  "controlledTests": {
+    "auth": 11,
+    "localSqlAuth": 9,
+    "rpc": 8
+  },
+  "initialFailure": {
+    "cause": "Successful void RPC response was parsed as JSON",
+    "status": 503,
+    "regressions": "200 empty,204 empty,invalid success JSON",
+    "correction": "RPC client handles HTTP204 and empty successful bodies"
+  },
+  "limitations": [
+    "Genuine provider calls verified through handler; browser UI verified separately by coordinator",
+    "No production identity,recovery-mail or security-audit readiness claim",
+    "No paid AI requests or real financial records used",
+    "Refresh harness initial stale bundled RPC replaced before successful verification"
+  ],
+  "actualProviderRevocation": {
+    "passed": true,
+    "scope": "fictional engineer only",
+    "checks": [
+      {
+        "name": "existing_engineer_individual_session_200",
+        "passed": true
+      },
+      {
+        "name": "actual_provider_ban_denies_existing_engineer_cookie",
+        "passed": true,
+        "status": 403
+      },
+      {
+        "name": "provider_fixture_unbanned_and_verified_in_finally",
+        "passed": true
+      }
+    ],
+    "banRestored": true,
+    "passwordsReset": 0,
+    "otherIdentitiesChanged": false,
+    "businessRecordsChanged": false
+  }
+}

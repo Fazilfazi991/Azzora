@@ -1,0 +1,31 @@
+{
+  "projectRef": "hkhomrrvxtcxnxvdlkoh",
+  "filename": "20261104124002_staging_deferred_balance_guard.sql",
+  "sha256": "bf976af5c0a96f85b1f68cd72bdf6c2e3bb7d7e05fc4f3abcadff151762c252d",
+  "exactEditorContentVerified": true,
+  "runRequestedAt": "2026-11-04T12:42:34.016Z",
+  "successObservedAt": "2026-11-04T12:42:39.903Z",
+  "result": "Success. No rows returned",
+  "appliedVia": "supabase-sql-editor",
+  "managedMigrationRegistryModified": false,
+  "postVerification": {
+    "owner": "postgres",
+    "tables": 23,
+    "proconfig": [
+      "search_path=\"\""
+    ],
+    "checked_at": "2026-11-04T12:43:06.127765+00:00",
+    "public_acl": 0,
+    "rls_tables": 23,
+    "api_execute": false,
+    "anon_execute": false,
+    "real_posting": false,
+    "real_processing": false,
+    "service_execute": false,
+    "security_definer": true,
+    "service_schema_usage": false,
+    "authenticated_execute": false
+  },
+  "broaderSchemaOrTableGrantsAdded": false,
+  "businessRpcCallsMade": false
+}

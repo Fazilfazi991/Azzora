@@ -1,0 +1,173 @@
+{
+  "runId": "qamw23ybmv",
+  "passed": true,
+  "completedAt": "2026-11-04T12:50:38.866Z",
+  "fictionalOnly": true,
+  "paidAi": false,
+  "projectId": "qamw23ybmv-project",
+  "invoiceId": "eb6cd48f-c0ee-4fa8-ad48-6e1f48801008",
+  "documentReviewId": "DOC-233909ae-a66d-4eaa-878a-7d8aca38b2fa",
+  "finalVersion": 32,
+  "metrics": {
+    "revenueFils": "100000",
+    "costOfSalesFils": "17500",
+    "operatingExpensesFils": "0",
+    "grossProfitFils": "82500",
+    "netProfitFils": "82500",
+    "receivablesFils": "75000",
+    "payablesFils": "6000",
+    "bankFils": "10013500",
+    "cashFils": "0"
+  },
+  "tests": [
+    {
+      "test": "previously confirmed staff submission retained",
+      "status": 200
+    },
+    {
+      "test": "expense.approve",
+      "actor": "engineer",
+      "status": 400
+    },
+    {
+      "test": "expense.approve",
+      "actor": "manager",
+      "status": 200,
+      "version": 29
+    },
+    {
+      "test": "accounts.expense",
+      "status": 200,
+      "version": 30
+    },
+    {
+      "test": "accounts.document-draft",
+      "status": 200,
+      "version": 32
+    },
+    {
+      "test": "private document upload/download + review-only draft",
+      "status": 200,
+      "originalHashVerified": true,
+      "inlineOriginalRemoved": true,
+      "paidAi": false,
+      "zeroPosting": true
+    },
+    {
+      "test": "workspace and original access boundaries",
+      "status": 403
+    },
+    {
+      "test": "invoice PDF",
+      "status": 200,
+      "signature": "%PDF-"
+    },
+    {
+      "test": "single shared journal per source across invoice/receipt/bill/payment/expense",
+      "sources": 5,
+      "passed": true
+    }
+  ],
+  "report": {
+    "asOf": "2026-11-04",
+    "period": {
+      "from": "2026-01-01",
+      "to": "2026-11-04"
+    },
+    "metrics": {
+      "revenueFils": "100000",
+      "costOfSalesFils": "17500",
+      "operatingExpensesFils": "0",
+      "grossProfitFils": "82500",
+      "netProfitFils": "82500",
+      "receivablesFils": "75000",
+      "payablesFils": "6000",
+      "bankFils": "10013500",
+      "cashFils": "0"
+    },
+    "trialBalanced": true,
+    "balanceSheetBalanced": true,
+    "assetsFils": "10088500",
+    "liabilitiesFils": "6000",
+    "equityIncludingCurrentEarningsFils": "10082500",
+    "postedEquityFils": "10000000",
+    "currentEarningsFils": "82500",
+    "equation": "assets = liabilities + equity"
+  },
+  "resolvedAttempts": [
+    {
+      "issue": "Bootstrap SQL42501 permission denied for schema azzora",
+      "resolution": "Narrow deferred-balance guard execution fix; bootstrap succeeded once at version1"
+    },
+    {
+      "issue": "Engineer session401 at first C attempt",
+      "resolution": "Auth QA had deliberately revoked cookie; fresh individual Engineer login restored access"
+    },
+    {
+      "issue": "Staff self-approval denied400 instead of403",
+      "resolution": "Domain permission guards now use AccessDenied; live denial403 verified, version and journal unchanged"
+    }
+  ],
+  "priorABEvidence": {
+    "source": "Verified current canonical SQL and shared API records after source workflow. Original A/B per-command HTTP rows were overwritten by the C resume and are not reconstructed as counts.",
+    "sales": {
+      "customer": true,
+      "project": true,
+      "quotationAccepted": true,
+      "contract": true,
+      "invoiceIssued": true,
+      "amountFils": "100000",
+      "receiptFils": "25000",
+      "openFils": "75000"
+    },
+    "procurement": {
+      "request": true,
+      "rfq": true,
+      "supplierQuote": true,
+      "purchaseOrder": true,
+      "independentApprovals": 3,
+      "delivery": true,
+      "billFils": "10000",
+      "paymentFils": "4000",
+      "openFils": "6000"
+    },
+    "staleCASStatus": 409
+  },
+  "finalVerification": [
+    {
+      "test": "staff approval forbidden after permission fix",
+      "status": 403
+    },
+    {
+      "test": "invalid amount remains validation400",
+      "status": 400
+    },
+    {
+      "test": "actual BFF invoice PDF saved for rendering",
+      "status": 200,
+      "bytes": 5859
+    },
+    {
+      "test": "A/B verified canonical current-state proof: customer/project/accepted quotation/contract/issued invoice/receipt; independently approved procurement/delivery/bill/payment",
+      "passed": true
+    },
+    {
+      "test": "original receipt key replay reverified without version increment",
+      "status": 200,
+      "version": 32
+    },
+    {
+      "test": "stale version rejection reverified without mutation",
+      "status": 409
+    },
+    {
+      "test": "canonical SQL one record and one journal per five transaction sources",
+      "entities": 5,
+      "passed": true
+    },
+    {
+      "test": "SQL original stripped and scoped private Storage pointer retained",
+      "passed": true
+    }
+  ]
+}

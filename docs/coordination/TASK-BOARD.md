@@ -1,5 +1,19 @@
 # Task board
 
+## Shared staging integration — 4 November 2026
+
+| Scope | Verified status |
+| --- | --- |
+| Individual identity | Four genuine fictional Supabase users; Owner/Accountant TOTP; opaque durable sessions and workspace/project authorization |
+| Shared commercial/finance | Actual sales, procurement, payments and independently approved staff expenses reconcile against one canonical company |
+| Documents | Private original upload/hash-verified download, editable review/defaults and draft without journal |
+| Concurrency | Actual simultaneous CAS 200/409; same-key no-ID replay 200/200 with one record/version |
+| Regression | Application SHA 6c838f9; 887 units + 2 financial fixtures; 414 legacy browser recorded groups; TypeScript/lint/default+stage builds pass; report distinguishes test timing |
+| Live boundary | No pushes, merges, deployments, alias changes, real records or paid AI calls |
+| Remaining integration | Legacy Manager task/planning/roster/document/QA/handover mutation adapters, separate hosted staging, production identity/policies/cutover/restore gates |
+
+[Full evidence and limitations](../backend/SHARED-STAGING-INTEGRATION-REPORT.md).
+
 ## Approved Supabase staging execution — 4 November 2026
 
 | Scope | Verified status |

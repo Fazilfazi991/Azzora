@@ -1,5 +1,9 @@
 # AZZORA MASTER STATUS
 
+## Production backend foundation — 4 November 2026
+
+Local integration branch `codex/azzora-production-backend`, frozen source/test SHA `5481ac0dddc595a5492c444af1b6db21fcafc649`. Parallel database/auth/integration/migration/QA work prepared 19 private RLS tables, server authorization/session contracts, a shared transaction boundary reusing the existing finance engine and lossless offline migration rehearsal. 823/823 unit tests, 23/23 local PostgreSQL checks, TypeScript, ESLint and combined build pass. Neither live application is wired to these interfaces. Owner supplied Supabase target `hkhomrrvxtcxnxvdlkoh`; all connected accounts deny metadata access. Gate 1 architecture/policy approval and correct project access remain pending. No cloud write, real import, paid AI request, push, deploy or main merge. Production **NO-GO**; [full handoff](../backend/COORDINATOR-HANDOFF.md), [decision package](../backend/DECISION-REPORT.md).
+
 ## Finance checkpoint 2 — controlled local integration, 21 October 2026
 
 The additive finance demo, read-only legacy AR/AP bridge and Accountant Preview are integrated on local `codex/azzora-finance-integration`. The frozen source/test SHA is `edf96d31275b84820d2ebff018466ecb3c1c857b`. TypeScript, ESLint, production build and 458/458 unit tests pass. Final production-preview browser gates passed: Accountant 27, commercial 129, operational 136, core CRM 66, workforce 40 and recovery 25 checks, plus quotation workflow and four PDF print cases. The seven-page A4 quotation PDF and report PDF were rendered and inspected. See the [checkpoint-2 coordinator report](../finance/CHECKPOINT-2-REPORT.md) for source commits, evidence, corrected diagnostic failures and remaining gates.

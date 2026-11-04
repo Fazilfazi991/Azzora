@@ -1,5 +1,18 @@
 # Task board
 
+## Backend launch preparation — 4 November 2026
+
+| Scope | Status |
+| --- | --- |
+| Database schema/security constraints | Prepared locally; 23 SQL checks pass; cloud application not authorized/executed |
+| Individual authentication/permissions | Local contracts + controlled tests pass; durable provider/session/UI adapters pending |
+| Manager/Accountant shared records | Canonical mapping and transaction contract prepared; actual app adapters pending |
+| Migration/QA | Original-byte archive/rehearsal and 823 full tests pass; real import/staging workflows not executed |
+| Supabase target | Owner supplied `hkhomrrvxtcxnxvdlkoh`; current connections lack permission; reconnect required |
+| Production release | NO-GO; Gates 1–5 not completed; both live deployments unchanged |
+
+[Consolidated evidence and remaining gates](../backend/COORDINATOR-HANDOFF.md).
+
 ## Finance checkpoint 2 — local integration verified, 21 October 2026
 
 Source/test SHA `edf96d31275b84820d2ebff018466ecb3c1c857b`; full [coordinator report](../finance/CHECKPOINT-2-REPORT.md). This board distinguishes demo wiring from production finance acceptance.

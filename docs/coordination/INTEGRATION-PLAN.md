@@ -1,5 +1,9 @@
 # Controlled integration plan and executed checkpoints
 
+## Production backend — controlled local foundation, 4 November 2026
+
+Start from preserved Accounts baseline `02ab580` in isolated `codex/azzora-production-backend`. Integrate disjoint schema/auth/migration files and coordinator transaction boundary; preserve existing demo/UI/domain/API/hosting files. Frozen source/test `5481ac0dddc595a5492c444af1b6db21fcafc649` passes 823 units, 23 local SQL checks, TypeScript, lint and combined build. Gate 1 decision report and handoff are prepared. Correct Supabase target permissions and approve architecture/region/budget/policies before staging writes; implement durable adapters and test shared workflows A–E before any owner staging acceptance or production authorization. No shared persistence or new live login has been enabled. [Decision](../backend/DECISION-REPORT.md), [handoff](../backend/COORDINATOR-HANDOFF.md).
+
 ## Gantt visual correction — executed local checkpoints, 15 October 2026
 
 The coordinator branched from the verified timeline documentation commit `53440e5`, kept Agent 1 date audit, Agent 2 visual correction and Agent 3 independent QA in separate worktrees, and replayed reviewed commits into local `codex/azzora-timeline-integration`. The original before captures landed as `0c7abb5`. Agent 2's typed-edge routing, task-label and scroll correction landed as `6fce04f`; the first-click/mobile sticky follow-up as `1ebe965`; final four-width after evidence as `cce694c`. Agent 1's date audit landed in `55618af`, `928342c`, `8980f91`, `9fd7ca7`, with production-portable fixture/rules correction in `5053b9b`. Agent 3's independent browser audit landed in `47a186e`, `2b58ac8`, `cb9f116`.

@@ -30,7 +30,9 @@ try {
   await db.exec(`create role anon; create role authenticated; create schema auth;
     create table auth.users(id uuid primary key);
     create table auth.sessions(id uuid primary key,user_id uuid not null,aal text default 'aal2',not_after timestamptz);
-    create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;`);
+    create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+    create schema storage;
+    create table storage.buckets(id text primary key,name text not null,public boolean default false,file_size_limit bigint,allowed_mime_types text[]);`);
   for (const name of (await readdir(new URL("../supabase/migrations/", import.meta.url))).filter(name => name.endsWith(".sql")).sort())
     await db.exec(await readFile(new URL(`../supabase/migrations/${name}`, import.meta.url), "utf8"));
   await check("migration executes on local PostgreSQL", async () => {
@@ -44,6 +46,21 @@ try {
   await check("API role cannot mutate company records directly", async () => {
     const rows = (await db.query("select has_table_privilege('azzora_api','azzora.records','insert,update,delete') allowed")).rows;
     assert.equal(rows[0].allowed, false);
+  });
+  await check("staging scope explicitly disables real posting and document processing", async () => {
+    assert.deepEqual((await db.query("select environment,real_financial_posting_enabled,real_document_processing_enabled from azzora.environment_config")).rows,
+      [{ environment: "synthetic-staging", real_financial_posting_enabled: false, real_document_processing_enabled: false }]);
+    await assert.rejects(db.exec("update azzora.environment_config set real_financial_posting_enabled=true"), /Immutable|check constraint/);
+    await assert.rejects(db.exec("delete from azzora.environment_config"), /Immutable/);
+  });
+  await check("originals bucket is private, MIME restricted and capped at 2MiB", async () => {
+    const row = (await db.query("select public,file_size_limit::int,allowed_mime_types from storage.buckets where id='azzora-private'")).rows[0];
+    assert.equal(row.public, false); assert.equal(row.file_size_limit, 2097152);
+    assert.deepEqual(row.allowed_mime_types, ["application/pdf", "image/png", "image/jpeg"]);
+  });
+  await check("API cannot alter staging scope or migration audit", async () => {
+    for (const table of ["environment_config", "schema_migration_audit"])
+      assert.equal((await db.query(`select has_table_privilege('azzora_api','azzora.${table}','insert,update,delete') allowed`)).rows[0].allowed, false);
   });
   await db.exec(`insert into auth.users values ('${accountant}'),('${manager}');
     insert into auth.sessions(id,user_id) values ('${provider}','${accountant}'),('${managerProvider}','${manager}');

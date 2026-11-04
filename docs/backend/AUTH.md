@@ -17,7 +17,7 @@ Every request rechecks provider-session validity and **current** company members
 `permissions.ts` defines owner/admin, Project Manager, Accountant and Site Staff; SQL `owner_admin` maps to the appropriate owner/admin server grant. Neither Manager workspace access nor ownership silently grants Accountant workspace access. Current grants contain explicit workspace entitlement, assigned project IDs and action capabilities. No frontend-selected role or Supabase `user_metadata` is used.
 
 - Privileged owner/admin/accountant access requires MFA `aal2`.
-- Finance read/post requires explicit Accountant entitlement, an allowed role and the corresponding capability.
+- Finance read/draft/post requires explicit Accountant entitlement, an allowed role and the corresponding capability. Read-only access never permits saving drafts; draft access never permits posting.
 - Project reads/writes and project expenses require explicit project assignment, including owners; no global implicit bypass.
 - Site Staff cannot write project administration or approve expenses solely through a capability flag.
 - Expense approval requires a known different submitter and an allowed approver role.
@@ -28,7 +28,7 @@ SQL schema alignment: `azzora.memberships(company_id,user_id,role,active,finance
 
 ## Verification and remaining acceptance
 
-40 controlled unit tests cover origin/transport rejection, cookie hashing/duplication, membership/workspace/provider revocation, MFA enforcement, CSRF, expiry, atomic-touch rejection, audit failure and logout provider-outage behavior, company/project scope, self-approval, posting capability and online-token claim rejection. These are not live Supabase, RLS, penetration, MFA-device, recovery-mail or hosted browser evidence.
+41 controlled unit tests cover origin/transport rejection, cookie hashing/duplication, membership/workspace/provider revocation, MFA enforcement, CSRF, expiry, atomic-touch rejection, audit failure and logout provider-outage behavior, company/project scope, self-approval, posting capability and online-token claim rejection. These are not live Supabase, RLS, penetration, MFA-device, recovery-mail or hosted browser evidence.
 
 Before Gate 2: approve target organization/project/region and role policy; implement durable adapters and identity enrollment/recovery/MFA; enforce login throttling at the trusted ingress; add successful/denied command/access auditing; provision synthetic staging; run real user/role/revocation/CSRF/recovery/concurrency tests. Production must remain disabled until these checks and later migration/cutover gates pass. No claim of completed production authentication is made.
 

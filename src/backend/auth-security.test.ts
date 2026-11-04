@@ -250,6 +250,25 @@ describe("resource and policy authorization", () => {
       capabilities: ["project.write", "expense.approve", "finance.read"],
     },
   });
+  it("does not grant draft mutations to a read-only Accountant", () => {
+    const a = actor();
+    a.grant.roles = ["accountant"];
+    a.grant.workspaces = ["accountant"];
+    a.grant.capabilities = ["finance.read"];
+    expect(() =>
+      authorize(a, "finance.read", { companyId: "c" }),
+    ).not.toThrow();
+    expect(() => authorize(a, "finance.draft", { companyId: "c" })).toThrow(
+      "capability_denied",
+    );
+    a.grant.capabilities.push("finance.draft");
+    expect(() =>
+      authorize(a, "finance.draft", { companyId: "c" }),
+    ).not.toThrow();
+    expect(() => authorize(a, "finance.post", { companyId: "c" })).toThrow(
+      "capability_denied",
+    );
+  });
   it("allows a currently assigned project write", () =>
     expect(() =>
       authorize(actor(), "project.write", { companyId: "c", projectId: "p" }),

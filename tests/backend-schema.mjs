@@ -161,5 +161,18 @@ try {
       values ('${company}','scan-pending','sales_invoice','inv-a','${company}/original','image/png',100,'${hash}')`);
     assert.equal((await asApi(accountant, hash, "select * from azzora.attachments")).rows.length, 0);
   });
+  await check("separate source attestations record exact applied files idempotently", async () => {
+    const sql = await readFile(new URL("../supabase/attestations/20261104_staging_applied_files.sql", import.meta.url), "utf8");
+    await db.exec(sql);
+    await db.exec(sql);
+    assert.equal((await db.query("select count(*)::int n from azzora.schema_migration_audit")).rows[0].n, 2);
+    assert.deepEqual((await db.query("select version,source_sha256 from azzora.schema_migration_audit order by version")).rows,
+      [{ version: "20261104081228", source_sha256: "c83dd4bdf6e5159af1a49757e85e29199021ecdb6e2e5e3a717e6b28ad607770" },
+       { version: "20261104113610", source_sha256: "d03adb84322210dbe38edb2bd2b55c00b78c57a2f151305664a15dfb285de104" }]);
+  });
+  await check("migration source evidence rejects modification and deletion", async () => {
+    await assert.rejects(db.exec("update azzora.schema_migration_audit set filename='rewritten.sql'"), /Immutable/);
+    await assert.rejects(db.exec("delete from azzora.schema_migration_audit"), /Immutable/);
+  });
   console.log(JSON.stringify({ passed, failed: 0, scope: "local PostgreSQL with synthetic auth stand-ins; NOT hosted Supabase verification" }));
 } finally { await db.close(); }

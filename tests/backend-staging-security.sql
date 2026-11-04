@@ -2,7 +2,27 @@
 -- No auth.users/auth.sessions mutations, credentials, provider calls or permanent fixtures.
 -- Every application and temporary change is rolled back. Any failed check raises an error.
 -- Evidence establishes DB metadata + unauthenticated role denials, NOT live user login/MFA.
+-- Managed SQL-admin preflight must confirm existing ADMIN TRUE membership in azzora_api.
+-- A temporary SET permission TO that admin is rolled back; API privileges are never widened.
 begin;
+
+do $test_role$
+begin
+  if not pg_has_role(current_user,'azzora_api','SET') then
+    if not exists(select 1 from pg_auth_members m join pg_roles r on r.oid=m.roleid
+      join pg_roles u on u.oid=m.member
+      where r.rolname='azzora_api' and u.rolname=current_user and m.admin_option and not m.inherit_option)
+    then raise exception 'SQL test administrator lacks reviewed ADMIN-only API role membership'; end if;
+    -- GRANT options apply to the SQL test admin, not the restricted API role itself.
+    -- Separate commands preserve the reviewed no-inheritance boundary explicitly.
+    execute format('grant azzora_api to %I with inherit false',current_user);
+    execute format('grant azzora_api to %I with set true',current_user);
+    if not pg_has_role(current_user,'azzora_api','SET') then
+      raise exception 'Temporary test-only role switching is unavailable';
+    end if;
+  end if;
+end
+$test_role$;
 
 create temporary table azzora_security_results (
   check_name text primary key,
@@ -190,3 +210,12 @@ $history$;
 select check_name, passed from azzora_security_results order by check_name;
 select count(*) as passed_checks from azzora_security_results;
 rollback;
+
+-- Compare with the separately recorded preflight snapshot. Expected managed staging
+-- baseline: one API->SQL-admin membership, ADMIN TRUE / INHERIT FALSE / SET FALSE.
+-- This query contains only aggregate metadata, never user records or credentials.
+select count(*) as api_grants_to_sql_admin,
+  count(*) filter(where m.admin_option and not m.inherit_option and not m.set_option) as original_admin_only_grants,
+  count(*) filter(where m.set_option or m.inherit_option) as unexpected_persisted_set_or_inherit_grants
+from pg_auth_members m join pg_roles r on r.oid=m.roleid join pg_roles u on u.oid=m.member
+where r.rolname='azzora_api' and u.rolname=current_user;

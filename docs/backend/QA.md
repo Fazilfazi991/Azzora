@@ -10,9 +10,12 @@ Scope: isolated `codex/azzora-production-backend`, inherited baseline `02ab580db
 | Full application TypeScript | Passed after coordinator corrected the in-progress `postJournal` result wrapper to `.state` in command reduction |
 | Full `src` ESLint | Passed |
 | Production dependency advisory check | npm registry bulk advisory endpoint checked **71 non-development lockfile packages**, returned `{}` advisories |
+| All dependency advisory check | **307 package names** checked; **four moderate advisories across three development packages** (`minimatch`, `@vitest/mocker`, `vite`) returned |
 | Existing application isolation | No diff from baseline in existing `src/accounts-review`, `src/domain`, `src/App.tsx`, `src/store.tsx`, `api`, `package.json`, `package-lock.json` or `vercel.json` |
 
 The ordinary `npm audit` command was unavailable because npm is not on this environment's PATH. The successful registry bulk query is explicitly a production-lockfile advisory lookup, not a full npm audit, penetration test, supply-chain attestation or development-dependency clean bill. No packages were upgraded during this independent audit. Coordinator's full regression/build and local PostgreSQL-compatible harness results are separately recorded in the consolidated handoff.
+
+Development advisory details: [minimatch glob amplification](https://github.com/advisories/GHSA-g3hv-75wg-m249), [Vitest mock registration](https://github.com/advisories/GHSA-qxg6-89mg-rqv8), [Vitest Windows redirect traversal](https://github.com/advisories/GHSA-xp26-3454-mjgp), [Vite fs.deny query bypass](https://github.com/advisories/GHSA-8g5g-mxqh-grgj). These are advisory counts, not npm's dependency-expanded vulnerability counts. Local dev servers must remain loopback-only; patch and rerun the applicable regression before staging development services are exposed. Package upgrades were left to the coordinator's controlled dependency task to avoid changing shared dependency installs concurrently.
 
 ## Findings and corrections
 

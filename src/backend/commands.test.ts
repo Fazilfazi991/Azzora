@@ -220,6 +220,68 @@ describe("canonical shared transaction boundary (local adapter contract)", () =>
     expect(f.state().version).toBe(0);
     expect(f.audit()).toHaveLength(0);
   });
+  it("commits a balanced existing-engine posting with its document and audit", async () => {
+    const f = fixture();
+    f.enable();
+    f.adapter.financial = true;
+    f.state().accounting = {
+      version: 1,
+      accounts: [
+        {
+          id: "cash",
+          code: "1000",
+          name: "Cash",
+          type: "Asset",
+          postable: true,
+          status: "Active",
+        },
+        {
+          id: "income",
+          code: "4000",
+          name: "Income",
+          type: "Income",
+          postable: true,
+          status: "Active",
+        },
+      ],
+      periods: [
+        {
+          id: "period",
+          start: "2026-01-01",
+          end: "2026-12-31",
+          status: "Open",
+        },
+      ],
+      journals: [],
+    };
+    f.adapter.prepare = () => ({
+      documents: { invoice: { id: "fictional-invoice", status: "Issued" } },
+      journals: [
+        {
+          id: "entry",
+          postingKey: "fictional-invoice:issue",
+          source: { kind: "invoice", id: "fictional-invoice", action: "issue" },
+          date: "2026-11-04",
+          recordedAt: "2026-11-04T00:00:00.000Z",
+          memo: "Synthetic approved test",
+          currency: "AED",
+          lines: [
+            { accountId: "cash", debitFils: "100", creditFils: "0" },
+            { accountId: "income", debitFils: "0", creditFils: "100" },
+          ],
+        },
+      ],
+    });
+    await executeCanonicalCommand(f.repository, f.adapters, f.command);
+    expect(f.state().documents.invoice).toEqual({
+      id: "fictional-invoice",
+      status: "Issued",
+    });
+    expect(f.state().accounting.journals).toHaveLength(1);
+    expect(f.audit()).toHaveLength(1);
+    await executeCanonicalCommand(f.repository, f.adapters, f.command);
+    expect(f.state().accounting.journals).toHaveLength(1);
+  });
   it("rejects undefined/non-JSON financial payloads before opening a transaction", async () => {
     const f = fixture();
     await expect(

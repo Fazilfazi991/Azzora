@@ -5,12 +5,16 @@ import { createHash } from "node:crypto";
 import { chromium, expect as baseExpect } from "@playwright/test";
 import { browserOptions } from "./browser-runtime.mjs";
 const expect = baseExpect.configure({ timeout: 90000 });
-const manifest = JSON.parse(
-  fs.readFileSync(
+const manifestPath =
+  process.env.AZZORA_QA_MANIFEST ||
+  "tests/fixtures/general-document-entry/manifest.json";
+assert.ok(
+  [
     "tests/fixtures/general-document-entry/manifest.json",
-    "utf8",
-  ),
+    "tests/fixtures/general-document-entry/department-supplement.json",
+  ].includes(manifestPath),
 );
+const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 const old = new Set(
   JSON.parse(
     fs.readFileSync("tests/fixtures/document-entry/manifest.json", "utf8"),
@@ -73,6 +77,7 @@ const out =
 fs.mkdirSync(out, { recursive: true });
 const report = {
   testedSHA: sha,
+  manifestPath,
   base,
   startedAt: new Date().toISOString(),
   selected,
@@ -219,6 +224,33 @@ try {
     assert.equal(r.status(), 200, "Authenticated snapshot");
     return r.json();
   }
+  async function paintedPdfPage(canvas, pageNumber, filename) {
+    await expect(canvas).toHaveAttribute("data-rendered", "true");
+    await expect(canvas).toHaveAttribute(
+      "data-rendered-page",
+      String(pageNumber),
+    );
+    const pixels = await canvas.evaluate((node) => {
+      const rgba = node
+        .getContext("2d")
+        .getImageData(0, 0, node.width, node.height).data;
+      let ink = 0;
+      for (let i = 0; i < rgba.length; i += 4)
+        if (
+          rgba[i + 3] > 0 &&
+          (rgba[i] < 245 || rgba[i + 1] < 245 || rgba[i + 2] < 245)
+        )
+          ink++;
+      return { ink, data: node.toDataURL("image/png").split(",")[1] };
+    });
+    assert.ok(
+      pixels.ink > 100,
+      "The requested PDF page must actually contain rendered evidence, not a blank canvas.",
+    );
+    const bytes = Buffer.from(pixels.data, "base64");
+    fs.writeFileSync(out + "/" + filename, bytes);
+    return bytes;
+  }
   const initial = await snapshot();
   assert.equal(initial.documentAi.enabled, true);
   const baseline = {
@@ -335,9 +367,11 @@ try {
         page.getByText(`Page 1 of ${doc.pages}`, { exact: true }),
       ).toBeVisible();
       const filename = `${doc.id}-original-page-1.png`;
-      const bytes = await page
-        .getByRole("img", { name: "Original PDF page 1", exact: true })
-        .screenshot({ path: out + "/" + filename });
+      const bytes = await paintedPdfPage(
+        page.getByRole("img", { name: "Original PDF page 1", exact: true }),
+        1,
+        filename,
+      );
       row.firstPreviewPageSha256 = createHash("sha256")
         .update(bytes)
         .digest("hex");
@@ -360,7 +394,7 @@ try {
       await page.screenshot({ path: out + "/" + name, fullPage: true });
       report.screenshots.push(name);
     }
-    if (doc.format === "pdf") {
+    if (doc.format === "pdf" && doc.pages > 1) {
       await page.setViewportSize({ width: 1440, height: 1000 });
       await page
         .getByRole("button", { name: "Next page", exact: true })
@@ -374,7 +408,7 @@ try {
         page.getByText(`Page 2 of ${doc.pages}`, { exact: true }),
       ).toBeVisible();
       const filename = `${doc.id}-original-page-2.png`;
-      const bytes = await canvas.screenshot({ path: out + "/" + filename });
+      const bytes = await paintedPdfPage(canvas, 2, filename);
       assert.notEqual(
         createHash("sha256").update(bytes).digest("hex"),
         row.firstPreviewPageSha256,

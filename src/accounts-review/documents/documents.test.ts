@@ -589,6 +589,48 @@ describe("review-only finance boundaries", () => {
   });
 });
 describe("interchangeable server providers (mock transport only)", () => {
+  it("includes an empty department in the outbound JSON example without inventing a department when it is absent", async () => {
+    const file = upload();
+    let calls = 0;
+    const provider = createChatExtractor(
+      "deepseek",
+      "mock-only",
+      {
+        reference: "independent-prompt-contract",
+        allowedDigests: new Set([digestOf(file)]),
+        maxRequests: 1,
+      },
+      undefined,
+      async (_url, init) => {
+        calls++;
+        const sent = JSON.parse(String(init?.body));
+        const prompt = sent.messages[0].content;
+        const marker = "Example JSON shape (empty fields are intentional): ";
+        expect(prompt).toContain(marker);
+        const example = JSON.parse(
+          prompt.slice(prompt.indexOf(marker) + marker.length),
+        );
+        expect(example.fields).toHaveProperty("department", "");
+        return Response.json({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  fields: sampleDocuments[0].fields,
+                  uncertain: [],
+                }),
+              },
+              finish_reason: "stop",
+            },
+          ],
+        });
+      },
+    );
+    const output = await provider.extract(file);
+    expect(output.fields.department).toBe("");
+    expect(output.uncertain).toContain("department");
+    expect(calls).toBe(1);
+  });
   it("sends locally rendered PDF pages to vision without an external OCR service", async () => {
     const pdf = upload(1),
       image = upload();

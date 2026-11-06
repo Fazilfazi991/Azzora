@@ -1,0 +1,143 @@
+{
+  "version": 1,
+  "createdAt": "2026-11-06T00:00:00Z",
+  "purpose": "New independent department prompt verification; original ten documents and results preserved.",
+  "documents": [
+    {
+      "id": "G11",
+      "path": "tests/fixtures/general-document-entry/silver-fern-department.png",
+      "sha256": "b7b7100962cbe783ad1ebfeb3a4750562683cfad835edc46fc6fc027ffbbc6bf",
+      "bytes": 117017,
+      "format": "png",
+      "pages": 1,
+      "layout": "department-image",
+      "language": "English",
+      "fictional": true,
+      "previouslyUnseen": true,
+      "groundTruth": {
+        "supplier": "Silver Fern Joinery Goods",
+        "documentType": "invoice",
+        "reference": "SFJ-6014",
+        "date": "2026-11-06",
+        "dueDate": "2026-11-20",
+        "purchaseOrderReference": "FIC-PO-558",
+        "currency": "AED",
+        "department": "JOINERY",
+        "kind": "supplier-bill",
+        "items": [
+          {
+            "description": "Birch trim strips",
+            "quantity": "3",
+            "unit": "length",
+            "unitRate": "18.50",
+            "discount": "0.00",
+            "tax": "2.78",
+            "total": "58.28",
+            "productId": ""
+          },
+          {
+            "description": "Cabinet handles",
+            "quantity": "2",
+            "unit": "pair",
+            "unitRate": "25.00",
+            "discount": "0.00",
+            "tax": "2.50",
+            "total": "52.50",
+            "productId": ""
+          }
+        ],
+        "subtotal": "105.50",
+        "tax": "5.28",
+        "total": "110.78",
+        "discount": "",
+        "categoryId": "",
+        "ledgerId": "",
+        "projectName": "",
+        "projectId": "",
+        "customerName": "",
+        "customerId": ""
+      },
+      "scoredFields": [
+        "supplier",
+        "date",
+        "reference",
+        "currency",
+        "documentType",
+        "dueDate",
+        "purchaseOrderReference",
+        "subtotal",
+        "discount",
+        "tax",
+        "total",
+        "kind",
+        "department",
+        "projectName"
+      ],
+      "expectedMissing": [],
+      "notes": "New independent original for department prompt verification; no preset extraction or admission registration."
+    },
+    {
+      "id": "G12",
+      "path": "tests/fixtures/general-document-entry/crescent-mill-department.pdf",
+      "sha256": "7469df6d4c23b53a27210abf8a64053e728670125cacc6f87144a3fe6887426e",
+      "bytes": 3750,
+      "format": "pdf",
+      "pages": 1,
+      "layout": "department-text-pdf",
+      "language": "English",
+      "fictional": true,
+      "previouslyUnseen": true,
+      "groundTruth": {
+        "supplier": "Crescent Mill Site Store",
+        "documentType": "receipt",
+        "reference": "CMS-CASH-914",
+        "date": "2026-11-05",
+        "dueDate": "",
+        "purchaseOrderReference": "",
+        "currency": "AED",
+        "department": "MEP",
+        "kind": "project-expense",
+        "items": [
+          {
+            "description": "Conduit clips",
+            "quantity": "5",
+            "unit": "each",
+            "unitRate": "3.20",
+            "discount": "0.00",
+            "tax": "0.00",
+            "total": "16.00",
+            "productId": ""
+          }
+        ],
+        "subtotal": "16.00",
+        "tax": "0.00",
+        "total": "16.00",
+        "discount": "",
+        "categoryId": "",
+        "ledgerId": "",
+        "projectName": "",
+        "projectId": "",
+        "customerName": "",
+        "customerId": ""
+      },
+      "scoredFields": [
+        "supplier",
+        "date",
+        "reference",
+        "currency",
+        "documentType",
+        "dueDate",
+        "purchaseOrderReference",
+        "subtotal",
+        "discount",
+        "tax",
+        "total",
+        "kind",
+        "department",
+        "projectName"
+      ],
+      "expectedMissing": [],
+      "notes": "New independent original for department prompt verification; no preset extraction or admission registration."
+    }
+  ]
+}

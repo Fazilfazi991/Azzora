@@ -12,13 +12,20 @@ export default function PdfPreview({ url }: { url: string }) {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null),
     [page, setPage] = useState(1),
     [error, setError] = useState("");
-  const [ready, setReady] = useState(false);
+  const [rendered, setRendered] = useState<{
+    pdf: PDFDocumentProxy;
+    url: string;
+    page: number;
+  } | null>(null);
+  // A completed previous page must never mark the next page (or file) ready.
+  const ready =
+    rendered?.pdf === pdf && rendered?.url === url && rendered?.page === page;
   useEffect(() => {
     let active = true;
     setPdf(null);
     setPage(1);
     setError("");
-    setReady(false);
+    setRendered(null);
     const task = getDocument({
       url,
       disableAutoFetch: true,
@@ -43,7 +50,7 @@ export default function PdfPreview({ url }: { url: string }) {
     if (!pdf || !canvas.current) return;
     let active = true;
     let cancel: (() => void) | undefined;
-    setReady(false);
+    setRendered(null);
     pdf
       .getPage(page)
       .then((p) => {
@@ -59,7 +66,7 @@ export default function PdfPreview({ url }: { url: string }) {
         cancel = () => task.cancel();
         task.promise
           .then(() => {
-            if (active) setReady(true);
+            if (active) setRendered({ pdf, url, page });
           })
           .catch((e) => {
             if (active && e.name !== "RenderingCancelledException")
@@ -75,7 +82,7 @@ export default function PdfPreview({ url }: { url: string }) {
       active = false;
       cancel?.();
     };
-  }, [pdf, page]);
+  }, [pdf, page, url]);
   return (
     <div className="entry-pdf" aria-label="Original uploaded PDF">
       {error ? (
@@ -87,6 +94,7 @@ export default function PdfPreview({ url }: { url: string }) {
             ref={canvas}
             aria-label={`Original PDF page ${page}`}
             data-rendered={ready}
+            data-rendered-page={ready ? page : undefined}
             role="img"
           />
           <div className="entry-pdf-controls">

@@ -1,5 +1,7 @@
 # Final AI client-demo release gate
 
+Subsequent correction: [new Preview permission fix verified](CLIENT-DOCUMENT-PERMISSIONS-RELEASE.md). This prior release/rollback record is retained as history; the stable alias has not moved.
+
 ## Stable alias release superseded — 6 November 2026
 
 **NO-GO: rolled back.** The actual stable-host workflow checks passed, but two additional permission regressions failed: finance.draft permits expense-ledger and cash-account creation beyond document-review-only scope. Stable alias is restored to dpl_ESphaGfTKeRK8wzRt7AcYiaWwSjy; restricted client access is held. No credentials were sent. The earlier GO below is historical and superseded. See [rollback report](STABLE-AI-RELEASE-ROLLBACK-REPORT.md).

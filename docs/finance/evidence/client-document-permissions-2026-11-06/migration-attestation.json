@@ -1,0 +1,10 @@
+{
+  "path": "supabase/migrations/20261106075301_document_review_write_boundary.sql",
+  "sha256": "2650fc15d9cc1a64b217b5398ef951a20cdbc28997a395042a4875a50787b2f0",
+  "project": "hkhomrrvxtcxnxvdlkoh",
+  "appliedVia": "Supabase SQL Editor",
+  "checkpoint": "document-review-boundary-installed",
+  "projectionOk": true,
+  "fictionalCompanies": 1,
+  "migrationHistoryNotReconciledByThisRelease": true
+}

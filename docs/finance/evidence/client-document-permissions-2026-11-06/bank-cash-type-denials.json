@@ -1,0 +1,18 @@
+{
+  "checks": [
+    {
+      "accountType": "bank",
+      "status": 403
+    },
+    {
+      "accountType": "cash",
+      "status": 403
+    },
+    {
+      "accountType": "staff",
+      "status": 403
+    }
+  ],
+  "canonicalSnapshotAndVersionUnchanged": true,
+  "clientAssurance": "aal2"
+}

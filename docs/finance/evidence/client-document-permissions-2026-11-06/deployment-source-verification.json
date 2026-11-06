@@ -1,0 +1,9 @@
+{
+  "deploymentId": "dpl_HbzNp2oVMMA3Lv83kHZLxU7atPrQ",
+  "sourceSha": "bcf80caa4d8eef9308b18da64462be9cc0dbf9f8",
+  "uploadedSourceFilesMatchingLocalSha1": 252,
+  "mismatches": [],
+  "noTmpEnvBuildOrDependencySourceUploaded": true,
+  "vercelGitMetadataPresent": false,
+  "method": "Vercel uploaded-file UID SHA1 compared with frozen local application files"
+}

@@ -1,5 +1,7 @@
 # Stable Accounts release: rolled back — NO-GO
 
+Subsequent correction: [new Preview permission fix verified](CLIENT-DOCUMENT-PERMISSIONS-RELEASE.md). This prior release/rollback record is retained as history; the stable alias has not moved.
+
 6 November 2026. The owner-approved alias switch was performed, tested on the actual stable hostname, and reversed after a critical authorization failure. No application rebuild, production promotion, main merge or Manager change occurred.
 
 ## Deployment state

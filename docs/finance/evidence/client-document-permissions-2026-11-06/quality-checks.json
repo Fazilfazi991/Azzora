@@ -1,0 +1,13 @@
+{
+  "testedApplicationSha": "bcf80caa4d8eef9308b18da64462be9cc0dbf9f8",
+  "checks": [
+    {
+      "name": "TypeScript",
+      "exitCode": 0
+    },
+    {
+      "name": "ESLint",
+      "exitCode": 0
+    }
+  ]
+}

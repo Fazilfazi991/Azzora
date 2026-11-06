@@ -1,0 +1,40 @@
+vite v6.4.5 building for production...
+transforming...
+✓ 2038 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/accountant.html                         0.65 kB │ gzip:   0.35 kB
+dist/index.html                              0.77 kB │ gzip:   0.40 kB
+dist/assets/pdf.worker.min-CjEcRF4W.mjs  1,264.34 kB
+dist/assets/client-login-DT8d2Ah-.css        4.44 kB │ gzip:   1.33 kB
+dist/assets/Quotations-CLQSMpeg.css         21.92 kB │ gzip:   3.86 kB
+dist/assets/accountant-ijDA9BlF.css         37.91 kB │ gzip:   8.22 kB
+dist/assets/main-EBSr6Typ.css               55.19 kB │ gzip:  10.97 kB
+dist/assets/Documents-DfqH80ol.js            7.76 kB │ gzip:   2.64 kB
+dist/assets/purify.es-CAi2OJFm.js           30.47 kB │ gzip:  11.73 kB
+dist/assets/accountant-D3tFvc92.js         105.29 kB │ gzip:  28.08 kB
+dist/assets/Quotations-BD3sWSrF.js         139.84 kB │ gzip:  52.99 kB
+dist/assets/index.es-FR72o73G.js           159.98 kB │ gzip:  53.63 kB
+dist/assets/html2canvas.esm-QH1iLAAe.js    202.38 kB │ gzip:  48.04 kB
+dist/assets/client-login-CwszC-0u.js       327.39 kB │ gzip:  99.40 kB
+dist/assets/jspdf.es.min-DabcIRau.js       390.80 kB │ gzip: 128.84 kB
+dist/assets/PdfPreview-B3UB8rty.js         484.40 kB │ gzip: 145.25 kB
+dist/assets/main-BlnpfyMc.js               509.29 kB │ gzip: 137.49 kB
+✓ built in 17.03s
+../azzora-final-shared-staging/node_modules/zod/v4/core/regexes.js (74:0): A comment
+
+"/** Anchors a pattern source. The interpolation lives here rather than at the call site because
+ * esbuild will not drop a `@__PURE__` call whose own argument interpolates a variable, but it
+ * will drop `anchor(dateSource)`. Keeping it inline pinned `date` into every bundle. */"
+
+in "../azzora-final-shared-staging/node_modules/zod/v4/core/regexes.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../azzora-final-shared-staging/node_modules/zod/v4/core/util.js (400:0): A comment
+
+"// Wrapped in a `@__PURE__` IIFE: esbuild never tree-shakes a top-level initializer that contains a member access on `Number`, so the bare object literal survived into every bundle."
+
+in "../azzora-final-shared-staging/node_modules/zod/v4/core/util.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.

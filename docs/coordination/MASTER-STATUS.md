@@ -1,5 +1,10 @@
 # AZZORA MASTER STATUS
 
+## Client document permissions corrected — 6 November 2026
+
+New immutable Preview dpl_HbzNp2oVMMA3Lv83kHZLxU7atPrQ on application bcf80caa4d8eef9308b18da64462be9cc0dbf9f8 passes1,107 units,3 fixture/native checks,9 combined browser suites and actual hosted restricted/Owner/Accountant tests. finance.draft is document-only at API and SQL canonical boundaries. Fresh fictional DeepSeek extraction and Save Draft preserve financial records; shared USD5 history remains intact. Stable alias stays on dpl_ESphaGfTKeRK8wzRt7AcYiaWwSjy. Credentials unshared; Owner approval required for any alias move. [Release evidence and exact gates](../finance/CLIENT-DOCUMENT-PERMISSIONS-RELEASE.md).
+
+
 ## Stable alias release superseded — 6 November 2026
 
 **NO-GO: rolled back.** The actual stable-host workflow checks passed, but two additional permission regressions failed: finance.draft permits expense-ledger and cash-account creation beyond document-review-only scope. Stable alias is restored to dpl_ESphaGfTKeRK8wzRt7AcYiaWwSjy; restricted client access is held. No credentials were sent. The earlier GO below is historical and superseded. See [rollback report](../finance/STABLE-AI-RELEASE-ROLLBACK-REPORT.md).

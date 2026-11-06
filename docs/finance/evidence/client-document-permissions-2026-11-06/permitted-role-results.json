@@ -1,0 +1,34 @@
+{
+  "results": [
+    {
+      "role": "owner_admin",
+      "action": "create-expense-ledger",
+      "status": 200,
+      "fictionalFixtureId": "PERMISSION-OWNER-LEDGER"
+    },
+    {
+      "role": "owner_admin",
+      "action": "create-cash-account",
+      "status": 200,
+      "fictionalFixtureId": "PERMISSION-OWNER-CASH"
+    },
+    {
+      "role": "accountant",
+      "action": "create-expense-ledger",
+      "status": 200,
+      "fictionalFixtureId": "PERMISSION-ACCOUNTANT-LEDGER"
+    },
+    {
+      "role": "accountant",
+      "action": "create-cash-account",
+      "status": 200,
+      "fictionalFixtureId": "PERMISSION-ACCOUNTANT-CASH"
+    }
+  ],
+  "financialBalancesAndExistingTransactionsUnchanged": true,
+  "newZeroBalanceFictionalCashAccounts": 2,
+  "newFictionalExpenseLedgers": 2,
+  "newJournals": 0,
+  "otherUserMfaChanged": false,
+  "logoutsVerified": true
+}

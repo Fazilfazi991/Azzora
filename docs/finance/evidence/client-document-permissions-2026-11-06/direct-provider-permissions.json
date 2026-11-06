@@ -1,0 +1,47 @@
+{
+  "assurance": "aal2",
+  "browserPrivilegedRpcsDenied": 3,
+  "privateTableRoutesUnavailable": 4,
+  "checks": [
+    {
+      "rpc": "staging_company_commit",
+      "status": 403,
+      "code": "42501"
+    },
+    {
+      "rpc": "staging_auth_grant",
+      "status": 403,
+      "code": "42501"
+    },
+    {
+      "rpc": "staging_auth_fixture_membership",
+      "status": 403,
+      "code": "42501"
+    },
+    {
+      "table": "accounts",
+      "status": 406,
+      "code": "PGRST106",
+      "note": "Private schema is not exposed to browser Data API"
+    },
+    {
+      "table": "records",
+      "status": 406,
+      "code": "PGRST106",
+      "note": "Private schema is not exposed to browser Data API"
+    },
+    {
+      "table": "memberships",
+      "status": 406,
+      "code": "PGRST106",
+      "note": "Private schema is not exposed to browser Data API"
+    },
+    {
+      "table": "journals",
+      "status": 406,
+      "code": "PGRST106",
+      "note": "Private schema is not exposed to browser Data API"
+    }
+  ],
+  "providerSessionLogout": true
+}

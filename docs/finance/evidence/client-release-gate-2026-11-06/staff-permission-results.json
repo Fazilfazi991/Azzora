@@ -1,0 +1,23 @@
+{
+  "checks": [
+    {
+      "path": "finance_snapshot",
+      "status": 403
+    },
+    {
+      "path": "private_accounts_attachment",
+      "status": 403
+    },
+    {
+      "check": "Staff project scope enforced; customer, supplier and Accountant bill data omitted",
+      "passed": true
+    },
+    {
+      "check": "Staff test session revoked",
+      "passed": true
+    }
+  ],
+  "businessWrites": 0,
+  "providerCalls": 0,
+  "passed": true
+}

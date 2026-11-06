@@ -1,5 +1,9 @@
 # Controlled integration plan and executed checkpoints
 
+## Final restricted-client release candidate — 6 November 2026
+
+Application `28a52f01b30a012620b0e1e3cd938dad26b059ad` on `codex/azzora-ai-client-release-gate` adds only the reviewed restricted fictional identity admission migration and exact Accounts stable-origin opt-in. New Preview `dpl_FiNSszjSsMrVrnXBtCra3qxxxHis` passes actual restricted MFA, fresh G14 extraction/review/draft, permissions, 30 hosted route/viewport checks, reconciliation and final source checks. Preserve G13's initial strict classification failure and both samples' human corrections in evidence. Stable alias reassignment is not executed; retain rollback `dpl_ESphaGfTKeRK8wzRt7AcYiaWwSjy`. On separate owner approval, move only the existing Accounts alias and immediately smoke-test its actual hostname; restore the old alias target on failure. Do not promote, change Manager production or enable real records. [Concrete release gate and rollback plan](../finance/FINAL-AI-CLIENT-RELEASE-GATE.md).
+
 ## General-document AI review checkpoint — 6 November 2026
 
 Isolated branch `codex/azzora-ai-general-documents`, final application `8570f1cd91517a409fa81b6bae3b4769c743d806`, retains canonical shared-staging finance and private originals. Source stages: `906273a` admission/normalization/UI, `771ff3c` native ESM packaging, `8570f1c` department example and completed PDF-page readiness. New immutable Preview `dpl_AXWXbxHQAg2FNdNuzTTcpP2AEie8` only; stable aliases, production settings and GitHub main are untouched. Full nine-suite browser checkpoint is recorded at `771ff3c`, final affected checks and 1,022 units at `8570f1c`; actual model tests cover ten initial and two final unseen originals. No automatic financial posting or real-document enablement. See [the precise result and approval gates](../finance/GENERAL-DOCUMENT-AUTOFILL-REVIEW.md) before any alias reassignment or release.

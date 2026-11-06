@@ -1,5 +1,19 @@
 # Task board
 
+## Final AI client-demo gate — 6 November 2026
+
+| Gate | Result |
+| --- | --- |
+| Individual restricted client, MFA and onboarding | Verified; read/draft only, client enrolls own authenticator |
+| Fresh hosted extraction, editing and draft | Passed with disclosed unknown classification/missing discount and human correction |
+| Financial and permission boundaries | Passed; six financial commands denied, no posting, scoped staff/private files |
+| Final regression | 1,050 units; 30 hosted route/viewport checks; actual login/logout and 20 journal/report reconciliations |
+| Shared metering | Actual usage matched ledger; USD4.985560 remains under the application cap; billing unverified |
+| Alias compatibility and rollback | Exact alias opt-in prepared; stable unchanged; old deployment retained |
+| Stable reassignment / real documents / production accounting | Await separate authorization |
+
+[Final release recommendation and client access](../finance/FINAL-AI-CLIENT-RELEASE-GATE.md).
+
 ## General document auto-fill checkpoint — 6 November 2026
 
 | Scope | Status |

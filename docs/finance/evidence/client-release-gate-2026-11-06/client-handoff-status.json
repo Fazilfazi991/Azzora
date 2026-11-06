@@ -1,0 +1,13 @@
+{
+  "clientIdentity": "client-review@staging.azzora.test",
+  "genuineMfa2PreviouslyVerified": true,
+  "clientBrowserLogoutRevoked": true,
+  "oldQaSessionRevoked": true,
+  "onlyNewQaFactorRetired": true,
+  "remainingFactors": 0,
+  "clientMustEnrollOwnAuthenticator": true,
+  "existingFourUsersFactorsUnchanged": true,
+  "passwordPrinted": false,
+  "passwordCommitted": false,
+  "invitationsSent": 0
+}

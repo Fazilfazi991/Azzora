@@ -1,0 +1,17 @@
+{
+  "providerCalls": 0,
+  "classificationInitiallyCorrect": false,
+  "rawClassification": "unknown",
+  "humanCorrections": {
+    "kind": "supplier-bill",
+    "discount": "0.00",
+    "projectId": "a60b660b-f4df-41cf-a776-34b6e9c11121"
+  },
+  "checks": [
+    "All9 item quantity/rate/total fields and document total edited/restored; uncertain classification explicitly selected; printed discount manually supplied",
+    "SaveDraft preserves raw extraction, recordshuman correction, leaves all financials and authorized catalog unchanged",
+    "Authenticated refresh retains draft history"
+  ],
+  "errors": [],
+  "status": "review-and-draft-pass"
+}

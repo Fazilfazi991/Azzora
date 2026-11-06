@@ -1,0 +1,17 @@
+{
+  "individualDedicated": true,
+  "email": "client-review@staging.azzora.test",
+  "role": "accountant",
+  "workspace": "accountant",
+  "assurance": "aal2",
+  "capabilities": [
+    "finance.read",
+    "finance.draft"
+  ],
+  "managerAccess": false,
+  "financialSimulationAllowed": false,
+  "realPostingAllowed": false,
+  "totpVerified": true,
+  "credentialsPrinted": false,
+  "invitationsSent": 0
+}

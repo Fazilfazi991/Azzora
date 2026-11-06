@@ -1,0 +1,305 @@
+{
+  "testedSha": "8570f1cd91517a409fa81b6bae3b4769c743d806",
+  "deploymentId": "dpl_AXWXbxHQAg2FNdNuzTTcpP2AEie8",
+  "startedAt": "2026-11-06T06:29:20.148Z",
+  "checks": [
+    "Actual browser login and existing MFA challenge to dashboard",
+    "Journal balance, ledger/trial agreement, AR/AP, P&L and balance sheet reconcile",
+    "Mobile menu opens and closes",
+    "Thirty actual hosted route/viewport checks",
+    "Anonymous attachment/catalog denied, Manager workspace denied, unknown attachment404, forged company query does not switch scope",
+    "Current immutable Preview rejects stable alias Origin (release blocker reproduced)"
+  ],
+  "routes": [
+    {
+      "width": 1440,
+      "route": "dashboard",
+      "heading": "Financial dashboard",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "invoices",
+      "heading": "Sales invoices",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "new-invoice",
+      "heading": "New invoice",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "bills",
+      "heading": "Purchase bills",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "receipts",
+      "heading": "Customer receipts",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "supplier-payments",
+      "heading": "Supplier payments",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "expenses",
+      "heading": "Expenses",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "banking",
+      "heading": "Bank & cash",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "ledger",
+      "heading": "General ledger",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "pnl",
+      "heading": "Profit & loss",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "balance",
+      "heading": "Balance sheet",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "trial",
+      "heading": "Trial balance",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "aging",
+      "heading": "Receivable & payable aging",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "project-reports",
+      "heading": "Project & department reports",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "document-entry",
+      "heading": "Read a bill",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "dashboard",
+      "heading": "Financial dashboard",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "invoices",
+      "heading": "Sales invoices",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "new-invoice",
+      "heading": "New invoice",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "bills",
+      "heading": "Purchase bills",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "receipts",
+      "heading": "Customer receipts",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "supplier-payments",
+      "heading": "Supplier payments",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "expenses",
+      "heading": "Expenses",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "banking",
+      "heading": "Bank & cash",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "ledger",
+      "heading": "General ledger",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "pnl",
+      "heading": "Profit & loss",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "balance",
+      "heading": "Balance sheet",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "trial",
+      "heading": "Trial balance",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "aging",
+      "heading": "Receivable & payable aging",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "project-reports",
+      "heading": "Project & department reports",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "document-entry",
+      "heading": "Read a bill",
+      "overflow": false
+    }
+  ],
+  "errors": [],
+  "paidRequests": 1,
+  "restrictedClientVerified": false,
+  "actualProviderBillingConfirmed": false,
+  "account": {
+    "role": "accountant",
+    "capabilities": [
+      "finance.read",
+      "finance.draft",
+      "finance.simulate"
+    ],
+    "workspace": "accountant",
+    "mfa": "aal2",
+    "dedicatedClientAccount": false
+  },
+  "financial": {
+    "journals": 20,
+    "trialDebitFils": "10209000",
+    "trialCreditFils": "10209000",
+    "balanceDifferenceFils": "0",
+    "metrics": {
+      "revenueFils": "200000",
+      "costOfSalesFils": "20500",
+      "operatingExpensesFils": "0",
+      "grossProfitFils": "179500",
+      "netProfitFils": "179500",
+      "receivablesFils": "168000",
+      "payablesFils": "9000",
+      "bankFils": "10020500",
+      "cashFils": "0"
+    }
+  },
+  "stableOriginStatus": 403,
+  "extraction": {
+    "provider": "deepseek-flash",
+    "requestId": "0751d443-e30c-44dd-9770-20c493252f8a",
+    "inputTokens": 1249,
+    "outputTokens": 259,
+    "uncertain": [
+      "supplier",
+      "kind",
+      "documentType",
+      "purchaseOrderReference",
+      "discount",
+      "projectName",
+      "customerName"
+    ],
+    "fieldIssues": [],
+    "fields": {
+      "tax": "0.00",
+      "date": "2026-11-06",
+      "kind": "unknown",
+      "items": [
+        {
+          "tax": "0.00",
+          "unit": "each",
+          "total": "37.20",
+          "discount": "0.00",
+          "quantity": "3",
+          "unitRate": "12.40",
+          "productId": "",
+          "description": "Masonry brush"
+        },
+        {
+          "tax": "0.00",
+          "unit": "each",
+          "total": "37.50",
+          "discount": "0.00",
+          "quantity": "2",
+          "unitRate": "18.75",
+          "productId": "",
+          "description": "Tape measure"
+        },
+        {
+          "tax": "0.00",
+          "unit": "pack",
+          "total": "21.00",
+          "discount": "0.00",
+          "quantity": "5",
+          "unitRate": "4.20",
+          "productId": "",
+          "description": "Safety labels"
+        }
+      ],
+      "total": "95.70",
+      "dueDate": "2026-11-20",
+      "currency": "AED",
+      "discount": "",
+      "ledgerId": "",
+      "subtotal": "95.70",
+      "supplier": "Fictional Delta Harbor Tools",
+      "projectId": "",
+      "reference": "FDH-REVIEW-1301",
+      "categoryId": "",
+      "customerId": "",
+      "department": "CIVIL",
+      "projectName": "",
+      "customerName": "",
+      "documentType": "invoice",
+      "purchaseOrderReference": ""
+    },
+    "fresh": true,
+    "sha256": "7b7e3f6e2602c7d44cfcff6ce81d7c77cf69c615a20ed7ab073cf6a038bd0941",
+    "vercelRequestId": "bom1::sin1::cmzh2-1793946575296-a2baad0ba803",
+    "classificationCorrect": false,
+    "actualProviderChargeUsd": null
+  },
+  "status": "failed",
+  "error": "AI field kind",
+  "finishedAt": "2026-11-06T06:29:45.665Z"
+}

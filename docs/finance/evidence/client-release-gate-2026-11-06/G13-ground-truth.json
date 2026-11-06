@@ -1,0 +1,48 @@
+{
+  "path": "tmp/final-release-gate/fictional-release-bill.png",
+  "sha256": "7b7e3f6e2602c7d44cfcff6ce81d7c77cf69c615a20ed7ab073cf6a038bd0941",
+  "fictional": true,
+  "fields": {
+    "documentType": "invoice",
+    "supplier": "Fictional Delta Harbor Tools",
+    "date": "2026-11-06",
+    "dueDate": "2026-11-20",
+    "reference": "FDH-REVIEW-1301",
+    "currency": "AED",
+    "department": "CIVIL",
+    "kind": "supplier-bill",
+    "subtotal": "95.70",
+    "tax": "0.00",
+    "total": "95.70",
+    "discount": "0.00",
+    "items": [
+      {
+        "description": "Masonry brush",
+        "quantity": "3",
+        "unit": "each",
+        "unitRate": "12.40",
+        "discount": "0.00",
+        "tax": "0.00",
+        "total": "37.20"
+      },
+      {
+        "description": "Tape measure",
+        "quantity": "2",
+        "unit": "each",
+        "unitRate": "18.75",
+        "discount": "0.00",
+        "tax": "0.00",
+        "total": "37.50"
+      },
+      {
+        "description": "Safety labels",
+        "quantity": "5",
+        "unit": "pack",
+        "unitRate": "4.20",
+        "discount": "0.00",
+        "tax": "0.00",
+        "total": "21.00"
+      }
+    ]
+  }
+}

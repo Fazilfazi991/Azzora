@@ -1,0 +1,16 @@
+{
+  "applicationSha": "28a52f01b30a012620b0e1e3cd938dad26b059ad",
+  "branch": "codex/azzora-ai-client-release-gate",
+  "deploymentId": "dpl_FiNSszjSsMrVrnXBtCra3qxxxHis",
+  "url": "https://azzora-accounts-client-review-38pefljhg-faziils-projects.vercel.app/accountant.html",
+  "readyState": "READY",
+  "environment": "preview",
+  "preparedAliasOrigin": "https://azzora-accounts-client-review-faziils-projects.vercel.app",
+  "aliasAssigned": false,
+  "rollbackDeploymentId": "dpl_ESphaGfTKeRK8wzRt7AcYiaWwSjy",
+  "managerProductionDeploymentId": "dpl_F9kD9Vu4ioWTCJrQwD2ev5J6mYmp",
+  "githubMain": "fd7754dfe0022f9b64bf875313bd9679cb0144eb",
+  "realCompanyProcessingEnabled": false,
+  "migration": "20261106063844_ai_client_review_identity.sql",
+  "migrationSha256": "f2f2844d923718ec31c524dda4c54264f99f8f4ab243fddefe5c23c0dba917e6"
+}

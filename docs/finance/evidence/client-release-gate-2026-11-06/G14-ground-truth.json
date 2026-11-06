@@ -1,0 +1,39 @@
+{
+  "path": "tmp/final-release-gate/fictional-release-bill.png",
+  "sha256": "7f6a49038a3c0d7530e693d4917c31f47919173a61eb4abe62fc0d8d6c6a016e",
+  "fictional": true,
+  "fields": {
+    "documentType": "invoice",
+    "supplier": "Fictional Elm Coast Electrical",
+    "date": "2026-11-06",
+    "dueDate": "2026-11-21",
+    "reference": "FEC-CLIENT-1401",
+    "currency": "AED",
+    "department": "MEP",
+    "kind": "supplier-bill",
+    "subtotal": "70.50",
+    "discount": "0.00",
+    "tax": "3.53",
+    "total": "74.03",
+    "items": [
+      {
+        "description": "Cable glands M20",
+        "quantity": "4",
+        "unit": "bag",
+        "unitRate": "8.25",
+        "discount": "0.00",
+        "tax": "1.65",
+        "total": "34.65"
+      },
+      {
+        "description": "PVC conduit 20 mm",
+        "quantity": "3",
+        "unit": "length",
+        "unitRate": "12.50",
+        "discount": "0.00",
+        "tax": "1.88",
+        "total": "39.38"
+      }
+    ]
+  }
+}

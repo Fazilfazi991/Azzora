@@ -596,7 +596,9 @@ export function DocumentEntry({
             {doc.extraction.reviewOnly && (
               <div className="entry-warnings" role="status">
                 {doc.extraction.reviewPolicy === "draft-only"
-                  ? "Fictional AI review · save drafts only."
+                  ? doc.extraction.mode === "manual"
+                    ? "Manual entry · save drafts only."
+                    : "Fictional AI review · save drafts only."
                   : "Owner-authorized quotation · review drafts only."}{" "}
                 This document cannot create a purchase bill, expense, payment or
                 journal posting.

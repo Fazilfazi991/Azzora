@@ -1,5 +1,7 @@
 # Client document-review permission fix and Preview release
 
+Subsequent owner-approved release: [stable alias switched and verified](STABLE-CLIENT-RELEASE-VERIFIED.md). The immutable Preview acceptance below remains the source checkpoint.
+
 6 November 2026. **GO for owner acceptance of the new immutable fictional-data Preview. Stable-link replacement still requires owner approval. Production accounting remains NO-GO.**
 
 ## Exact candidate and preserved releases

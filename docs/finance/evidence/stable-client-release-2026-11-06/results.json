@@ -1,0 +1,306 @@
+{
+  "testedSha": "bcf80caa4d8eef9308b18da64462be9cc0dbf9f8",
+  "deploymentId": "dpl_HbzNp2oVMMA3Lv83kHZLxU7atPrQ",
+  "startedAt": "2026-11-06T10:05:07.736Z",
+  "checks": [
+    "Actual browser login and existing MFA challenge to dashboard",
+    "Journal balance, ledger/trial agreement, AR/AP, P&L and balance sheet reconcile",
+    "Mobile menu opens and closes",
+    "Thirty actual hosted route/viewport checks",
+    "Anonymous attachment/catalog denied, Manager workspace denied, unknown attachment404, forged company query does not switch scope",
+    "Cross-origin login remains denied even when exact stable alias is configured",
+    "Fourteen direct financial/master-data commands denied403 for restricted client",
+    "Fresh live DeepSeek fills the expected item rows, supplier/date/reference/totals/department/classification; each quantity/rate/total and classification edited/restored; uncertain fields marked",
+    "SaveDraft leaves every journal/report/transaction/catalog unchanged, retains raw extraction and correction",
+    "Authorized original attachment is unchanged",
+    "Refresh retains MFA session and document history",
+    "Logout revokes session"
+  ],
+  "routes": [
+    {
+      "width": 1440,
+      "route": "dashboard",
+      "heading": "Financial dashboard",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "invoices",
+      "heading": "Sales invoices",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "new-invoice",
+      "heading": "New invoice",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "bills",
+      "heading": "Purchase bills",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "receipts",
+      "heading": "Customer receipts",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "supplier-payments",
+      "heading": "Supplier payments",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "expenses",
+      "heading": "Expenses",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "banking",
+      "heading": "Bank & cash",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "ledger",
+      "heading": "General ledger",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "pnl",
+      "heading": "Profit & loss",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "balance",
+      "heading": "Balance sheet",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "trial",
+      "heading": "Trial balance",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "aging",
+      "heading": "Receivable & payable aging",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "project-reports",
+      "heading": "Project & department reports",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "document-entry",
+      "heading": "Read a bill",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "dashboard",
+      "heading": "Financial dashboard",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "invoices",
+      "heading": "Sales invoices",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "new-invoice",
+      "heading": "New invoice",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "bills",
+      "heading": "Purchase bills",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "receipts",
+      "heading": "Customer receipts",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "supplier-payments",
+      "heading": "Supplier payments",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "expenses",
+      "heading": "Expenses",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "banking",
+      "heading": "Bank & cash",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "ledger",
+      "heading": "General ledger",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "pnl",
+      "heading": "Profit & loss",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "balance",
+      "heading": "Balance sheet",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "trial",
+      "heading": "Trial balance",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "aging",
+      "heading": "Receivable & payable aging",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "project-reports",
+      "heading": "Project & department reports",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "document-entry",
+      "heading": "Read a bill",
+      "overflow": false
+    }
+  ],
+  "errors": [],
+  "paidRequests": 1,
+  "restrictedClientVerified": true,
+  "actualProviderBillingConfirmed": false,
+  "account": {
+    "role": "accountant",
+    "capabilities": [
+      "finance.read",
+      "finance.draft"
+    ],
+    "workspace": "accountant",
+    "mfa": "aal2",
+    "dedicatedClientAccount": true
+  },
+  "financial": {
+    "journals": 20,
+    "trialDebitFils": "10209000",
+    "trialCreditFils": "10209000",
+    "balanceDifferenceFils": "0",
+    "metrics": {
+      "revenueFils": "200000",
+      "costOfSalesFils": "20500",
+      "operatingExpensesFils": "0",
+      "grossProfitFils": "179500",
+      "netProfitFils": "179500",
+      "receivablesFils": "168000",
+      "payablesFils": "9000",
+      "bankFils": "10020500",
+      "cashFils": "0"
+    }
+  },
+  "stableOriginStatus": 403,
+  "stableAliasCompatibility": "Actual stable hostname verified after owner-approved alias switch",
+  "extraction": {
+    "provider": "deepseek-flash",
+    "requestId": "4a3fcfc6-85eb-4611-a7db-978131ef158c",
+    "inputTokens": 1289,
+    "outputTokens": 215,
+    "uncertain": [
+      "kind",
+      "purchaseOrderReference",
+      "discount",
+      "projectName",
+      "customerName"
+    ],
+    "fieldIssues": [],
+    "fields": {
+      "tax": "3.53",
+      "date": "2026-11-06",
+      "kind": "unknown",
+      "items": [
+        {
+          "tax": "1.65",
+          "unit": "bag",
+          "total": "34.65",
+          "discount": "0.00",
+          "quantity": "4",
+          "unitRate": "8.25",
+          "productId": "",
+          "description": "Cable glands M20"
+        },
+        {
+          "tax": "1.88",
+          "unit": "length",
+          "total": "39.38",
+          "discount": "0.00",
+          "quantity": "3",
+          "unitRate": "12.50",
+          "productId": "",
+          "description": "PVC conduit 20 mm"
+        }
+      ],
+      "total": "74.03",
+      "dueDate": "2026-11-21",
+      "currency": "AED",
+      "discount": "",
+      "ledgerId": "",
+      "subtotal": "70.50",
+      "supplier": "Fictional Cedar Crest Electrical",
+      "projectId": "",
+      "reference": "FCC-STABLE-1701",
+      "categoryId": "",
+      "customerId": "",
+      "department": "MEP",
+      "projectName": "",
+      "customerName": "",
+      "documentType": "invoice",
+      "purchaseOrderReference": ""
+    },
+    "fresh": true,
+    "sha256": "03dd63b599fb3f982029787f4b5d543e9e861191eb3dc65b6f577e5467376e75",
+    "vercelRequestId": "bom1::sin1::dvf97-1793959523031-dfd7377f071e",
+    "classificationCorrect": false,
+    "actualProviderChargeUsd": null
+  },
+  "humanClassificationSelection": "supplier-bill",
+  "savedDraft": {
+    "id": "DOC-4973e999-0e3a-437f-ae91-daf04b7fb867",
+    "corrections": 1,
+    "rawExtractionPreserved": true,
+    "authoritativeFinancialDataUnchanged": true
+  },
+  "status": "stable-permissions-acceptance-pass",
+  "blockers": [],
+  "finishedAt": "2026-11-06T10:05:39.036Z"
+}

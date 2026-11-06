@@ -1,0 +1,10 @@
+{
+  "clientQaSessionLogoutVerified": true,
+  "onlyOwnedTemporaryQaFactorRetired": true,
+  "otherUserFactorsChanged": false,
+  "remainingClientVerifiedFactors": 0,
+  "yusufMustEnrollOwnAuthenticator": true,
+  "credentialsShared": false,
+  "invitationsSent": 0,
+  "stableAliasMoved": true
+}

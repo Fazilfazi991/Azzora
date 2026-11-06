@@ -1,5 +1,10 @@
 # Task board
 
+## Stable Accounts alias released — 6 November 2026
+
+Owner-approved stable alias now points to dpl_HbzNp2oVMMA3Lv83kHZLxU7atPrQ, application bcf80caa4d8eef9308b18da64462be9cc0dbf9f8. Actual stable-host MFA, twelve workflow groups,30 route/viewport checks, direct/UI403 denials, fresh AI extraction and non-posting Save Draft passed. Prior deployment retained for rollback. Manager production and main unchanged; no rebuild or promotion. Credentials are private; Yusuf enrolls his own MFA. [Release evidence](../finance/STABLE-CLIENT-RELEASE-VERIFIED.md).
+
+
 ## Client document permissions corrected — 6 November 2026
 
 New immutable Preview dpl_HbzNp2oVMMA3Lv83kHZLxU7atPrQ on application bcf80caa4d8eef9308b18da64462be9cc0dbf9f8 passes1,107 units,3 fixture/native checks,9 combined browser suites and actual hosted restricted/Owner/Accountant tests. finance.draft is document-only at API and SQL canonical boundaries. Fresh fictional DeepSeek extraction and Save Draft preserve financial records; shared USD5 history remains intact. Stable alias stays on dpl_ESphaGfTKeRK8wzRt7AcYiaWwSjy. Credentials unshared; Owner approval required for any alias move. [Release evidence and exact gates](../finance/CLIENT-DOCUMENT-PERMISSIONS-RELEASE.md).

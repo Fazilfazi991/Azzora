@@ -1,0 +1,17 @@
+{
+  "scope": "Mocked UI contract tests; no real AI calls or extraction accuracy claims",
+  "checks": [
+    "Auto-Fill requires explicit fictional-processing consent; manual blank form stays available",
+    "Partial extraction preserves supplier, item rows and original; missing values remain blank and highlighted; consent resets per upload",
+    "partial-review desktop/mobile layout 1440px has no page overflow",
+    "partial-review desktop/mobile layout 390px has no page overflow",
+    "Changing classification or category clears a stale ledger while preserving extracted supplier, items and amounts",
+    "Review edits and Save Draft retain original extraction/correction history without financial commands (mocked transport)",
+    "Manual mode opens without an upload and sends no AI consent and clearly identifies its blank editable form",
+    "Empty provider result never claims extraction success",
+    "Complete response maps visible fields while requiring human review",
+    "AI-off local extraction and manual entry remain available without false DeepSeek consent"
+  ],
+  "errors": [],
+  "requestCount": 3
+}

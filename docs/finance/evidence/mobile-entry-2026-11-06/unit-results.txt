@@ -1,0 +1,8 @@
+
+ RUN  v4.1.12 C:/Users/USER/Desktop/Projects/Azzora/azzora-ai-client-release-gate
+
+
+ Test Files  84 passed (84)
+      Tests  1128 passed (1128)
+   Start at  17:12:03
+   Duration  69.58s (transform 7.50s, setup 0ms, import 34.24s, tests 70.82s, environment 18ms)

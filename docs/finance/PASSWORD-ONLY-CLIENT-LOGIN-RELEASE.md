@@ -1,5 +1,7 @@
 # Restricted client password-only login — live
 
+Subsequent release: [mobile upload/manual-entry correction](MOBILE-DOCUMENT-ENTRY-FIX.md). Password-only access remains unchanged.
+
 6 November 2026. Owner explicitly selected email/password-only login for the client-review account. Implemented and verified on the stable hostname.
 
 - URL: https://azzora-accounts-client-review-faziils-projects.vercel.app/accountant.html

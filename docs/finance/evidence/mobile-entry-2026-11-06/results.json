@@ -1,0 +1,26 @@
+{
+  "base": "https://azzora-accounts-client-review-faziils-projects.vercel.app",
+  "testedSha": "eeca2c6edaeabcc3db6495d77dd2fa534a609095",
+  "checks": [
+    "Mobile Upload opens a file chooser, accepts PDF/images, has no forced capture; cancellation sends no extraction request",
+    "Enter Manually opens an unsaved blank form with no file chooser, no AI and no persisted empty review",
+    "Desktop manual entry also opens without a chooser or attachment",
+    "Manual draft saves once without an attachment, extraction or financial posting",
+    "Saved manual fields and correction history persist after refresh",
+    "Six financial/master-data commands remain403 after adding manual drafts",
+    "Password-only login, logout and revocation remain functional"
+  ],
+  "errors": [],
+  "extractRequests": 0,
+  "manualDraftsSaved": 1,
+  "physicalDeviceTested": false,
+  "savedDraft": {
+    "id": "DOC-b60eb1d9-4226-4cbb-a629-a50b16050c4f",
+    "reference": "MOBILE-MANUAL-3531c639",
+    "revision": 1,
+    "mode": "manual",
+    "attachmentId": "",
+    "financialDataUnchanged": true
+  },
+  "status": "passed"
+}

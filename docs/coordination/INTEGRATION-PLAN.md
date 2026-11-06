@@ -1,5 +1,10 @@
 # Controlled integration plan and executed checkpoints
 
+## Mobile upload/manual entry fixed — 6 November2026
+
+Stable Accounts deployment dpl_8z1ZPMgRgJDkzpzfYeDazjKZwdFo, application eeca2c6edaeabcc3db6495d77dd2fa534a609095. Upload no longer forces camera capture; Enter Manually opens a blank form without a file/AI request and saves a reviewed draft atomically with no posting.1,128 units,3 native/fixture checks,10 UI contract groups and Preview/stable hosted mobile/desktop checks pass. Password-only restricted access preserved; Manager and main unchanged. [Evidence and physical-device limitation](../finance/MOBILE-DOCUMENT-ENTRY-FIX.md).
+
+
 ## Owner-approved password-only client login — 6 November 2026
 
 Stable Accounts now uses dpl_Fc8JzKLaxZDiibArhuxSWeX6xUEp, application70037d480e99d260785c13bbf5c79ed4f41b9bb9. Exact restricted fictional client signs in using email/password at real aal1; Owner/full Accountant MFA and read/draft-only financial permissions remain enforced.1,121 units,3 native/fixture checks and actual Preview/stable desktop/mobile/login/AI/draft/denial checks pass. Manager and main unchanged; prior deployment retained. [Release proof](../finance/PASSWORD-ONLY-CLIENT-LOGIN-RELEASE.md).

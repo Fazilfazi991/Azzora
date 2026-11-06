@@ -519,7 +519,6 @@ export function PurchaseBills({ data, act, editingId }: Props) {
               name="file"
               type="file"
               accept="application/pdf,image/png,image/jpeg"
-              capture="environment"
             />
           </label>
           {existing?.attachmentId && (

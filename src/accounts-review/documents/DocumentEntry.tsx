@@ -2,6 +2,7 @@ import {
   lazy,
   Suspense,
   useEffect,
+  useRef,
   useState,
   type FormEvent,
   type ReactNode,
@@ -14,7 +15,7 @@ import {
   type Upload,
 } from "./model";
 import { fieldsSchema } from "./model";
-import { inspectFields, scopeFor } from "./review";
+import { blankManualReview, inspectFields, scopeFor } from "./review";
 import "./entry.css";
 import { cashAccountsFor, type CompletionSnapshot } from "../completion-ui";
 import { accountsUrl } from "../http";
@@ -62,6 +63,8 @@ export function DocumentEntry({
   onPendingChange: (pending: boolean) => void;
 }) {
   const [selected, setSelected] = useState<string>("");
+  const [manualDoc, setManualDoc] = useState<DocumentReview | null>(null);
+  const supplierInput = useRef<HTMLInputElement>(null);
   const [fields, setFields] = useState<EntryFields>(blankFields);
   const [confirmed, setConfirmed] = useState(false),
     [remember, setRemember] = useState(false);
@@ -76,7 +79,14 @@ export function DocumentEntry({
   const [fileMime, setFileMime] = useState("");
   const [saved, setSaved] = useState(false);
   const [paymentAccount, setPaymentAccount] = useState("bank");
-  const doc = data.documentEntries.reviews.find((d) => d.id === selected);
+  const persistedDoc = data.documentEntries.reviews.find(
+    (d) => d.id === selected,
+  );
+  const doc =
+    persistedDoc || (manualDoc?.id === selected ? manualDoc : undefined);
+  useEffect(() => {
+    if (manualDoc?.id === selected) supplierInput.current?.focus();
+  }, [manualDoc, selected]);
   const converted = Boolean(doc?.convertedBillId || doc?.convertedExpenseId);
   const pending = Boolean(
     doc && JSON.stringify(doc.fields) !== JSON.stringify(fields),
@@ -117,6 +127,7 @@ export function DocumentEntry({
   }, [doc?.attachmentId]);
   function open(d: DocumentReview) {
     if (pending && !window.confirm("Discard unsaved document edits?")) return;
+    setManualDoc(null);
     setSelected(d.id);
     setFields(structuredClone(d.fields));
     setConfirmed(false);
@@ -128,6 +139,21 @@ export function DocumentEntry({
     setFields((f) => ({ ...f, [key]: value }));
     setConfirmed(false);
     setSaved(false);
+  }
+  function startManual() {
+    if (pending && !window.confirm("Discard unsaved document edits?")) return;
+    const draft = blankManualReview(
+      "DOC-" + crypto.randomUUID(),
+      new Date().toISOString(),
+    );
+    setManualDoc(draft);
+    setSelected(draft.id);
+    setFields(structuredClone(draft.fields));
+    setLoaded(draft.id);
+    setConfirmed(false);
+    setRemember(false);
+    setSaved(false);
+    setError("");
   }
   async function upload(file: File, mode: "auto" | "manual" = "auto") {
     if (pending && !window.confirm("Discard unsaved document edits?")) return;
@@ -159,6 +185,7 @@ export function DocumentEntry({
             }
           : undefined,
       );
+      setManualDoc(null);
       setSelected(id);
       setLoaded("");
       setConfirmed(false);
@@ -264,6 +291,7 @@ export function DocumentEntry({
         {label}
         <input
           aria-label={label}
+          ref={key === "supplier" ? supplierInput : undefined}
           type={type}
           value={fields[key] || ""}
           list={key === "supplier" ? "entry-suppliers" : undefined}
@@ -273,7 +301,12 @@ export function DocumentEntry({
           aria-describedby={uncertain(key) ? "entry-review-note" : undefined}
         />
         {uncertain(key) && (
-          <small>{fieldIssue(key) || "Check against document"}</small>
+          <small>
+            {fieldIssue(key) ||
+              (doc?.attachmentId
+                ? "Check against document"
+                : "Check this field")}
+          </small>
         )}
       </label>
     );
@@ -327,15 +360,26 @@ export function DocumentEntry({
     setBusy(true);
     try {
       if (
-        await act({
-          kind: "document-draft",
-          reviewId: doc.id,
-          revision: doc.revision,
-          fields,
-          confirmed: true,
-          rememberSupplier: remember,
-        })
+        await act(
+          manualDoc && !persistedDoc
+            ? {
+                kind: "document-manual",
+                id: doc.id,
+                fields,
+                confirmed: true,
+                rememberSupplier: remember,
+              }
+            : {
+                kind: "document-draft",
+                reviewId: doc.id,
+                revision: doc.revision,
+                fields,
+                confirmed: true,
+                rememberSupplier: remember,
+              },
+        )
       ) {
+        setManualDoc(null);
         setSaved(true);
         setConfirmed(false);
       }
@@ -439,7 +483,6 @@ export function DocumentEntry({
             aria-label="Upload document"
             type="file"
             accept="application/pdf,image/png,image/jpeg"
-            capture="environment"
             disabled={busy || (requiresConsent && !processingConsent)}
             onChange={(e) => {
               const file = e.target.files?.[0];
@@ -448,28 +491,21 @@ export function DocumentEntry({
             }}
           />
         </label>
-        <label className="button">
+        <button
+          type="button"
+          className="button"
+          disabled={busy}
+          onClick={startManual}
+        >
           Enter Manually
-          <input
-            aria-label="Upload document for manual entry"
-            type="file"
-            accept="application/pdf,image/png,image/jpeg"
-            capture="environment"
-            disabled={busy}
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) void upload(file, "manual");
-              event.target.value = "";
-            }}
-          />
-        </label>
+        </button>
         <span id="entry-processing-note">
           PDF, PNG or JPEG · up to 2 MB.{" "}
           {data.documentAi?.enabled
             ? "Auto-Fill can process new fictional documents after consent, subject to server authorization and spending limits. Review every suggestion."
             : "Live AI is unavailable. Selectable PDF text may be read locally; photos/scans need manual entry."}{" "}
-          Real company documents are not authorized. Manual entry needs no AI
-          consent and keeps the original alongside a blank form.
+          Real company documents are not authorized. Manual entry opens a blank
+          form without a file or AI request.
         </span>
         <a href="/document-samples/07.png" download>
           Download sample bill
@@ -501,7 +537,9 @@ export function DocumentEntry({
         <div className="entry-layout" aria-busy={Boolean(uploadStatus)}>
           <section className="panel entry-preview">
             <div className="entry-preview-head">
-              <span className="eyebrow">ORIGINAL DOCUMENT</span>
+              <span className="eyebrow">
+                {doc.attachmentId ? "ORIGINAL DOCUMENT" : "MANUAL ENTRY"}
+              </span>
               <span>
                 {doc.status} · revision {doc.revision}
               </span>
@@ -519,7 +557,11 @@ export function DocumentEntry({
                 </a>
               </>
             ) : (
-              <p>Loading original…</p>
+              <p>
+                {doc.attachmentId
+                  ? "Loading original…"
+                  : "No attachment required. Enter the details and save a reviewed draft."}
+              </p>
             )}
             <p role={doc.extraction.failureReason ? "alert" : "status"}>
               {extractionStatus}
@@ -886,8 +928,9 @@ export function DocumentEntry({
                   checked={confirmed}
                   onChange={(e) => setConfirmed(e.target.checked)}
                 />
-                I checked all fields and any warnings against the original
-                document
+                {doc.attachmentId
+                  ? "I checked all fields and any warnings against the original document"
+                  : "I checked all entered details and any warnings"}
               </label>
               <div className="review-actions">
                 <button

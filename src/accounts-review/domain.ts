@@ -1,3 +1,4 @@
+import { saveManualDocumentDraft } from "./documents/review.js";
 import { postJournal } from "../accounting/core.js";
 import {
   cashAccountSnapshot,
@@ -409,6 +410,13 @@ export type ReviewAction =
       reference: string;
     }
   | {
+      kind: "document-manual";
+      id: string;
+      fields: EntryFields;
+      confirmed: true;
+      rememberSupplier: boolean;
+    }
+  | {
       kind: "document-draft";
       id: string;
       reviewId: string;
@@ -533,6 +541,8 @@ export function applyReviewAction(
 ): ReviewState {
   if (action.kind === "create-cash-account")
     return createCashAccount(previous, action);
+  if (action.kind === "document-manual")
+    return saveManualDocumentDraft(previous, action, new Date().toISOString());
   if (action.kind === "document-draft")
     return saveDocumentDraft(previous, action, new Date().toISOString());
   if (action.kind === "create-expense-ledger")

@@ -104,6 +104,7 @@ export function stagingAction(
     "create-expense-from-review": "EXP",
     "create-bill-from-review": "BILL",
     "document-draft": "DOC",
+    "document-manual": "DOC",
   };
   const prefix = prefixes[String(input.kind)];
   if (!prefix) return input; // Existing-resource actions must supply their real ID.

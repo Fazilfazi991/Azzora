@@ -625,7 +625,6 @@ export function ExpenseEntry({
               name="file"
               type="file"
               accept="application/pdf,image/png,image/jpeg"
-              capture="environment"
               disabled={busy}
             />
             <span className="expense-field-hint">

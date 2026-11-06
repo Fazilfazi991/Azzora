@@ -1063,7 +1063,9 @@ function App() {
             ? "Internal transfer recorded once. No expense or revenue created."
             : action.kind === "create-expense-ledger"
               ? "Expense ledger created. No financial posting."
-              : action.kind === "document-draft"
+              : ["document-draft", "document-manual"].includes(
+                    String(action.kind),
+                  )
                 ? "Document draft saved. No financial posting."
                 : action.kind === "create-bill-from-review"
                   ? "Purchase bill created once through the demo ledger."

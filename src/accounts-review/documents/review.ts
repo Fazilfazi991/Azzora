@@ -3,6 +3,8 @@ import type { ReviewState } from "../domain.js";
 import { expenseLedgersFor } from "../expense-ledgers.js";
 import {
   emptyEntries,
+  blankFields,
+  type DocumentReview,
   fieldsSchema,
   type EntryFields,
   type EntryWarning,
@@ -434,3 +436,65 @@ export const draftActionSchema = z
     rememberSupplier: z.boolean(),
   })
   .strict();
+
+/** A manual review has no fabricated attachment, extraction or financial posting. */
+export function blankManualReview(id: string, at: string): DocumentReview {
+  return {
+    id,
+    sha256: "",
+    attachmentId: "",
+    createdAt: at,
+    status: "Review",
+    revision: 0,
+    fields: blankFields(),
+    corrections: [],
+    warnings: [],
+    extraction: {
+      fields: blankFields(),
+      uncertain: [],
+      provider: "Manual entry",
+      mode: "manual",
+      requestedMode: "manual",
+      reviewPolicy: "draft-only",
+      reviewOnly: true,
+      inputTokens: null,
+      outputTokens: null,
+      costUsd: 0,
+      latencyMs: 0,
+      retries: 0,
+    },
+  };
+}
+const manualDraftSchema = z
+  .object({
+    kind: z.literal("document-manual"),
+    id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/),
+    fields: fieldsSchema,
+    confirmed: z.literal(true),
+    rememberSupplier: z.boolean(),
+  })
+  .strict();
+export function saveManualDocumentDraft(
+  previous: ReviewState,
+  input: unknown,
+  at: string,
+): ReviewState {
+  const action = manualDraftSchema.parse(input);
+  if (previous.documentEntries?.reviews.some((d) => d.id === action.id))
+    throw Error("This manual draft already exists. Reopen it before editing.");
+  const next = structuredClone(previous);
+  next.documentEntries ??= emptyEntries();
+  next.documentEntries.reviews.push(blankManualReview(action.id, at));
+  return saveDocumentDraft(
+    next,
+    {
+      kind: "document-draft",
+      reviewId: action.id,
+      revision: 0,
+      fields: action.fields,
+      confirmed: true,
+      rememberSupplier: action.rememberSupplier,
+    },
+    at,
+  );
+}

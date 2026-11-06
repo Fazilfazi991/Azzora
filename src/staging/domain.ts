@@ -295,7 +295,9 @@ export function sharedCommandScope(
         doc?.projectId ||
         (typeof action.projectId === "string" ? action.projectId : undefined),
       // Draft permission is exclusively document review; catalog writes need full finance authority.
-      financial: action.kind !== "document-draft",
+      financial: !["document-draft", "document-manual"].includes(
+        String(action.kind),
+      ),
     };
   }
   const suppliedEntity =
@@ -1262,6 +1264,7 @@ export function applySharedCommand(
           "create-expense-ledger",
           "create-cash-account",
           "document-draft",
+          "document-manual",
           "create-bill-from-review",
           "create-expense-from-review",
         ].includes(action.kind)

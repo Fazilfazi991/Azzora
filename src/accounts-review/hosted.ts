@@ -260,6 +260,7 @@ export function createHostedHandler(
               "supplier-payment",
               "expense",
               "document-draft",
+              "document-manual",
               "update-invoice-draft",
               "update-bill-draft",
               "issue-bill",

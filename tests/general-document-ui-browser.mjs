@@ -162,6 +162,17 @@ await page.route("**/api/accounts-review/**", async (route) => {
   throw Error(`Unexpected mocked endpoint: ${endpoint}`);
 });
 async function upload(mode = "auto") {
+  if (mode === "manual") {
+    const count = requests.length;
+    await page
+      .getByRole("button", { name: "Enter Manually", exact: true })
+      .click();
+    await expect(
+      page.getByLabel("Supplier name", { exact: true }),
+    ).toBeVisible();
+    expect(requests).toHaveLength(count);
+    return;
+  }
   releaseExtraction = undefined;
   if (mode === "auto") await page.getByLabel(consent, { exact: true }).check();
   await page
@@ -195,10 +206,10 @@ try {
     page.getByLabel("Upload document", { exact: true }),
   ).toBeDisabled();
   await expect(
-    page.getByLabel("Upload document for manual entry", { exact: true }),
+    page.getByRole("button", { name: "Enter Manually", exact: true }),
   ).toBeEnabled();
   checks.push(
-    "Auto-Fill requires explicit fictional-processing consent; manual upload stays available",
+    "Auto-Fill requires explicit fictional-processing consent; manual blank form stays available",
   );
 
   await upload();
@@ -322,7 +333,7 @@ try {
   );
 
   await upload("manual");
-  expect(requests[1].processing).toBeUndefined();
+  expect(requests).toHaveLength(1);
   await expect(
     page.getByText("Manual entry selected · no AI request was made.", {
       exact: true,
@@ -332,7 +343,7 @@ try {
     "",
   );
   checks.push(
-    "Manual mode sends no AI consent and clearly identifies its blank editable form",
+    "Manual mode opens without an upload and sends no AI consent and clearly identifies its blank editable form",
   );
 
   resultKind = "empty";
@@ -376,7 +387,7 @@ try {
     page.getByLabel("Upload document", { exact: true }),
   ).toBeEnabled();
   await expect(
-    page.getByLabel("Upload document for manual entry", { exact: true }),
+    page.getByRole("button", { name: "Enter Manually", exact: true }),
   ).toBeEnabled();
   checks.push(
     "AI-off local extraction and manual entry remain available without false DeepSeek consent",

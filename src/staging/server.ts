@@ -66,6 +66,7 @@ export function sharedActor(actor: StagingActor): SharedActor {
     companyId: actor.companyId,
     sessionId: actor.sessionHash,
     assurance: actor.assurance,
+    authenticationPolicy: actor.authenticationPolicy,
     grant: {
       userId: actor.userId,
       companyId: actor.companyId,

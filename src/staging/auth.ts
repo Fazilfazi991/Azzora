@@ -1,3 +1,4 @@
+import { isPasswordOnlyClientReview } from "../backend/client-review-policy.js";
 import {
   createCipheriv,
   createDecipheriv,
@@ -6,12 +7,13 @@ import {
   randomBytes,
   timingSafeEqual,
 } from "node:crypto";
-import {stagingRuntimeOrigins} from "./deployment.js";
+import { stagingRuntimeOrigins } from "./deployment.js";
 import { rpc as configuredRpc } from "./supabase.js";
 import { createSupabaseTokenVerifier } from "../backend/auth-supabase.js";
 import { createStagingRecovery } from "./auth-recovery.js";
 
 export interface StagingActor {
+  authenticationPolicy?: string;
   userId: string;
   personId?: string;
   email: string;
@@ -38,6 +40,7 @@ interface Pending extends Tokens {
   workspace: "manager" | "accountant";
 }
 interface Grant {
+  authenticationPolicy?: string;
   userId: string;
   companyId: string;
   email: string;
@@ -123,9 +126,7 @@ export function createStagingAuth(
   );
   if (key.length !== 32)
     throw new Error("Staging session encryption must be configured.");
-  const origins =
-    options.allowedOrigins ||
-    stagingRuntimeOrigins();
+  const origins = options.allowedOrigins || stagingRuntimeOrigins();
   if (!origins.size) throw new Error("Explicit staging origins are required.");
   const verifyToken = createSupabaseTokenVerifier({
     url,
@@ -391,7 +392,13 @@ export function createStagingAuth(
               403,
               "This account does not have access to this workspace.",
             );
-          if (!["owner_admin", "accountant"].includes(grant.role))
+          if (
+            !["owner_admin", "accountant"].includes(grant.role) ||
+            isPasswordOnlyClientReview({
+              ...grant,
+              workspace: String(workspace),
+            })
+          )
             return finish(t, grant, workspace as "manager" | "accountant");
           const user = await provider<{
             factors?: { id: string; factor_type: string; status: string }[];

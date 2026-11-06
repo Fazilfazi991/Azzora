@@ -98,15 +98,11 @@ beforeAll(async () => {
     [company, client],
   );
   await db.query(
-    "insert into auth.sessions values('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',$1,'aal2',now()+interval '1 day')",
+    "insert into auth.sessions values('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',$1,'aal1',now()+interval '1 day')",
     [client],
   );
   await db.query(
-    "insert into auth.mfa_factors values('ffffffff-ffff-4fff-8fff-ffffffffffff',$1,'verified','totp')",
-    [client],
-  );
-  await db.query(
-    "select public.staging_auth_session_put($1,$2,$3,'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',$4,'accountant','aal2','cipher')",
+    "select public.staging_auth_session_put($1,$2,$3,'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',$4,'accountant','aal1','cipher')",
     [clientHash, "d".repeat(64), client, company],
   );
 }, 30000);
@@ -342,3 +338,25 @@ it.each(["owner_admin", "accountant"])(
     ).toBe(true);
   },
 );
+
+it("restricted password session is aal1, has no MFA factor, and is denied after membership privilege drift", async () => {
+  const actor = (
+    await db.query("select public.staging_auth_actor($1) a", [clientHash])
+  ).rows[0].a as { assurance: string; authenticationPolicy: string };
+  expect(actor.assurance).toBe("aal1");
+  expect(actor.authenticationPolicy).toBe("client-review-password-only");
+  await db.query(
+    "update azzora.memberships set capabilities=capabilities||array['finance.simulate'] where user_id=$1",
+    [client],
+  );
+  await expect(current()).rejects.toMatchObject({ code: "PT403" });
+});
+it("owner session still requires MFA2", async () => {
+  await db.query("update auth.sessions set aal='aal1' where id=$1", [session]);
+  await expect(
+    db.query(
+      "select public.staging_auth_session_put($1,$2,$3,$4,$5,'manager','aal1','cipher')",
+      ["9".repeat(64), "8".repeat(64), owner, session, company],
+    ),
+  ).rejects.toMatchObject({ code: "PT403" });
+});

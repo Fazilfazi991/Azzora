@@ -1,12 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import { createStagingAuth, type StagingActor } from "./auth.js";
 const origin = "https://127.0.0.1:5443";
-const uid = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const sid = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 function fixture(
   role: StagingActor["role"] = "accountant",
   refreshSoon = false,
+  passwordOnly = false,
 ) {
+  const uid = passwordOnly
+    ? "52f925bd-8744-48cc-8781-d20109387d14"
+    : "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
   const at = 1800000000000;
   let revoked = false;
   let factor = false;
@@ -20,15 +23,22 @@ function fixture(
   });
   const actor: StagingActor = {
     userId: uid,
-    email: "accountant@staging.azzora.test",
+    email: passwordOnly
+      ? "client-review@staging.azzora.test"
+      : "accountant@staging.azzora.test",
+    authenticationPolicy: passwordOnly
+      ? "client-review-password-only"
+      : undefined,
     companyId: "11111111-1111-4111-8111-111111111111",
     role,
     workspace: role === "accountant" ? "accountant" : "manager",
     sessionHash: "",
-    assurance: role === "accountant" ? "aal2" : "aal1",
+    assurance: role === "accountant" && !passwordOnly ? "aal2" : "aal1",
     providerSessionId: sid,
     projectIds: [],
-    capabilities: ["finance.read"],
+    capabilities: passwordOnly
+      ? ["finance.read", "finance.draft"]
+      : ["finance.read"],
   };
   const grant = {
     ...actor,
@@ -329,4 +339,19 @@ describe("individual staging authentication controlled boundary", () => {
     expect(f.transport).not.toHaveBeenCalled();
     expect(f.rpc).not.toHaveBeenCalled();
   });
+});
+
+it("owner-approved restricted client signs in and refreshes at real aal1 without MFA enrollment", async () => {
+  const f = fixture("accountant", true, true),
+    l = await f.login();
+  expect(l.body.status).toBe("authenticated");
+  expect(
+    f.transport.mock.calls.some(([u]) => /factors|challenge/.test(String(u))),
+  ).toBe(false);
+  const r = await f.auth.handle(
+    f.request("/auth/session", undefined, l.cookie),
+    "/auth/session",
+  );
+  expect(r.status).toBe(200);
+  expect((await r.json()).assurance).toBe("aal1");
 });

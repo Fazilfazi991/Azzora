@@ -120,7 +120,7 @@ export function StagingLogin({
               <p>
                 {step
                   ? "Enter the current six-digit code from your authenticator app."
-                  : "Use your individual staging account."}
+                  : "Use your individual account."}
               </p>
               <div className="staging-scope-note">
                 <strong>FICTIONAL STAGING</strong>
@@ -148,7 +148,11 @@ export function StagingLogin({
                   </p>
                 </div>
               )}
-              <form onSubmit={submit} aria-busy={busy}>
+              <form
+                key={step ? "authenticator" : "credentials"}
+                onSubmit={submit}
+                aria-busy={busy}
+              >
                 {!step ? (
                   <>
                     <label htmlFor={`staging-${workspace}-email`}>Email</label>
@@ -216,21 +220,22 @@ export function StagingLogin({
                   {error}
                 </p>
               )}
-              <button
-                type="button"
-                className="staging-text-button"
-                disabled={busy}
-                onClick={() => {
-                  setRecovering(true);
-                  setStep(null);
-                  setError("");
-                }}
-              >
-                Use an Owner recovery code
-              </button>
+              {!accountant && (
+                <button
+                  type="button"
+                  className="staging-text-button"
+                  disabled={busy}
+                  onClick={() => {
+                    setRecovering(true);
+                    setStep(null);
+                    setError("");
+                  }}
+                >
+                  Use an Owner recovery code
+                </button>
+              )}
               <p className="staging-login-foot">
-                Individual access is verified by the staging identity service.
-                Production use and real accounting remain unavailable.
+                Client review · Fictional data only.
               </p>
             </>
           )}

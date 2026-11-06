@@ -60,7 +60,7 @@ beforeAll(async () => {
  create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);`);
   const dir = new URL("../../supabase/migrations/", import.meta.url);
   for (const name of (await readdir(dir))
-    .filter((x) => x.endsWith(".sql") && x !== migration)
+    .filter((x) => x.endsWith(".sql") && x < migration)
     .sort())
     await db.exec(await readFile(new URL(name, dir), "utf8"));
   for (const [id, email, role] of fixtures) {

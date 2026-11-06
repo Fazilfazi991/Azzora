@@ -1,3 +1,4 @@
+import { isPasswordOnlyClientReview } from "../../backend/client-review-policy.js";
 // Server-only admission. The BFF supplies a freshly verified actor, never request role claims.
 import { z } from "zod";
 import { attachment, type ReviewState } from "../domain.js";
@@ -17,7 +18,13 @@ export const documentProcessingSchema = z
 
 export type DocumentAdmissionActor = Pick<
   StagingActor,
-  "userId" | "companyId" | "role" | "workspace" | "assurance" | "capabilities"
+  | "userId"
+  | "companyId"
+  | "role"
+  | "workspace"
+  | "assurance"
+  | "capabilities"
+  | "authenticationPolicy"
 >;
 export interface DocumentAuthorization {
   readonly userId: string;
@@ -66,7 +73,7 @@ export function createDocumentAuthorization(
     !z.uuid().safeParse(actor.userId).success ||
     actor.workspace !== "accountant" ||
     !["owner_admin", "accountant"].includes(actor.role) ||
-    actor.assurance !== "aal2" ||
+    (actor.assurance !== "aal2" && !isPasswordOnlyClientReview(actor)) ||
     !Array.isArray(actor.capabilities) ||
     !actor.capabilities.includes("finance.draft") ||
     !documentProcessingSchema.safeParse(processing).success

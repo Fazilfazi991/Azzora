@@ -1,3 +1,4 @@
+import { isPasswordOnlyClientReview } from "./client-review-policy.js";
 /** Server-resolved grants. Never construct these from browser role flags or user_metadata. */
 export type BusinessRole =
   "owner" | "admin" | "project_manager" | "accountant" | "site_staff";
@@ -27,6 +28,7 @@ export interface AccessGrant {
   capabilities: BackendAction[];
 }
 export interface AuthorizedActor {
+  authenticationPolicy?: string;
   userId: string;
   companyId: string;
   sessionId: string;
@@ -57,7 +59,20 @@ export function authorize(
   const privileged = grant.roles.some(
     (role) => role === "owner" || role === "admin" || role === "accountant",
   );
-  if (privileged && actor.assurance !== "aal2")
+  if (
+    privileged &&
+    actor.assurance !== "aal2" &&
+    !(
+      grant.roles.length === 1 &&
+      ["finance.read", "finance.draft"].includes(action) &&
+      isPasswordOnlyClientReview({
+        ...actor,
+        role: grant.roles[0],
+        workspace: "accountant",
+        capabilities: grant.capabilities,
+      })
+    )
+  )
     throw new AccessDenied("mfa_required");
   if (!grant.capabilities.includes(action))
     throw new AccessDenied("capability_denied");

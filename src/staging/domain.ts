@@ -1,3 +1,4 @@
+import { isPasswordOnlyClientReview } from "../backend/client-review-policy.js";
 import type {
   AuthorizedActor,
   BackendAction,
@@ -135,7 +136,16 @@ function requireWorkspace(actor: SharedActor, workspace: Workspace) {
     throw new AccessDenied("Workspace access denied.");
   if (
     role(actor, ["owner", "admin", "accountant"]) &&
-    actor.assurance !== "aal2"
+    actor.assurance !== "aal2" &&
+    !(
+      actor.grant.roles.length === 1 &&
+      isPasswordOnlyClientReview({
+        ...actor,
+        role: actor.grant.roles[0],
+        workspace,
+        capabilities: actor.grant.capabilities,
+      })
+    )
   )
     throw new AccessDenied("MFA is required.");
 }

@@ -1,0 +1,15 @@
+{
+  "sharedLedgerPath": "accounts-review/v1/ai-evaluation/shared-budget-v1.json",
+  "actualProviderInputTokens": 1289,
+  "actualProviderOutputTokens": 216,
+  "actualProviderRequestId": "4ebee511-7312-4dc8-9d7f-cce739328f66",
+  "lastReservationMicroUsd": 324404,
+  "lastMeteredUpperMicroUsd": 646,
+  "ledgerDeltaMatchesActualUsageAtPeakTariff": true,
+  "applicationCapMicroUsd": 5000000,
+  "exposureMicroUsd": 17753,
+  "remainingMicroUsd": 4982247,
+  "historyReset": false,
+  "providerAccountCapVerified": false,
+  "actualProviderBillingConfirmed": false
+}

@@ -1,0 +1,9 @@
+{
+  "wrongPasswordStatus": 401,
+  "clientAssurance": "aal1",
+  "passwordOnlyScope": "exact restricted fictional client",
+  "logoutStatus": 200,
+  "revokedSessionStatus": 401,
+  "credentialsChanged": false,
+  "mfaFactorsDeleted": false
+}

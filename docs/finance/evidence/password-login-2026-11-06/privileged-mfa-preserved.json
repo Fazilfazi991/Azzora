@@ -1,0 +1,15 @@
+{
+  "checks": [
+    {
+      "role": "owner",
+      "status": "mfa-challenge",
+      "preMfaSnapshotStatus": 401
+    },
+    {
+      "role": "accountant",
+      "status": "mfa-challenge",
+      "preMfaSnapshotStatus": 401
+    }
+  ],
+  "factorsModified": false
+}

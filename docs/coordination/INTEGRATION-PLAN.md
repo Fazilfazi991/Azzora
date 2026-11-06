@@ -1,5 +1,10 @@
 # Controlled integration plan and executed checkpoints
 
+## Owner-approved password-only client login — 6 November 2026
+
+Stable Accounts now uses dpl_Fc8JzKLaxZDiibArhuxSWeX6xUEp, application70037d480e99d260785c13bbf5c79ed4f41b9bb9. Exact restricted fictional client signs in using email/password at real aal1; Owner/full Accountant MFA and read/draft-only financial permissions remain enforced.1,121 units,3 native/fixture checks and actual Preview/stable desktop/mobile/login/AI/draft/denial checks pass. Manager and main unchanged; prior deployment retained. [Release proof](../finance/PASSWORD-ONLY-CLIENT-LOGIN-RELEASE.md).
+
+
 ## Stable Accounts alias released — 6 November 2026
 
 Owner-approved stable alias now points to dpl_HbzNp2oVMMA3Lv83kHZLxU7atPrQ, application bcf80caa4d8eef9308b18da64462be9cc0dbf9f8. Actual stable-host MFA, twelve workflow groups,30 route/viewport checks, direct/UI403 denials, fresh AI extraction and non-posting Save Draft passed. Prior deployment retained for rollback. Manager production and main unchanged; no rebuild or promotion. Credentials are private; Yusuf enrolls his own MFA. [Release evidence](../finance/STABLE-CLIENT-RELEASE-VERIFIED.md).

@@ -1,0 +1,30 @@
+{
+  "checks": [
+    {
+      "forgery": "account",
+      "status": 403,
+      "code": "PT403",
+      "canonicalDataAndVersionUnchanged": true
+    },
+    {
+      "forgery": "expense-ledger",
+      "status": 403,
+      "code": "PT403",
+      "canonicalDataAndVersionUnchanged": true
+    },
+    {
+      "forgery": "invoice",
+      "status": 403,
+      "code": "PT403",
+      "canonicalDataAndVersionUnchanged": true
+    },
+    {
+      "forgery": "metadata",
+      "status": 403,
+      "code": "PT403",
+      "canonicalDataAndVersionUnchanged": true
+    }
+  ],
+  "assurance": "aal1",
+  "forbiddenRecordsCreated": 0
+}

@@ -1,0 +1,8 @@
+{
+  "checks": [
+    "Cash account UI submit403, input preserved",
+    "Expense ledger UI submit403, input preserved"
+  ],
+  "managerAdminCommandsDenied403": 6,
+  "financialDataUnchanged": true
+}

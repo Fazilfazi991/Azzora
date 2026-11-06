@@ -1,5 +1,7 @@
 # Stable Accounts client release — verified
 
+Superseded login requirement: owner subsequently approved [password-only restricted client login](PASSWORD-ONLY-CLIENT-LOGIN-RELEASE.md). Prior MFA release evidence below is historical.
+
 6 November 2026. Owner-approved alias replacement completed. **GO for restricted fictional-data client review.** No build, production promotion, source modification, GitHub push or main merge occurred during this release.
 
 - Stable URL: https://azzora-accounts-client-review-faziils-projects.vercel.app/accountant.html

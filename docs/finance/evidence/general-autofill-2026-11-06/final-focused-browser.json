@@ -1,0 +1,17 @@
+{
+  "testedSHA": "8570f1cd91517a409fa81b6bae3b4769c743d806",
+  "origin": "http://127.0.0.1:5367",
+  "defaultMode": true,
+  "isolatedBrowserContexts": true,
+  "liveAI": "disabled; no paid model requests",
+  "results": [
+    {
+      "suite": "general-document-ui-browser",
+      "exitCode": 0
+    },
+    {
+      "suite": "accounts-review-browser",
+      "exitCode": 0
+    }
+  ]
+}

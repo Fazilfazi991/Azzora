@@ -1,5 +1,20 @@
 # Task board
 
+## General document auto-fill checkpoint — 6 November 2026
+
+| Scope | Status |
+| --- | --- |
+| General authenticated fictional-document admission | Complete; no per-file developer registration |
+| Partial-field normalization, originals and corrections | Verified; missing values stay missing |
+| Actual unseen-document hosted extraction | 12/12 fresh across two revisions; exact accuracy and five original omissions disclosed |
+| Final printed department correction | 2/2 new image/PDF cases, 51/51 raw facts |
+| PDF page readiness | Fixed; 6/6 actual final hosted pages verified |
+| Units, builds and existing CRM regression | Passed with exact SHA/scope and infrastructure retries documented |
+| Shared USD5 application allowance | Preserved; USD4.986894 remains, provider billing/controls unverified |
+| Stable alias update / real processing / production accounting | Await separate owner and policy approvals |
+
+[Final application, Preview and evidence](../finance/GENERAL-DOCUMENT-AUTOFILL-REVIEW.md).
+
 ## Final shared staging checkpoint — 4 November 2026
 
 | Scope | Status |

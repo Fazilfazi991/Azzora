@@ -1,0 +1,47 @@
+{
+  "passed": true,
+  "actualComponent": "PdfPreview.tsx",
+  "localOnly": true,
+  "providerCalls": 0,
+  "financialWrites": 0,
+  "results": [
+    {
+      "id": "G06",
+      "page": 1,
+      "completedPage": 1,
+      "darkPixels": 34831
+    },
+    {
+      "id": "G06",
+      "page": 2,
+      "completedPage": 2,
+      "darkPixels": 34683
+    },
+    {
+      "id": "G07",
+      "page": 1,
+      "completedPage": 1,
+      "darkPixels": 132990
+    },
+    {
+      "id": "G07",
+      "page": 2,
+      "completedPage": 2,
+      "darkPixels": 134864
+    },
+    {
+      "id": "G08",
+      "page": 1,
+      "completedPage": 1,
+      "darkPixels": 27674
+    },
+    {
+      "id": "G08",
+      "page": 2,
+      "completedPage": 2,
+      "darkPixels": 130082
+    }
+  ],
+  "errors": [],
+  "stalePageReadinessViolations": 0
+}

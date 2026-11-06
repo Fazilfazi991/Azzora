@@ -1,0 +1,8 @@
+
+ RUN  v4.1.12 C:/Users/USER/Desktop/Projects/Azzora/azzora-ai-general-documents
+
+
+ Test Files  79 passed (79)
+      Tests  1022 passed (1022)
+   Start at  10:41:27
+   Duration  30.41s (transform 17.74s, setup 0ms, import 53.45s, tests 84.35s, environment 25ms)

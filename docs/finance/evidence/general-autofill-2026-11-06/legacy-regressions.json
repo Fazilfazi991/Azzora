@@ -1,0 +1,27 @@
+{
+  "testedSHA": "771ff3c77815ef070135033ae8f7ca969f0a3dd0",
+  "result": "All nine existing legacy browser suites passed on the frozen source, with disclosed infrastructure retries",
+  "numberedCheckTotal": 410,
+  "core": 66,
+  "commercial": 129,
+  "operational": 136,
+  "workforce": 40,
+  "recovery": 25,
+  "accounts": 14,
+  "unnumberedPassingSuites": [
+    "quotation-browser",
+    "timeline-independent-browser",
+    "timeline-date-position-browser"
+  ],
+  "firstFiveEvidence": "tmp/frozen771-legacy-browser/results.json",
+  "affectedRetryEvidence": "tmp/frozen771-legacy-retry/results.json",
+  "infrastructureFailures": [
+    "Previous 906273a shared-worktree run contaminated by concurrent import-edit HMR; operational failed its final console-error gate and runner was stopped",
+    "Frozen771 initial server crashed with Windows EBUSY while watching generated tmp/quotation-qa/workflow-768.pdf; quotation and next three suites failed connection-refused. Ignored QA server helper excluded generated evidence from its watcher, then all four passed on the same unchanged SHA"
+  ],
+  "sourceChanges": "None",
+  "paidAI": "Disabled; provider credentials removed from child environment; no paid model requests",
+  "browserData": "Fresh isolated browser contexts only; personal owner browser profiles/records untouched. Recovery25 covers exact raw-data export, blocked writes and rollback.",
+  "finalWorktree": "Clean detached HEAD at testedSHA",
+  "ownedServer": "Stopped; no5367 listener"
+}

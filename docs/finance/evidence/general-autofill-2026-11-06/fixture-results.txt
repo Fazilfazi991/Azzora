@@ -1,0 +1,10 @@
+✔ fictional journal balances and dashboard profit labels reconcile (0.655ms)
+✔ open document amounts agree with journal controls and original due dates remain visible (0.2982ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 81.7511

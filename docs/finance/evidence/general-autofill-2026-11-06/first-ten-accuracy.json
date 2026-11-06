@@ -1,0 +1,77 @@
+{
+  "sourceSHA": "771ff3c77815ef070135033ae8f7ca969f0a3dd0",
+  "preview": "https://azzora-accounts-client-review-q3qt4sraq-faziils-projects.vercel.app",
+  "provider": "deepseek-flash",
+  "freshDocuments": 10,
+  "modelCalls": 10,
+  "automaticRetries": 0,
+  "fieldAccuracy": {
+    "correct": 362,
+    "scored": 367,
+    "percent": 98.6376021798365
+  },
+  "printedMonetaryFacts": {
+    "correct": 140,
+    "scored": 140
+  },
+  "printedQuantityRateFacts": {
+    "correct": 61,
+    "scored": 61
+  },
+  "itemRows": 31,
+  "itemCountsCorrect": 10,
+  "classificationCorrect": 10,
+  "missingReadableFields": 5,
+  "filledUnprintedFields": 0,
+  "inputTokens": 13822,
+  "outputTokens": 2575,
+  "averageUploadResponseMs": 8642.1,
+  "minUploadResponseMs": 7580,
+  "maxUploadResponseMs": 10131,
+  "peakTariffEstimateUsd": 0.007241,
+  "averagePeakTariffEstimateUsd": 0.0007241,
+  "actualProviderBilledUsd": null,
+  "actualBillingVerified": false,
+  "browserErrors": 0,
+  "native503": 0,
+  "errors": [
+    {
+      "id": "G01",
+      "field": "department",
+      "expected": "JOINERY",
+      "actual": "",
+      "correct": false
+    },
+    {
+      "id": "G03",
+      "field": "department",
+      "expected": "MEP",
+      "actual": "",
+      "correct": false
+    },
+    {
+      "id": "G05",
+      "field": "department",
+      "expected": "CIVIL",
+      "actual": "",
+      "correct": false
+    },
+    {
+      "id": "G06",
+      "field": "department",
+      "expected": "MEP",
+      "actual": "",
+      "correct": false
+    },
+    {
+      "id": "G07",
+      "field": "department",
+      "expected": "CIVIL",
+      "actual": "",
+      "correct": false
+    }
+  ],
+  "visualStatus": "InitialPDF readiness race found; final corrected preview pending. Originalevidencepreserved.",
+  "laterSourceSHA": "8570f1cd91517a409fa81b6bae3b4769c743d806",
+  "laterPaidDocuments": "G11/G12 not yet authorized or called"
+}

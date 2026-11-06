@@ -1,0 +1,90 @@
+{
+  "origin": "https://azzora-accounts-client-review-iuhf6149u-faziils-projects.vercel.app",
+  "passed": true,
+  "existingReviewsOnly": true,
+  "providerCalls": 0,
+  "errors": [],
+  "results": [
+    {
+      "id": "G06",
+      "page": 1,
+      "file": "G06-page-1-canvas.png",
+      "width": 892,
+      "height": 1262,
+      "nonwhitePixels": 34831,
+      "opaquePixels": 1125704,
+      "sha256": "9e28ac2c10bbfc6ca0fc270a36c02337eddbaad2609da0e373f165fb33e78527",
+      "matchingPageLabel": "Original PDF page 1",
+      "rendered": "true",
+      "completedPage": "1"
+    },
+    {
+      "id": "G06",
+      "page": 2,
+      "file": "G06-page-2-canvas.png",
+      "width": 892,
+      "height": 1262,
+      "nonwhitePixels": 34683,
+      "opaquePixels": 1125704,
+      "sha256": "304436ae010fff0f77fe793e993c3de9ddd0b0dde3cbabc927a21671ad0a52e4",
+      "matchingPageLabel": "Original PDF page 2",
+      "rendered": "true",
+      "completedPage": "2"
+    },
+    {
+      "id": "G07",
+      "page": 1,
+      "file": "G07-page-1-canvas.png",
+      "width": 892,
+      "height": 1262,
+      "nonwhitePixels": 132990,
+      "opaquePixels": 1125704,
+      "sha256": "0e40f6362d145d855a7589287351b5790bdd7fec6df716a098905acddd552bdf",
+      "matchingPageLabel": "Original PDF page 1",
+      "rendered": "true",
+      "completedPage": "1"
+    },
+    {
+      "id": "G07",
+      "page": 2,
+      "file": "G07-page-2-canvas.png",
+      "width": 892,
+      "height": 1262,
+      "nonwhitePixels": 134864,
+      "opaquePixels": 1125704,
+      "sha256": "9f3e1d20c645159c35a5d0d4f73259efac00016c9ae3041a233a03a47e7078d4",
+      "matchingPageLabel": "Original PDF page 2",
+      "rendered": "true",
+      "completedPage": "2"
+    },
+    {
+      "id": "G08",
+      "page": 1,
+      "file": "G08-page-1-canvas.png",
+      "width": 892,
+      "height": 1262,
+      "nonwhitePixels": 27674,
+      "opaquePixels": 1125704,
+      "sha256": "fa5c6ebc3441bf742d7d9c0cfbf1a165be6486491b4aaaecc93be931e2aeb486",
+      "matchingPageLabel": "Original PDF page 1",
+      "rendered": "true",
+      "completedPage": "1"
+    },
+    {
+      "id": "G08",
+      "page": 2,
+      "file": "G08-page-2-canvas.png",
+      "width": 892,
+      "height": 1262,
+      "nonwhitePixels": 130082,
+      "opaquePixels": 1125704,
+      "sha256": "d4af766690d2794e9db5b312b7a1aca2fd045804a17e4a6080330da334b1ae2c",
+      "matchingPageLabel": "Original PDF page 2",
+      "rendered": "true",
+      "completedPage": "2"
+    }
+  ],
+  "testedSha": "8570f1cd91517a409fa81b6bae3b4769c743d806",
+  "deploymentId": "dpl_AXWXbxHQAg2FNdNuzTTcpP2AEie8",
+  "stableAliasChanged": false
+}

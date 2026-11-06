@@ -1,0 +1,29 @@
+{
+  "origin": "https://azzora-accounts-client-review-iuhf6149u-faziils-projects.vercel.app",
+  "passed": true,
+  "checks": [
+    "Unauthenticated individual session API401",
+    "Legacy shared-login API404",
+    "Logout without CSRF403",
+    "Cross-origin logout403",
+    "Current individual Accountant MFA2 session200 preserved",
+    "Accountant session denied Manager API403",
+    "Authorized Accounts snapshot200 reports general fictional DeepSeek ready (configuration only)"
+  ],
+  "paidCalls": 0,
+  "documentUploads": 0,
+  "financialWrites": 0,
+  "mfaEnrollmentChanged": false,
+  "liveInferenceVerified": false,
+  "aiAvailability": {
+    "enabled": true,
+    "generalDocuments": true,
+    "provider": "deepseek",
+    "authorizationMode": "owner-application-cap",
+    "status": "ready",
+    "message": "DeepSeek reads new supported fictional documents after individual sign-in and per-upload consent. Review every suggestion before saving a draft. Shared USD 5 application cap; real company document processing is not approved."
+  },
+  "testedSha": "8570f1cd91517a409fa81b6bae3b4769c743d806",
+  "deploymentId": "dpl_AXWXbxHQAg2FNdNuzTTcpP2AEie8",
+  "stableAliasChanged": false
+}

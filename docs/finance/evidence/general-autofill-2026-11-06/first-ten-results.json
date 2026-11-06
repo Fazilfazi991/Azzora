@@ -1,0 +1,2787 @@
+{
+  "testedSHA": "771ff3c77815ef070135033ae8f7ca969f0a3dd0",
+  "base": "https://azzora-accounts-client-review-q3qt4sraq-faziils-projects.vercel.app",
+  "startedAt": "2026-11-06T04:58:28.832Z",
+  "selected": [
+    "G01",
+    "G02",
+    "G03",
+    "G04",
+    "G05",
+    "G06",
+    "G07",
+    "G08",
+    "G09",
+    "G10"
+  ],
+  "rows": [
+    {
+      "id": "G01",
+      "sha256": "0fd867a034c89ff561a9c397cfb499ac00f152e2f808d46d0e784e3578e40eb4",
+      "layout": "grid",
+      "format": "png",
+      "pages": 1,
+      "language": "English",
+      "startedAt": "2026-11-06T04:58:32.786Z",
+      "status": "extracted",
+      "actualProviderChargeUsd": null,
+      "wallLatencyMs": 10020,
+      "httpStatus": 200,
+      "appRequestId": null,
+      "vercelRequestId": "bom1::sin1::8f9n8-1793941112903-c4ec947f4aeb",
+      "mode": "live",
+      "provider": "deepseek-flash",
+      "requestId": "4e74fba4-b3d9-4175-b011-26452f17fcaf",
+      "inputTokens": 1296,
+      "outputTokens": 274,
+      "processingLatencyMs": 7670.467090999999,
+      "completeness": "partial",
+      "fieldIssues": [],
+      "uncertain": [
+        "discount",
+        "department",
+        "customerName"
+      ],
+      "failureCode": null,
+      "fresh": true,
+      "peakTariffUpperEstimateUsd": 0.000718,
+      "score": {
+        "correct": 35,
+        "total": 36,
+        "itemCountCorrect": true,
+        "monetaryMistakes": [],
+        "classificationCorrect": true,
+        "facts": [
+          {
+            "field": "supplier",
+            "expected": "Harbor Cedar Supplies",
+            "actual": "Harbor Cedar Supplies",
+            "correct": true
+          },
+          {
+            "field": "date",
+            "expected": "2026-11-06",
+            "actual": "2026-11-06",
+            "correct": true
+          },
+          {
+            "field": "reference",
+            "expected": "HC-261106-17",
+            "actual": "HC-261106-17",
+            "correct": true
+          },
+          {
+            "field": "currency",
+            "expected": "AED",
+            "actual": "AED",
+            "correct": true
+          },
+          {
+            "field": "documentType",
+            "expected": "invoice",
+            "actual": "invoice",
+            "correct": true
+          },
+          {
+            "field": "dueDate",
+            "expected": "2026-11-20",
+            "actual": "2026-11-20",
+            "correct": true
+          },
+          {
+            "field": "purchaseOrderReference",
+            "expected": "DEMO-PO-817",
+            "actual": "DEMO-PO-817",
+            "correct": true
+          },
+          {
+            "field": "subtotal",
+            "expected": "162.20",
+            "actual": "162.20",
+            "correct": true
+          },
+          {
+            "field": "discount",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "tax",
+            "expected": "8.11",
+            "actual": "8.11",
+            "correct": true
+          },
+          {
+            "field": "total",
+            "expected": "170.31",
+            "actual": "170.31",
+            "correct": true
+          },
+          {
+            "field": "kind",
+            "expected": "supplier-bill",
+            "actual": "supplier-bill",
+            "correct": true
+          },
+          {
+            "field": "department",
+            "expected": "JOINERY",
+            "actual": "",
+            "correct": false
+          },
+          {
+            "field": "projectName",
+            "expected": "Sample apartment renovation",
+            "actual": "Sample apartment renovation",
+            "correct": true
+          },
+          {
+            "field": "itemCount",
+            "expected": 3,
+            "actual": 3,
+            "correct": true
+          },
+          {
+            "field": "items.0.description",
+            "expected": "Oak veneer sheets",
+            "actual": "Oak veneer sheets",
+            "correct": true
+          },
+          {
+            "field": "items.0.quantity",
+            "expected": "2",
+            "actual": "2",
+            "correct": true
+          },
+          {
+            "field": "items.0.unit",
+            "expected": "sheet",
+            "actual": "sheet",
+            "correct": true
+          },
+          {
+            "field": "items.0.unitRate",
+            "expected": "45.00",
+            "actual": "45.00",
+            "correct": true
+          },
+          {
+            "field": "items.0.discount",
+            "expected": "5.00",
+            "actual": "5.00",
+            "correct": true
+          },
+          {
+            "field": "items.0.tax",
+            "expected": "4.25",
+            "actual": "4.25",
+            "correct": true
+          },
+          {
+            "field": "items.0.total",
+            "expected": "89.25",
+            "actual": "89.25",
+            "correct": true
+          },
+          {
+            "field": "items.1.description",
+            "expected": "Brass hinges",
+            "actual": "Brass hinges",
+            "correct": true
+          },
+          {
+            "field": "items.1.quantity",
+            "expected": "6",
+            "actual": "6",
+            "correct": true
+          },
+          {
+            "field": "items.1.unit",
+            "expected": "each",
+            "actual": "each",
+            "correct": true
+          },
+          {
+            "field": "items.1.unitRate",
+            "expected": "7.50",
+            "actual": "7.50",
+            "correct": true
+          },
+          {
+            "field": "items.1.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.1.tax",
+            "expected": "2.25",
+            "actual": "2.25",
+            "correct": true
+          },
+          {
+            "field": "items.1.total",
+            "expected": "47.25",
+            "actual": "47.25",
+            "correct": true
+          },
+          {
+            "field": "items.2.description",
+            "expected": "Edge adhesive",
+            "actual": "Edge adhesive",
+            "correct": true
+          },
+          {
+            "field": "items.2.quantity",
+            "expected": "1",
+            "actual": "1",
+            "correct": true
+          },
+          {
+            "field": "items.2.unit",
+            "expected": "tin",
+            "actual": "tin",
+            "correct": true
+          },
+          {
+            "field": "items.2.unitRate",
+            "expected": "32.20",
+            "actual": "32.20",
+            "correct": true
+          },
+          {
+            "field": "items.2.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.2.tax",
+            "expected": "1.61",
+            "actual": "1.61",
+            "correct": true
+          },
+          {
+            "field": "items.2.total",
+            "expected": "33.81",
+            "actual": "33.81",
+            "correct": true
+          }
+        ]
+      },
+      "humanCorrections": {
+        "supplier": "Harbor Cedar Supplies reviewed",
+        "classification": "supplier-bill",
+        "category": "project-materials",
+        "projectId": "a60b660b-f4df-41cf-a776-34b6e9c11121",
+        "projectName": "Fictional Financial Integration finmw27jvgm",
+        "note": "Explicit QA reviewer selection; never counted as original model accuracy."
+      }
+    },
+    {
+      "id": "G02",
+      "sha256": "3d5a94f5560e94848753936239c5cf1f5839d9220f577224bfda2c9ba2aa45c2",
+      "layout": "thermal",
+      "format": "png",
+      "pages": 1,
+      "language": "English",
+      "startedAt": "2026-11-06T04:58:47.145Z",
+      "status": "extracted",
+      "actualProviderChargeUsd": null,
+      "wallLatencyMs": 8407,
+      "httpStatus": 200,
+      "appRequestId": null,
+      "vercelRequestId": "bom1::sin1::7zvnz-1793941127464-358bfc9781d1",
+      "mode": "live",
+      "provider": "deepseek-flash",
+      "requestId": "3e24df87-9b61-4412-90e0-3cb1a6d85083",
+      "inputTokens": 878,
+      "outputTokens": 186,
+      "processingLatencyMs": 6825.024239000006,
+      "completeness": "partial",
+      "fieldIssues": [],
+      "uncertain": [
+        "documentType",
+        "kind",
+        "dueDate",
+        "purchaseOrderReference",
+        "tax",
+        "discount",
+        "department",
+        "projectName",
+        "customerName",
+        "items.0.discount",
+        "items.0.tax",
+        "items.1.discount",
+        "items.1.tax"
+      ],
+      "failureCode": null,
+      "fresh": true,
+      "peakTariffUpperEstimateUsd": 0.000487,
+      "score": {
+        "correct": 29,
+        "total": 29,
+        "itemCountCorrect": true,
+        "monetaryMistakes": [],
+        "classificationCorrect": true,
+        "facts": [
+          {
+            "field": "supplier",
+            "expected": "Paper Kite Office Mart",
+            "actual": "Paper Kite Office Mart",
+            "correct": true
+          },
+          {
+            "field": "date",
+            "expected": "2026-11-05",
+            "actual": "2026-11-05",
+            "correct": true
+          },
+          {
+            "field": "reference",
+            "expected": "PK-44019",
+            "actual": "PK-44019",
+            "correct": true
+          },
+          {
+            "field": "currency",
+            "expected": "AED",
+            "actual": "AED",
+            "correct": true
+          },
+          {
+            "field": "documentType",
+            "expected": "receipt",
+            "actual": "receipt",
+            "correct": true
+          },
+          {
+            "field": "dueDate",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "purchaseOrderReference",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "subtotal",
+            "expected": "44.25",
+            "actual": "44.25",
+            "correct": true
+          },
+          {
+            "field": "discount",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "tax",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "total",
+            "expected": "44.25",
+            "actual": "44.25",
+            "correct": true
+          },
+          {
+            "field": "kind",
+            "expected": "company-expense",
+            "actual": "company-expense",
+            "correct": true
+          },
+          {
+            "field": "department",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "projectName",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "itemCount",
+            "expected": 2,
+            "actual": 2,
+            "correct": true
+          },
+          {
+            "field": "items.0.description",
+            "expected": "Printer paper A4",
+            "actual": "Printer paper A4",
+            "correct": true
+          },
+          {
+            "field": "items.0.quantity",
+            "expected": "2",
+            "actual": "2",
+            "correct": true
+          },
+          {
+            "field": "items.0.unit",
+            "expected": "ream",
+            "actual": "ream",
+            "correct": true
+          },
+          {
+            "field": "items.0.unitRate",
+            "expected": "18.50",
+            "actual": "18.50",
+            "correct": true
+          },
+          {
+            "field": "items.0.discount",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "items.0.tax",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "items.0.total",
+            "expected": "37.00",
+            "actual": "37.00",
+            "correct": true
+          },
+          {
+            "field": "items.1.description",
+            "expected": "Desk labels",
+            "actual": "Desk labels",
+            "correct": true
+          },
+          {
+            "field": "items.1.quantity",
+            "expected": "1",
+            "actual": "1",
+            "correct": true
+          },
+          {
+            "field": "items.1.unit",
+            "expected": "pack",
+            "actual": "pack",
+            "correct": true
+          },
+          {
+            "field": "items.1.unitRate",
+            "expected": "7.25",
+            "actual": "7.25",
+            "correct": true
+          },
+          {
+            "field": "items.1.discount",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "items.1.tax",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "items.1.total",
+            "expected": "7.25",
+            "actual": "7.25",
+            "correct": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "G03",
+      "sha256": "415e8140cd6b6356f164864e7e5dc421e640d5180123677ba6e81210f40756fb",
+      "layout": "photo",
+      "format": "jpg",
+      "pages": 1,
+      "language": "English",
+      "startedAt": "2026-11-06T04:58:57.831Z",
+      "status": "extracted",
+      "actualProviderChargeUsd": null,
+      "wallLatencyMs": 8485,
+      "httpStatus": 200,
+      "appRequestId": null,
+      "vercelRequestId": "bom1::sin1::d5rv9-1793941137913-0c5191e1230b",
+      "mode": "live",
+      "provider": "deepseek-flash",
+      "requestId": "5ea178cd-b260-4e29-b3f2-9eb9c6d03e9d",
+      "inputTokens": 1454,
+      "outputTokens": 198,
+      "processingLatencyMs": 6750.932786000005,
+      "completeness": "partial",
+      "fieldIssues": [],
+      "uncertain": [
+        "tax",
+        "dueDate",
+        "purchaseOrderReference",
+        "discount",
+        "department",
+        "customerName"
+      ],
+      "failureCode": null,
+      "fresh": true,
+      "peakTariffUpperEstimateUsd": 0.000674,
+      "score": {
+        "correct": 28,
+        "total": 29,
+        "itemCountCorrect": true,
+        "monetaryMistakes": [],
+        "classificationCorrect": true,
+        "facts": [
+          {
+            "field": "supplier",
+            "expected": "Dune Spark Hardware",
+            "actual": "Dune Spark Hardware",
+            "correct": true
+          },
+          {
+            "field": "date",
+            "expected": "2026-11-04",
+            "actual": "2026-11-04",
+            "correct": true
+          },
+          {
+            "field": "reference",
+            "expected": "DS-CASH-608",
+            "actual": "DS-CASH-608",
+            "correct": true
+          },
+          {
+            "field": "currency",
+            "expected": "AED",
+            "actual": "AED",
+            "correct": true
+          },
+          {
+            "field": "documentType",
+            "expected": "receipt",
+            "actual": "receipt",
+            "correct": true
+          },
+          {
+            "field": "dueDate",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "purchaseOrderReference",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "subtotal",
+            "expected": "53.50",
+            "actual": "53.50",
+            "correct": true
+          },
+          {
+            "field": "discount",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "tax",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "total",
+            "expected": "53.50",
+            "actual": "53.50",
+            "correct": true
+          },
+          {
+            "field": "kind",
+            "expected": "project-expense",
+            "actual": "project-expense",
+            "correct": true
+          },
+          {
+            "field": "department",
+            "expected": "MEP",
+            "actual": "",
+            "correct": false
+          },
+          {
+            "field": "projectName",
+            "expected": "Sample apartment renovation",
+            "actual": "Sample apartment renovation",
+            "correct": true
+          },
+          {
+            "field": "itemCount",
+            "expected": 2,
+            "actual": 2,
+            "correct": true
+          },
+          {
+            "field": "items.0.description",
+            "expected": "PVC elbows",
+            "actual": "PVC elbows",
+            "correct": true
+          },
+          {
+            "field": "items.0.quantity",
+            "expected": "8",
+            "actual": "8",
+            "correct": true
+          },
+          {
+            "field": "items.0.unit",
+            "expected": "each",
+            "actual": "each",
+            "correct": true
+          },
+          {
+            "field": "items.0.unitRate",
+            "expected": "4.25",
+            "actual": "4.25",
+            "correct": true
+          },
+          {
+            "field": "items.0.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.0.tax",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.0.total",
+            "expected": "34.00",
+            "actual": "34.00",
+            "correct": true
+          },
+          {
+            "field": "items.1.description",
+            "expected": "Thread seal tape",
+            "actual": "Thread seal tape",
+            "correct": true
+          },
+          {
+            "field": "items.1.quantity",
+            "expected": "3",
+            "actual": "3",
+            "correct": true
+          },
+          {
+            "field": "items.1.unit",
+            "expected": "roll",
+            "actual": "roll",
+            "correct": true
+          },
+          {
+            "field": "items.1.unitRate",
+            "expected": "6.50",
+            "actual": "6.50",
+            "correct": true
+          },
+          {
+            "field": "items.1.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.1.tax",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.1.total",
+            "expected": "19.50",
+            "actual": "19.50",
+            "correct": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "G04",
+      "sha256": "18717b337681169e31f6674ee533fd49e486232a19d6bf496cdb93fb567c4c01",
+      "layout": "rotated",
+      "format": "jpg",
+      "pages": 1,
+      "language": "English",
+      "startedAt": "2026-11-06T04:59:08.628Z",
+      "status": "extracted",
+      "actualProviderChargeUsd": null,
+      "wallLatencyMs": 7929,
+      "httpStatus": 200,
+      "appRequestId": null,
+      "vercelRequestId": "bom1::sin1::gnp94-1793941148709-80d6067f5f60",
+      "mode": "live",
+      "provider": "deepseek-flash",
+      "requestId": "01a3f40d-40e5-4d60-9ee5-a09a52dd137a",
+      "inputTokens": 1445,
+      "outputTokens": 202,
+      "processingLatencyMs": 6667.345967000001,
+      "completeness": "partial",
+      "fieldIssues": [],
+      "uncertain": [
+        "purchaseOrderReference",
+        "discount",
+        "department",
+        "projectName",
+        "customerName"
+      ],
+      "failureCode": null,
+      "fresh": true,
+      "peakTariffUpperEstimateUsd": 0.000676,
+      "score": {
+        "correct": 29,
+        "total": 29,
+        "itemCountCorrect": true,
+        "monetaryMistakes": [],
+        "classificationCorrect": true,
+        "facts": [
+          {
+            "field": "supplier",
+            "expected": "Blue Fig Fasteners",
+            "actual": "Blue Fig Fasteners",
+            "correct": true
+          },
+          {
+            "field": "date",
+            "expected": "2026-11-03",
+            "actual": "2026-11-03",
+            "correct": true
+          },
+          {
+            "field": "reference",
+            "expected": "BFF-9088",
+            "actual": "BFF-9088",
+            "correct": true
+          },
+          {
+            "field": "currency",
+            "expected": "AED",
+            "actual": "AED",
+            "correct": true
+          },
+          {
+            "field": "documentType",
+            "expected": "invoice",
+            "actual": "invoice",
+            "correct": true
+          },
+          {
+            "field": "dueDate",
+            "expected": "2026-11-18",
+            "actual": "2026-11-18",
+            "correct": true
+          },
+          {
+            "field": "purchaseOrderReference",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "subtotal",
+            "expected": "50.00",
+            "actual": "50.00",
+            "correct": true
+          },
+          {
+            "field": "discount",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "tax",
+            "expected": "2.50",
+            "actual": "2.50",
+            "correct": true
+          },
+          {
+            "field": "total",
+            "expected": "52.50",
+            "actual": "52.50",
+            "correct": true
+          },
+          {
+            "field": "kind",
+            "expected": "supplier-bill",
+            "actual": "supplier-bill",
+            "correct": true
+          },
+          {
+            "field": "department",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "projectName",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "itemCount",
+            "expected": 2,
+            "actual": 2,
+            "correct": true
+          },
+          {
+            "field": "items.0.description",
+            "expected": "M8 anchor bolts",
+            "actual": "M8 anchor bolts",
+            "correct": true
+          },
+          {
+            "field": "items.0.quantity",
+            "expected": "12",
+            "actual": "12",
+            "correct": true
+          },
+          {
+            "field": "items.0.unit",
+            "expected": "each",
+            "actual": "each",
+            "correct": true
+          },
+          {
+            "field": "items.0.unitRate",
+            "expected": "2.75",
+            "actual": "2.75",
+            "correct": true
+          },
+          {
+            "field": "items.0.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.0.tax",
+            "expected": "1.65",
+            "actual": "1.65",
+            "correct": true
+          },
+          {
+            "field": "items.0.total",
+            "expected": "34.65",
+            "actual": "34.65",
+            "correct": true
+          },
+          {
+            "field": "items.1.description",
+            "expected": "Steel washers",
+            "actual": "Steel washers",
+            "correct": true
+          },
+          {
+            "field": "items.1.quantity",
+            "expected": "20",
+            "actual": "20",
+            "correct": true
+          },
+          {
+            "field": "items.1.unit",
+            "expected": "each",
+            "actual": "each",
+            "correct": true
+          },
+          {
+            "field": "items.1.unitRate",
+            "expected": "0.85",
+            "actual": "0.85",
+            "correct": true
+          },
+          {
+            "field": "items.1.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.1.tax",
+            "expected": "0.85",
+            "actual": "0.85",
+            "correct": true
+          },
+          {
+            "field": "items.1.total",
+            "expected": "17.85",
+            "actual": "17.85",
+            "correct": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "G05",
+      "sha256": "23365d06bd5799d395d04a7836da153b5c1e235179d68f5dbd08160b19ce764e",
+      "layout": "arabic",
+      "format": "png",
+      "pages": 1,
+      "language": "Arabic/English",
+      "startedAt": "2026-11-06T04:59:18.701Z",
+      "status": "extracted",
+      "actualProviderChargeUsd": null,
+      "wallLatencyMs": 7580,
+      "httpStatus": 200,
+      "appRequestId": null,
+      "vercelRequestId": "bom1::sin1::d5rv9-1793941158775-d4e0eadb9001",
+      "mode": "live",
+      "provider": "deepseek-flash",
+      "requestId": "c6725318-975b-4d69-9c5e-85269c189cc7",
+      "inputTokens": 1296,
+      "outputTokens": 235,
+      "processingLatencyMs": 6294.445804000003,
+      "completeness": "partial",
+      "fieldIssues": [],
+      "uncertain": [
+        "date",
+        "total",
+        "tax",
+        "purchaseOrderReference",
+        "discount",
+        "department",
+        "projectName",
+        "customerName"
+      ],
+      "failureCode": null,
+      "fresh": true,
+      "peakTariffUpperEstimateUsd": 0.000671,
+      "score": {
+        "correct": 28,
+        "total": 29,
+        "itemCountCorrect": true,
+        "monetaryMistakes": [],
+        "classificationCorrect": true,
+        "facts": [
+          {
+            "field": "supplier",
+            "expected": "Palm Lantern Building Materials",
+            "actual": "Palm Lantern Building Materials",
+            "correct": true
+          },
+          {
+            "field": "date",
+            "expected": "2026-11-02",
+            "actual": "2026-11-02",
+            "correct": true
+          },
+          {
+            "field": "reference",
+            "expected": "PL-7031",
+            "actual": "PL-7031",
+            "correct": true
+          },
+          {
+            "field": "currency",
+            "expected": "AED",
+            "actual": "AED",
+            "correct": true
+          },
+          {
+            "field": "documentType",
+            "expected": "invoice",
+            "actual": "invoice",
+            "correct": true
+          },
+          {
+            "field": "dueDate",
+            "expected": "2026-11-16",
+            "actual": "2026-11-16",
+            "correct": true
+          },
+          {
+            "field": "purchaseOrderReference",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "subtotal",
+            "expected": "117.50",
+            "actual": "117.50",
+            "correct": true
+          },
+          {
+            "field": "discount",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "tax",
+            "expected": "5.88",
+            "actual": "5.88",
+            "correct": true
+          },
+          {
+            "field": "total",
+            "expected": "123.38",
+            "actual": "123.38",
+            "correct": true
+          },
+          {
+            "field": "kind",
+            "expected": "supplier-bill",
+            "actual": "supplier-bill",
+            "correct": true
+          },
+          {
+            "field": "department",
+            "expected": "CIVIL",
+            "actual": "",
+            "correct": false
+          },
+          {
+            "field": "projectName",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "itemCount",
+            "expected": 2,
+            "actual": 2,
+            "correct": true
+          },
+          {
+            "field": "items.0.description",
+            "expected": "White grout / جراوت أبيض",
+            "actual": "White grout / جراوت أبيض",
+            "correct": true
+          },
+          {
+            "field": "items.0.quantity",
+            "expected": "4",
+            "actual": "4",
+            "correct": true
+          },
+          {
+            "field": "items.0.unit",
+            "expected": "bag",
+            "actual": "bag",
+            "correct": true
+          },
+          {
+            "field": "items.0.unitRate",
+            "expected": "22.50",
+            "actual": "22.50",
+            "correct": true
+          },
+          {
+            "field": "items.0.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.0.tax",
+            "expected": "4.50",
+            "actual": "4.50",
+            "correct": true
+          },
+          {
+            "field": "items.0.total",
+            "expected": "94.50",
+            "actual": "94.50",
+            "correct": true
+          },
+          {
+            "field": "items.1.description",
+            "expected": "Tile spacers / فواصل بلاط",
+            "actual": "Tile spacers / فواصل بلاط",
+            "correct": true
+          },
+          {
+            "field": "items.1.quantity",
+            "expected": "2",
+            "actual": "2",
+            "correct": true
+          },
+          {
+            "field": "items.1.unit",
+            "expected": "pack",
+            "actual": "pack",
+            "correct": true
+          },
+          {
+            "field": "items.1.unitRate",
+            "expected": "13.75",
+            "actual": "13.75",
+            "correct": true
+          },
+          {
+            "field": "items.1.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.1.tax",
+            "expected": "1.38",
+            "actual": "1.38",
+            "correct": true
+          },
+          {
+            "field": "items.1.total",
+            "expected": "28.88",
+            "actual": "28.88",
+            "correct": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "G06",
+      "sha256": "72755bc9b9024cd226eb1b5a738b886aa8db37c7703ab883bc6fdf88ea9ce09d",
+      "layout": "text-pdf",
+      "format": "pdf",
+      "pages": 2,
+      "language": "English",
+      "startedAt": "2026-11-06T04:59:29.416Z",
+      "status": "extracted",
+      "actualProviderChargeUsd": null,
+      "wallLatencyMs": 8937,
+      "httpStatus": 200,
+      "appRequestId": null,
+      "vercelRequestId": "bom1::sin1::hbjz9-1793941169508-e423d5316877",
+      "mode": "live",
+      "provider": "deepseek-flash",
+      "requestId": "55423186-cd05-401f-9b98-af2582661bd0",
+      "inputTokens": 825,
+      "outputTokens": 413,
+      "processingLatencyMs": 7627.333456000008,
+      "completeness": "partial",
+      "fieldIssues": [],
+      "uncertain": [
+        "subtotal",
+        "total",
+        "discount",
+        "department",
+        "projectName",
+        "customerName"
+      ],
+      "failureCode": null,
+      "fresh": true,
+      "peakTariffUpperEstimateUsd": 0.000744,
+      "score": {
+        "correct": 56,
+        "total": 57,
+        "itemCountCorrect": true,
+        "monetaryMistakes": [],
+        "classificationCorrect": true,
+        "facts": [
+          {
+            "field": "supplier",
+            "expected": "Copper Reed Electrical",
+            "actual": "Copper Reed Electrical",
+            "correct": true
+          },
+          {
+            "field": "date",
+            "expected": "2026-11-01",
+            "actual": "2026-11-01",
+            "correct": true
+          },
+          {
+            "field": "reference",
+            "expected": "CR-2P-115",
+            "actual": "CR-2P-115",
+            "correct": true
+          },
+          {
+            "field": "currency",
+            "expected": "AED",
+            "actual": "AED",
+            "correct": true
+          },
+          {
+            "field": "documentType",
+            "expected": "invoice",
+            "actual": "invoice",
+            "correct": true
+          },
+          {
+            "field": "dueDate",
+            "expected": "2026-11-15",
+            "actual": "2026-11-15",
+            "correct": true
+          },
+          {
+            "field": "purchaseOrderReference",
+            "expected": "DEMO-PO-222",
+            "actual": "DEMO-PO-222",
+            "correct": true
+          },
+          {
+            "field": "subtotal",
+            "expected": "236.50",
+            "actual": "236.50",
+            "correct": true
+          },
+          {
+            "field": "discount",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "tax",
+            "expected": "11.84",
+            "actual": "11.84",
+            "correct": true
+          },
+          {
+            "field": "total",
+            "expected": "248.34",
+            "actual": "248.34",
+            "correct": true
+          },
+          {
+            "field": "kind",
+            "expected": "supplier-bill",
+            "actual": "supplier-bill",
+            "correct": true
+          },
+          {
+            "field": "department",
+            "expected": "MEP",
+            "actual": "",
+            "correct": false
+          },
+          {
+            "field": "projectName",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "itemCount",
+            "expected": 6,
+            "actual": 6,
+            "correct": true
+          },
+          {
+            "field": "items.0.description",
+            "expected": "Cable trunking",
+            "actual": "Cable trunking",
+            "correct": true
+          },
+          {
+            "field": "items.0.quantity",
+            "expected": "3",
+            "actual": "3",
+            "correct": true
+          },
+          {
+            "field": "items.0.unit",
+            "expected": "length",
+            "actual": "length",
+            "correct": true
+          },
+          {
+            "field": "items.0.unitRate",
+            "expected": "24.50",
+            "actual": "24.50",
+            "correct": true
+          },
+          {
+            "field": "items.0.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.0.tax",
+            "expected": "3.68",
+            "actual": "3.68",
+            "correct": true
+          },
+          {
+            "field": "items.0.total",
+            "expected": "77.18",
+            "actual": "77.18",
+            "correct": true
+          },
+          {
+            "field": "items.1.description",
+            "expected": "Cable ties",
+            "actual": "Cable ties",
+            "correct": true
+          },
+          {
+            "field": "items.1.quantity",
+            "expected": "2",
+            "actual": "2",
+            "correct": true
+          },
+          {
+            "field": "items.1.unit",
+            "expected": "pack",
+            "actual": "pack",
+            "correct": true
+          },
+          {
+            "field": "items.1.unitRate",
+            "expected": "9.25",
+            "actual": "9.25",
+            "correct": true
+          },
+          {
+            "field": "items.1.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.1.tax",
+            "expected": "0.93",
+            "actual": "0.93",
+            "correct": true
+          },
+          {
+            "field": "items.1.total",
+            "expected": "19.43",
+            "actual": "19.43",
+            "correct": true
+          },
+          {
+            "field": "items.2.description",
+            "expected": "Wall anchors",
+            "actual": "Wall anchors",
+            "correct": true
+          },
+          {
+            "field": "items.2.quantity",
+            "expected": "4",
+            "actual": "4",
+            "correct": true
+          },
+          {
+            "field": "items.2.unit",
+            "expected": "box",
+            "actual": "box",
+            "correct": true
+          },
+          {
+            "field": "items.2.unitRate",
+            "expected": "12.00",
+            "actual": "12.00",
+            "correct": true
+          },
+          {
+            "field": "items.2.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.2.tax",
+            "expected": "2.40",
+            "actual": "2.40",
+            "correct": true
+          },
+          {
+            "field": "items.2.total",
+            "expected": "50.40",
+            "actual": "50.40",
+            "correct": true
+          },
+          {
+            "field": "items.3.description",
+            "expected": "Safety gloves",
+            "actual": "Safety gloves",
+            "correct": true
+          },
+          {
+            "field": "items.3.quantity",
+            "expected": "5",
+            "actual": "5",
+            "correct": true
+          },
+          {
+            "field": "items.3.unit",
+            "expected": "pair",
+            "actual": "pair",
+            "correct": true
+          },
+          {
+            "field": "items.3.unitRate",
+            "expected": "8.40",
+            "actual": "8.40",
+            "correct": true
+          },
+          {
+            "field": "items.3.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.3.tax",
+            "expected": "2.10",
+            "actual": "2.10",
+            "correct": true
+          },
+          {
+            "field": "items.3.total",
+            "expected": "44.10",
+            "actual": "44.10",
+            "correct": true
+          },
+          {
+            "field": "items.4.description",
+            "expected": "Measuring tape",
+            "actual": "Measuring tape",
+            "correct": true
+          },
+          {
+            "field": "items.4.quantity",
+            "expected": "2",
+            "actual": "2",
+            "correct": true
+          },
+          {
+            "field": "items.4.unit",
+            "expected": "each",
+            "actual": "each",
+            "correct": true
+          },
+          {
+            "field": "items.4.unitRate",
+            "expected": "16.75",
+            "actual": "16.75",
+            "correct": true
+          },
+          {
+            "field": "items.4.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.4.tax",
+            "expected": "1.68",
+            "actual": "1.68",
+            "correct": true
+          },
+          {
+            "field": "items.4.total",
+            "expected": "35.18",
+            "actual": "35.18",
+            "correct": true
+          },
+          {
+            "field": "items.5.description",
+            "expected": "Marker pens",
+            "actual": "Marker pens",
+            "correct": true
+          },
+          {
+            "field": "items.5.quantity",
+            "expected": "6",
+            "actual": "6",
+            "correct": true
+          },
+          {
+            "field": "items.5.unit",
+            "expected": "each",
+            "actual": "each",
+            "correct": true
+          },
+          {
+            "field": "items.5.unitRate",
+            "expected": "3.50",
+            "actual": "3.50",
+            "correct": true
+          },
+          {
+            "field": "items.5.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.5.tax",
+            "expected": "1.05",
+            "actual": "1.05",
+            "correct": true
+          },
+          {
+            "field": "items.5.total",
+            "expected": "22.05",
+            "actual": "22.05",
+            "correct": true
+          }
+        ]
+      },
+      "firstPreviewPageSha256": "e6f86c8b7e9d595b0ff84e8b201649c7664e14c69f505cbef1f5af209ab38f0d"
+    },
+    {
+      "id": "G07",
+      "sha256": "b67a4e9846f6d4ead04799b3320676d8fd577fe849c48caefe3663a5ad425cec",
+      "layout": "scan-pdf",
+      "format": "pdf",
+      "pages": 2,
+      "language": "English",
+      "startedAt": "2026-11-06T04:59:43.051Z",
+      "status": "extracted",
+      "actualProviderChargeUsd": null,
+      "wallLatencyMs": 7960,
+      "httpStatus": 200,
+      "appRequestId": null,
+      "vercelRequestId": "bom1::sin1::z8vdl-1793941183125-616221ffcc43",
+      "mode": "live",
+      "provider": "deepseek-flash",
+      "requestId": "637591e6-63db-4a2d-9e24-f4bd7d835730",
+      "inputTokens": 1875,
+      "outputTokens": 381,
+      "processingLatencyMs": 6460.570543999987,
+      "completeness": "partial",
+      "fieldIssues": [],
+      "uncertain": [
+        "dueDate",
+        "purchaseOrderReference",
+        "kind",
+        "discount",
+        "department",
+        "projectName",
+        "customerName"
+      ],
+      "failureCode": null,
+      "fresh": true,
+      "peakTariffUpperEstimateUsd": 0.00102,
+      "score": {
+        "correct": 56,
+        "total": 57,
+        "itemCountCorrect": true,
+        "monetaryMistakes": [],
+        "classificationCorrect": true,
+        "facts": [
+          {
+            "field": "supplier",
+            "expected": "Stone Finch Trade Depot",
+            "actual": "Stone Finch Trade Depot",
+            "correct": true
+          },
+          {
+            "field": "date",
+            "expected": "2026-10-31",
+            "actual": "2026-10-31",
+            "correct": true
+          },
+          {
+            "field": "reference",
+            "expected": "SF-SCAN-821",
+            "actual": "SF-SCAN-821",
+            "correct": true
+          },
+          {
+            "field": "currency",
+            "expected": "AED",
+            "actual": "AED",
+            "correct": true
+          },
+          {
+            "field": "documentType",
+            "expected": "invoice",
+            "actual": "invoice",
+            "correct": true
+          },
+          {
+            "field": "dueDate",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "purchaseOrderReference",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "subtotal",
+            "expected": "236.50",
+            "actual": "236.50",
+            "correct": true
+          },
+          {
+            "field": "discount",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "tax",
+            "expected": "11.84",
+            "actual": "11.84",
+            "correct": true
+          },
+          {
+            "field": "total",
+            "expected": "248.34",
+            "actual": "248.34",
+            "correct": true
+          },
+          {
+            "field": "kind",
+            "expected": "supplier-bill",
+            "actual": "supplier-bill",
+            "correct": true
+          },
+          {
+            "field": "department",
+            "expected": "CIVIL",
+            "actual": "",
+            "correct": false
+          },
+          {
+            "field": "projectName",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "itemCount",
+            "expected": 6,
+            "actual": 6,
+            "correct": true
+          },
+          {
+            "field": "items.0.description",
+            "expected": "Cable trunking",
+            "actual": "Cable trunking",
+            "correct": true
+          },
+          {
+            "field": "items.0.quantity",
+            "expected": "3",
+            "actual": "3",
+            "correct": true
+          },
+          {
+            "field": "items.0.unit",
+            "expected": "length",
+            "actual": "length",
+            "correct": true
+          },
+          {
+            "field": "items.0.unitRate",
+            "expected": "24.50",
+            "actual": "24.50",
+            "correct": true
+          },
+          {
+            "field": "items.0.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.0.tax",
+            "expected": "3.68",
+            "actual": "3.68",
+            "correct": true
+          },
+          {
+            "field": "items.0.total",
+            "expected": "77.18",
+            "actual": "77.18",
+            "correct": true
+          },
+          {
+            "field": "items.1.description",
+            "expected": "Cable ties",
+            "actual": "Cable ties",
+            "correct": true
+          },
+          {
+            "field": "items.1.quantity",
+            "expected": "2",
+            "actual": "2",
+            "correct": true
+          },
+          {
+            "field": "items.1.unit",
+            "expected": "pack",
+            "actual": "pack",
+            "correct": true
+          },
+          {
+            "field": "items.1.unitRate",
+            "expected": "9.25",
+            "actual": "9.25",
+            "correct": true
+          },
+          {
+            "field": "items.1.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.1.tax",
+            "expected": "0.93",
+            "actual": "0.93",
+            "correct": true
+          },
+          {
+            "field": "items.1.total",
+            "expected": "19.43",
+            "actual": "19.43",
+            "correct": true
+          },
+          {
+            "field": "items.2.description",
+            "expected": "Wall anchors",
+            "actual": "Wall anchors",
+            "correct": true
+          },
+          {
+            "field": "items.2.quantity",
+            "expected": "4",
+            "actual": "4",
+            "correct": true
+          },
+          {
+            "field": "items.2.unit",
+            "expected": "box",
+            "actual": "box",
+            "correct": true
+          },
+          {
+            "field": "items.2.unitRate",
+            "expected": "12.00",
+            "actual": "12.00",
+            "correct": true
+          },
+          {
+            "field": "items.2.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.2.tax",
+            "expected": "2.40",
+            "actual": "2.40",
+            "correct": true
+          },
+          {
+            "field": "items.2.total",
+            "expected": "50.40",
+            "actual": "50.40",
+            "correct": true
+          },
+          {
+            "field": "items.3.description",
+            "expected": "Safety gloves",
+            "actual": "Safety gloves",
+            "correct": true
+          },
+          {
+            "field": "items.3.quantity",
+            "expected": "5",
+            "actual": "5",
+            "correct": true
+          },
+          {
+            "field": "items.3.unit",
+            "expected": "pair",
+            "actual": "pair",
+            "correct": true
+          },
+          {
+            "field": "items.3.unitRate",
+            "expected": "8.40",
+            "actual": "8.40",
+            "correct": true
+          },
+          {
+            "field": "items.3.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.3.tax",
+            "expected": "2.10",
+            "actual": "2.10",
+            "correct": true
+          },
+          {
+            "field": "items.3.total",
+            "expected": "44.10",
+            "actual": "44.10",
+            "correct": true
+          },
+          {
+            "field": "items.4.description",
+            "expected": "Measuring tape",
+            "actual": "Measuring tape",
+            "correct": true
+          },
+          {
+            "field": "items.4.quantity",
+            "expected": "2",
+            "actual": "2",
+            "correct": true
+          },
+          {
+            "field": "items.4.unit",
+            "expected": "each",
+            "actual": "each",
+            "correct": true
+          },
+          {
+            "field": "items.4.unitRate",
+            "expected": "16.75",
+            "actual": "16.75",
+            "correct": true
+          },
+          {
+            "field": "items.4.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.4.tax",
+            "expected": "1.68",
+            "actual": "1.68",
+            "correct": true
+          },
+          {
+            "field": "items.4.total",
+            "expected": "35.18",
+            "actual": "35.18",
+            "correct": true
+          },
+          {
+            "field": "items.5.description",
+            "expected": "Marker pens",
+            "actual": "Marker pens",
+            "correct": true
+          },
+          {
+            "field": "items.5.quantity",
+            "expected": "6",
+            "actual": "6",
+            "correct": true
+          },
+          {
+            "field": "items.5.unit",
+            "expected": "each",
+            "actual": "each",
+            "correct": true
+          },
+          {
+            "field": "items.5.unitRate",
+            "expected": "3.50",
+            "actual": "3.50",
+            "correct": true
+          },
+          {
+            "field": "items.5.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.5.tax",
+            "expected": "1.05",
+            "actual": "1.05",
+            "correct": true
+          },
+          {
+            "field": "items.5.total",
+            "expected": "22.05",
+            "actual": "22.05",
+            "correct": true
+          }
+        ]
+      },
+      "firstPreviewPageSha256": "adb6f1d61ec0fbf2ebf856a141df5d02c5994314670c2f34cea7a048cc43877d"
+    },
+    {
+      "id": "G08",
+      "sha256": "a9a85758b11c695e87272438f69c60c75de9333261278a43804ec5df3a350061",
+      "layout": "mixed-pdf",
+      "format": "pdf",
+      "pages": 2,
+      "language": "English",
+      "startedAt": "2026-11-06T04:59:54.768Z",
+      "status": "extracted",
+      "actualProviderChargeUsd": null,
+      "wallLatencyMs": 10131,
+      "httpStatus": 200,
+      "appRequestId": null,
+      "vercelRequestId": "bom1::sin1::wp28s-1793941194844-096e9b6e2f53",
+      "mode": "live",
+      "provider": "deepseek-flash",
+      "requestId": "e62fc853-f6f4-4f02-b605-f642eb80287d",
+      "inputTokens": 2003,
+      "outputTokens": 293,
+      "processingLatencyMs": 6597.486218999984,
+      "completeness": "partial",
+      "fieldIssues": [],
+      "uncertain": [
+        "dueDate",
+        "purchaseOrderReference",
+        "tax",
+        "discount",
+        "department",
+        "projectName",
+        "customerName",
+        "items.0.tax",
+        "items.1.tax",
+        "items.2.tax",
+        "items.3.tax"
+      ],
+      "failureCode": null,
+      "fresh": true,
+      "peakTariffUpperEstimateUsd": 0.000953,
+      "score": {
+        "correct": 43,
+        "total": 43,
+        "itemCountCorrect": true,
+        "monetaryMistakes": [],
+        "classificationCorrect": true,
+        "facts": [
+          {
+            "field": "supplier",
+            "expected": "Juniper Line Services",
+            "actual": "Juniper Line Services",
+            "correct": true
+          },
+          {
+            "field": "date",
+            "expected": "2026-10-30",
+            "actual": "2026-10-30",
+            "correct": true
+          },
+          {
+            "field": "reference",
+            "expected": "JL-MIX-426",
+            "actual": "JL-MIX-426",
+            "correct": true
+          },
+          {
+            "field": "currency",
+            "expected": "AED",
+            "actual": "AED",
+            "correct": true
+          },
+          {
+            "field": "documentType",
+            "expected": "invoice",
+            "actual": "invoice",
+            "correct": true
+          },
+          {
+            "field": "dueDate",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "purchaseOrderReference",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "subtotal",
+            "expected": "132.00",
+            "actual": "132.00",
+            "correct": true
+          },
+          {
+            "field": "discount",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "tax",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "total",
+            "expected": "132.00",
+            "actual": "132.00",
+            "correct": true
+          },
+          {
+            "field": "kind",
+            "expected": "company-expense",
+            "actual": "company-expense",
+            "correct": true
+          },
+          {
+            "field": "department",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "projectName",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "itemCount",
+            "expected": 4,
+            "actual": 4,
+            "correct": true
+          },
+          {
+            "field": "items.0.description",
+            "expected": "Office cleaning supplies",
+            "actual": "Office cleaning supplies",
+            "correct": true
+          },
+          {
+            "field": "items.0.quantity",
+            "expected": "2",
+            "actual": "2",
+            "correct": true
+          },
+          {
+            "field": "items.0.unit",
+            "expected": "set",
+            "actual": "set",
+            "correct": true
+          },
+          {
+            "field": "items.0.unitRate",
+            "expected": "31.25",
+            "actual": "31.25",
+            "correct": true
+          },
+          {
+            "field": "items.0.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.0.tax",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "items.0.total",
+            "expected": "62.50",
+            "actual": "62.50",
+            "correct": true
+          },
+          {
+            "field": "items.1.description",
+            "expected": "Waste sacks",
+            "actual": "Waste sacks",
+            "correct": true
+          },
+          {
+            "field": "items.1.quantity",
+            "expected": "3",
+            "actual": "3",
+            "correct": true
+          },
+          {
+            "field": "items.1.unit",
+            "expected": "pack",
+            "actual": "pack",
+            "correct": true
+          },
+          {
+            "field": "items.1.unitRate",
+            "expected": "8.00",
+            "actual": "8.00",
+            "correct": true
+          },
+          {
+            "field": "items.1.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.1.tax",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "items.1.total",
+            "expected": "24.00",
+            "actual": "24.00",
+            "correct": true
+          },
+          {
+            "field": "items.2.description",
+            "expected": "Pantry tissues",
+            "actual": "Pantry tissues",
+            "correct": true
+          },
+          {
+            "field": "items.2.quantity",
+            "expected": "4",
+            "actual": "4",
+            "correct": true
+          },
+          {
+            "field": "items.2.unit",
+            "expected": "box",
+            "actual": "box",
+            "correct": true
+          },
+          {
+            "field": "items.2.unitRate",
+            "expected": "5.50",
+            "actual": "5.50",
+            "correct": true
+          },
+          {
+            "field": "items.2.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.2.tax",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "items.2.total",
+            "expected": "22.00",
+            "actual": "22.00",
+            "correct": true
+          },
+          {
+            "field": "items.3.description",
+            "expected": "Hand soap",
+            "actual": "Hand soap",
+            "correct": true
+          },
+          {
+            "field": "items.3.quantity",
+            "expected": "2",
+            "actual": "2",
+            "correct": true
+          },
+          {
+            "field": "items.3.unit",
+            "expected": "bottle",
+            "actual": "bottle",
+            "correct": true
+          },
+          {
+            "field": "items.3.unitRate",
+            "expected": "11.75",
+            "actual": "11.75",
+            "correct": true
+          },
+          {
+            "field": "items.3.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.3.tax",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "items.3.total",
+            "expected": "23.50",
+            "actual": "23.50",
+            "correct": true
+          }
+        ]
+      },
+      "firstPreviewPageSha256": "2d0bf7c576f2904b0c9634e460bd5e0184e770ba2dd8571dcda314a3c4e6e1e2"
+    },
+    {
+      "id": "G09",
+      "sha256": "7146fa4e4c4f11fc5ce043c0c8ad8c256c64dfa87103d2f5b32569c958691d4e",
+      "layout": "quotation",
+      "format": "png",
+      "pages": 1,
+      "language": "English",
+      "startedAt": "2026-11-06T05:00:08.994Z",
+      "status": "extracted",
+      "actualProviderChargeUsd": null,
+      "wallLatencyMs": 8997,
+      "httpStatus": 200,
+      "appRequestId": null,
+      "vercelRequestId": "bom1::sin1::4tnzh-1793941209085-89481761b543",
+      "mode": "live",
+      "provider": "deepseek-flash",
+      "requestId": "f3ed6d55-6706-4f4d-8960-cfb8ff5c1d9b",
+      "inputTokens": 1296,
+      "outputTokens": 197,
+      "processingLatencyMs": 5684.332471,
+      "completeness": "partial",
+      "fieldIssues": [],
+      "uncertain": [
+        "kind",
+        "supplier",
+        "dueDate",
+        "purchaseOrderReference",
+        "discount",
+        "department",
+        "projectName",
+        "customerName"
+      ],
+      "failureCode": null,
+      "fresh": true,
+      "peakTariffUpperEstimateUsd": 0.000626,
+      "score": {
+        "correct": 29,
+        "total": 29,
+        "itemCountCorrect": true,
+        "monetaryMistakes": [],
+        "classificationCorrect": true,
+        "facts": [
+          {
+            "field": "supplier",
+            "expected": "Cobalt Arch Interiors",
+            "actual": "Cobalt Arch Interiors",
+            "correct": true
+          },
+          {
+            "field": "date",
+            "expected": "2026-11-06",
+            "actual": "2026-11-06",
+            "correct": true
+          },
+          {
+            "field": "reference",
+            "expected": "CA-Q-902",
+            "actual": "CA-Q-902",
+            "correct": true
+          },
+          {
+            "field": "currency",
+            "expected": "AED",
+            "actual": "AED",
+            "correct": true
+          },
+          {
+            "field": "documentType",
+            "expected": "quotation",
+            "actual": "quotation",
+            "correct": true
+          },
+          {
+            "field": "dueDate",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "purchaseOrderReference",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "subtotal",
+            "expected": "327.00",
+            "actual": "327.00",
+            "correct": true
+          },
+          {
+            "field": "discount",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "tax",
+            "expected": "16.35",
+            "actual": "16.35",
+            "correct": true
+          },
+          {
+            "field": "total",
+            "expected": "343.35",
+            "actual": "343.35",
+            "correct": true
+          },
+          {
+            "field": "kind",
+            "expected": "unknown",
+            "actual": "unknown",
+            "correct": true
+          },
+          {
+            "field": "department",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "projectName",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "itemCount",
+            "expected": 2,
+            "actual": 2,
+            "correct": true
+          },
+          {
+            "field": "items.0.description",
+            "expected": "Cabinet design service",
+            "actual": "Cabinet design service",
+            "correct": true
+          },
+          {
+            "field": "items.0.quantity",
+            "expected": "3",
+            "actual": "3",
+            "correct": true
+          },
+          {
+            "field": "items.0.unit",
+            "expected": "hour",
+            "actual": "hour",
+            "correct": true
+          },
+          {
+            "field": "items.0.unitRate",
+            "expected": "95.00",
+            "actual": "95.00",
+            "correct": true
+          },
+          {
+            "field": "items.0.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.0.tax",
+            "expected": "14.25",
+            "actual": "14.25",
+            "correct": true
+          },
+          {
+            "field": "items.0.total",
+            "expected": "299.25",
+            "actual": "299.25",
+            "correct": true
+          },
+          {
+            "field": "items.1.description",
+            "expected": "Finish samples",
+            "actual": "Finish samples",
+            "correct": true
+          },
+          {
+            "field": "items.1.quantity",
+            "expected": "1",
+            "actual": "1",
+            "correct": true
+          },
+          {
+            "field": "items.1.unit",
+            "expected": "set",
+            "actual": "set",
+            "correct": true
+          },
+          {
+            "field": "items.1.unitRate",
+            "expected": "42.00",
+            "actual": "42.00",
+            "correct": true
+          },
+          {
+            "field": "items.1.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.1.tax",
+            "expected": "2.10",
+            "actual": "2.10",
+            "correct": true
+          },
+          {
+            "field": "items.1.total",
+            "expected": "44.10",
+            "actual": "44.10",
+            "correct": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "G10",
+      "sha256": "54323ce1e75c4155693d216baa1c418bbe223fd61f82719ac55dfcebf2817cb3",
+      "layout": "degraded",
+      "format": "jpg",
+      "pages": 1,
+      "language": "English",
+      "startedAt": "2026-11-06T05:00:20.154Z",
+      "status": "extracted",
+      "actualProviderChargeUsd": null,
+      "wallLatencyMs": 7975,
+      "httpStatus": 200,
+      "appRequestId": null,
+      "vercelRequestId": "bom1::sin1::49z6j-1793941220242-70eae588186d",
+      "mode": "live",
+      "provider": "deepseek-flash",
+      "requestId": "4da86aa8-e4a9-482e-8028-778104a1bef0",
+      "inputTokens": 1454,
+      "outputTokens": 196,
+      "processingLatencyMs": 6625.293291,
+      "completeness": "partial",
+      "fieldIssues": [],
+      "uncertain": [
+        "date",
+        "reference",
+        "subtotal",
+        "dueDate",
+        "purchaseOrderReference",
+        "tax",
+        "discount",
+        "department",
+        "projectName",
+        "customerName",
+        "items.0.quantity",
+        "items.0.tax",
+        "items.1.tax"
+      ],
+      "failureCode": null,
+      "fresh": true,
+      "peakTariffUpperEstimateUsd": 0.000672,
+      "score": {
+        "correct": 29,
+        "total": 29,
+        "itemCountCorrect": true,
+        "monetaryMistakes": [],
+        "classificationCorrect": true,
+        "facts": [
+          {
+            "field": "supplier",
+            "expected": "Willow Cup Pantry",
+            "actual": "Willow Cup Pantry",
+            "correct": true
+          },
+          {
+            "field": "date",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "reference",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "currency",
+            "expected": "AED",
+            "actual": "AED",
+            "correct": true
+          },
+          {
+            "field": "documentType",
+            "expected": "receipt",
+            "actual": "receipt",
+            "correct": true
+          },
+          {
+            "field": "dueDate",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "purchaseOrderReference",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "subtotal",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "discount",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "tax",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "total",
+            "expected": "69.00",
+            "actual": "69.00",
+            "correct": true
+          },
+          {
+            "field": "kind",
+            "expected": "company-expense",
+            "actual": "company-expense",
+            "correct": true
+          },
+          {
+            "field": "department",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "projectName",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "itemCount",
+            "expected": 2,
+            "actual": 2,
+            "correct": true
+          },
+          {
+            "field": "items.0.description",
+            "expected": "Pantry coffee",
+            "actual": "Pantry coffee",
+            "correct": true
+          },
+          {
+            "field": "items.0.quantity",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "items.0.unit",
+            "expected": "bag",
+            "actual": "bag",
+            "correct": true
+          },
+          {
+            "field": "items.0.unitRate",
+            "expected": "28.50",
+            "actual": "28.50",
+            "correct": true
+          },
+          {
+            "field": "items.0.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.0.tax",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "items.0.total",
+            "expected": "57.00",
+            "actual": "57.00",
+            "correct": true
+          },
+          {
+            "field": "items.1.description",
+            "expected": "Drinking cups",
+            "actual": "Drinking cups",
+            "correct": true
+          },
+          {
+            "field": "items.1.quantity",
+            "expected": "1",
+            "actual": "1",
+            "correct": true
+          },
+          {
+            "field": "items.1.unit",
+            "expected": "pack",
+            "actual": "pack",
+            "correct": true
+          },
+          {
+            "field": "items.1.unitRate",
+            "expected": "12.00",
+            "actual": "12.00",
+            "correct": true
+          },
+          {
+            "field": "items.1.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.1.tax",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "items.1.total",
+            "expected": "12.00",
+            "actual": "12.00",
+            "correct": true
+          }
+        ]
+      }
+    }
+  ],
+  "checks": [
+    "Unauthenticated snapshot is denied",
+    "Original extraction and correction preserved; SaveDraft does not change finances",
+    "Quotation identified and conversion unavailable",
+    "Refresh retains authenticated session/document history",
+    "Logout revokes session access"
+  ],
+  "browserErrors": [],
+  "native503": [],
+  "screenshots": [
+    "G01-autofill-1440.png",
+    "G01-autofill-390.png",
+    "G02-autofill-1440.png",
+    "G02-autofill-390.png",
+    "G03-autofill-1440.png",
+    "G03-autofill-390.png",
+    "G04-autofill-1440.png",
+    "G04-autofill-390.png",
+    "G05-autofill-1440.png",
+    "G05-autofill-390.png",
+    "G06-autofill-1440.png",
+    "G06-autofill-390.png",
+    "G06-page2-1440.png",
+    "G06-page2-390.png",
+    "G07-autofill-1440.png",
+    "G07-autofill-390.png",
+    "G07-page2-1440.png",
+    "G07-page2-390.png",
+    "G08-autofill-1440.png",
+    "G08-autofill-390.png",
+    "G08-page2-1440.png",
+    "G08-page2-390.png",
+    "G09-autofill-1440.png",
+    "G09-autofill-390.png",
+    "G10-autofill-1440.png",
+    "G10-autofill-390.png"
+  ],
+  "pdfOriginalPages": [
+    {
+      "id": "G06",
+      "page": 1,
+      "path": "G06-original-page-1.png",
+      "rendered": true
+    },
+    {
+      "id": "G06",
+      "page": 2,
+      "path": "G06-original-page-2.png",
+      "rendered": true
+    },
+    {
+      "id": "G07",
+      "page": 1,
+      "path": "G07-original-page-1.png",
+      "rendered": true
+    },
+    {
+      "id": "G07",
+      "page": 2,
+      "path": "G07-original-page-2.png",
+      "rendered": true
+    },
+    {
+      "id": "G08",
+      "page": 1,
+      "path": "G08-original-page-1.png",
+      "rendered": true
+    },
+    {
+      "id": "G08",
+      "page": 2,
+      "path": "G08-original-page-2.png",
+      "rendered": true
+    }
+  ],
+  "uploadRequestCount": 10,
+  "actualProviderChargesUsd": null,
+  "actualChargesStatus": "unverified; token tariff estimates are not provider billing",
+  "notes": [
+    "Only new fictional originals; the manifest is never sent as a prompt or admission registry.",
+    "No automatic retries, financial conversion or resets.",
+    "Prior native Blob503 failures are not erased by a later passing run."
+  ],
+  "status": "workflow-pass-review-accuracy-separately",
+  "completedAt": "2026-11-06T05:00:32.445Z",
+  "summary": {
+    "selected": 10,
+    "attempted": 10,
+    "extracted": 10,
+    "fresh": 10,
+    "completionRate": 1,
+    "correctFields": 362,
+    "scoredFields": 367,
+    "classificationCorrect": 10,
+    "itemCountsCorrect": 10,
+    "monetaryMistakes": 0,
+    "quantityRateMistakes": 0,
+    "missingReadableFields": 5,
+    "filledUnprintedFields": 0,
+    "averageUploadResponseMs": 8642.1,
+    "unmeteredFreshResponses": 0,
+    "averageKnownPeakEstimatePerFreshDocumentUsd": 0.0007241,
+    "actualProviderChargesUsd": null,
+    "peakTariffUpperEstimateUsd": 0.007241
+  }
+}

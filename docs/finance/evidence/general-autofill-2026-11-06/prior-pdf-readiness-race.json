@@ -1,0 +1,19 @@
+{
+  "paidCalls": 0,
+  "evidence": [
+    {
+      "iteration": 0,
+      "phase": "first-ready",
+      "label": "Original PDF page 2",
+      "ready": "false",
+      "dark": 0
+    },
+    {
+      "iteration": 0,
+      "phase": "same-page-eventually-completed",
+      "label": "Original PDF page 2",
+      "ready": "true",
+      "dark": 134864
+    }
+  ]
+}

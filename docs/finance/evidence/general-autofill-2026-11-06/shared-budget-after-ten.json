@@ -1,0 +1,13 @@
+{
+  "checkedAt": "2026-11-06T05:00:40.563Z",
+  "sharedBudgetPath": "accounts-review/v1/ai-evaluation/shared-budget-v1.json",
+  "capMicroUsd": 5000000,
+  "exposureMicroUsd": 12098,
+  "remainingMicroUsd": 4987902,
+  "records": 18,
+  "statuses": {
+    "metered": 18
+  },
+  "providerAccountControlsVerified": false,
+  "newPaidCalls": 10
+}

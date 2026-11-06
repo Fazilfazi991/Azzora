@@ -1,5 +1,9 @@
 # Controlled integration plan and executed checkpoints
 
+## General-document AI review checkpoint — 6 November 2026
+
+Isolated branch `codex/azzora-ai-general-documents`, final application `8570f1cd91517a409fa81b6bae3b4769c743d806`, retains canonical shared-staging finance and private originals. Source stages: `906273a` admission/normalization/UI, `771ff3c` native ESM packaging, `8570f1c` department example and completed PDF-page readiness. New immutable Preview `dpl_AXWXbxHQAg2FNdNuzTTcpP2AEie8` only; stable aliases, production settings and GitHub main are untouched. Full nine-suite browser checkpoint is recorded at `771ff3c`, final affected checks and 1,022 units at `8570f1c`; actual model tests cover ten initial and two final unseen originals. No automatic financial posting or real-document enablement. See [the precise result and approval gates](../finance/GENERAL-DOCUMENT-AUTOFILL-REVIEW.md) before any alias reassignment or release.
+
 ## Final shared staging execution — 4 November 2026
 
 1. Preserve accepted application6c838f9 and report3426d40; create isolated `codex/azzora-final-shared-staging` worktree. No reset, production change or main merge.

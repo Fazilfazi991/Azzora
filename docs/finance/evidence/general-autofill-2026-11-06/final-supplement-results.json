@@ -1,0 +1,455 @@
+{
+  "testedSHA": "8570f1cd91517a409fa81b6bae3b4769c743d806",
+  "manifestPath": "tests/fixtures/general-document-entry/department-supplement.json",
+  "base": "https://azzora-accounts-client-review-iuhf6149u-faziils-projects.vercel.app",
+  "startedAt": "2026-11-06T05:15:40.130Z",
+  "selected": [
+    "G11",
+    "G12"
+  ],
+  "rows": [
+    {
+      "id": "G11",
+      "sha256": "b7b7100962cbe783ad1ebfeb3a4750562683cfad835edc46fc6fc027ffbbc6bf",
+      "layout": "department-image",
+      "format": "png",
+      "pages": 1,
+      "language": "English",
+      "startedAt": "2026-11-06T05:15:43.378Z",
+      "status": "extracted",
+      "actualProviderChargeUsd": null,
+      "wallLatencyMs": 9249,
+      "httpStatus": 200,
+      "appRequestId": null,
+      "vercelRequestId": "bom1::sin1::dqpq5-1793942143473-468c8d25fa47",
+      "mode": "live",
+      "provider": "deepseek-flash",
+      "requestId": "73ecd43b-b056-42f6-869c-902616eb5194",
+      "inputTokens": 1249,
+      "outputTokens": 216,
+      "processingLatencyMs": 6910.633537999995,
+      "completeness": "partial",
+      "fieldIssues": [],
+      "uncertain": [
+        "documentType",
+        "discount",
+        "projectName",
+        "customerName"
+      ],
+      "failureCode": null,
+      "fresh": true,
+      "peakTariffUpperEstimateUsd": 0.000634,
+      "score": {
+        "correct": 29,
+        "total": 29,
+        "itemCountCorrect": true,
+        "monetaryMistakes": [],
+        "classificationCorrect": true,
+        "facts": [
+          {
+            "field": "supplier",
+            "expected": "Silver Fern Joinery Goods",
+            "actual": "Silver Fern Joinery Goods",
+            "correct": true
+          },
+          {
+            "field": "date",
+            "expected": "2026-11-06",
+            "actual": "2026-11-06",
+            "correct": true
+          },
+          {
+            "field": "reference",
+            "expected": "SFJ-6014",
+            "actual": "SFJ-6014",
+            "correct": true
+          },
+          {
+            "field": "currency",
+            "expected": "AED",
+            "actual": "AED",
+            "correct": true
+          },
+          {
+            "field": "documentType",
+            "expected": "invoice",
+            "actual": "invoice",
+            "correct": true
+          },
+          {
+            "field": "dueDate",
+            "expected": "2026-11-20",
+            "actual": "2026-11-20",
+            "correct": true
+          },
+          {
+            "field": "purchaseOrderReference",
+            "expected": "FIC-PO-558",
+            "actual": "FIC-PO-558",
+            "correct": true
+          },
+          {
+            "field": "subtotal",
+            "expected": "105.50",
+            "actual": "105.50",
+            "correct": true
+          },
+          {
+            "field": "discount",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "tax",
+            "expected": "5.28",
+            "actual": "5.28",
+            "correct": true
+          },
+          {
+            "field": "total",
+            "expected": "110.78",
+            "actual": "110.78",
+            "correct": true
+          },
+          {
+            "field": "kind",
+            "expected": "supplier-bill",
+            "actual": "supplier-bill",
+            "correct": true
+          },
+          {
+            "field": "department",
+            "expected": "JOINERY",
+            "actual": "JOINERY",
+            "correct": true
+          },
+          {
+            "field": "projectName",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "itemCount",
+            "expected": 2,
+            "actual": 2,
+            "correct": true
+          },
+          {
+            "field": "items.0.description",
+            "expected": "Birch trim strips",
+            "actual": "Birch trim strips",
+            "correct": true
+          },
+          {
+            "field": "items.0.quantity",
+            "expected": "3",
+            "actual": "3",
+            "correct": true
+          },
+          {
+            "field": "items.0.unit",
+            "expected": "length",
+            "actual": "length",
+            "correct": true
+          },
+          {
+            "field": "items.0.unitRate",
+            "expected": "18.50",
+            "actual": "18.50",
+            "correct": true
+          },
+          {
+            "field": "items.0.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.0.tax",
+            "expected": "2.78",
+            "actual": "2.78",
+            "correct": true
+          },
+          {
+            "field": "items.0.total",
+            "expected": "58.28",
+            "actual": "58.28",
+            "correct": true
+          },
+          {
+            "field": "items.1.description",
+            "expected": "Cabinet handles",
+            "actual": "Cabinet handles",
+            "correct": true
+          },
+          {
+            "field": "items.1.quantity",
+            "expected": "2",
+            "actual": "2",
+            "correct": true
+          },
+          {
+            "field": "items.1.unit",
+            "expected": "pair",
+            "actual": "pair",
+            "correct": true
+          },
+          {
+            "field": "items.1.unitRate",
+            "expected": "25.00",
+            "actual": "25.00",
+            "correct": true
+          },
+          {
+            "field": "items.1.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.1.tax",
+            "expected": "2.50",
+            "actual": "2.50",
+            "correct": true
+          },
+          {
+            "field": "items.1.total",
+            "expected": "52.50",
+            "actual": "52.50",
+            "correct": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "G12",
+      "sha256": "7469df6d4c23b53a27210abf8a64053e728670125cacc6f87144a3fe6887426e",
+      "layout": "department-text-pdf",
+      "format": "pdf",
+      "pages": 1,
+      "language": "English",
+      "startedAt": "2026-11-06T05:15:55.073Z",
+      "status": "extracted",
+      "actualProviderChargeUsd": null,
+      "wallLatencyMs": 7442,
+      "httpStatus": 200,
+      "appRequestId": null,
+      "vercelRequestId": "bom1::sin1::46696-1793942155155-e1a1a8b28f46",
+      "mode": "live",
+      "provider": "deepseek-flash",
+      "requestId": "d6587b6c-56d8-4d71-aec3-c8f7d3c62dbb",
+      "inputTokens": 601,
+      "outputTokens": 161,
+      "processingLatencyMs": 6005.999882999997,
+      "completeness": "partial",
+      "fieldIssues": [],
+      "uncertain": [
+        "kind",
+        "supplier",
+        "dueDate",
+        "purchaseOrderReference",
+        "discount",
+        "projectName",
+        "customerName"
+      ],
+      "failureCode": null,
+      "fresh": true,
+      "peakTariffUpperEstimateUsd": 0.000374,
+      "score": {
+        "correct": 22,
+        "total": 22,
+        "itemCountCorrect": true,
+        "monetaryMistakes": [],
+        "classificationCorrect": true,
+        "facts": [
+          {
+            "field": "supplier",
+            "expected": "Crescent Mill Site Store",
+            "actual": "Crescent Mill Site Store",
+            "correct": true
+          },
+          {
+            "field": "date",
+            "expected": "2026-11-05",
+            "actual": "2026-11-05",
+            "correct": true
+          },
+          {
+            "field": "reference",
+            "expected": "CMS-CASH-914",
+            "actual": "CMS-CASH-914",
+            "correct": true
+          },
+          {
+            "field": "currency",
+            "expected": "AED",
+            "actual": "AED",
+            "correct": true
+          },
+          {
+            "field": "documentType",
+            "expected": "receipt",
+            "actual": "receipt",
+            "correct": true
+          },
+          {
+            "field": "dueDate",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "purchaseOrderReference",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "subtotal",
+            "expected": "16.00",
+            "actual": "16.00",
+            "correct": true
+          },
+          {
+            "field": "discount",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "tax",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "total",
+            "expected": "16.00",
+            "actual": "16.00",
+            "correct": true
+          },
+          {
+            "field": "kind",
+            "expected": "project-expense",
+            "actual": "project-expense",
+            "correct": true
+          },
+          {
+            "field": "department",
+            "expected": "MEP",
+            "actual": "MEP",
+            "correct": true
+          },
+          {
+            "field": "projectName",
+            "expected": "",
+            "actual": "",
+            "correct": true
+          },
+          {
+            "field": "itemCount",
+            "expected": 1,
+            "actual": 1,
+            "correct": true
+          },
+          {
+            "field": "items.0.description",
+            "expected": "Conduit clips",
+            "actual": "Conduit clips",
+            "correct": true
+          },
+          {
+            "field": "items.0.quantity",
+            "expected": "5",
+            "actual": "5",
+            "correct": true
+          },
+          {
+            "field": "items.0.unit",
+            "expected": "each",
+            "actual": "each",
+            "correct": true
+          },
+          {
+            "field": "items.0.unitRate",
+            "expected": "3.20",
+            "actual": "3.20",
+            "correct": true
+          },
+          {
+            "field": "items.0.discount",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.0.tax",
+            "expected": "0.00",
+            "actual": "0.00",
+            "correct": true
+          },
+          {
+            "field": "items.0.total",
+            "expected": "16.00",
+            "actual": "16.00",
+            "correct": true
+          }
+        ]
+      },
+      "firstPreviewPageSha256": "3b2558bbdea125cd2f673ba551379f0ec3be2b98e22345d468ba5806e191d806"
+    }
+  ],
+  "checks": [
+    "Unauthenticated snapshot is denied",
+    "Refresh retains authenticated session/document history",
+    "Logout revokes session access"
+  ],
+  "browserErrors": [],
+  "native503": [],
+  "screenshots": [
+    "G11-autofill-1440.png",
+    "G11-autofill-390.png",
+    "G12-autofill-1440.png",
+    "G12-autofill-390.png"
+  ],
+  "pdfOriginalPages": [
+    {
+      "id": "G12",
+      "page": 1,
+      "path": "G12-original-page-1.png",
+      "rendered": true
+    }
+  ],
+  "uploadRequestCount": 2,
+  "actualProviderChargesUsd": null,
+  "actualChargesStatus": "unverified; token tariff estimates are not provider billing",
+  "notes": [
+    "Only new fictional originals; the manifest is never sent as a prompt or admission registry.",
+    "No automatic retries, financial conversion or resets.",
+    "Prior native Blob503 failures are not erased by a later passing run."
+  ],
+  "status": "workflow-pass-review-accuracy-separately",
+  "completedAt": "2026-11-06T05:16:06.272Z",
+  "summary": {
+    "selected": 2,
+    "attempted": 2,
+    "extracted": 2,
+    "fresh": 2,
+    "completionRate": 1,
+    "correctFields": 51,
+    "scoredFields": 51,
+    "classificationCorrect": 2,
+    "itemCountsCorrect": 2,
+    "monetaryMistakes": 0,
+    "quantityRateMistakes": 0,
+    "missingReadableFields": 0,
+    "filledUnprintedFields": 0,
+    "averageUploadResponseMs": 8345.5,
+    "unmeteredFreshResponses": 0,
+    "averageKnownPeakEstimatePerFreshDocumentUsd": 0.000504,
+    "actualProviderChargesUsd": null,
+    "peakTariffUpperEstimateUsd": 0.001008
+  }
+}

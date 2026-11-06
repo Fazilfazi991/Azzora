@@ -284,11 +284,8 @@ export function sharedCommandScope(
       projectId:
         doc?.projectId ||
         (typeof action.projectId === "string" ? action.projectId : undefined),
-      financial: ![
-        "document-draft",
-        "create-expense-ledger",
-        "create-cash-account",
-      ].includes(String(action.kind)),
+      // Draft permission is exclusively document review; catalog writes need full finance authority.
+      financial: action.kind !== "document-draft",
     };
   }
   const suppliedEntity =

@@ -1,10 +1,10 @@
-import type { Database, Phase, Task, Milestone } from "../domain/model";
-import { uid } from "../domain/logic";
-import { activePerson } from "../workforce/commands";
-import { finishFromStart, onOrAfter, workOffset } from "./calendar";
-import { getProjectPlanning } from "./compatibility";
-import { validateLinks } from "./graph";
-import type { DependencyLink, MilestoneCondition, NodeRef, ProjectPlanning } from "./model";
+import type { Database, Phase, Task, Milestone } from "../domain/model.js";
+import { uid } from "../domain/logic.js";
+import { activePerson } from "../workforce/commands.js";
+import { finishFromStart, onOrAfter, workOffset } from "./calendar.js";
+import { getProjectPlanning } from "./compatibility.js";
+import { validateLinks } from "./graph.js";
+import type { DependencyLink, MilestoneCondition, NodeRef, ProjectPlanning } from "./model.js";
 
 export interface TemplateActivity {
   key: string;

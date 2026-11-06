@@ -1,13 +1,13 @@
-import type { Database } from "../domain/model";
-import type { CommercialFilter, Invoice, InvoiceLine } from "./model";
-import { cents, decimal, formatMoney } from "../quotation/calculations";
-import { today, days } from "../domain/logic";
+import type { Database } from "../domain/model.js";
+import type { CommercialFilter, Invoice, InvoiceLine } from "./model.js";
+import { cents, decimal, formatMoney } from "../quotation/calculations.js";
+import { today, days } from "../domain/logic.js";
 import {
   credited,
   refunded,
   invoicePosition,
-} from "../operations/calculations";
-import { getOperations } from "../operations/migration";
+} from "../operations/calculations.js";
+import { getOperations } from "../operations/migration.js";
 
 export { cents };
 export const aed = (n: bigint) => formatMoney(n, true);

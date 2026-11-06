@@ -1,16 +1,16 @@
-import type { Database, Project } from "../domain/model";
-import type { Expense, Invoice, Payment } from "./model";
-import { expenseCategories, paymentMethods } from "./model";
-import { addDays, today, uid } from "../domain/logic";
-import { createProject, record } from "../domain/repository";
-import { defaultCompany } from "../quotation/seed";
+import type { Database, Project } from "../domain/model.js";
+import type { Expense, Invoice, Payment } from "./model.js";
+import { expenseCategories, paymentMethods } from "./model.js";
+import { addDays, today, uid } from "../domain/logic.js";
+import { createProject, record } from "../domain/repository.js";
+import { defaultCompany } from "../quotation/seed.js";
 import {
   discountAmount,
   totals,
   paymentAmount,
   paymentPercentage,
   paymentScheduleAmounts,
-} from "../quotation/calculations";
+} from "../quotation/calculations.js";
 import {
   amountString,
   cents,
@@ -18,10 +18,10 @@ import {
   invoiceLineTotals,
   balanceDue,
   effectiveProject,
-} from "./calculations";
-import { customerSnapshot } from "./customer-domain";
-import { initializeCommercial } from "./migration";
-import { getOperations } from "../operations/migration";
+} from "./calculations.js";
+import { customerSnapshot } from "./customer-domain.js";
+import { initializeCommercial } from "./migration.js";
+import { getOperations } from "../operations/migration.js";
 
 export function validDate(value: string) {
   if (

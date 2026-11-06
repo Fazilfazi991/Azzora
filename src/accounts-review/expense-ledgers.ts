@@ -1,5 +1,5 @@
 import { addAccount } from "../accounting/core.js";
-import type { ReviewState } from "./domain";
+import type { ReviewState } from "./domain.js";
 
 export const expenseGroups = [
   "Administrative Expense",

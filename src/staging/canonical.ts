@@ -4,12 +4,12 @@ import type {
   AccountingPeriod,
   JournalEntry,
   JournalLine,
-} from "../accounting/model";
-import type { Database } from "../domain/model";
-import type { ReviewState } from "../accounts-review/domain";
-import { cashAccountsFor, departments } from "../accounts-review/banking";
-import { createSharedCompanyState, type SharedCompanyState } from "./domain";
-import { refreshCommercialView } from "./commercial-commands";
+} from "../accounting/model.js";
+import type { Database } from "../domain/model.js";
+import type { ReviewState } from "../accounts-review/domain.js";
+import { cashAccountsFor, departments } from "../accounts-review/banking.js";
+import { createSharedCompanyState, type SharedCompanyState } from "./domain.js";
+import { refreshCommercialView } from "./commercial-commands.js";
 
 export interface CanonicalRecord {
   entity_type: string;

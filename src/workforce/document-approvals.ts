@@ -1,7 +1,7 @@
-import type { Database, DocumentRecord } from "../domain/model";
-import type { Approval } from "../operations/model";
-import { initializeOperations, getOperations } from "../operations/migration";
-import { uid } from "../domain/logic";
+import type { Database, DocumentRecord } from "../domain/model.js";
+import type { Approval } from "../operations/model.js";
+import { initializeOperations, getOperations } from "../operations/migration.js";
+import { uid } from "../domain/logic.js";
 
 // Retain the complete legacy representation before adding canonical workflow fields.
 // Loading never writes storage; existing approval snapshots and decisions stay intact.

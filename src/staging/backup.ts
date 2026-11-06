@@ -1,8 +1,8 @@
 /** Server-only fictional business export. No live restore endpoint or identity export. */
 import { createHash } from "node:crypto";
-import { hydrateCanonical, type CanonicalData } from "./canonical";
-import { buildBalanceSheet, buildTrialBalance } from "../accounting/reports";
-import type { StoredStagingAttachment } from "./storage";
+import { hydrateCanonical, type CanonicalData } from "./canonical.js";
+import { buildBalanceSheet, buildTrialBalance } from "../accounting/reports.js";
+import type { StoredStagingAttachment } from "./storage.js";
 
 const format = "azzora-fictional-staging-business-backup" as const;
 const maximumOriginalBytes = 2_000_000;

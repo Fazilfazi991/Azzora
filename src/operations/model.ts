@@ -1,5 +1,5 @@
-import type { Attachment, DocumentRecord } from "../domain/model";
-import type { InvoiceLine, TaxTreatment } from "../commercial/model";
+import type { Attachment, DocumentRecord } from "../domain/model.js";
+import type { InvoiceLine, TaxTreatment } from "../commercial/model.js";
 export type ApprovalKind =
   | "Variation"
   | "Purchase Request"

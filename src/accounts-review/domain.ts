@@ -19,13 +19,13 @@ import {
   buildProfitAndLoss,
   buildTrialBalance,
 } from "../accounting/reports.js";
-import type { AccountingState, JournalLine } from "../accounting/model";
+import type { AccountingState, JournalLine } from "../accounting/model.js";
 import { saveDocumentDraft } from "./documents/review.js";
 import type {
   DocumentEntryState,
   ReferenceCatalog,
   EntryFields,
-} from "./documents/model";
+} from "./documents/model.js";
 import { catalogFor, categories, inspectFields } from "./documents/review.js";
 import {
   calculateItemLines,
@@ -48,7 +48,7 @@ import type {
   PostedSettlement,
   SettlementDocument,
   SettlementEvent,
-} from "../finance/settlement";
+} from "../finance/settlement.js";
 
 // Optional additions to persisted document reviews remain readable during the
 // additive schema rollout. Only validated ledger/department IDs reach posting.

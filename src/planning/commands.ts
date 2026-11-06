@@ -1,11 +1,11 @@
-import type { Database, Milestone, Task } from "../domain/model";
-import { uid } from "../domain/logic";
-import { activePerson } from "../workforce/commands";
-import { inclusiveWorkingDuration, isWorkingDate, validDate, validateCalendar } from "./calendar";
-import { activateProjectPlanning, getProjectPlanning } from "./compatibility";
-import { approvedNodeDates, calculateSchedule, sourceFingerprint, type ScheduleEdit } from "./engine";
-import { nodeKey, validateLinks } from "./graph";
-import type { NodeRef, ProjectPlanning, ScheduleChange, ScheduleProposal, ScheduleSnapshot } from "./model";
+import type { Database, Milestone, Task } from "../domain/model.js";
+import { uid } from "../domain/logic.js";
+import { activePerson } from "../workforce/commands.js";
+import { inclusiveWorkingDuration, isWorkingDate, validDate, validateCalendar } from "./calendar.js";
+import { activateProjectPlanning, getProjectPlanning } from "./compatibility.js";
+import { approvedNodeDates, calculateSchedule, sourceFingerprint, type ScheduleEdit } from "./engine.js";
+import { nodeKey, validateLinks } from "./graph.js";
+import type { NodeRef, ProjectPlanning, ScheduleChange, ScheduleProposal, ScheduleSnapshot } from "./model.js";
 
 export interface DraftScheduleInput {
   projectId: string;

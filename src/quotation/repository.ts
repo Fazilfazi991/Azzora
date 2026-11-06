@@ -1,16 +1,16 @@
-import type { Database } from "../domain/model";
-import type { Quotation, QuotationLineItem, QuotationStatus } from "./model";
-import { quotationStatuses, pricingTypes } from "./model";
-import { blankQuotation, referenceQuotation } from "./seed";
+import type { Database } from "../domain/model.js";
+import type { Quotation, QuotationLineItem, QuotationStatus } from "./model.js";
+import { quotationStatuses, pricingTypes } from "./model.js";
+import { blankQuotation, referenceQuotation } from "./seed.js";
 import {
   decimal,
   totals,
   paymentPercentage,
   paymentAmount,
   paymentScheduleAmounts,
-} from "./calculations";
-import { today, uid } from "../domain/logic";
-import { getOperations } from "../operations/migration";
+} from "./calculations.js";
+import { today, uid } from "../domain/logic.js";
+import { getOperations } from "../operations/migration.js";
 export function initializeQuotations(db: Database, seedReference = false) {
   if (db.quotations && !seedReference) return;
   db.quotations = [referenceQuotation()];

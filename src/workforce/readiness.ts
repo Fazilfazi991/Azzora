@@ -1,4 +1,4 @@
-import type { Database, DocumentRecord } from "../domain/model";
+import type { Database, DocumentRecord } from "../domain/model.js";
 
 export function latestDocuments(db: Database, projectId?: string) {
   const latest = new Map<string, DocumentRecord>();

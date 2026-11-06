@@ -7,7 +7,7 @@ import type {
   JournalSource,
   PostJournalInput,
   ReverseJournalInput,
-} from "./model";
+} from "./model.js";
 
 export const emptyAccounting = (): AccountingState => ({
   version: 1,

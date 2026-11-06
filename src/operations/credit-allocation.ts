@@ -1,13 +1,13 @@
-import type { Database } from "../domain/model";
-import type { Invoice } from "../commercial/model";
-import type { CreditNote } from "./model";
+import type { Database } from "../domain/model.js";
+import type { Invoice } from "../commercial/model.js";
+import type { CreditNote } from "./model.js";
 import {
   allocateDiscount,
   cents,
   invoiceCreditLines,
   round,
-} from "../commercial/calculations";
-import { getOperations } from "./migration";
+} from "../commercial/calculations.js";
+import { getOperations } from "./migration.js";
 
 type Pool = {
   itemId: string;

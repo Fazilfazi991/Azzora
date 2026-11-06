@@ -1,25 +1,25 @@
 /** Trusted adapters for existing commercial commands; one existing journal engine. */
-import { AccessDenied } from "../backend/permissions";
+import { AccessDenied } from "../backend/permissions.js";
 import type {
   SharedActor,
   SharedCommand,
   SharedCommandScope,
   SharedCompanyState,
-} from "./domain";
-import { cancelInvoice, reversePayment } from "../commercial/repository";
-import { cents, invoiceTotals, amountString } from "../commercial/calculations";
-import * as operations from "../operations/repository";
+} from "./domain.js";
+import { cancelInvoice, reversePayment } from "../commercial/repository.js";
+import { cents, invoiceTotals, amountString } from "../commercial/calculations.js";
+import * as operations from "../operations/repository.js";
 import type {
   Budget,
   CreditNote,
   OperationalSettings,
   Variation,
-} from "../operations/model";
-import { closeCommercial } from "../operations/closure-domain";
-import { postJournal, reverseJournal } from "../accounting/core";
-import { reverseSettlement, documentOutstanding } from "../finance/settlement";
-import { reviewSnapshot } from "../accounts-review/domain";
-import { today } from "../domain/logic";
+} from "../operations/model.js";
+import { closeCommercial } from "../operations/closure-domain.js";
+import { postJournal, reverseJournal } from "../accounting/core.js";
+import { reverseSettlement, documentOutstanding } from "../finance/settlement.js";
+import { reviewSnapshot } from "../accounts-review/domain.js";
+import { today } from "../domain/logic.js";
 
 export class StagingPolicyError extends Error {
   readonly status = 423;

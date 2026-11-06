@@ -1,6 +1,6 @@
 import { z } from "zod";
-import type { Database } from "./model";
-import { validateFinanceDemoState } from "../accounting/persistence";
+import type { Database } from "./model.js";
+import { validateFinanceDemoState } from "../accounting/persistence.js";
 
 const text = z.string(),
   id = text.min(1),

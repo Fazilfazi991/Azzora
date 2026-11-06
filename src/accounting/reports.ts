@@ -1,4 +1,4 @@
-import type { Account, AccountType, AccountingState, JournalEntry } from "./model";
+import type { Account, AccountType, AccountingState, JournalEntry } from "./model.js";
 
 // Read-only selectors for posted AED journals. They never infer entries from
 // commercial summaries or modify the supplied accounting state.

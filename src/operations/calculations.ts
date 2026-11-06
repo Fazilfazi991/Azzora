@@ -1,16 +1,16 @@
-import type { Database } from "../domain/model";
-import type { Invoice, InvoiceLine } from "../commercial/model";
-import type { PricedItem, Variation, PurchaseOrder } from "./model";
-import { getOperations } from "./migration";
+import type { Database } from "../domain/model.js";
+import type { Invoice, InvoiceLine } from "../commercial/model.js";
+import type { PricedItem, Variation, PurchaseOrder } from "./model.js";
+import { getOperations } from "./migration.js";
 import {
   invoiceTotals,
   cents,
   paidAmount,
   round,
   invoiceCreditLines,
-} from "../commercial/calculations";
-import { decimal } from "../quotation/calculations";
-import { today } from "../domain/logic";
+} from "../commercial/calculations.js";
+import { decimal } from "../quotation/calculations.js";
+import { today } from "../domain/logic.js";
 export const quantityUnits = (s: string) => {
   const v = decimal(s);
   return (v.n * 1000000n) / v.d;

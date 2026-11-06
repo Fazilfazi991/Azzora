@@ -107,9 +107,9 @@ export interface ScheduleProposal {
   proposedCalendar?: ProjectCalendar;
   proposedTaskPlanning?: TaskPlanning[];
   proposedMilestonePlanning?: MilestonePlanning[];
-  proposedTask?: import("../domain/model").Task;
-  proposedMilestone?: import("../domain/model").Milestone;
-  requestedEdit?: import("./engine").ScheduleEdit;
+  proposedTask?: import("../domain/model.js").Task;
+  proposedMilestone?: import("../domain/model.js").Milestone;
+  requestedEdit?: import("./engine.js").ScheduleEdit;
   considerEarlierDates?: boolean;
   warnings: ScheduleIssue[];
   conflicts: ScheduleIssue[];

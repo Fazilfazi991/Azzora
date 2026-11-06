@@ -1,5 +1,5 @@
-import type { Database } from "../domain/model";
-import type { OperationalData, OperationalSettings } from "./model";
+import type { Database } from "../domain/model.js";
+import type { OperationalData, OperationalSettings } from "./model.js";
 export function emptyOperations(): OperationalData {
   const prefixes = {
     variation: "VO-",

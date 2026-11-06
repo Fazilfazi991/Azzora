@@ -1,7 +1,7 @@
 import { jsPDF } from "jspdf";
 import { reviewSnapshot, type ReviewState } from "./domain.js";
-import type { ReviewStoredLine } from "./item-lines";
-import type { ReviewReportSelection } from "./reporting";
+import type { ReviewStoredLine } from "./item-lines.js";
+import type { ReviewReportSelection } from "./reporting.js";
 const money = (fils: string) => {
   const n = BigInt(fils),
     a = n < 0n ? -n : n;

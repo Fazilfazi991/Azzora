@@ -1,4 +1,4 @@
-import { stagingHandler } from "../src/staging/server";
+import { stagingHandler } from "../src/staging/server.js";
 /** External callers cannot choose their recovery rate-limit identity. The local
  * HTTPS harness alone injects a socket-derived identity; hosted recovery uses
  * the conservative shared limiter until a trusted platform identity is wired. */

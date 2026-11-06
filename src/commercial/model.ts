@@ -1,8 +1,8 @@
-import type { Attachment } from "../domain/model";
+import type { Attachment } from "../domain/model.js";
 import type {
   QuotationCustomerSnapshot,
   QuotationCompanyDetails,
-} from "../quotation/model";
+} from "../quotation/model.js";
 
 export interface CustomerContact {
   id: string;

@@ -1,4 +1,4 @@
-import type { ReferenceCatalog } from "./documents/model";
+import type { ReferenceCatalog } from "./documents/model.js";
 
 export interface ReviewLineInput {
   description: string;

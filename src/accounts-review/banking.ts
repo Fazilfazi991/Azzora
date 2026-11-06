@@ -1,7 +1,7 @@
 import { addAccount } from "../accounting/core.js";
 import { buildGeneralLedger } from "../accounting/reports.js";
-import type { JournalLine } from "../accounting/model";
-import type { ReviewState } from "./domain";
+import type { JournalLine } from "../accounting/model.js";
+import type { ReviewState } from "./domain.js";
 import { ledgerNameKey } from "./expense-ledgers.js";
 
 export const departments = [

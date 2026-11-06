@@ -1,5 +1,5 @@
 /** Finite server-side nonfinancial commands. Never accepts a replacement Database. */
-import { AccessDenied, type BackendAction } from "../backend/permissions";
+import { AccessDenied, type BackendAction } from "../backend/permissions.js";
 import type {
   Database,
   DocumentRecord,
@@ -9,31 +9,31 @@ import type {
   SiteUpdate,
   Snag,
   Task,
-} from "../domain/model";
+} from "../domain/model.js";
 import {
   completeProject,
   projectSchema,
   record,
   saveTask,
   taskSchema,
-} from "../domain/repository";
-import { uid, taskProgress } from "../domain/logic";
-import * as workforce from "../workforce/commands";
-import * as planning from "../planning/commands";
+} from "../domain/repository.js";
+import { uid, taskProgress } from "../domain/logic.js";
+import * as workforce from "../workforce/commands.js";
+import * as planning from "../planning/commands.js";
 import {
   instantiateFitOutTemplate,
   type FitOutTemplatePreview,
-} from "../planning/template";
-import { getProjectPlanning } from "../planning/compatibility";
-import { inclusiveWorkingDuration, validDate } from "../planning/calendar";
-import type { DependencyLink, NodeRef, TaskPlanning } from "../planning/model";
-import type { ScheduleEdit } from "../planning/engine";
+} from "../planning/template.js";
+import { getProjectPlanning } from "../planning/compatibility.js";
+import { inclusiveWorkingDuration, validDate } from "../planning/calendar.js";
+import type { DependencyLink, NodeRef, TaskPlanning } from "../planning/model.js";
+import type { ScheduleEdit } from "../planning/engine.js";
 import type {
   SharedActor,
   SharedCommand,
   SharedCompanyState,
   SharedCommandScope,
-} from "./domain";
+} from "./domain.js";
 
 export const managerCommandNames = [
   "task.save",

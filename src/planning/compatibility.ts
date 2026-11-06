@@ -1,7 +1,7 @@
-import type { Database } from "../domain/model";
-import { defaultCalendar, inclusiveWorkingDuration, validDate, validateCalendar } from "./calendar";
-import { nodeKey, validateLinks } from "./graph";
-import type { DependencyLink, ProjectPlanning, TaskPlanning } from "./model";
+import type { Database } from "../domain/model.js";
+import { defaultCalendar, inclusiveWorkingDuration, validDate, validateCalendar } from "./calendar.js";
+import { nodeKey, validateLinks } from "./graph.js";
+import type { DependencyLink, ProjectPlanning, TaskPlanning } from "./model.js";
 
 function legacyLinkId(projectId: string, predecessorId: string, successorId: string): string {
   return `legacy:${projectId}:${predecessorId}:${successorId}`;

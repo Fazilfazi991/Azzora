@@ -1,7 +1,7 @@
-import { initializeQuotations } from "../quotation/repository";
-import type { Database, Project, Task, HandoverItem } from "./model";
-import { roles } from "./model";
-import { addDays, today, uid } from "./logic";
+import { initializeQuotations } from "../quotation/repository.js";
+import type { Database, Project, Task, HandoverItem } from "./model.js";
+import { roles } from "./model.js";
+import { addDays, today, uid } from "./logic.js";
 export const templates = [
   {
     name: "Planning",

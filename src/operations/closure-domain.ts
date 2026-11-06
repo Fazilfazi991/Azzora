@@ -1,15 +1,15 @@
-import { activeApprovals } from "../workforce/document-approvals";
-import type { Database } from "../domain/model";
-import { getOperations, initializeOperations } from "./migration";
+import { activeApprovals } from "../workforce/document-approvals.js";
+import type { Database } from "../domain/model.js";
+import { getOperations, initializeOperations } from "./migration.js";
 import {
   projectCosts,
   orderReceived,
   supplierBalance,
   invoicePosition,
-} from "./calculations";
-import { balanceDue, cents } from "../commercial/calculations";
-import { taskProgress, today } from "../domain/logic";
-import { audit } from "./repository";
+} from "./calculations.js";
+import { balanceDue, cents } from "../commercial/calculations.js";
+import { taskProgress, today } from "../domain/logic.js";
+import { audit } from "./repository.js";
 export function closureSummary(db: Database, projectId: string) {
   const op = getOperations(db),
     costs = projectCosts(db, projectId);

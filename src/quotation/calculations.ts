@@ -3,7 +3,7 @@ import type {
   QuotationLineItem,
   QuotationPaymentTerm,
   QuotationSection,
-} from "./model";
+} from "./model.js";
 // Decimal strings → integer fractions. BigInt never serializes into persisted records.
 export function decimal(value: string): { n: bigint; d: bigint } {
   if (!/^\d{1,12}(\.\d{1,6})?$/.test(value))

@@ -1,5 +1,5 @@
-import type { ExpenseCategoryMapping } from "../../finance/expense-submissions";
-import type { ReviewState } from "../domain";
+import type { ExpenseCategoryMapping } from "../../finance/expense-submissions.js";
+import type { ReviewState } from "../domain.js";
 import { expenseLedgersFor } from "../expense-ledgers.js";
 import {
   emptyEntries,

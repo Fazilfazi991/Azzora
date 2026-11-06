@@ -1,4 +1,4 @@
-import type { LocalDate, ProjectCalendar } from "./model";
+import type { LocalDate, ProjectCalendar } from "./model.js";
 
 export const defaultCalendar = (): ProjectCalendar => ({
   timezone: "Asia/Dubai",

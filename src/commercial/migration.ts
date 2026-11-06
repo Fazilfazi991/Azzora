@@ -1,5 +1,5 @@
-import type { Database } from "../domain/model";
-import { initializeOperations } from "../operations/migration";
+import type { Database } from "../domain/model.js";
+import { initializeOperations } from "../operations/migration.js";
 
 // Additive and idempotent. No joins by guessed name and no replacement seed data.
 export function initializeCommercial(db: Database) {

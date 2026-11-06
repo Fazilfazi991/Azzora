@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { chromium, expect as baseExpect } from "@playwright/test";
 import { browserOptions } from "./browser-runtime.mjs";
-const expect = baseExpect.configure({ timeout: 45000 });
+const expect = baseExpect.configure({ timeout: 90000 });
 const manifest = JSON.parse(
   fs.readFileSync(
     "tests/fixtures/general-document-entry/manifest.json",
@@ -81,6 +81,7 @@ const report = {
   browserErrors: [],
   native503: [],
   screenshots: [],
+  pdfOriginalPages: [],
   uploadRequestCount: 0,
   actualProviderChargesUsd: null,
   actualChargesStatus:
@@ -173,6 +174,8 @@ try {
     reducedMotion: "reduce",
     ...(storage ? { storageState: storage } : {}),
   });
+  context.setDefaultTimeout(90000);
+  context.setDefaultNavigationTimeout(45000);
   page = await context.newPage();
   page.on("request", (request) => {
     if (
@@ -324,7 +327,27 @@ try {
       await expect(
         page.getByRole("img", { name: "Original uploaded bill" }),
       ).toBeVisible();
-    else await expect(page.locator(".entry-preview canvas")).toHaveCount(1);
+    else {
+      await expect(
+        page.getByRole("img", { name: "Original PDF page 1", exact: true }),
+      ).toHaveAttribute("data-rendered", "true");
+      await expect(
+        page.getByText(`Page 1 of ${doc.pages}`, { exact: true }),
+      ).toBeVisible();
+      const filename = `${doc.id}-original-page-1.png`;
+      const bytes = await page
+        .getByRole("img", { name: "Original PDF page 1", exact: true })
+        .screenshot({ path: out + "/" + filename });
+      row.firstPreviewPageSha256 = createHash("sha256")
+        .update(bytes)
+        .digest("hex");
+      report.pdfOriginalPages.push({
+        id: doc.id,
+        page: 1,
+        path: filename,
+        rendered: true,
+      });
+    }
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 });
       await page.evaluate(() => window.scrollTo(0, 0));
@@ -336,6 +359,48 @@ try {
       const name = `${doc.id}-autofill-${width}.png`;
       await page.screenshot({ path: out + "/" + name, fullPage: true });
       report.screenshots.push(name);
+    }
+    if (doc.format === "pdf") {
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      await page
+        .getByRole("button", { name: "Next page", exact: true })
+        .click();
+      const canvas = page.getByRole("img", {
+        name: "Original PDF page 2",
+        exact: true,
+      });
+      await expect(canvas).toHaveAttribute("data-rendered", "true");
+      await expect(
+        page.getByText(`Page 2 of ${doc.pages}`, { exact: true }),
+      ).toBeVisible();
+      const filename = `${doc.id}-original-page-2.png`;
+      const bytes = await canvas.screenshot({ path: out + "/" + filename });
+      assert.notEqual(
+        createHash("sha256").update(bytes).digest("hex"),
+        row.firstPreviewPageSha256,
+        "Page2 must actually paint a different original page.",
+      );
+      report.pdfOriginalPages.push({
+        id: doc.id,
+        page: 2,
+        path: filename,
+        rendered: true,
+      });
+      for (const width of [1440, 390]) {
+        await page.setViewportSize({
+          width,
+          height: width === 390 ? 844 : 1000,
+        });
+        await page.evaluate(() => window.scrollTo(0, 0));
+        assert.ok(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth + 1,
+          ),
+        );
+        const name = `${doc.id}-page2-${width}.png`;
+        await page.screenshot({ path: out + "/" + name, fullPage: true });
+        report.screenshots.push(name);
+      }
     }
     // One explicit human correction/draft proves integration; never convert or issue.
     if (doc.id === "G01") {

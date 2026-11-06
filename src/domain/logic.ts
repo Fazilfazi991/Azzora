@@ -1,5 +1,5 @@
-import type { Database, Task, SnagStatus } from "./model";
-import { operationalReadiness } from "../workforce/readiness";
+import type { Database, Task, SnagStatus } from "./model.js";
+import { operationalReadiness } from "../workforce/readiness.js";
 export const today = () =>
   new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Dubai",

@@ -105,7 +105,7 @@ export interface Extraction {
   fieldIssues?: { field: string; reason: string; original?: string }[];
   reviewOnly?: boolean;
   requestedMode?: "auto" | "manual";
-  failureCode?: import("./extraction-status").ExtractionFailureCode;
+  failureCode?: import("./extraction-status.js").ExtractionFailureCode;
   fields: EntryFields;
   uncertain: string[];
   provider: string;

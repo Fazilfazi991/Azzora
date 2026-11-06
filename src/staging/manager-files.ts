@@ -1,13 +1,13 @@
 /** Private Manager originals using the same bucket and validated storage adapter. */
-import type { Attachment, Database } from "../domain/model";
-import type { SharedActor, SharedCompanyState } from "./domain";
-import { sharedManagerView } from "./domain";
-import { StagingServiceError } from "./supabase";
+import type { Attachment, Database } from "../domain/model.js";
+import type { SharedActor, SharedCompanyState } from "./domain.js";
+import { sharedManagerView } from "./domain.js";
+import { StagingServiceError } from "./supabase.js";
 import {
   storePrivateAttachment,
   readPrivateAttachment,
   type StoredStagingAttachment,
-} from "./storage";
+} from "./storage.js";
 type PrivateFile = Attachment & { storageObjectKey?: string };
 type Reference = { file: PrivateFile; owner: string };
 export function managerFileReferences(db: Database): Reference[] {

@@ -6,7 +6,7 @@ import {
   randomBytes,
   timingSafeEqual,
 } from "node:crypto";
-import {stagingRuntimeOrigins} from "./deployment";
+import {stagingRuntimeOrigins} from "./deployment.js";
 import { rpc as configuredRpc } from "./supabase.js";
 import { createSupabaseTokenVerifier } from "../backend/auth-supabase.js";
 import { createStagingRecovery } from "./auth-recovery.js";

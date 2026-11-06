@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { ReviewState } from "../domain";
+import type { ReviewState } from "../domain.js";
 import { attachment } from "../domain.js";
 import {
   emptyEntries,

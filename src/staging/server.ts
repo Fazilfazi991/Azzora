@@ -1,19 +1,19 @@
-/** Server-only shared fictional staging BFF. No real posting or paid AI path. */
+/** Server-only fictional staging BFF. Real posting is disabled; AI requires explicit admission and the shared evaluation cap. */
 import { createHash, randomUUID } from "node:crypto";
-import { prepareManagerFiles, readManagerFile } from "./manager-files";
-import { StagingPolicyError } from "./commercial-commands";
-import { createStagingBackup } from "./backup";
-import { createStagingAuth, type StagingActor } from "./auth";
+import { prepareManagerFiles, readManagerFile } from "./manager-files.js";
+import { StagingPolicyError } from "./commercial-commands.js";
+import { createStagingBackup } from "./backup.js";
+import { createStagingAuth, type StagingActor } from "./auth.js";
 import {
   rpc as defaultRpc,
   StagingServiceError,
   type StagingRpc,
-} from "./supabase";
+} from "./supabase.js";
 import {
   hydrateCanonical,
   serializeCanonical,
   type CanonicalData,
-} from "./canonical";
+} from "./canonical.js";
 import {
   applySharedCommand,
   createSharedCompanyState,
@@ -23,28 +23,28 @@ import {
   type SharedActor,
   type SharedCommand,
   type SharedCompanyState,
-} from "./domain";
-import type { BackendAction } from "../backend/permissions";
-import type { Person } from "../domain/model";
+} from "./domain.js";
+import type { BackendAction } from "../backend/permissions.js";
+import type { Person } from "../domain/model.js";
 import {
   reportSelection,
   selectedSnapshot,
-} from "../accounts-review/reporting";
-import { reviewPdf } from "../accounts-review/pdf";
-import { extractDocument } from "../accounts-review/documents/service";
-import { BlobReviewStore } from "../accounts-review/hosted-store";
-import { DocumentExtractionError } from "../accounts-review/documents/extraction-status";
-import { createDocumentAuthorization } from "../accounts-review/documents/admission";
+} from "../accounts-review/reporting.js";
+import { reviewPdf } from "../accounts-review/pdf.js";
+import { extractDocument } from "../accounts-review/documents/service.js";
+import { BlobReviewStore } from "../accounts-review/hosted-store.js";
+import { DocumentExtractionError } from "../accounts-review/documents/extraction-status.js";
+import { createDocumentAuthorization } from "../accounts-review/documents/admission.js";
 import {
   configuredDocumentRuntime,
   documentAvailability,
-} from "../accounts-review/documents/runtime";
-import { extractionInputSchema } from "../accounts-review/documents/runtime";
+} from "../accounts-review/documents/runtime.js";
+import { extractionInputSchema } from "../accounts-review/documents/runtime.js";
 import {
   disabledExtractor,
   digestOf,
-} from "../accounts-review/documents/providers";
-import { storePrivateAttachment, readPrivateAttachment } from "./storage";
+} from "../accounts-review/documents/providers.js";
+import { storePrivateAttachment, readPrivateAttachment } from "./storage.js";
 
 const json = (status: number, value: unknown, requestId?: string) =>
   new Response(JSON.stringify(value), {

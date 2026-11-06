@@ -6,7 +6,7 @@ import {
   lockPeriod,
   postJournal,
   reverseJournal,
-} from "./core";
+} from "./core.js";
 import type {
   Account,
   AccountingPeriod,
@@ -14,7 +14,7 @@ import type {
   JournalEntry,
   PostJournalInput,
   ReverseJournalInput,
-} from "./model";
+} from "./model.js";
 
 // This checkpoint accepts fixture-only records. The CRM store must validate an
 // optional namespace on load, but must never initialize or post it on load.

@@ -1,14 +1,14 @@
-import type { Quotation } from "../quotation/model";
-import type { ProjectPlanning } from "../planning/model";
-import type { FinanceDemoState } from "../accounting/persistence";
-import type { OperationalData } from "../operations/model";
+import type { Quotation } from "../quotation/model.js";
+import type { ProjectPlanning } from "../planning/model.js";
+import type { FinanceDemoState } from "../accounting/persistence.js";
+import type { OperationalData } from "../operations/model.js";
 import type {
   Contract,
   Expense,
   Invoice,
   Payment,
   CustomerContact,
-} from "../commercial/model";
+} from "../commercial/model.js";
 export type TaskStatus =
   "Not Started" | "In Progress" | "Waiting" | "Blocked" | "Completed";
 export type Priority = "Low" | "Normal" | "High" | "Critical";

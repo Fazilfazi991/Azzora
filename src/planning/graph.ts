@@ -1,5 +1,5 @@
-import type { Database } from "../domain/model";
-import type { DependencyLink, NodeRef } from "./model";
+import type { Database } from "../domain/model.js";
+import type { DependencyLink, NodeRef } from "./model.js";
 
 export const nodeKey = (node: NodeRef) => `${node.kind}:${node.id}`;
 export function validateLinks(db: Database, projectId: string, links: DependencyLink[]): NodeRef[] {

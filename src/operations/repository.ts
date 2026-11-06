@@ -1,4 +1,4 @@
-import type { Database, Person, DocumentRecord } from "../domain/model";
+import type { Database, Person, DocumentRecord } from "../domain/model.js";
 import type {
   ApprovalKind,
   Approval,
@@ -16,24 +16,24 @@ import type {
   Refund,
   Budget,
   OperationalSettings,
-} from "./model";
-import { initializeOperations } from "./migration";
+} from "./model.js";
+import { initializeOperations } from "./migration.js";
 import {
   saveEmployee as saveCanonicalEmployee,
   setEmployeeActive,
   saveDocumentDraft,
   reviseDocument,
   reviewDocument,
-} from "../workforce/commands";
+} from "../workforce/commands.js";
 import {
   latestDocument,
   activeApprovals,
-} from "../workforce/document-approvals";
-import { uid, today } from "../domain/logic";
-import { record } from "../domain/repository";
-import { cents, amountString, invoiceTotals } from "../commercial/calculations";
-import { blankInvoice, saveInvoice, validDate } from "../commercial/repository";
-import { creditAllocation, remainingCreditLines } from "./credit-allocation";
+} from "../workforce/document-approvals.js";
+import { uid, today } from "../domain/logic.js";
+import { record } from "../domain/repository.js";
+import { cents, amountString, invoiceTotals } from "../commercial/calculations.js";
+import { blankInvoice, saveInvoice, validDate } from "../commercial/repository.js";
+import { creditAllocation, remainingCreditLines } from "./credit-allocation.js";
 import {
   variationTotals,
   variationNet,
@@ -45,7 +45,7 @@ import {
   supplierBalance,
   supplierPaid,
   invoicePosition,
-} from "./calculations";
+} from "./calculations.js";
 export function demoActor(db: Database, id: string) {
   const actor = db.people.find((p) => p.id === id && p.status !== "Inactive");
   if (!actor) throw Error("Select an active demo approval actor.");

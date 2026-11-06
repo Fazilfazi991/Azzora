@@ -1,11 +1,11 @@
 /** SERVER ONLY. Originals are never served through public or signed Storage URLs. */
 import { createHash } from "node:crypto";
-import type { ReviewAttachment } from "../accounts-review/domain";
+import type { ReviewAttachment } from "../accounts-review/domain.js";
 import {
   stagingConfig,
   StagingServiceError,
   type StagingConfig,
-} from "./supabase";
+} from "./supabase.js";
 
 export type StoredStagingAttachment = ReviewAttachment & {
   storageObjectKey: string;

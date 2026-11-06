@@ -2,9 +2,9 @@ import type {
   Quotation,
   QuotationSection,
   QuotationTermCondition,
-} from "./model";
-import reference from "./reference.json";
-import { today, uid } from "../domain/logic";
+} from "./model.js";
+import reference from "./reference.json" with { type: "json" };
+import { today, uid } from "../domain/logic.js";
 export const defaultCompany = {
   name: "AZZORA DESIGN TECHNICAL SERVICEs LLC",
   location: "Dubai, UAE",

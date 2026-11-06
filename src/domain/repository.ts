@@ -1,19 +1,19 @@
-import { initializeQuotations } from "../quotation/repository";
-import { initializeCommercial } from "../commercial/migration";
-import { closureSummary } from "../operations/closure-domain";
-import { activePerson, saveSnag } from "../workforce/commands";
+import { initializeQuotations } from "../quotation/repository.js";
+import { initializeCommercial } from "../commercial/migration.js";
+import { closureSummary } from "../operations/closure-domain.js";
+import { activePerson, saveSnag } from "../workforce/commands.js";
 import { z } from "zod";
-import { validateSavedShape, validateRelationships } from "./validation";
-import { initializeDocumentCompatibility } from "../workforce/document-approvals";
-import type { Database, Task, Project, SnagStatus, Activity } from "./model";
-import { seed, generatePlan } from "./seed";
-import { validatePlanningData } from "../planning/compatibility";
+import { validateSavedShape, validateRelationships } from "./validation.js";
+import { initializeDocumentCompatibility } from "../workforce/document-approvals.js";
+import type { Database, Task, Project, SnagStatus, Activity } from "./model.js";
+import { seed, generatePlan } from "./seed.js";
+import { validatePlanningData } from "../planning/compatibility.js";
 import {
   dispatchSyntheticFinance,
   serializeSyntheticFinanceFixture,
   type SyntheticFinanceEnvelope,
-} from "../accounting/persistence";
-import { uid, validDependency, handoverState, taskProgress } from "./logic";
+} from "../accounting/persistence.js";
+import { uid, validDependency, handoverState, taskProgress } from "./logic.js";
 const KEY = "azzora-demo-v1";
 export interface Repository {
   load(): Database;

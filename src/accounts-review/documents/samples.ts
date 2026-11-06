@@ -1,5 +1,5 @@
 // Generated synthetic replay fixtures. These are NOT measured AI outputs.
-import type { EntryFields } from "./model";
+import type { EntryFields } from "./model.js";
 export const sampleDocuments: {
   id: string;
   sha256: string;

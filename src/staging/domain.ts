@@ -2,8 +2,8 @@ import type {
   AuthorizedActor,
   BackendAction,
   Workspace,
-} from "../backend/permissions";
-import { applyManagerCommand, managerCommandScope } from "./manager-commands";
+} from "../backend/permissions.js";
+import { applyManagerCommand, managerCommandScope } from "./manager-commands.js";
 import {
   isCommercialCommand,
   commercialCommandScope,
@@ -11,22 +11,22 @@ import {
   refreshCommercialView,
   syncFinanceBillCosts,
   StagingPolicyError,
-} from "./commercial-commands";
-import { AccessDenied } from "../backend/permissions";
+} from "./commercial-commands.js";
+import { AccessDenied } from "../backend/permissions.js";
 import type {
   Assignment,
   Client,
   Database,
   Person,
   Project,
-} from "../domain/model";
-import { saveAssignment } from "../workforce/commands";
+} from "../domain/model.js";
+import { saveAssignment } from "../workforce/commands.js";
 import { createHash } from "node:crypto";
-import { seed } from "../domain/seed";
-import { createProject } from "../domain/repository";
-import { initializeCommercial } from "../commercial/migration";
-import { emptyOperations } from "../operations/migration";
-import { saveCustomer } from "../commercial/customer-domain";
+import { seed } from "../domain/seed.js";
+import { createProject } from "../domain/repository.js";
+import { initializeCommercial } from "../commercial/migration.js";
+import { emptyOperations } from "../operations/migration.js";
+import { saveCustomer } from "../commercial/customer-domain.js";
 import {
   blankInvoice,
   convertQuotation,
@@ -34,22 +34,22 @@ import {
   issueInvoice,
   postPayment,
   saveInvoice,
-} from "../commercial/repository";
+} from "../commercial/repository.js";
 import {
   amountString,
   invoiceTotals,
   invoiceCreditLines,
-} from "../commercial/calculations";
-import type { Invoice, Payment } from "../commercial/model";
+} from "../commercial/calculations.js";
+import type { Invoice, Payment } from "../commercial/model.js";
 import {
   changeQuotationStatus,
   copyQuotation,
   deleteDraft,
   newQuotation,
   saveQuotation,
-} from "../quotation/repository";
-import type { Quotation } from "../quotation/model";
-import * as operations from "../operations/repository";
+} from "../quotation/repository.js";
+import type { Quotation } from "../quotation/model.js";
+import * as operations from "../operations/repository.js";
 import type {
   ApprovalKind,
   Delivery,
@@ -58,17 +58,17 @@ import type {
   Supplier,
   SupplierPayment,
   SupplierQuote,
-} from "../operations/model";
+} from "../operations/model.js";
 import {
   applyReviewAction,
   createReviewState,
   type ReviewAction,
   type ReviewDocument,
   type ReviewState,
-} from "../accounts-review/domain";
-import { departmentId, departments } from "../accounts-review/banking";
-import { postJournal } from "../accounting/core";
-import { parseFils, type PostedSettlement } from "../finance/settlement";
+} from "../accounts-review/domain.js";
+import { departmentId, departments } from "../accounts-review/banking.js";
+import { postJournal } from "../accounting/core.js";
+import { parseFils, type PostedSettlement } from "../finance/settlement.js";
 
 export interface ExpenseSubmission {
   id: string;
@@ -93,7 +93,7 @@ export interface SharedCompanyState {
   manager: Database;
   finance: ReviewState;
   expenseSubmissions: ExpenseSubmission[];
-  canonicalSnapshots?: import("./canonical").CanonicalData["snapshots"];
+  canonicalSnapshots?: import("./canonical.js").CanonicalData["snapshots"];
 }
 export interface SharedCommand {
   kind: string;

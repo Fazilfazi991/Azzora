@@ -7,13 +7,13 @@ import type {
   Snag,
   SnagStatus,
   WorkflowEvent,
-} from "../domain/model";
-import { uid } from "../domain/logic";
+} from "../domain/model.js";
+import { uid } from "../domain/logic.js";
 import {
   latestDocument,
   submitDocumentApproval,
   finishDocumentApproval,
-} from "./document-approvals";
+} from "./document-approvals.js";
 
 export function activePerson(db: Database, id: string) {
   const person = db.people.find((p) => p.id === id);

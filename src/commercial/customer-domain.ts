@@ -1,7 +1,7 @@
-import type { Client, Database } from "../domain/model";
-import { uid } from "../domain/logic";
-import { initializeCommercial } from "./migration";
-import { record } from "../domain/repository";
+import type { Client, Database } from "../domain/model.js";
+import { uid } from "../domain/logic.js";
+import { initializeCommercial } from "./migration.js";
+import { record } from "../domain/repository.js";
 
 export const normalizeName = (s: string) =>
   s

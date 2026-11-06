@@ -1,14 +1,14 @@
-import type { Database } from "../domain/model";
+import type { Database } from "../domain/model.js";
 import {
   finishFromStart, inclusiveWorkingDuration, isWorkingDate, onOrAfter,
   onOrBefore, startFromFinish, validateCalendar, workOffset, workingDistance,
-} from "./calendar";
-import { getProjectPlanning } from "./compatibility";
-import { nodeKey, reachableSuccessors, validateLinks } from "./graph";
+} from "./calendar.js";
+import { getProjectPlanning } from "./compatibility.js";
+import { nodeKey, reachableSuccessors, validateLinks } from "./graph.js";
 import type {
   DependencyLink, LocalDate, NodeDates, NodeRef, PlanningView,
   ProjectCalendar, ProjectPlanning, ScheduleIssue, TaskPlanning,
-} from "./model";
+} from "./model.js";
 
 export interface ScheduleEdit {
   start?: LocalDate;

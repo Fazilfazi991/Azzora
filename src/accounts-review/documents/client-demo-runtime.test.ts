@@ -177,7 +177,7 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
     expect(visible).not.toContain(env.DEEPSEEK_API_KEY);
     expect(visible).not.toContain("hardStopVerified");
   });
-  it("logs schema code and fixed field paths without rejected values or issue messages", async () => {
+  it("retains a valid partial response without logging its rejected private field value", async () => {
     const fields = {
       ...sampleDocuments[0].fields,
       total: "private-invalid-value",
@@ -185,13 +185,22 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
     const { runtime } = setup(new Store(), async () =>
       response(JSON.stringify({ fields, uncertain: [] })),
     );
-    await expect(runtime.extractor.extract(file)).rejects.toThrow();
-    const event = vi.mocked(console.warn).mock.calls[0];
-    expect(JSON.parse(String(event[1])).validationIssues).toEqual([
-      { code: "invalid_format", path: ["fields", "total"] },
-    ]);
-    expect(JSON.stringify(event)).not.toContain("private-invalid-value");
-    expect(JSON.stringify(event)).not.toContain("Use a nonnegative");
+    const result = await runtime.extractor.extract(file);
+    expect(result.fields.supplier).toBe(fields.supplier);
+    expect(result.fields.total).toBe("");
+    expect(result.completeness).toBe("partial");
+    expect(result.uncertain).toContain("total");
+    expect(result.fieldIssues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: "total",
+          original: "private-invalid-value",
+        }),
+      ]),
+    );
+    const events = vi.mocked(console.warn).mock.calls;
+    expect(JSON.stringify(events)).not.toContain("private-invalid-value");
+    expect(JSON.stringify(events)).not.toContain("Use a nonnegative");
   });
   it.each([
     [{ ...env, AZZORA_AI_ENABLED: "false" }, "disabled"],
@@ -253,7 +262,7 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
         ...file,
         data: Buffer.from("unapproved fictional document").toString("base64"),
       }),
-    ).rejects.toThrow(/approved fictional/);
+    ).rejects.toMatchObject({ code: "not-authorized" });
     expect(calls).toBe(0);
     expect(store.values.size).toBe(0);
   });
@@ -266,7 +275,8 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
       expect(await first.runtime.budgetExposureMicroUsd()).toBe(324404);
       return response();
     });
-    expect((await first.runtime.extractor.extract(file)).mode).toBe("live");
+    const originalExtraction = await first.runtime.extractor.extract(file);
+    expect(originalExtraction.mode).toBe("live");
     expect(await first.runtime.budgetExposureMicroUsd()).toBe(900);
     const raw = (await store.read<Record<string, unknown>>(
       DEEPSEEK_BUDGET_PATH,
@@ -292,7 +302,7 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
     expect(cached.mode).toBe("live");
     expect(cached.provider).toContain("Cached real DeepSeek extraction");
     expect(cached.provider).toContain("no new paid request");
-    expect(cached.fields).toEqual(sampleDocuments[0].fields);
+    expect(cached.fields).toEqual(originalExtraction.fields);
     expect(calls).toBe(1);
     expect(await restarted.runtime.budgetExposureMicroUsd()).toBe(900);
     await restarted.runtime.extractor.extract(second);
@@ -473,7 +483,7 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
       calls++;
       return response(
         JSON.stringify({
-          fields: { ...sampleDocuments[0].fields, total: "invalid" },
+          fields: { supplier: "", total: "invalid", items: [] },
           uncertain: [],
         }),
       );
@@ -532,7 +542,10 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
     const result = await runtime.extractor.extract(file);
     expect(result.mode).toBe("live");
     expect(result.provider).toContain("Cached real");
-    expect(result.fields).toEqual(fields);
+    expect(result.fields).toMatchObject(fields);
+    expect(result.fields.items.every((item) => item.productId === "")).toBe(
+      true,
+    );
     expect(result.inputTokens).toBe(1000);
     expect(result.requestId).toBe("mock-real-extraction-response");
     expect(calls).toBe(0);
@@ -542,7 +555,7 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
     ).toEqual(raw);
   });
   it.each(["invented-id", null])(
-    "continues rejecting nonempty or null product IDs",
+    "removes nonempty or null product IDs without losing readable fields or making another paid call",
     async (productId) => {
       const fields = structuredClone(sampleDocuments[0].fields);
       const items = fields.items.map((item) => ({ ...item, productId }));
@@ -553,8 +566,17 @@ describe("owner-authorized USD5 fictional AI demo — mocked provider only", () 
           JSON.stringify({ fields: { ...fields, items }, uncertain: [] }),
         );
       });
-      await expect(runtime.extractor.extract(file)).rejects.toThrow();
-      await expect(runtime.extractor.extract(file)).rejects.toThrow();
+      const result = await runtime.extractor.extract(file);
+      expect(result.fields.supplier).toBe(fields.supplier);
+      expect(result.fields.total).toBe(fields.total);
+      expect(result.fields.items.every((item) => item.productId === "")).toBe(
+        true,
+      );
+      if (productId !== null)
+        expect(result.uncertain).toContain("items.0.productId");
+      const cached = await runtime.extractor.extract(file);
+      expect(cached.fields).toEqual(result.fields);
+      expect(cached.provider).toContain("Cached real");
       expect(calls).toBe(1);
       expect(await runtime.budgetExposureMicroUsd()).toBe(900);
     },

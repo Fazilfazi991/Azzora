@@ -44,6 +44,7 @@ export type CompletionSnapshot = ReturnType<typeof reviewSnapshot> & {
     unassigned: CostSummary;
   };
   documentAi?: {
+    generalDocuments?: boolean;
     enabled: boolean;
     provider: "deepseek";
     status: "disabled" | "configuration-required" | "ready";

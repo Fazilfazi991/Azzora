@@ -100,6 +100,9 @@ export interface EntryWarning {
   field: string;
 }
 export interface Extraction {
+  reviewPolicy?: "draft-only" | "quotation-only";
+  completeness?: "complete" | "partial";
+  fieldIssues?: { field: string; reason: string; original?: string }[];
   reviewOnly?: boolean;
   requestedMode?: "auto" | "manual";
   failureCode?: import("./extraction-status").ExtractionFailureCode;
@@ -117,6 +120,13 @@ export interface Extraction {
   failureReason?: string;
 }
 export interface DocumentReview {
+  processingConsent?: {
+    userId: string;
+    companyId: string;
+    policyVersion: string;
+    dataClass: "fictional";
+    confirmedAt: string;
+  };
   id: string;
   sha256: string;
   attachmentId: string;

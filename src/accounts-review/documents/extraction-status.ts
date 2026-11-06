@@ -1,6 +1,6 @@
 export const extractionFailures = {
   "not-authorized":
-    "This document is not authorized for AI processing. No document was sent to the provider. Use an approved fictional sample or enter the details manually.",
+    "This document is not authorized for AI processing. No document was sent to the provider. Sign in with an authorized account and confirm fictional-data processing consent, or enter manually.",
   "configuration-required":
     "AI processing is not configured or approved. No extraction completed; the original is available for manual review.",
   "budget-blocked":

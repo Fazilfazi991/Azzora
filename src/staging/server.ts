@@ -32,6 +32,13 @@ import {
 } from "../accounts-review/reporting";
 import { reviewPdf } from "../accounts-review/pdf";
 import { extractDocument } from "../accounts-review/documents/service";
+import { BlobReviewStore } from "../accounts-review/hosted-store";
+import { DocumentExtractionError } from "../accounts-review/documents/extraction-status";
+import { createDocumentAuthorization } from "../accounts-review/documents/admission";
+import {
+  configuredDocumentRuntime,
+  documentAvailability,
+} from "../accounts-review/documents/runtime";
 import { extractionInputSchema } from "../accounts-review/documents/runtime";
 import {
   disabledExtractor,
@@ -284,13 +291,18 @@ export function createStagingHandler(
                 state,
                 sharedActor(actor),
               ),
-              documentAi: {
-                enabled: false,
-                provider: "deepseek",
-                status: "disabled",
-                message:
-                  "Paid AI is disabled in shared staging. Local PDF reading, labelled prepared demo suggestions and manual review remain available.",
-              },
+              documentAi:
+                process.env.AZZORA_AI_GENERAL_DOCUMENTS === "fictional-v1"
+                  ? documentAvailability(
+                      configuredDocumentRuntime(new BlobReviewStore()),
+                    )
+                  : {
+                      enabled: false,
+                      provider: "deepseek",
+                      status: "disabled",
+                      message:
+                        "Paid AI is disabled in shared staging. Local PDF reading, labelled prepared demo suggestions and manual review remain available.",
+                    },
             };
       if (
         path ===
@@ -415,11 +427,47 @@ export function createStagingHandler(
         await commit(undefined, {});
       } else if (isUpload) {
         const parsed = extractionInputSchema.parse(input);
+        const general =
+          process.env.AZZORA_AI_GENERAL_DOCUMENTS === "fictional-v1";
+        const authorization =
+          general && parsed.mode !== "manual"
+            ? createDocumentAuthorization(actor, parsed.processing)
+            : undefined;
+        const extractor = authorization
+          ? configuredDocumentRuntime(new BlobReviewStore(), authorization)
+              .extractor
+          : parsed.mode === "manual"
+            ? disabledExtractor
+            : undefined;
         const result = await extractDocument(
           state.finance,
           parsed.file,
-          parsed.mode === "manual" ? disabledExtractor : undefined,
+          extractor,
         );
+        // Membership/session may have changed while the provider was reading.
+        actor = await auth.requireActor(request, "accountant");
+        if (
+          authorization &&
+          (actor.userId !== authorization.userId ||
+            actor.companyId !== authorization.companyId)
+        )
+          throw Object.assign(
+            Error("Session changed during document processing."),
+            { status: 403 },
+          );
+        if (authorization && !result.reused) {
+          const review = result.state.documentEntries?.reviews.find(
+            (doc) => doc.id === result.id,
+          );
+          if (review)
+            review.processingConsent = {
+              userId: authorization.userId,
+              companyId: authorization.companyId,
+              policyVersion: authorization.policyVersion,
+              dataClass: "fictional",
+              confirmedAt: new Date().toISOString(),
+            };
+        }
         const next = { ...state, finance: result.state };
         for (let i = 0; i < next.finance.attachments.length; i++)
           if (next.finance.attachments[i].data)
@@ -493,6 +541,12 @@ export function createStagingHandler(
           elapsedMs: Math.round(performance.now() - started),
         }),
       );
+      if (error instanceof DocumentExtractionError)
+        return json(
+          error.code === "not-authorized" ? 403 : 400,
+          { error: error.message, code: error.code, requestId },
+          requestId,
+        );
       if (error instanceof StagingPolicyError)
         return new Response(
           JSON.stringify({ error: error.message, code: error.code, requestId }),

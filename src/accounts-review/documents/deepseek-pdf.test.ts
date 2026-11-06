@@ -79,7 +79,7 @@ describe("DeepSeek local PDF input preparation", () => {
     for (let n = 0; n < 5; n++) pdf.addPage();
     await expect(prepareDeepSeekPdf(upload(pdf))).rejects.toThrow(/five pages/);
   });
-  it("sends selected PDF text in the existing DeepSeek adapter and rejects fabricated IDs", async () => {
+  it("sends selected PDF text and removes fabricated IDs while retaining readable evidence", async () => {
     const pdf = new jsPDF();
     pdf.text(
       "Synthetic supplier invoice number UNSEEN-55 total AED 95.00",
@@ -121,7 +121,11 @@ describe("DeepSeek local PDF input preparation", () => {
       transport,
       { preparePdf: prepareDeepSeekPdf },
     );
-    await expect(extractor.extract(file)).rejects.toThrow(/unverified entity/);
+    const result = await extractor.extract(file);
+    expect(result.fields.projectId).toBe("");
+    expect(result.uncertain).toContain("projectId");
+    expect(result.fields.supplier).toBe(sampleDocuments[0].fields.supplier);
+    expect(result.fields.total).toBe(sampleDocuments[0].fields.total);
     expect(calls).toBe(1);
   });
 });

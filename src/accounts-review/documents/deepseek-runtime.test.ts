@@ -314,7 +314,7 @@ describe("DeepSeek live integration gate — mocked transport only", () => {
     expect(recorded.budget.records[0].status).toBe("metered");
     expect(recorded.budget.records[0].meteredUpperMicroUsd).toBe(324404);
   });
-  it("retains valid metered cost when document JSON is malformed or its schema is invalid", async () => {
+  it("retains metered cost for malformed JSON and preserves useful partial document fields without retry", async () => {
     for (const content of [
       "not json",
       JSON.stringify({ fields: { supplier: "incomplete" }, uncertain: [] }),
@@ -334,7 +334,16 @@ describe("DeepSeek live integration gate — mocked transport only", () => {
           });
         },
       });
-      await expect(runtime.extractor.extract(file)).rejects.toThrow();
+      if (content === "not json")
+        await expect(runtime.extractor.extract(file)).rejects.toThrow();
+      else {
+        const result = await runtime.extractor.extract(file);
+        expect(result.fields.supplier).toBe("incomplete");
+        expect(result.fields.items).toEqual([]);
+        expect(result.fields.total).toBe("");
+        expect(result.completeness).toBe("partial");
+        expect(result.uncertain).toContain("items");
+      }
       expect(await runtime.budgetExposureMicroUsd()).toBe(900);
       const recorded = store.value as {
         budget: { records: { status: string; meteredUpperMicroUsd: number }[] };

@@ -134,6 +134,18 @@ export function suggest(fields: EntryFields, state: ReviewState): EntryFields {
   if (!useDefault && f.kind !== "unknown" && !f.categoryId)
     f.categoryId =
       f.kind === "company-expense" ? "company-expenses" : "project-materials";
+  if (!f.ledgerId) {
+    const mapping = categories.find(
+      (category) => category.id === f.categoryId && category.active,
+    );
+    const ledger = mapping
+      ? uniqueMatch(
+          expenseLedgersFor(state),
+          (entry) => entry.accountId === mapping.expenseAccountId,
+        )
+      : undefined;
+    if (ledger) f.ledgerId = ledger.id;
+  }
   return f;
 }
 export function inspectFields(

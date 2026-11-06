@@ -17,7 +17,6 @@ import { BankingWorkspace } from "./BankingWorkspace";
 import { OperationalReports } from "./OperationalReports";
 import { ReportDates } from "./ReportDates";
 import { cashAccountsFor, type CompletionSnapshot } from "./completion-ui";
-import type { Upload } from "./documents/model";
 import { accountsRequest as api, accountsUrl } from "./http";
 import {
   stagingEnabled,
@@ -1234,12 +1233,16 @@ function App() {
         data={snapshot}
         onPendingChange={onDocumentPending}
         act={act}
-        extract={async (file: Upload, mode?: "auto" | "manual") => {
+        extract={async (file, mode, processing) => {
           if (stagingEnabled && inFlight.current)
             throw Error(
               "Wait for the current shared staging change to finish.",
             );
-          const body = JSON.stringify({ file, ...(mode ? { mode } : {}) });
+          const body = JSON.stringify({
+            file,
+            ...(mode ? { mode } : {}),
+            ...(processing ? { processing } : {}),
+          });
           if (stagingEnabled) {
             if (retryUpload.current?.fingerprint !== body)
               retryUpload.current = {

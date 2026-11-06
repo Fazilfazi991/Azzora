@@ -21,6 +21,11 @@ import { accountsUrl } from "../http";
 
 const PdfPreview = lazy(() => import("./PdfPreview"));
 type Snapshot = ReturnType<typeof reviewSnapshot> & CompletionSnapshot;
+export type FictionalProcessingConsent = {
+  dataClass: "fictional";
+  consent: true;
+  policyVersion: "ai-fictional-v1";
+};
 type EntryFields = Omit<ExistingEntryFields, "items"> & {
   department?: "" | "MEP" | "CIVIL" | "JOINERY";
   ledgerId?: string;
@@ -48,7 +53,11 @@ export function DocumentEntry({
   onPendingChange,
 }: {
   data: Snapshot;
-  extract: (file: Upload, mode?: "auto" | "manual") => Promise<string>;
+  extract: (
+    file: Upload,
+    mode?: "auto" | "manual",
+    processing?: FictionalProcessingConsent,
+  ) => Promise<string>;
   act: (action: Record<string, unknown>) => Promise<boolean>;
   onPendingChange: (pending: boolean) => void;
 }) {
@@ -58,6 +67,11 @@ export function DocumentEntry({
     [remember, setRemember] = useState(false);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const [processingConsent, setProcessingConsent] = useState(false);
+  const requiresConsent = Boolean(
+    data.documentAi?.generalDocuments || data.documentAi?.enabled,
+  );
+  const [uploadStatus, setUploadStatus] = useState("");
   const [url, setUrl] = useState("");
   const [fileMime, setFileMime] = useState("");
   const [saved, setSaved] = useState(false);
@@ -117,11 +131,34 @@ export function DocumentEntry({
   }
   async function upload(file: File, mode: "auto" | "manual" = "auto") {
     if (pending && !window.confirm("Discard unsaved document edits?")) return;
+    if (mode === "auto" && requiresConsent && !processingConsent) {
+      setError(
+        "Confirm fictional test data and DeepSeek processing before using Auto-Fill, or choose Enter Manually.",
+      );
+      return;
+    }
     setBusy(true);
+    setUploadStatus("Preparing document for upload…");
     setError("");
     setSaved(false);
     try {
-      const id = await extract(await readFile(file), mode);
+      const original = await readFile(file);
+      setUploadStatus(
+        mode === "manual"
+          ? "Uploading original document for manual entry…"
+          : "Reading document and extracting item details…",
+      );
+      const id = await extract(
+        original,
+        mode,
+        mode === "auto" && requiresConsent
+          ? {
+              dataClass: "fictional",
+              consent: true,
+              policyVersion: "ai-fictional-v1",
+            }
+          : undefined,
+      );
       setSelected(id);
       setLoaded("");
       setConfirmed(false);
@@ -130,6 +167,8 @@ export function DocumentEntry({
       setError(e instanceof Error ? e.message : "Document could not be read.");
     } finally {
       setBusy(false);
+      setUploadStatus("");
+      if (mode === "auto") setProcessingConsent(false);
     }
   }
   // Initialize only when a newly uploaded review arrives; never overwrite ongoing edits.
@@ -168,12 +207,53 @@ export function DocumentEntry({
       !warning.code.startsWith("price-") &&
       warning.code !== "customer",
   );
+  const matchesField = (path: string, key: string) => {
+    const normalized = path.replace(/\[(\d+)\]/g, ".$1");
+    return normalized === key || key.startsWith(`${normalized}.`);
+  };
+  const fieldIssue = (key: string) =>
+    doc?.extraction.fieldIssues?.find((issue) => matchesField(issue.field, key))
+      ?.reason;
   const uncertain = (key: string) =>
     Boolean(
-      doc?.extraction.uncertain.some(
-        (p) => p === key || (p === "items" && key.startsWith("items")),
-      ) || warnings.some((w) => w.field === key),
+      doc?.extraction.uncertain.some((path) => matchesField(path, key)) ||
+      fieldIssue(key) ||
+      warnings.some((warning) => matchesField(warning.field, key)),
     );
+  const hasExtractedDetails = Boolean(
+    doc &&
+    (doc.extraction.fields.supplier ||
+      doc.extraction.fields.reference ||
+      doc.extraction.fields.date ||
+      doc.extraction.fields.total ||
+      doc.extraction.fields.subtotal ||
+      doc.extraction.fields.tax ||
+      doc.extraction.fields.items.some(
+        (item) =>
+          item.description || item.quantity || item.unitRate || item.total,
+      )),
+  );
+  const partialExtraction = Boolean(
+    doc &&
+    (doc.extraction.completeness === "partial" ||
+      doc.extraction.uncertain.length > 0 ||
+      !hasExtractedDetails),
+  );
+  const extractionStatus =
+    doc &&
+    (doc.extraction.failureReason
+      ? `Auto-Fill unavailable · ${doc.extraction.failureReason}`
+      : doc.extraction.mode === "manual"
+        ? doc.extraction.requestedMode === "manual"
+          ? "Manual entry selected · no AI request was made."
+          : "Automatic extraction did not complete · manual review required."
+        : doc.extraction.mode === "synthetic-replay"
+          ? "Prepared synthetic demo suggestions · not an extraction or AI result."
+          : !hasExtractedDetails
+            ? "No readable details extracted · enter the details manually or try a clearer document."
+            : partialExtraction
+              ? "Partially extracted — review highlighted fields."
+              : "Extraction completed — review required.");
   function field(
     label: string,
     key: Exclude<keyof EntryFields, "items">,
@@ -192,7 +272,9 @@ export function DocumentEntry({
           }
           aria-describedby={uncertain(key) ? "entry-review-note" : undefined}
         />
-        {uncertain(key) && <small>Check against document</small>}
+        {uncertain(key) && (
+          <small>{fieldIssue(key) || "Check against document"}</small>
+        )}
       </label>
     );
   }
@@ -217,6 +299,7 @@ export function DocumentEntry({
           value={fields[key] || ""}
           onChange={(e) => {
             change(key, e.target.value as EntryFields[typeof key]);
+            if (key === "kind" || key === "categoryId") change("ledgerId", "");
             if (key === "kind") {
               change("categoryId", "");
               if (e.target.value === "company-expense") change("projectId", "");
@@ -232,6 +315,9 @@ export function DocumentEntry({
         >
           {children}
         </select>
+        {uncertain(key) && (
+          <small>{fieldIssue(key) || "Check against document"}</small>
+        )}
       </label>
     );
   }
@@ -332,14 +418,29 @@ export function DocumentEntry({
         </span>
       </div>
       <section className="panel entry-upload" aria-label="Upload a document">
-        <label className="button">
+        {requiresConsent && (
+          <label className="entry-check entry-processing-consent">
+            <input
+              type="checkbox"
+              checked={processingConsent}
+              disabled={busy}
+              onChange={(event) => setProcessingConsent(event.target.checked)}
+              aria-describedby="entry-processing-note"
+            />
+            This is fictional test data and I authorize DeepSeek processing for
+            this upload
+          </label>
+        )}
+        <label
+          className={`button${(requiresConsent && !processingConsent) || busy ? " entry-upload-disabled" : ""}`}
+        >
           Upload & Auto-Fill
           <input
             aria-label="Upload document"
             type="file"
             accept="application/pdf,image/png,image/jpeg"
             capture="environment"
-            disabled={busy}
+            disabled={busy || (requiresConsent && !processingConsent)}
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) void upload(file);
@@ -362,12 +463,13 @@ export function DocumentEntry({
             }}
           />
         </label>
-        <span>
+        <span id="entry-processing-note">
           PDF, PNG or JPEG · up to 2 MB.{" "}
           {data.documentAi?.enabled
-            ? "AI accepts approved samples and specifically authorized documents only. Review every suggestion before saving a draft."
-            : "Selectable PDF text is read locally; photos/scans remain manual."}{" "}
-          Manual entry keeps the original alongside a blank form.
+            ? "Auto-Fill can process new fictional documents after consent, subject to server authorization and spending limits. Review every suggestion."
+            : "Live AI is unavailable. Selectable PDF text may be read locally; photos/scans need manual entry."}{" "}
+          Real company documents are not authorized. Manual entry needs no AI
+          consent and keeps the original alongside a blank form.
         </span>
         <a href="/document-samples/07.png" download>
           Download sample bill
@@ -379,7 +481,11 @@ export function DocumentEntry({
           Arabic / English sample
         </a>
       </section>
-      {busy && <p role="status">Reading document…</p>}
+      {busy && uploadStatus && (
+        <p role="status" aria-live="polite">
+          {uploadStatus}
+        </p>
+      )}
       {error && (
         <p className="review-error" role="alert">
           {error}
@@ -392,7 +498,7 @@ export function DocumentEntry({
         </p>
       )}
       {doc ? (
-        <div className="entry-layout">
+        <div className="entry-layout" aria-busy={Boolean(uploadStatus)}>
           <section className="panel entry-preview">
             <div className="entry-preview-head">
               <span className="eyebrow">ORIGINAL DOCUMENT</span>
@@ -415,27 +521,23 @@ export function DocumentEntry({
             ) : (
               <p>Loading original…</p>
             )}
-            <p role={doc.extraction.failureReason ? "alert" : undefined}>
-              {doc.extraction.failureReason
-                ? `Auto-Fill failed · ${doc.extraction.failureReason}`
-                : doc.extraction.mode === "manual"
-                  ? doc.extraction.requestedMode === "manual"
-                    ? "Manual entry selected · no AI request was made."
-                    : "Automatic extraction did not complete · manual review required."
-                  : doc.extraction.mode === "local-pdf-text"
-                    ? "Actual local PDF text extraction · not AI. Verify every value against the original."
-                    : doc.extraction.mode === "live"
-                      ? "Actual AI result · verify every value against the original."
-                      : "Prepared synthetic demo suggestions · not an extraction or AI result."}{" "}
+            <p role={doc.extraction.failureReason ? "alert" : "status"}>
+              {extractionStatus}
+            </p>
+            <p>
+              {doc.extraction.mode === "local-pdf-text"
+                ? "Actual local PDF text extraction · not AI. "
+                : doc.extraction.mode === "live"
+                  ? "Actual AI result · verify every value against the original. "
+                  : ""}
               {doc.extraction.provider}. Original suggestions are preserved with
               each correction.
             </p>
             {doc.extraction.mode === "live" && (
               <p aria-label="AI extraction evidence">
-                Extraction completed ·{" "}
-                {doc.extraction.inputTokens ?? "Unreported"} input tokens ·{" "}
-                {doc.extraction.outputTokens ?? "Unreported"} output tokens.{" "}
-                Provider-billed cost:{" "}
+                Provider usage · {doc.extraction.inputTokens ?? "Unreported"}{" "}
+                input tokens · {doc.extraction.outputTokens ?? "Unreported"}{" "}
+                output tokens. Provider-billed cost:{" "}
                 {doc.extraction.costUsd === null
                   ? "unverified; usage is not a billing receipt"
                   : `USD ${doc.extraction.costUsd.toFixed(6)}`}
@@ -451,9 +553,11 @@ export function DocumentEntry({
             <h2>Document details</h2>
             {doc.extraction.reviewOnly && (
               <div className="entry-warnings" role="status">
-                Owner-authorized quotation · review drafts only. This document
-                cannot create a purchase bill, expense, payment or journal
-                posting.
+                {doc.extraction.reviewPolicy === "draft-only"
+                  ? "Fictional AI review · save drafts only."
+                  : "Owner-authorized quotation · review drafts only."}{" "}
+                This document cannot create a purchase bill, expense, payment or
+                journal posting.
               </div>
             )}
             <p>
@@ -648,6 +752,11 @@ export function DocumentEntry({
                           }
                           <input
                             aria-label={`Item ${n + 1} ${key}`}
+                            aria-describedby={
+                              uncertain(`items.${n}.${key}`)
+                                ? "entry-review-note"
+                                : undefined
+                            }
                             value={item[key] || ""}
                             inputMode={
                               [
@@ -669,6 +778,12 @@ export function DocumentEntry({
                               )
                             }
                           />
+                          {uncertain(`items.${n}.${key}`) && (
+                            <small>
+                              {fieldIssue(`items.${n}.${key}`) ||
+                                "Check against document"}
+                            </small>
+                          )}
                         </label>
                       ))}
                       <label>

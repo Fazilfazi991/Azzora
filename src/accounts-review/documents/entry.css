@@ -34,6 +34,19 @@
 .entry-upload .button {
   min-height: 44px;
 }
+.entry-upload .entry-processing-consent {
+  display: flex;
+  align-items: center;
+  flex: 1 0 100%;
+  gap: 10px;
+  min-height: 44px;
+  color: var(--ink);
+  line-height: 1.5;
+}
+.entry-upload-disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
 .entry-upload label:focus-within {
   outline: 2px solid var(--clay);
   outline-offset: 3px;

@@ -1,6 +1,7 @@
 // Server-only paid extraction gate. All sessions/deployments share one budget.
 import { createHash } from "node:crypto";
 import { z } from "zod";
+import type { DocumentAuthorization } from "./admission.js";
 import type { ReviewStore } from "../hosted-store.js";
 import {
   exposure,
@@ -73,6 +74,7 @@ export type DeepSeekApproval = z.infer<typeof deepSeekApprovalSchema>;
 export interface DeepSeekEnvironment {
   AZZORA_AI_AUTHORIZED_DOCUMENT_SHA256?: string;
   AZZORA_AI_NEW_REQUESTS_ENABLED?: string;
+  AZZORA_AI_GENERAL_DOCUMENTS?: string;
   AZZORA_AI_CLIENT_DEMO_APP_CAP?: string;
   AZZORA_AI_ENABLED?: string;
   AZZORA_AI_PROVIDER?: string;
@@ -81,6 +83,7 @@ export interface DeepSeekEnvironment {
 }
 export interface DeepSeekRuntimeStatus {
   authorizedDocumentReview?: boolean;
+  generalDocuments?: boolean;
   newRequestsEnabled?: boolean;
   authorizationMode?: "owner-application-cap";
   provider: "deepseek";
@@ -105,6 +108,7 @@ interface SharedBudget {
 }
 export interface DeepSeekRuntimeOptions {
   env: DeepSeekEnvironment;
+  authorization?: DocumentAuthorization;
   store: ReviewStore;
   approval?: unknown;
   transport?: typeof fetch;

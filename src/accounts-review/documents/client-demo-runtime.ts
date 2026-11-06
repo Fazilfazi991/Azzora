@@ -23,9 +23,11 @@ import {
   parseChatExtractionResponse,
   type DocumentExtractor,
 } from "./providers.js";
+import { prepareDeepSeekImage } from "./deepseek-image.js";
 import { prepareDeepSeekPdf } from "./deepseek-pdf.js";
 import type { Extraction } from "./model.js";
 import digests from "./client-demo-digests.js";
+import { assertDocumentAuthorization } from "./admission.js";
 import { DocumentExtractionError } from "./extraction-status.js";
 function failureFor(stage: string) {
   return stage === "prepare"
@@ -198,20 +200,31 @@ function validateShared(value: AppBudget) {
 
 export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
   const { env, store } = options;
-  const authorizedDigest = /^[a-f0-9]{64}$/.test(
-    env.AZZORA_AI_AUTHORIZED_DOCUMENT_SHA256 ?? "",
-  )
-    ? env.AZZORA_AI_AUTHORIZED_DOCUMENT_SHA256
-    : undefined;
+  const general = env.AZZORA_AI_GENERAL_DOCUMENTS === "fictional-v1";
+  const cachePath = (digest: string) =>
+    general
+      ? `ai-evaluation/general-v1/${options.authorization?.companyId}/extractions/${digest}.json`
+      : clientDemoCachePath(digest);
+  const rawPath = (digest: string) =>
+    general
+      ? `ai-evaluation/general-v1/${options.authorization?.companyId}/raw/${digest}.json`
+      : clientDemoRawCachePath(digest);
+  const authorizedDigest =
+    !general &&
+    /^[a-f0-9]{64}$/.test(env.AZZORA_AI_AUTHORIZED_DOCUMENT_SHA256 ?? "")
+      ? env.AZZORA_AI_AUTHORIZED_DOCUMENT_SHA256
+      : undefined;
   const allowed = new Set(digests);
   if (authorizedDigest) allowed.add(authorizedDigest);
   const restrictReview = (
     extraction: Extraction,
     digest: string,
   ): Extraction =>
-    digest === authorizedDigest
-      ? { ...extraction, reviewOnly: true }
-      : extraction;
+    general
+      ? { ...extraction, reviewOnly: true, reviewPolicy: "draft-only" }
+      : digest === authorizedDigest
+        ? { ...extraction, reviewOnly: true, reviewPolicy: "quotation-only" }
+        : extraction;
   const now = options.now ?? (() => new Date());
   const status = (): DeepSeekRuntimeStatus => {
     let reason: DeepSeekRuntimeStatus["reason"] = "ready";
@@ -233,16 +246,18 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
       authorizedDocumentReview: Boolean(authorizedDigest),
       authorizationMode: "owner-application-cap",
       newRequestsEnabled: env.AZZORA_AI_NEW_REQUESTS_ENABLED !== "false",
+      generalDocuments: general,
     };
   };
   const budgetExposureMicroUsd = async () => {
     const stored = await store.read<AppBudget>(DEEPSEEK_BUDGET_PATH);
-    if (!stored) return 0;
+    if (!stored) return general ? null : 0;
     validateShared(stored.value);
     return exposure(stored.value.budget);
   };
   const extractor: DocumentExtractor = {
     async extract(file) {
+      file = { ...file };
       let stage:
         | "prepare"
         | "reserve"
@@ -260,14 +275,17 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
         if (!status().ready)
           throw new DocumentExtractionError("configuration-required");
         const digest = digestOf(file);
-        if (!allowed.has(digest))
+        if (general) assertDocumentAuthorization(options.authorization, file);
+        else if (!allowed.has(digest))
           throw new DocumentExtractionError("not-authorized");
         const id = `deepseek:${digest}`;
         // The cache uses the same injected PRIVATE Blob store as the allowance.
         // Never replace it with a public URL or a session-local spending ledger.
         stage = "cache";
-        const cached = await store.read<unknown>(clientDemoCachePath(digest));
+        const cached = await store.read<unknown>(cachePath(digest));
         const initial = await store.read<AppBudget>(DEEPSEEK_BUDGET_PATH);
+        if (general && !initial)
+          throw new DocumentExtractionError("budget-blocked");
         if (initial) validateShared(initial.value);
         const priorRecord = initial?.value.budget.records.find(
           (record) => record.id === id,
@@ -297,9 +315,7 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
             digest,
           );
         }
-        const rawCached = await store.read<unknown>(
-          clientDemoRawCachePath(digest),
-        );
+        const rawCached = await store.read<unknown>(rawPath(digest));
         if (rawCached) {
           const raw = rawCacheSchema.parse(rawCached.value);
           if (raw.digest !== digest || !priorRecord)
@@ -321,7 +337,7 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
             extraction,
           });
           stage = "cache";
-          await store.write(clientDemoCachePath(digest), value);
+          await store.write(cachePath(digest), value);
           return restrictReview(
             {
               ...extraction,
@@ -355,6 +371,10 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
           if (env.AZZORA_AI_NEW_REQUESTS_ENABLED === "false")
             throw new DocumentExtractionError("configuration-required");
           const prior = await store.read<AppBudget>(DEEPSEEK_BUDGET_PATH);
+          if (general) {
+            assertDocumentAuthorization(options.authorization, file);
+            if (!prior) throw new DocumentExtractionError("budget-blocked");
+          }
           if (prior) validateShared(prior.value);
           const current: AppBudget = prior?.value ?? {
             version: 1,
@@ -456,7 +476,7 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
               // Create-only immutable evidence, saved BEFORE strict field
               // validation. No key/request payload/ground truth is stored.
               await store.write(
-                clientDemoRawCachePath(digest),
+                rawPath(digest),
                 rawCacheSchema.parse({
                   version: 1,
                   application: CLIENT_DEMO_APPLICATION,
@@ -494,12 +514,20 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
                 : "owner-authorized-fictional-demo-USD5-application-cap",
             allowedDigests: allowed,
             maxRequests: 1,
+            ...(general
+              ? { documentAuthorization: options.authorization }
+              : {}),
           },
           undefined,
           transport,
           {
             preparePdf: prepareDeepSeekPdf,
-            timeoutMs: digest === authorizedDigest ? 35_000 : 20_000,
+            ...(general ? { prepareImage: prepareDeepSeekImage } : {}),
+            timeoutMs: general
+              ? 60_000
+              : digest === authorizedDigest
+                ? 35_000
+                : 20_000,
           },
         ).extract(file);
         // Only successfully validated REAL provider output can enter this cache.
@@ -513,7 +541,7 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
           extraction,
         });
         stage = "cache";
-        await store.write(clientDemoCachePath(digest), value);
+        await store.write(cachePath(digest), value);
         return restrictReview(extraction, digest);
       } catch (error) {
         // Allowlisted operational metadata only. Never log provider bodies,

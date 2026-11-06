@@ -21,6 +21,32 @@ export function stagingRuntimeOrigins(
     .filter(Boolean)
     .map(origin);
   if (env.VERCEL === "1" || env.VERCEL_ENV) {
+    // The owner authorized a new immutable Accounts AI Preview only. No alias
+    // or production host can use this narrowly scoped candidate configuration.
+    if (env.AZZORA_AI_GENERAL_DOCUMENTS === "fictional-v1") {
+      if (
+        env.VERCEL_ENV !== "preview" ||
+        env.AZZORA_AI_PREVIEW_APPROVED !== "true" ||
+        env.VERCEL_PROJECT_ID !== "prj_inNGMsufKkeDUTS1Sn5whmwIVWuw" ||
+        env.VERCEL_PROJECT_NAME !== "azzora-accounts-client-review" ||
+        env.AZZORA_STAGING_EXPECTED_PROJECT_ID !== env.VERCEL_PROJECT_ID
+      )
+        throw Error(
+          "Only the approved isolated Accounts AI Preview may process fictional test documents.",
+        );
+      const host = env.VERCEL_URL || "";
+      if (
+        !/^azzora-accounts-client-review-[a-z0-9]+-faziils-projects\.vercel\.app$/.test(
+          host,
+        )
+      )
+        throw Error("An immutable Accounts Preview origin is required.");
+      if (configured.length)
+        throw Error(
+          "The AI candidate does not accept stable or user-selected aliases.",
+        );
+      return new Set([`https://${host}`]);
+    }
     if (
       env.VERCEL_ENV !== "preview" ||
       env.AZZORA_STAGING_DEPLOYMENT_APPROVED !== "true"

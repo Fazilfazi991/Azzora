@@ -224,7 +224,7 @@ describe("Auto-Fill failures stay distinct from manual selection and successful 
       expect(r.state.attachments).toHaveLength(1);
     },
   );
-  it("normalizes only optional nulls, preserves amounts, and marks the normalized fields uncertain", () => {
+  it("normalizes safe numeric values and missing fields individually without erasing readable amounts", () => {
     const fields = {
       ...sampleDocuments[6].fields,
       dueDate: null,
@@ -247,18 +247,28 @@ describe("Auto-Fill failures stay distinct from manual selection and successful 
     expect(parsed.fields.documentType).toBe("unknown");
     expect(parsed.uncertain).toContain("dueDate");
     expect(parsed.uncertain).toContain("items.0.discount");
-    expect(() =>
-      parseChatExtractionResponse(body({ ...fields, total: 123 }), {
+    const numeric = parseChatExtractionResponse(
+      body({ ...fields, total: 123 }),
+      {
         model: "deepseek-flash",
         latencyMs: 1,
-      }),
-    ).toThrow();
-    expect(() =>
-      parseChatExtractionResponse(body({ ...fields, tax: null }), {
+      },
+    );
+    expect(numeric.fields.total).toBe("123");
+    expect(numeric.fields.supplier).toBe(fields.supplier);
+    const missing = parseChatExtractionResponse(
+      body({ ...fields, tax: null }),
+      {
         model: "deepseek-flash",
         latencyMs: 1,
-      }),
-    ).toThrow();
+      },
+    );
+    expect(missing.fields.tax).toBe("");
+    expect(missing.uncertain).toContain("tax");
+    expect(missing.fields.total).toBe(fields.total);
+    expect(missing.fields.items[0].description).toBe(
+      fields.items[0].description,
+    );
   });
   it("allows a quotation review draft but cannot post it even after changing the editable type", async () => {
     const fields = {

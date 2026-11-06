@@ -89,7 +89,8 @@ export async function extractDocument(
   const fields = suggest(extraction.fields, next);
   // This explicitly authorized source is a quotation, as confirmed by the owner.
   // Keep the provider's raw fields immutable; the review policy supplies its type.
-  if (extraction.reviewOnly) fields.documentType = "quotation";
+  if (extraction.reviewOnly && extraction.reviewPolicy !== "draft-only")
+    fields.documentType = "quotation";
   entries.reviews.push({
     id,
     sha256,
@@ -101,6 +102,11 @@ export async function extractDocument(
     revision: 0,
     corrections: [],
     warnings: [
+      ...(extraction.fieldIssues || []).map((issue) => ({
+        code: "ai-field-review",
+        field: issue.field,
+        message: issue.reason,
+      })),
       ...inspectFields(fields, next, id, sha256),
       ...(extraction.failureReason
         ? [

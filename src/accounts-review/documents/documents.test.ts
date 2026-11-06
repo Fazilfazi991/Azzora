@@ -24,6 +24,7 @@ import {
   createChatExtractor,
   createMistralOcr,
   digestOf,
+  parseChatExtractionResponse,
   sampleExtractor,
 } from "./providers";
 import { sampleDocuments } from "./samples";
@@ -280,6 +281,7 @@ describe("review-only finance boundaries", () => {
       kind: "supplier-bill" as const,
       categoryId: "company-expenses",
       projectId: "",
+      ledgerId: "",
     };
     const next = saveDocumentDraft(r.state, save(r.id, fields), "now");
     expect(next.documentEntries!.reviews[0].mapping?.accountCode).toBe("6000");
@@ -399,6 +401,7 @@ describe("review-only finance boundaries", () => {
       categoryId: "project-materials",
       accountId: "cost",
       accountCode: "5000",
+      ledgerId: "project-materials",
     });
     expect(saved.extraction).toEqual(doc.extraction);
     expect(saved.corrections[0].before.supplier).toBe("Sample Supplier B");
@@ -453,8 +456,46 @@ describe("review-only finance boundaries", () => {
       ),
     };
     expect(() => saveDocumentDraft(r.state, save(r.id, fields), "now")).toThrow(
-      /unavailable/,
+      /existing expense ledger/,
     );
+    expect(() =>
+      saveDocumentDraft(
+        r.state,
+        save(r.id, { ...fields, ledgerId: "" }),
+        "now",
+      ),
+    ).toThrow(/unavailable/);
+  });
+  it("suggests only one unambiguous active authorized ledger without creating accounts or posting", () => {
+    const state = createReviewState();
+    const original = structuredClone(state.accounting);
+    const fields = {
+      ...sampleDocuments[0].fields,
+      categoryId: "project-materials",
+      ledgerId: "",
+    };
+    expect(suggest(fields, state).ledgerId).toBe("project-materials");
+    expect(state.accounting).toEqual(original);
+    const ambiguous = structuredClone(state);
+    ambiguous.expenseLedgers = [
+      {
+        id: "second-authorized-cost-ledger",
+        name: "Second cost ledger",
+        group: "Direct Expense",
+        accountId: "cost",
+        code: "5000",
+      },
+    ];
+    expect(suggest(fields, ambiguous).ledgerId || "").toBe("");
+    const inactive = structuredClone(state);
+    inactive.accounting = {
+      ...inactive.accounting,
+      accounts: inactive.accounting.accounts.map((account) =>
+        account.id === "cost" ? { ...account, status: "Archived" } : account,
+      ),
+    };
+    expect(suggest(fields, inactive).ledgerId || "").toBe("");
+    expect(state.accounting).toEqual(original);
   });
   it("remembers only explicitly confirmed supplier defaults, no model training or CRM writes", async () => {
     const r = await extractDocument(createReviewState(), upload()),
@@ -673,7 +714,7 @@ describe("interchangeable server providers (mock transport only)", () => {
       await expect(p.extract(file)).rejects.toThrow(/budget/);
     },
   );
-  it("rejects malformed provider JSON and prompt-injected ledger output without retry", async () => {
+  it("discards prompt-injected ledger output without dropping readable fields or executing instructions", async () => {
     const transport = (async () =>
       Response.json({
         choices: [
@@ -687,15 +728,64 @@ describe("interchangeable server providers (mock transport only)", () => {
           },
         ],
       })) as typeof fetch;
-    await expect(
-      createChatExtractor(
-        "qwen",
-        "test",
-        approval,
-        undefined,
-        transport,
-      ).extract(file),
-    ).rejects.toThrow();
+    const result = await createChatExtractor(
+      "qwen",
+      "test",
+      approval,
+      undefined,
+      transport,
+    ).extract(file);
+    expect(result.fields.supplier).toBe(sampleDocuments[0].fields.supplier);
+    expect(result.fields.total).toBe(sampleDocuments[0].fields.total);
+    expect(result.fields).not.toHaveProperty("journal");
+    expect(result).not.toHaveProperty("journal");
+  });
+  it("rejects malformed JSON without an implicit second paid request", async () => {
+    let calls = 0;
+    const extractor = createChatExtractor(
+      "qwen",
+      "test",
+      approval,
+      undefined,
+      async () => {
+        calls++;
+        return Response.json({
+          choices: [
+            { message: { content: "not json" }, finish_reason: "stop" },
+          ],
+        });
+      },
+    );
+    await expect(extractor.extract(file)).rejects.toThrow();
+    expect(calls).toBe(1);
+  });
+  it("retains usable complete JSON after a non-stop finish only as an incomplete review-only result", () => {
+    const result = parseChatExtractionResponse(
+      {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                fields: sampleDocuments[0].fields,
+                uncertain: [],
+              }),
+            },
+            finish_reason: "length",
+          },
+        ],
+      },
+      { model: "deepseek-flash", latencyMs: 1 },
+    );
+    expect(result.fields.supplier).toBe(sampleDocuments[0].fields.supplier);
+    expect(result.fields.items).toHaveLength(
+      sampleDocuments[0].fields.items.length,
+    );
+    expect(result.completeness).toBe("partial");
+    expect(result.reviewOnly).toBe(true);
+    expect(result.uncertain).toContain("items");
+    expect(result.fieldIssues?.some((issue) => issue.field === "items")).toBe(
+      true,
+    );
   });
   it("keeps PDF extraction gated on an approved OCR adapter", async () => {
     const pdf = upload(1);

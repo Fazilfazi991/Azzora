@@ -1,5 +1,10 @@
 # Final AI client-demo release gate
 
+## Stable alias release superseded — 6 November 2026
+
+**NO-GO: rolled back.** The actual stable-host workflow checks passed, but two additional permission regressions failed: finance.draft permits expense-ledger and cash-account creation beyond document-review-only scope. Stable alias is restored to dpl_ESphaGfTKeRK8wzRt7AcYiaWwSjy; restricted client access is held. No credentials were sent. The earlier GO below is historical and superseded. See [rollback report](STABLE-AI-RELEASE-ROLLBACK-REPORT.md).
+
+
 6 November 2026. **Recommendation: GO for restricted fictional-data client review and preparation of the stable Accounts alias switch.** No alias was reassigned. Real-company documents and production accounting remain disabled.
 
 ## Verified candidate

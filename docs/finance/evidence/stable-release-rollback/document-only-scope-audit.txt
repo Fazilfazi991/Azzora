@@ -1,0 +1,28 @@
+
+ RUN  v4.1.12 C:/Users/USER/Desktop/Projects/Azzora/azzora-ai-client-release-gate
+
+ ❯ tmp/client-document-only-scope.test.ts (2 tests | 2 failed) 200ms
+   × document-review-only client must not create an expense ledger 180ms
+   × document-review-only client must not create a cash account 17ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tmp/client-document-only-scope.test.ts > document-review-only client must not create an expense ledger
+AssertionError: expected [Function] to throw an error
+ ❯ tmp/client-document-only-scope.test.ts:3:317
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tmp/client-document-only-scope.test.ts > document-review-only client must not create a cash account
+AssertionError: expected [Function] to throw an error
+ ❯ tmp/client-document-only-scope.test.ts:4:295
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  13:04:15
+   Duration  2.39s (transform 1.34s, setup 0ms, import 1.77s, tests 200ms, environment 0ms)

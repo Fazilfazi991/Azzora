@@ -1,0 +1,11 @@
+{
+  "clientUser": "client-review@staging.azzora.test",
+  "accessHeld": true,
+  "grantDeniedStatus": 403,
+  "grantDeniedCode": "PT403",
+  "holdReason": "Document-only role also admits ledger and cash-account creation",
+  "passwordChanged": false,
+  "factorsReset": false,
+  "existingFourAccountsChanged": false,
+  "credentialsSent": false
+}

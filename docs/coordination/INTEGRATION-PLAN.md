@@ -1,5 +1,10 @@
 # Controlled integration plan and executed checkpoints
 
+## Stable alias release superseded — 6 November 2026
+
+**NO-GO: rolled back.** The actual stable-host workflow checks passed, but two additional permission regressions failed: finance.draft permits expense-ledger and cash-account creation beyond document-review-only scope. Stable alias is restored to dpl_ESphaGfTKeRK8wzRt7AcYiaWwSjy; restricted client access is held. No credentials were sent. The earlier GO below is historical and superseded. See [rollback report](../finance/STABLE-AI-RELEASE-ROLLBACK-REPORT.md).
+
+
 ## Final restricted-client release candidate — 6 November 2026
 
 Application `28a52f01b30a012620b0e1e3cd938dad26b059ad` on `codex/azzora-ai-client-release-gate` adds only the reviewed restricted fictional identity admission migration and exact Accounts stable-origin opt-in. New Preview `dpl_FiNSszjSsMrVrnXBtCra3qxxxHis` passes actual restricted MFA, fresh G14 extraction/review/draft, permissions, 30 hosted route/viewport checks, reconciliation and final source checks. Preserve G13's initial strict classification failure and both samples' human corrections in evidence. Stable alias reassignment is not executed; retain rollback `dpl_ESphaGfTKeRK8wzRt7AcYiaWwSjy`. On separate owner approval, move only the existing Accounts alias and immediately smoke-test its actual hostname; restore the old alias target on failure. Do not promote, change Manager production or enable real records. [Concrete release gate and rollback plan](../finance/FINAL-AI-CLIENT-RELEASE-GATE.md).

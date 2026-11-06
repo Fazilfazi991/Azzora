@@ -1,5 +1,10 @@
 # AZZORA MASTER STATUS
 
+## Stable alias release superseded — 6 November 2026
+
+**NO-GO: rolled back.** The actual stable-host workflow checks passed, but two additional permission regressions failed: finance.draft permits expense-ledger and cash-account creation beyond document-review-only scope. Stable alias is restored to dpl_ESphaGfTKeRK8wzRt7AcYiaWwSjy; restricted client access is held. No credentials were sent. The earlier GO below is historical and superseded. See [rollback report](../finance/STABLE-AI-RELEASE-ROLLBACK-REPORT.md).
+
+
 ## Final AI client-demo release gate — 6 November 2026
 
 Verified application `28a52f01b30a012620b0e1e3cd938dad26b059ad`, branch `codex/azzora-ai-client-release-gate`, Preview `dpl_FiNSszjSsMrVrnXBtCra3qxxxHis`. Dedicated read/draft client identity passed actual MFA2, one fresh extraction, edits, draft/history preservation, six denied financial commands and 30 hosted desktop/mobile route checks. Staff/project/private-file restrictions and 20 journal/report reconciliations passed. Model classification/document-discount omissions were flagged and corrected by the reviewer, not counted as accurate AI output. Final 1,050 unit tests, types/lint, builds and native startup pass. Client enrolls their own authenticator; only its temporary QA factor was retired. Exact stable-alias compatibility is prepared, but no alias was moved. Existing Accounts, Manager production and main remain unchanged; retained rollback is `dpl_ESphaGfTKeRK8wzRt7AcYiaWwSjy`. GO for restricted fictional review; real documents/accounting remain blocked. [Release gate, access instructions and evidence](../finance/FINAL-AI-CLIENT-RELEASE-GATE.md).

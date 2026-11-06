@@ -2,6 +2,12 @@ import process from "node:process";
 import console from "node:console";
 const e = process.env;
 if (
+  e.AZZORA_AI_CLIENT_REVIEW_ALIAS &&
+  e.AZZORA_AI_CLIENT_REVIEW_ALIAS !==
+    "https://azzora-accounts-client-review-faziils-projects.vercel.app"
+)
+  throw Error("Only the existing Accounts client-review alias may be prepared.");
+if (
   e.VERCEL_ENV !== "preview" ||
   e.VERCEL_PROJECT_ID !== "prj_inNGMsufKkeDUTS1Sn5whmwIVWuw" ||
   e.VERCEL_PROJECT_NAME !== "azzora-accounts-client-review" ||

@@ -21,8 +21,8 @@ export function stagingRuntimeOrigins(
     .filter(Boolean)
     .map(origin);
   if (env.VERCEL === "1" || env.VERCEL_ENV) {
-    // The owner authorized a new immutable Accounts AI Preview only. No alias
-    // or production host can use this narrowly scoped candidate configuration.
+    // Keep the immutable Preview origin. A prepared client release can opt in
+    // to the one existing Accounts alias; this never assigns or promotes it.
     if (env.AZZORA_AI_GENERAL_DOCUMENTS === "fictional-v1") {
       if (
         env.VERCEL_ENV !== "preview" ||
@@ -45,7 +45,14 @@ export function stagingRuntimeOrigins(
         throw Error(
           "The AI candidate does not accept stable or user-selected aliases.",
         );
-      return new Set([`https://${host}`]);
+      const clientAlias = env.AZZORA_AI_CLIENT_REVIEW_ALIAS;
+      if (
+        clientAlias &&
+        clientAlias !==
+          "https://azzora-accounts-client-review-faziils-projects.vercel.app"
+      )
+        throw Error("Only the existing Accounts client-review alias is permitted.");
+      return new Set([`https://${host}`, ...(clientAlias ? [clientAlias] : [])]);
     }
     if (
       env.VERCEL_ENV !== "preview" ||

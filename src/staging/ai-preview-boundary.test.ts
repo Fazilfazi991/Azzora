@@ -39,3 +39,28 @@ it("the AIcandidate cannot use the legacy shared-password Accounts API", async (
     vi.unstubAllEnvs();
   }
 });
+
+it("prepares only the exact Accounts alias while retaining the immutable Preview", () => {
+  const alias = "https://azzora-accounts-client-review-faziils-projects.vercel.app";
+  expect([
+    ...stagingRuntimeOrigins({ ...preview, AZZORA_AI_CLIENT_REVIEW_ALIAS: alias }),
+  ]).toEqual(["https://" + preview.VERCEL_URL, alias]);
+  for (const unsafe of [
+    "https://azzora-seven.vercel.app",
+    "https://azzora-accounts-client-review-faziils-projects.vercel.app.evil.test",
+    alias + ":443",
+    alias + "/accountant.html",
+    "http://azzora-accounts-client-review-faziils-projects.vercel.app",
+    alias + ",https://other.test",
+  ])
+    expect(() =>
+      stagingRuntimeOrigins({ ...preview, AZZORA_AI_CLIENT_REVIEW_ALIAS: unsafe }),
+    ).toThrow(/alias/);
+  expect(() =>
+    stagingRuntimeOrigins({
+      ...preview,
+      VERCEL_ENV: "production",
+      AZZORA_AI_CLIENT_REVIEW_ALIAS: alias,
+    }),
+  ).toThrow();
+});

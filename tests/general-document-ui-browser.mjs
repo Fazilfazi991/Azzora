@@ -73,6 +73,15 @@ await page.route("**/api/accounts-review/**", async (route) => {
     await new Promise((resolve) => {
       releaseExtraction = resolve;
     });
+    if (resultKind === "unavailable")
+      return route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error:
+            "Extraction is temporarily unavailable. Try again or enter the details manually.",
+        }),
+      });
     const fields = blankFields();
     if (resultKind !== "empty" && body.mode !== "manual")
       Object.assign(fields, {
@@ -190,11 +199,46 @@ async function upload(mode = "auto") {
     page.getByRole("status").filter({
       hasText:
         mode === "auto"
-          ? "Reading document and extracting item details"
+          ? "Extracting document details"
           : "Uploading original document for manual entry",
     }),
   ).toBeVisible();
+  const status = page
+    .getByRole("status")
+    .filter({ hasText: "Extracting document details" });
+  await expect(
+    status.getByText(`fictional-${requests.length}.png`, { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByLabel("Upload document", { exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Enter Manually", exact: true }),
+  ).toBeDisabled();
+  if (requests.length === 1) {
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 });
+      await status.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: `${out}/loading-${width}.png` });
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth + 1,
+        ),
+      ).toBe(true);
+    }
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    expect(
+      await page
+        .locator(".entry-extraction-spinner")
+        .evaluate((el) => getComputedStyle(el).animationName),
+    ).toBe("none");
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    checks.push(
+      "Extraction loading card, filename, duplicate-action prevention, desktop/mobile layout and reduced motion",
+    );
+  }
   releaseExtraction();
+  await expect(status).toHaveCount(0);
   await expect(page.getByLabel("Supplier name", { exact: true })).toBeVisible();
 }
 try {
@@ -210,6 +254,37 @@ try {
   ).toBeEnabled();
   checks.push(
     "Auto-Fill requires explicit fictional-processing consent; manual blank form stays available",
+  );
+
+  for (const invalid of [
+    {
+      name: "oversized.png",
+      mimeType: "image/png",
+      buffer: Buffer.alloc(2000001),
+      message:
+        "This file exceeds the 2 MB upload limit. Choose a smaller PDF, PNG or JPEG.",
+    },
+    {
+      name: "unsupported.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("fictional test"),
+      message: "This file format is not supported. Choose a PDF, PNG or JPEG.",
+    },
+  ]) {
+    await page.getByLabel(consent, { exact: true }).check();
+    await page
+      .getByLabel("Upload document", { exact: true })
+      .setInputFiles({
+        name: invalid.name,
+        mimeType: invalid.mimeType,
+        buffer: invalid.buffer,
+      });
+    await expect(page.getByRole("alert")).toHaveText(invalid.message);
+    await expect(page.locator(".entry-extraction-status")).toHaveCount(0);
+    expect(requests).toHaveLength(0);
+  }
+  checks.push(
+    "Oversized/unsupported files show specific errors without a false extraction state or request",
   );
 
   await upload();
@@ -369,6 +444,21 @@ try {
   ).toHaveValue("60.00");
   checks.push(
     "Complete response maps visible fields while requiring human review",
+  );
+  resultKind = "unavailable";
+  await upload();
+  await expect(page.getByRole("alert")).toHaveText(
+    "Extraction is temporarily unavailable. Try again or enter the details manually.",
+  );
+  await expect(page.getByLabel("Supplier name", { exact: true })).toHaveValue(
+    "Fictional Cedar Supplies",
+  );
+  await expect(page.locator(".entry-extraction-status")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Enter Manually", exact: true }),
+  ).toBeEnabled();
+  checks.push(
+    "Failed extraction clears loading, restores controls and preserves the existing review",
   );
   snapshot.documentAi = {
     enabled: false,

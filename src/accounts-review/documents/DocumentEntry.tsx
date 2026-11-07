@@ -36,11 +36,14 @@ type EntryFields = Omit<ExistingEntryFields, "items"> & {
   items: (ExistingEntryFields["items"][number] & { discount?: string })[];
 };
 const readFile = async (file: File): Promise<Upload> => {
-  if (
-    file.size > 2000000 ||
-    !["application/pdf", "image/png", "image/jpeg"].includes(file.type)
-  )
-    throw Error("Choose a PDF, PNG or JPEG under 2 MB.");
+  if (file.size > 2000000)
+    throw Error(
+      "This file exceeds the 2 MB upload limit. Choose a smaller PDF, PNG or JPEG.",
+    );
+  if (!["application/pdf", "image/png", "image/jpeg"].includes(file.type))
+    throw Error(
+      "This file format is not supported. Choose a PDF, PNG or JPEG.",
+    );
   const data = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result).split(",")[1]);
@@ -78,6 +81,7 @@ export function DocumentEntry({
     data.documentAi?.generalDocuments || data.documentAi?.enabled,
   );
   const [uploadStatus, setUploadStatus] = useState("");
+  const [uploadName, setUploadName] = useState("");
   const [url, setUrl] = useState("");
   const [fileMime, setFileMime] = useState("");
   const [saved, setSaved] = useState(false);
@@ -169,6 +173,7 @@ export function DocumentEntry({
       return;
     }
     setBusy(true);
+    setUploadName(file.name);
     setUploadStatus("Preparing document for upload…");
     setError("");
     setSaved(false);
@@ -177,7 +182,7 @@ export function DocumentEntry({
       setUploadStatus(
         mode === "manual"
           ? "Uploading original document for manual entry…"
-          : "Reading document and extracting item details…",
+          : "Extracting document details…",
       );
       const id = await extract(
         original,
@@ -200,6 +205,7 @@ export function DocumentEntry({
     } finally {
       setBusy(false);
       setUploadStatus("");
+      setUploadName("");
       if (mode === "auto") setProcessingConsent(false);
     }
   }
@@ -527,7 +533,11 @@ export function DocumentEntry({
             "Paid AI is disabled. Text PDFs use local PDF.js extraction; photos and scanned PDFs need manual entry. Prepared sample suggestions are labeled separately."}
         </span>
       </div>
-      <section className="panel entry-upload" aria-label="Upload a document">
+      <section
+        className="panel entry-upload"
+        aria-label="Upload a document"
+        aria-busy={Boolean(uploadStatus)}
+      >
         {requiresConsent && (
           <label className="entry-check entry-processing-consent">
             <input
@@ -544,7 +554,7 @@ export function DocumentEntry({
         <label
           className={`button${(requiresConsent && !processingConsent) || busy ? " entry-upload-disabled" : ""}`}
         >
-          Upload & Auto-Fill
+          {uploadStatus ? "Processing document…" : "Upload & Auto-Fill"}
           <input
             aria-label="Upload document"
             type="file"
@@ -584,9 +594,22 @@ export function DocumentEntry({
         </a>
       </section>
       {busy && uploadStatus && (
-        <p role="status" aria-live="polite">
-          {uploadStatus}
-        </p>
+        <div
+          className="entry-extraction-status"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <span className="entry-extraction-spinner" aria-hidden="true" />
+          <div>
+            <strong>{uploadStatus}</strong>
+            <span className="entry-extraction-file">{uploadName}</span>
+            <p>
+              Please wait and keep this page open. Your review form will open
+              when processing finishes.
+            </p>
+          </div>
+        </div>
       )}
       {error && (
         <p className="review-error" role="alert">
@@ -682,7 +705,7 @@ export function DocumentEntry({
             <fieldset
               className="entry-edit-fields"
               aria-label="Reviewed document fields"
-              disabled={converted}
+              disabled={converted || Boolean(uploadStatus)}
             >
               <datalist id="entry-suppliers">
                 {data.documentCatalog.suppliers.map((s) => (

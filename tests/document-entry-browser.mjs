@@ -81,7 +81,7 @@ try {
     page.getByRole("button", { name: "Save Review Draft" }),
   ).toBeDisabled();
   await expect(
-    page.getByText(/changed from AED 50.00 to AED 60.00/),
+    page.getByLabel("Review warnings").getByText(/changed from AED 50.00 to AED 60.00/),
   ).toBeVisible();
   check("uncertain fields, price-change flag and mandatory human confirmation");
   await page.getByLabel("Document total · AED", { exact: true }).fill("125.00");

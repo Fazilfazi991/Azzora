@@ -132,9 +132,12 @@ try {
   const sr = await saving;
   assert.equal(sr.status(), 200);
   await expect(
-    page.getByText("Document draft saved. No financial posting.", {
-      exact: true,
-    }),
+    page.getByText(
+      "Draft saved. No bill, payment or journal was posted. You can reopen and edit this draft below.",
+      {
+        exact: true,
+      },
+    ),
   ).toBeVisible();
   let after = await snap(),
     doc = after.documentEntries.reviews.find((d) => d.id === uploadId);

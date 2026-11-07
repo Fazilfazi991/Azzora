@@ -20,6 +20,23 @@
   background: var(--limestone, #f6f2ed);
   color: var(--ink, #242321);
 }
+.entry-save-feedback:empty {
+  display: none;
+}
+.entry-save-feedback {
+  margin: 12px 0;
+  scroll-margin: 20px;
+}
+.entry-save-feedback .review-error p {
+  margin: 0;
+}
+.entry-save-feedback .review-error .button {
+  margin-top: 10px;
+}
+.entry-save-feedback .review-success,
+.entry-save-feedback .review-error {
+  overflow-wrap: anywhere;
+}
 .entry-extraction-status strong {
   display: block;
   font-size: 16px;

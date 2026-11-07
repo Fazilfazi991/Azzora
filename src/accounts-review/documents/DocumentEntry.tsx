@@ -77,6 +77,8 @@ export function DocumentEntry({
     [error, setError] = useState("");
   const [processingConsent, setProcessingConsent] = useState(false);
   const [saveIssues, setSaveIssues] = useState<ReviewFieldIssue[]>([]);
+  const [saveError, setSaveError] = useState("");
+  const saveFeedback = useRef<HTMLDivElement>(null);
   const requiresConsent = Boolean(
     data.documentAi?.generalDocuments || data.documentAi?.enabled,
   );
@@ -85,6 +87,10 @@ export function DocumentEntry({
   const [url, setUrl] = useState("");
   const [fileMime, setFileMime] = useState("");
   const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    if (saved || saveError)
+      saveFeedback.current?.scrollIntoView({ block: "nearest" });
+  }, [saved, saveError]);
   const [paymentAccount, setPaymentAccount] = useState("bank");
   const persistedDoc = data.documentEntries.reviews.find(
     (d) => d.id === selected,
@@ -135,16 +141,19 @@ export function DocumentEntry({
   function open(d: DocumentReview) {
     if (pending && !window.confirm("Discard unsaved document edits?")) return;
     setManualDoc(null);
+    setSaveIssues([]);
     setSelected(d.id);
     setFields(structuredClone(d.fields));
     setConfirmed(false);
     setRemember(false);
     setSaved(false);
     setError("");
+    setSaveError("");
   }
   function change<K extends keyof EntryFields>(key: K, value: EntryFields[K]) {
     setFields((f) => ({ ...f, [key]: value }));
     setSaveIssues([]);
+    setSaveError("");
     setError("");
     setConfirmed(false);
     setSaved(false);
@@ -156,6 +165,7 @@ export function DocumentEntry({
       new Date().toISOString(),
     );
     setManualDoc(draft);
+    setSaveIssues([]);
     setSelected(draft.id);
     setFields(structuredClone(draft.fields));
     setLoaded(draft.id);
@@ -163,6 +173,7 @@ export function DocumentEntry({
     setRemember(false);
     setSaved(false);
     setError("");
+    setSaveError("");
   }
   async function upload(file: File, mode: "auto" | "manual" = "auto") {
     if (pending && !window.confirm("Discard unsaved document edits?")) return;
@@ -174,6 +185,8 @@ export function DocumentEntry({
     }
     setBusy(true);
     setUploadName(file.name);
+    setSaveError("");
+    setSaveIssues([]);
     setUploadStatus("Preparing document for upload…");
     setError("");
     setSaved(false);
@@ -415,6 +428,8 @@ export function DocumentEntry({
     e.preventDefault();
     if (!doc || !confirmed || busy || converted) return;
     setBusy(true);
+    setSaveError("");
+    setSaved(false);
     try {
       if (
         await act(
@@ -442,19 +457,11 @@ export function DocumentEntry({
       }
     } catch (failure) {
       const detail = failure as Error & { issues?: ReviewFieldIssue[] };
-      setError(
+      setSaveError(
         detail.message ||
           "The draft could not be saved. Your edits are still here; try again.",
       );
       setSaveIssues(detail.issues || []);
-      const key = detail.issues?.[0]?.field.replace(/^fields\./, "");
-      const target = key
-        ? Array.from(
-            document.querySelectorAll<HTMLElement>("[data-review-field]"),
-          ).find((el) => el.dataset.reviewField === key)
-        : document.querySelector<HTMLElement>(".entry-form [role=alert]");
-      target?.scrollIntoView({ block: "center" });
-      target?.focus();
     } finally {
       setBusy(false);
     }
@@ -614,12 +621,6 @@ export function DocumentEntry({
       {error && (
         <p className="review-error" role="alert">
           {error}
-        </p>
-      )}
-      {saved && (
-        <p className="review-success" role="status">
-          Draft saved. No bill, payment or journal was posted. You can reopen
-          and edit this draft below.
         </p>
       )}
       {doc ? (
@@ -1066,6 +1067,45 @@ export function DocumentEntry({
                   ? "I checked all fields and any warnings against the original document"
                   : "I checked all entered details and any warnings"}
               </label>
+              <div
+                ref={saveFeedback}
+                className="entry-save-feedback"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                {saved && (
+                  <p className="review-success" role="status">
+                    Draft saved. No bill, payment or journal was posted. You can
+                    reopen and edit this draft below.
+                  </p>
+                )}
+                {saveError && (
+                  <div className="review-error" role="alert">
+                    <p>{saveError}</p>
+                    {saveIssues[0]?.field && (
+                      <button
+                        className="button"
+                        type="button"
+                        onClick={() => {
+                          const key = saveIssues[0].field.replace(
+                            /^fields\./,
+                            "",
+                          );
+                          const target = Array.from(
+                            document.querySelectorAll<HTMLElement>(
+                              "[data-review-field]",
+                            ),
+                          ).find((el) => el.dataset.reviewField === key);
+                          target?.scrollIntoView({ block: "center" });
+                          target?.focus();
+                        }}
+                      >
+                        Go to affected field
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
               <div className="review-actions">
                 <button
                   className="button button-primary"

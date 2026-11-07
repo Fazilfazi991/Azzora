@@ -1066,7 +1066,7 @@ function App() {
               : ["document-draft", "document-manual"].includes(
                     String(action.kind),
                   )
-                ? "Document draft saved. No financial posting."
+                ? ""
                 : action.kind === "create-bill-from-review"
                   ? "Purchase bill created once through the demo ledger."
                   : `${action.kind === "issue-invoice" ? "Issued" : "Recorded"} ${result.id} in the fictional review ledger.`,

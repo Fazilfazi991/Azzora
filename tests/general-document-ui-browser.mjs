@@ -45,6 +45,7 @@ snapshot.documentAi = {
 };
 let resultKind = "partial",
   releaseExtraction;
+let saveFailure = false;
 const image = fs.readFileSync("public/document-samples/07.png");
 const consent =
   "This is fictional test data and I authorize DeepSeek processing for this upload";
@@ -152,6 +153,20 @@ await page.route("**/api/accounts-review/**", async (route) => {
     return json(route, { id, snapshot });
   }
   if (endpoint === "/action") {
+    if (saveFailure)
+      return route.fulfill({
+        status: 422,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: "Line 1 — enter a valid discount amount.",
+          issues: [
+            {
+              field: "items.0.discount",
+              message: "Enter a valid amount or leave it blank.",
+            },
+          ],
+        }),
+      });
     const action = route.request().postDataJSON();
     expect(action.kind).toBe("document-draft");
     const doc = snapshot.documentEntries.reviews.find(
@@ -272,13 +287,11 @@ try {
     },
   ]) {
     await page.getByLabel(consent, { exact: true }).check();
-    await page
-      .getByLabel("Upload document", { exact: true })
-      .setInputFiles({
-        name: invalid.name,
-        mimeType: invalid.mimeType,
-        buffer: invalid.buffer,
-      });
+    await page.getByLabel("Upload document", { exact: true }).setInputFiles({
+      name: invalid.name,
+      mimeType: invalid.mimeType,
+      buffer: invalid.buffer,
+    });
     await expect(page.getByRole("alert")).toHaveText(invalid.message);
     await expect(page.locator(".entry-extraction-status")).toHaveCount(0);
     expect(requests).toHaveLength(0);
@@ -393,6 +406,50 @@ try {
   await expect(
     page.getByText(/Draft saved\. No bill, payment or journal was posted/),
   ).toBeVisible();
+  const savedFeedback = page.locator(".entry-save-feedback");
+  await expect(savedFeedback).toBeInViewport({ ratio: 1 });
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 });
+    await page
+      .getByRole("button", { name: "Save Review Draft", exact: true })
+      .scrollIntoViewIfNeeded();
+    await savedFeedback.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `${out}/save-feedback-${width}.png` });
+  }
+  saveFailure = true;
+  await page
+    .getByLabel(
+      "I checked all fields and any warnings against the original document",
+      { exact: true },
+    )
+    .check();
+  await page
+    .getByRole("button", { name: "Save Review Draft", exact: true })
+    .click();
+  await expect(savedFeedback.getByRole("alert")).toHaveText(
+    /Line 1 — enter a valid discount amount/,
+  );
+  await expect(savedFeedback).toBeInViewport({ ratio: 1 });
+  await page.screenshot({ path: `${out}/save-error-390.png` });
+  await expect(savedFeedback.getByRole("status")).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Go to affected field", exact: true })
+    .click();
+  await expect(
+    page.getByLabel("Item 1 discount", { exact: true }),
+  ).toBeFocused();
+  await expect(page.getByLabel("Supplier name", { exact: true })).toHaveValue(
+    "Fictional Cedar Supplies",
+  );
+  saveFailure = false;
+  await page
+    .getByRole("button", { name: "Save Review Draft", exact: true })
+    .click();
+  await expect(savedFeedback.getByRole("status")).toBeInViewport({ ratio: 1 });
+  await expect(savedFeedback.getByRole("alert")).toHaveCount(0);
+  checks.push(
+    "Save confirmation and error stay beside Save in the viewport; field navigation, data preservation and retry work",
+  );
   expect(
     JSON.stringify({
       metrics: snapshot.metrics,

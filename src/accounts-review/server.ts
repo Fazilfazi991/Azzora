@@ -1,5 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+import { ReviewDraftError } from "./documents/review-errors";
 // Loopback-only client-review API. No CRM browser record is read or imported.
 import {
   createHash,
@@ -298,6 +299,12 @@ export function accountsReviewPlugin() {
             error: "Accountant review endpoint not found.",
           });
         } catch (error) {
+          if (error instanceof ReviewDraftError)
+            return json(res, error.status, {
+              error: error.message,
+              code: error.code,
+              issues: error.issues,
+            });
           return json(res, 400, {
             error: error instanceof Error ? error.message : "Request failed.",
           });

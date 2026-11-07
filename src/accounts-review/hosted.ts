@@ -1,3 +1,4 @@
+import { ReviewDraftError } from "./documents/review-errors.js";
 import {
   createHash,
   randomBytes,
@@ -323,6 +324,12 @@ export function createHostedHandler(
         }
         return json(404, { error: "Review endpoint not found." });
       } catch (error) {
+        if (error instanceof ReviewDraftError)
+          return json(error.status, {
+            error: error.message,
+            code: error.code,
+            issues: error.issues,
+          });
         if (error instanceof ZodError)
           return json(400, {
             error:

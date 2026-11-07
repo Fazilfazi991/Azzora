@@ -15,6 +15,7 @@ import {
 import { extractDocument } from "./service";
 import {
   categories,
+  assertReviewReadyForPosting,
   inspectFields,
   lineNet,
   saveDocumentDraft,
@@ -438,17 +439,24 @@ describe("review-only finance boundaries", () => {
         ),
       ).toThrow();
   });
-  it("rejects scope mismatch, nonexistent projects/products and inactive COA mapping", async () => {
+  it("preserves unresolved mappings in drafts while rejecting unauthorized project references and blocking posting", async () => {
     const r = await extractDocument(createReviewState(), upload()),
       fields = readyFields(r.state.documentEntries!.reviews[0].fields);
     for (const value of [
       { ...fields, categoryId: "company-expenses" },
-      { ...fields, projectId: "not-real" },
       { ...fields, items: [{ ...fields.items[0], productId: "hallucinated" }] },
-    ])
-      expect(() =>
-        saveDocumentDraft(r.state, save(r.id, value), "now"),
-      ).toThrow();
+    ]) {
+      const draft = saveDocumentDraft(r.state, save(r.id, value), "now");
+      expect(draft.accounting).toEqual(r.state.accounting);
+      expect(() => assertReviewReadyForPosting(value, r.state)).toThrow();
+    }
+    expect(() =>
+      saveDocumentDraft(
+        r.state,
+        save(r.id, { ...fields, projectId: "not-real" }),
+        "now",
+      ),
+    ).toThrow(/unavailable/);
     r.state.accounting = {
       ...r.state.accounting,
       accounts: r.state.accounting.accounts.map((a) =>
@@ -456,14 +464,14 @@ describe("review-only finance boundaries", () => {
       ),
     };
     expect(() => saveDocumentDraft(r.state, save(r.id, fields), "now")).toThrow(
-      /existing expense ledger/,
+      /selected expense ledger is unavailable/,
     );
+    expect(
+      saveDocumentDraft(r.state, save(r.id, { ...fields, ledgerId: "" }), "now")
+        .documentEntries!.reviews[0].mapping,
+    ).toBeUndefined();
     expect(() =>
-      saveDocumentDraft(
-        r.state,
-        save(r.id, { ...fields, ledgerId: "" }),
-        "now",
-      ),
+      assertReviewReadyForPosting({ ...fields, ledgerId: "" }, r.state),
     ).toThrow(/unavailable/);
   });
   it("suggests only one unambiguous active authorized ledger without creating accounts or posting", () => {

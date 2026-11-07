@@ -481,7 +481,7 @@ try {
         )
         .check();
       await page
-        .getByRole("button", { name: "Save reviewed draft", exact: true })
+        .getByRole("button", { name: "Save Review Draft", exact: true })
         .click();
       await expect(
         page.getByText(

@@ -133,7 +133,7 @@ describe("reviewed classification and original printed discounts", () => {
         },
         "2026-11-02T09:00:00Z",
       ),
-    ).toThrow(/existing expense ledger/);
+    ).toThrow(/selected expense ledger is unavailable/);
   });
   it("makes an explicitly converted expense review read-only", () => {
     const { state, fields } = setup();

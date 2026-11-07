@@ -73,12 +73,16 @@ it("saves a reviewed manual draft atomically through the existing action boundar
   expect(d.attachmentId).toBe("");
   expect(d.extraction.fields).toEqual(blankFields());
 });
-it("does not create an incomplete manual draft on validation failure", () => {
+it("saves an incomplete manual review without changing financial records", () => {
   const s = createReviewState(),
     before = structuredClone(s);
-  expect(() =>
-    saveManualDocumentDraft(s, { ...action(), fields: blankFields() }, "now"),
-  ).toThrow();
+  const next = saveManualDocumentDraft(
+    s,
+    { ...action(), fields: blankFields() },
+    "now",
+  );
+  expect(next.documentEntries!.reviews[0].status).toBe("Draft");
+  expect(next.accounting).toEqual(s.accounting);
   expect(s).toEqual(before);
 });
 it("does not overwrite an existing review when a manual ID is reused", () => {

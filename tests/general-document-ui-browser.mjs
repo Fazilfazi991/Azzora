@@ -314,7 +314,7 @@ try {
       "I checked all fields and any warnings against the original document",
     )
     .check();
-  await page.getByRole("button", { name: "Save reviewed draft" }).click();
+  await page.getByRole("button", { name: "Save Review Draft" }).click();
   await expect(
     page.getByText(/Draft saved\. No bill, payment or journal was posted/),
   ).toBeVisible();

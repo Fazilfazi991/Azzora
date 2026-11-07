@@ -267,3 +267,48 @@
   font-size: 11px;
   min-height: 44px;
 }
+
+.entry-form input:focus-visible,
+.entry-form select:focus-visible {
+  outline: 2px solid #42647a;
+  outline-offset: 2px;
+  box-shadow: none;
+  border-color: #42647a;
+}
+.entry-form .entry-invalid input,
+.entry-form .entry-invalid select {
+  border-color: #a32921;
+}
+.entry-form .entry-invalid small {
+  color: #a32921;
+}
+.entry-unit-combobox {
+  display: block;
+  position: relative;
+  min-width: 0;
+}
+.entry-unit-combobox input {
+  width: 100%;
+}
+.entry-unit-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  max-height: 180px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ded8d1;
+  box-shadow: 0 4px 12px #0002;
+}
+.entry-unit-options [role="option"] {
+  display: block;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.entry-unit-options [aria-selected="true"],
+.entry-unit-options [role="option"]:hover {
+  background: #f4ebe5;
+  color: #893b26;
+}

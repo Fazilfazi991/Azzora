@@ -9,8 +9,19 @@ export async function accountsRequest(path: string, options: RequestInit = {}) {
   const actionPost =
     options.method?.toUpperCase() === "POST" &&
     path.split("?")[0] === "/action";
-  const uncertainty =
-    "Unable to confirm whether the submission was saved. It may already be saved. Retry with the same details, or refresh and check the ledger before submitting again.";
+  let reviewDraftPost = false;
+  try {
+    reviewDraftPost =
+      actionPost &&
+      ["document-draft", "document-manual"].includes(
+        JSON.parse(String(options.body)).kind,
+      );
+  } catch {
+    /* validation remains server-side */
+  }
+  const uncertainty = reviewDraftPost
+    ? "The draft could not be confirmed saved because the server is unavailable. Your entered details are still here. Retry with the same details or reopen the saved review before retrying."
+    : "Unable to confirm whether the submission was saved. It may already be saved. Retry with the same details, or refresh and check the ledger before submitting again.";
   let response: Response;
   try {
     const authPath =
@@ -56,12 +67,35 @@ export async function accountsRequest(path: string, options: RequestInit = {}) {
   });
   if (actionPost && response.status >= 500) throw Error(uncertainty + suffix);
   if (!response.ok) {
+    const message =
+      (reviewDraftPost &&
+      response.status === 409 &&
+      result?.code !== "draft-stale"
+        ? "Your review or shared data has changed. Reload the latest saved version before saving again. Your entered changes are still shown."
+        : result?.error || "Request failed.") + suffix;
+    const issues = Array.isArray(result?.issues)
+      ? result.issues.filter(
+          (i: unknown) =>
+            i &&
+            typeof i === "object" &&
+            "field" in i &&
+            typeof i.field === "string" &&
+            "message" in i &&
+            typeof i.message === "string",
+        )
+      : [];
     if (stagingEnabled)
       throw new StagingRequestError(
-        (result?.error || "Request failed.") + suffix,
+        message,
         response.status,
+        issues,
+        result?.code,
       );
-    throw Error((result?.error || "Request failed.") + suffix);
+    throw Object.assign(Error(message), {
+      status: response.status,
+      issues,
+      code: result?.code,
+    });
   }
   if (stagingEnabled) {
     const version = result?.snapshot?.version ?? result?.version;

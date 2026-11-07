@@ -1,3 +1,4 @@
+import { ReviewDraftError } from "../accounts-review/documents/review-errors.js";
 /** Server-only fictional staging BFF. Real posting is disabled; AI requires explicit admission and the shared evaluation cap. */
 import { createHash, randomUUID } from "node:crypto";
 import { prepareManagerFiles, readManagerFile } from "./manager-files.js";
@@ -543,6 +544,17 @@ export function createStagingHandler(
           elapsedMs: Math.round(performance.now() - started),
         }),
       );
+      if (error instanceof ReviewDraftError)
+        return json(
+          error.status,
+          {
+            error: error.message,
+            code: error.code,
+            issues: error.issues,
+            requestId,
+          },
+          requestId,
+        );
       if (error instanceof DocumentExtractionError)
         return json(
           error.code === "not-authorized" ? 403 : 400,

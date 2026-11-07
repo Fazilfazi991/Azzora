@@ -1,3 +1,4 @@
+import { ReviewDraftError, reviewSchemaError } from "./review-errors.js";
 import type { ExpenseCategoryMapping } from "../../finance/expense-submissions.js";
 import type { ReviewState } from "../domain.js";
 import { expenseLedgersFor } from "../expense-ledgers.js";
@@ -6,6 +7,7 @@ import {
   blankFields,
   type DocumentReview,
   fieldsSchema,
+  draftFieldsSchema,
   type EntryFields,
   type EntryWarning,
   type ReferenceCatalog,
@@ -87,6 +89,13 @@ export const fils = (s: string) => {
     throw Error("Enter a nonnegative amount.");
   const [a, b = ""] = s.split(".");
   return BigInt(a) * 100n + BigInt(b.padEnd(2, "0"));
+};
+export const reviewDiscountFils = (s: string | undefined): bigint =>
+  !s ? 0n : s.startsWith("-") ? -fils(s.slice(1)) : fils(s);
+export const amountText = (n: bigint): string => {
+  const sign = n < 0n ? "-" : "";
+  const a = n < 0n ? -n : n;
+  return sign + String(a / 100n) + "." + String(a % 100n).padStart(2, "0");
 };
 export function lineNet(q: string, rate: string): bigint {
   if (!/^\d{1,8}(\.\d{1,4})?$/.test(q)) throw Error("Enter a valid quantity.");
@@ -179,7 +188,7 @@ export function inspectFields(
   if (f.currency !== "AED")
     add(
       "currency",
-      "Only AED draft review is supported; confirm currency.",
+      "Confirm the currency before posting; only AED posting is supported.",
       "currency",
     );
   if (f.dueDate && f.date && f.dueDate < f.date)
@@ -218,7 +227,8 @@ export function inspectFields(
     f.subtotal &&
     f.tax &&
     f.total &&
-    fils(f.subtotal) - fils(f.discount || "0") + fils(f.tax) !== fils(f.total)
+    fils(f.subtotal) - reviewDiscountFils(f.discount) + fils(f.tax) !==
+      fils(f.total)
   )
     add(
       "totals",
@@ -243,7 +253,13 @@ export function inspectFields(
     }
     if (i.quantity && i.unitRate) {
       const net = lineNet(i.quantity, i.unitRate);
-      const discount = fils(i.discount || "0");
+      const discount = reviewDiscountFils(i.discount);
+      if (discount < 0n)
+        add(
+          `line-discount-negative-${n}`,
+          `Line ${n + 1}: discount cannot be negative. Correct it before posting.`,
+          `${prefix}.discount`,
+        );
       if (discount > net)
         add(
           `line-discount-${n}`,
@@ -254,8 +270,8 @@ export function inspectFields(
       if (i.total && i.tax && net - discount + fils(i.tax) !== fils(i.total))
         add(
           `line-math-${n}`,
-          `Line ${n + 1}: quantity × rate less discount plus tax does not match the line total.`,
-          prefix,
+          `Line ${n + 1} — Amount mismatch. Entered: AED ${i.total}; calculated: AED ${amountText(net - discount + fils(i.tax))}.`,
+          `${prefix}.total`,
         );
     } else all = false;
     if (i.tax) taxes += fils(i.tax);
@@ -275,7 +291,7 @@ export function inspectFields(
     if (!i.productId)
       add(
         `product-${n}`,
-        `Line ${n + 1}: no confirmed product match.`,
+        `Line ${n + 1}: no confirmed product match (optional for a review draft).`,
         `${prefix}.productId`,
       );
   });
@@ -287,8 +303,66 @@ export function inspectFields(
     );
   if (allTaxes && f.tax && taxes !== fils(f.tax))
     add("tax-lines", "Item taxes do not match the document tax.", "tax");
-  if (f.discount && f.subtotal && fils(f.discount) > fils(f.subtotal))
+  if (
+    f.discount &&
+    f.subtotal &&
+    reviewDiscountFils(f.discount) > fils(f.subtotal)
+  )
     add("discount", "Document discount exceeds the subtotal.", "discount");
+  if (f.discount && reviewDiscountFils(f.discount) < 0n)
+    add(
+      "discount-negative",
+      "Document discount cannot be negative. Correct it before posting.",
+      "discount",
+    );
+  if (f.total && fils(f.total) <= 0n)
+    add(
+      "nonpositive-total",
+      "A positive total is needed before posting.",
+      "total",
+    );
+  if (scopeFor(f) === "company" && f.projectId)
+    add(
+      "company-project",
+      "Clear the project selection before posting a company expense.",
+      "projectId",
+    );
+  const original = state.documentEntries?.reviews.find(
+    (d) => d.id === excludeId,
+  )?.extraction.fields;
+  const changedDiscount = (
+    oldValue: string | undefined,
+    newValue: string | undefined,
+  ) =>
+    !!oldValue &&
+    /^-?\d{1,10}(?:\.\d{1,2})?$/.test(oldValue) &&
+    reviewDiscountFils(oldValue) !== reviewDiscountFils(newValue);
+  if (original && changedDiscount(original.discount, f.discount))
+    add(
+      "discount-source-change",
+      `Document discount differs from the extracted value AED ${original.discount}. Verify it against the original.`,
+      "discount",
+    );
+  f.items.forEach((item, n) => {
+    if (
+      original?.items[n] &&
+      changedDiscount(original.items[n].discount, item.discount)
+    )
+      add(
+        `line-discount-source-${n}`,
+        `Line ${n + 1}: discount differs from the extracted value AED ${original.items[n].discount}. Verify it against the original.`,
+        `items.${n}.discount`,
+      );
+    if (
+      item.productId &&
+      !catalog.products.some((p) => p.id === item.productId)
+    )
+      add(
+        `product-unavailable-${n}`,
+        `Line ${n + 1}: the selected product match is unavailable. Review it before posting.`,
+        `items.${n}.productId`,
+      );
+  });
   const reviews = state.documentEntries?.reviews || [];
   if (
     reviews.some(
@@ -334,62 +408,93 @@ export function saveDocumentDraft(
   at: string,
 ): ReviewState {
   // Runtime validation deliberately rejects provider-supplied journal/account instructions.
-  const action = draftActionSchema.parse(input);
+  let action;
+  try {
+    action = draftActionSchema.parse(input);
+  } catch (error) {
+    if (error instanceof ZodError) throw reviewSchemaError(error);
+    throw error;
+  }
   const next = structuredClone(previous),
     entries = next.documentEntries ?? emptyEntries();
   const doc = entries.reviews.find((d) => d.id === action.reviewId);
-  if (!doc) throw Error("Document review not found.");
+  if (!doc)
+    throw new ReviewDraftError(
+      "This review is not available to this account.",
+      "draft-access-denied",
+      403,
+    );
   if (doc.convertedBillId || doc.convertedExpenseId)
-    throw Error("A converted document is read-only in document review.");
+    throw new ReviewDraftError(
+      "This document is linked to a financial transaction and is read-only.",
+      "draft-read-only",
+      409,
+    );
   if (doc.revision !== action.revision)
-    throw Error("Document draft changed. Refresh and review again.");
-  const f = fieldsSchema.parse(action.fields),
+    throw new ReviewDraftError(
+      "Your review has changed. Reload the latest saved version before saving again. Your entered changes are still shown.",
+      "draft-stale",
+      409,
+    );
+  const f = action.fields,
     catalog = catalogFor(next);
-  if (
-    !f.supplier ||
-    !f.date ||
-    !f.reference ||
-    !f.total ||
-    fils(f.total) <= 0n ||
-    f.currency !== "AED" ||
-    f.kind === "unknown"
-  )
-    throw Error(
-      "Confirm supplier, date, reference, AED total and classification before saving a draft.",
+  if (f.projectId && !catalog.projects.some((p) => p.id === f.projectId))
+    throw new ReviewDraftError(
+      "The selected project is unavailable to this account. Clear it or choose an authorized project.",
+      "draft-resource-unavailable",
+      403,
+      [
+        {
+          field: "projectId",
+          message: "Choose an authorized project or clear this selection.",
+        },
+      ],
+    );
+  if (f.customerId && !catalog.customers.some((c) => c.id === f.customerId))
+    throw new ReviewDraftError(
+      "The selected customer is unavailable to this account. Clear it or choose an authorized customer.",
+      "draft-resource-unavailable",
+      403,
+      [
+        {
+          field: "customerId",
+          message: "Choose an authorized customer or clear this selection.",
+        },
+      ],
     );
   const category = categories.find((c) => c.id === f.categoryId && c.active),
     scope = scopeFor(f);
-  if (!category || !category.allowedScopes.includes(scope))
-    throw Error("Choose a category valid for this document scope.");
   const ledger = f.ledgerId
     ? expenseLedgersFor(next).find((l) => l.id === f.ledgerId)
     : undefined;
-  if (f.ledgerId && !ledger) throw Error("Choose an existing expense ledger.");
-  if (ledger?.group === "Direct Expense" && scope !== "project")
-    throw Error("Direct expense ledgers require an existing project.");
+  if (f.ledgerId && !ledger)
+    throw new ReviewDraftError(
+      "The selected expense ledger is unavailable. Clear it to save an unclassified review draft.",
+      "draft-resource-unavailable",
+      403,
+      [
+        {
+          field: "ledgerId",
+          message: "Choose an available ledger or clear this selection.",
+        },
+      ],
+    );
   const account = next.accounting.accounts.find(
     (a) =>
-      a.id === (ledger?.accountId || category.expenseAccountId) &&
+      a.id === (ledger?.accountId || category?.expenseAccountId) &&
       a.status === "Active" &&
       a.postable &&
       ["Cost of Sales", "Expense"].includes(a.type),
   );
-  if (!account) throw Error("The category account is unavailable.");
-  if (
-    scope === "project" &&
-    !catalog.projects.some((p) => p.id === f.projectId)
-  )
-    throw Error("Choose an existing project.");
-  if (scope === "company" && f.projectId)
-    throw Error("Company expenses cannot carry a project.");
-  if (f.customerId && !catalog.customers.some((c) => c.id === f.customerId))
-    throw Error("Choose an existing customer.");
-  if (
-    f.items.some(
-      (i) => i.productId && !catalog.products.some((p) => p.id === i.productId),
-    )
-  )
-    throw Error("Choose an existing product.");
+  const mappingReady = !!(
+    category &&
+    category.allowedScopes.includes(scope) &&
+    account &&
+    f.kind !== "unknown" &&
+    !(ledger?.group === "Direct Expense" && scope !== "project") &&
+    (scope !== "project" || f.projectId) &&
+    !(scope === "company" && f.projectId)
+  );
   doc.corrections.push({
     at,
     actor: "demo-accountant",
@@ -400,13 +505,35 @@ export function saveDocumentDraft(
   doc.revision++;
   doc.status = "Draft";
   doc.warnings = inspectFields(f, next, doc.id, doc.sha256);
-  doc.mapping = {
-    categoryId: category.id,
-    accountId: account.id,
-    accountCode: account.code,
-    ...(ledger ? { ledgerId: ledger.id } : {}),
-  };
-  if (action.rememberSupplier) {
+  doc.mapping =
+    mappingReady && category && account
+      ? {
+          categoryId: category.id,
+          accountId: account.id,
+          accountCode: account.code,
+          ...(ledger ? { ledgerId: ledger.id } : {}),
+        }
+      : undefined;
+  if (!mappingReady && (f.categoryId || f.ledgerId || f.kind !== "unknown"))
+    doc.warnings.push({
+      code: "mapping-incomplete",
+      field: "categoryId",
+      message:
+        "Classification/account mapping still needs review before posting. The review draft can be saved.",
+    });
+  if (action.rememberSupplier && !mappingReady)
+    doc.warnings.push({
+      code: "supplier-default-not-saved",
+      field: "kind",
+      message:
+        "Supplier defaults were not changed because classification or mapping still needs review.",
+    });
+  if (
+    action.rememberSupplier &&
+    mappingReady &&
+    f.supplier &&
+    f.kind !== "unknown"
+  ) {
     const value = {
       supplier: f.supplier,
       kind: f.kind,
@@ -424,14 +551,14 @@ export function saveDocumentDraft(
   // No bill, paid expense, settlement or journal mutation exists on this path.
   return next;
 }
-import { z } from "zod";
+import { z, ZodError } from "zod";
 export const draftActionSchema = z
   .object({
     kind: z.literal("document-draft"),
     id: z.string().optional(),
     reviewId: z.string(),
     revision: z.number().int().nonnegative(),
-    fields: fieldsSchema,
+    fields: draftFieldsSchema,
     confirmed: z.literal(true),
     rememberSupplier: z.boolean(),
   })
@@ -469,7 +596,7 @@ const manualDraftSchema = z
   .object({
     kind: z.literal("document-manual"),
     id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/),
-    fields: fieldsSchema,
+    fields: draftFieldsSchema,
     confirmed: z.literal(true),
     rememberSupplier: z.boolean(),
   })
@@ -479,9 +606,19 @@ export function saveManualDocumentDraft(
   input: unknown,
   at: string,
 ): ReviewState {
-  const action = manualDraftSchema.parse(input);
+  let action;
+  try {
+    action = manualDraftSchema.parse(input);
+  } catch (error) {
+    if (error instanceof ZodError) throw reviewSchemaError(error);
+    throw error;
+  }
   if (previous.documentEntries?.reviews.some((d) => d.id === action.id))
-    throw Error("This manual draft already exists. Reopen it before editing.");
+    throw new ReviewDraftError(
+      "This manual draft already exists. Reopen it before editing.",
+      "draft-stale",
+      409,
+    );
   const next = structuredClone(previous);
   next.documentEntries ??= emptyEntries();
   next.documentEntries.reviews.push(blankManualReview(action.id, at));
@@ -497,4 +634,58 @@ export function saveManualDocumentDraft(
     },
     at,
   );
+}
+
+/** Posting retains all former readiness requirements; incomplete reviews cannot issue or post. */
+export function assertReviewReadyForPosting(
+  fields: EntryFields,
+  state: ReviewState,
+): void {
+  const f = fieldsSchema.parse(fields),
+    catalog = catalogFor(state);
+  if (
+    !f.supplier ||
+    !f.date ||
+    !f.reference ||
+    !f.total ||
+    fils(f.total) <= 0n ||
+    f.currency !== "AED" ||
+    f.kind === "unknown"
+  )
+    throw Error(
+      "Confirm supplier, date, reference, AED total and classification before posting this document.",
+    );
+  const category = categories.find((c) => c.id === f.categoryId && c.active),
+    scope = scopeFor(f);
+  if (!category || !category.allowedScopes.includes(scope))
+    throw Error("Choose a category valid for this document scope.");
+  const ledger = f.ledgerId
+    ? expenseLedgersFor(state).find((l) => l.id === f.ledgerId)
+    : undefined;
+  if (f.ledgerId && !ledger) throw Error("Choose an existing expense ledger.");
+  if (ledger?.group === "Direct Expense" && scope !== "project")
+    throw Error("Direct expense ledgers require an existing project.");
+  const account = state.accounting.accounts.find(
+    (a) =>
+      a.id === (ledger?.accountId || category.expenseAccountId) &&
+      a.status === "Active" &&
+      a.postable &&
+      ["Cost of Sales", "Expense"].includes(a.type),
+  );
+  if (!account) throw Error("The category account is unavailable.");
+  if (
+    scope === "project" &&
+    !catalog.projects.some((p) => p.id === f.projectId)
+  )
+    throw Error("Choose an existing project.");
+  if (scope === "company" && f.projectId)
+    throw Error("Company expenses cannot carry a project.");
+  if (f.customerId && !catalog.customers.some((c) => c.id === f.customerId))
+    throw Error("Choose an existing customer.");
+  if (
+    f.items.some(
+      (i) => i.productId && !catalog.products.some((p) => p.id === i.productId),
+    )
+  )
+    throw Error("Choose an existing product.");
 }

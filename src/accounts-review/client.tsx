@@ -1073,6 +1073,8 @@ function App() {
       );
       return true;
     } catch (problem) {
+      if (["document-draft", "document-manual"].includes(String(action.kind)))
+        throw problem;
       setError(String(problem instanceof Error ? problem.message : problem));
       return false;
     } finally {

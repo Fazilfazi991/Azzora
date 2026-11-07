@@ -75,6 +75,24 @@ export const fieldsSchema = z
     customerId: text,
   })
   .strict();
+// Review drafts preserve unresolved negative discounts as warnings; posting/extraction retain fieldsSchema.
+const reviewDiscount = z
+  .string()
+  .regex(
+    /^(?:-?\d{1,10}(?:\.\d{1,2})?)?$/,
+    "Enter an amount with up to two decimal places, or leave this optional discount blank.",
+  );
+export const draftFieldsSchema = fieldsSchema.extend({
+  discount: reviewDiscount.optional(),
+  items: z
+    .array(
+      itemSchema.extend({
+        discount: reviewDiscount.optional(),
+        unit: z.string().max(200),
+      }),
+    )
+    .max(80),
+});
 export type EntryFields = z.infer<typeof fieldsSchema>;
 export const blankFields = (): EntryFields => ({
   supplier: "",

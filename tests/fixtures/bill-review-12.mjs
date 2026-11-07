@@ -1,0 +1,33 @@
+export function review12Fields(reference = "REVIEW-12-SYNTHETIC") {
+  return {
+    documentType: "invoice",
+    supplier: "Fictional Drum Materials QA",
+    date: "",
+    dueDate: "",
+    reference,
+    purchaseOrderReference: "",
+    currency: "AED",
+    kind: "unknown",
+    categoryId: "",
+    ledgerId: "",
+    department: "",
+    projectId: "",
+    customerId: "",
+    projectName: "",
+    customerName: "",
+    discount: "",
+    subtotal: "999.00",
+    tax: "0.00",
+    total: "999.00",
+    items: Array.from({ length: 12 }, (_, i) => ({
+      description: `Fictional material ${i + 1}`,
+      quantity: i === 7 ? "2" : "1",
+      unit: i < 3 ? "" : i === 10 ? " drm " : "PCS",
+      unitRate: i === 7 ? "60.00" : "10.00",
+      discount: i === 3 ? "0.00" : i === 4 ? "2.00" : "",
+      tax: "0.00",
+      total: i === 7 ? "125.00" : i === 4 ? "8.00" : "10.00",
+      productId: "",
+    })),
+  };
+}

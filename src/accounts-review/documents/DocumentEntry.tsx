@@ -14,7 +14,9 @@ import {
   type EntryFields as ExistingEntryFields,
   type Upload,
 } from "./model";
-import { fieldsSchema } from "./model";
+import { draftFieldsSchema, fieldsSchema } from "./model";
+import { UnitAutocomplete } from "./UnitAutocomplete";
+import { reviewFieldLabel, type ReviewFieldIssue } from "./review-errors";
 import { blankManualReview, inspectFields, scopeFor } from "./review";
 import "./entry.css";
 import { cashAccountsFor, type CompletionSnapshot } from "../completion-ui";
@@ -71,6 +73,7 @@ export function DocumentEntry({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const [processingConsent, setProcessingConsent] = useState(false);
+  const [saveIssues, setSaveIssues] = useState<ReviewFieldIssue[]>([]);
   const requiresConsent = Boolean(
     data.documentAi?.generalDocuments || data.documentAi?.enabled,
   );
@@ -137,6 +140,8 @@ export function DocumentEntry({
   }
   function change<K extends keyof EntryFields>(key: K, value: EntryFields[K]) {
     setFields((f) => ({ ...f, [key]: value }));
+    setSaveIssues([]);
+    setError("");
     setConfirmed(false);
     setSaved(false);
   }
@@ -214,7 +219,23 @@ export function DocumentEntry({
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [pending]);
-  const parsed = fieldsSchema.safeParse(fields);
+  const parsed = draftFieldsSchema.safeParse(fields);
+  const postingParsed = fieldsSchema.safeParse(fields);
+  const validationIssues = parsed.success
+    ? []
+    : parsed.error.issues.map((i) => ({
+        field: i.path.join("."),
+        message: i.message,
+      }));
+  const issues = [...validationIssues, ...saveIssues];
+  const blockingIssue = (key: string) =>
+    issues.find((i) => i.field === key)?.message;
+  const units = [
+    ...data.documentEntries.reviews
+      .filter((d) => d.status === "Draft")
+      .flatMap((d) => d.fields.items.map((i) => i.unit)),
+    ...fields.items.map((i) => i.unit),
+  ];
   const warnings = parsed.success
     ? inspectFields(
         parsed.data,
@@ -241,12 +262,22 @@ export function DocumentEntry({
   const fieldIssue = (key: string) =>
     doc?.extraction.fieldIssues?.find((issue) => matchesField(issue.field, key))
       ?.reason;
-  const uncertain = (key: string) =>
-    Boolean(
+  const uncertain = (key: string) => {
+    if (
+      (key === "discount" || /^items\.\d+\.discount$/.test(key)) &&
+      !(
+        key === "discount"
+          ? fields.discount
+          : fields.items[Number(key.split(".")[1])]?.discount
+      )?.trim()
+    )
+      return warnings.some((w) => w.field === key);
+    return Boolean(
       doc?.extraction.uncertain.some((path) => matchesField(path, key)) ||
       fieldIssue(key) ||
       warnings.some((warning) => matchesField(warning.field, key)),
     );
+  };
   const hasExtractedDetails = Boolean(
     doc &&
     (doc.extraction.fields.supplier ||
@@ -287,10 +318,20 @@ export function DocumentEntry({
     type = "text",
   ) {
     return (
-      <label className={uncertain(key) ? "entry-uncertain" : ""}>
+      <label
+        className={
+          blockingIssue(key)
+            ? "entry-invalid"
+            : uncertain(key)
+              ? "entry-uncertain"
+              : ""
+        }
+      >
         {label}
         <input
           aria-label={label}
+          data-review-field={key}
+          aria-invalid={Boolean(blockingIssue(key)) || undefined}
           ref={key === "supplier" ? supplierInput : undefined}
           type={type}
           value={fields[key] || ""}
@@ -325,10 +366,20 @@ export function DocumentEntry({
     children: ReactNode,
   ) {
     return (
-      <label className={uncertain(key) ? "entry-uncertain" : ""}>
+      <label
+        className={
+          blockingIssue(key)
+            ? "entry-invalid"
+            : uncertain(key)
+              ? "entry-uncertain"
+              : ""
+        }
+      >
         {label}
         <select
           aria-label={label}
+          data-review-field={key}
+          aria-invalid={Boolean(blockingIssue(key)) || undefined}
           value={fields[key] || ""}
           onChange={(e) => {
             change(key, e.target.value as EntryFields[typeof key]);
@@ -383,6 +434,21 @@ export function DocumentEntry({
         setSaved(true);
         setConfirmed(false);
       }
+    } catch (failure) {
+      const detail = failure as Error & { issues?: ReviewFieldIssue[] };
+      setError(
+        detail.message ||
+          "The draft could not be saved. Your edits are still here; try again.",
+      );
+      setSaveIssues(detail.issues || []);
+      const key = detail.issues?.[0]?.field.replace(/^fields\./, "");
+      const target = key
+        ? Array.from(
+            document.querySelectorAll<HTMLElement>("[data-review-field]"),
+          ).find((el) => el.dataset.reviewField === key)
+        : document.querySelector<HTMLElement>(".entry-form [role=alert]");
+      target?.scrollIntoView({ block: "center" });
+      target?.focus();
     } finally {
       setBusy(false);
     }
@@ -778,9 +844,11 @@ export function DocumentEntry({
                         <label
                           key={key}
                           className={
-                            uncertain(`items.${n}.${key}`)
-                              ? "entry-uncertain"
-                              : ""
+                            blockingIssue(`items.${n}.${key}`)
+                              ? "entry-invalid"
+                              : uncertain(`items.${n}.${key}`)
+                                ? "entry-uncertain"
+                                : ""
                           }
                         >
                           {
@@ -789,42 +857,77 @@ export function DocumentEntry({
                               quantity: "Quantity",
                               unit: "Unit",
                               unitRate: "Unit rate · AED",
-                              discount: "Item discount · AED",
+                              discount: "Item Discount (Optional)",
                               tax: "Item tax · AED",
                               total: "Item total · AED",
                             }[key]
                           }
-                          <input
-                            aria-label={`Item ${n + 1} ${key}`}
-                            aria-describedby={
-                              uncertain(`items.${n}.${key}`)
-                                ? "entry-review-note"
-                                : undefined
-                            }
-                            value={item[key] || ""}
-                            inputMode={
-                              [
-                                "quantity",
-                                "unitRate",
-                                "discount",
-                                "tax",
-                                "total",
-                              ].includes(key)
-                                ? "decimal"
-                                : "text"
-                            }
-                            onChange={(e) =>
-                              change(
-                                "items",
-                                fields.items.map((v, i) =>
-                                  i === n ? { ...v, [key]: e.target.value } : v,
-                                ),
-                              )
-                            }
-                          />
+                          {key === "unit" ? (
+                            <UnitAutocomplete
+                              field={`items.${n}.unit`}
+                              label={`Item ${n + 1} unit`}
+                              value={item.unit}
+                              values={units}
+                              invalid={Boolean(
+                                blockingIssue(`items.${n}.unit`),
+                              )}
+                              onChange={(value) =>
+                                change(
+                                  "items",
+                                  fields.items.map((v, i) =>
+                                    i === n ? { ...v, unit: value } : v,
+                                  ),
+                                )
+                              }
+                            />
+                          ) : (
+                            <input
+                              data-review-field={`items.${n}.${key}`}
+                              aria-invalid={
+                                Boolean(blockingIssue(`items.${n}.${key}`)) ||
+                                undefined
+                              }
+                              aria-label={`Item ${n + 1} ${key}`}
+                              aria-describedby={
+                                uncertain(`items.${n}.${key}`)
+                                  ? "entry-review-note"
+                                  : undefined
+                              }
+                              value={item[key] || ""}
+                              inputMode={
+                                [
+                                  "quantity",
+                                  "unitRate",
+                                  "discount",
+                                  "tax",
+                                  "total",
+                                ].includes(key)
+                                  ? "decimal"
+                                  : "text"
+                              }
+                              onChange={(e) =>
+                                change(
+                                  "items",
+                                  fields.items.map((v, i) =>
+                                    i === n
+                                      ? { ...v, [key]: e.target.value }
+                                      : v,
+                                  ),
+                                )
+                              }
+                            />
+                          )}
+                          {blockingIssue(`items.${n}.${key}`) && (
+                            <small role="alert">
+                              {blockingIssue(`items.${n}.${key}`)}
+                            </small>
+                          )}
                           {uncertain(`items.${n}.${key}`) && (
                             <small>
-                              {fieldIssue(`items.${n}.${key}`) ||
+                              {warnings.find(
+                                (w) => w.field === `items.${n}.${key}`,
+                              )?.message ||
+                                fieldIssue(`items.${n}.${key}`) ||
                                 "Check against document"}
                             </small>
                           )}
@@ -892,19 +995,25 @@ export function DocumentEntry({
               </button>
               <div className="field-grid entry-totals">
                 {field("Subtotal · AED", "subtotal")}
-                {field("Document discount · AED", "discount")}
+                {field("Document Discount (Optional)", "discount")}
                 {field("Tax · AED", "tax")}
                 {field("Document total · AED", "total")}
               </div>
               {!parsed.success && (
                 <p className="review-error" role="alert">
-                  Check amounts and dates. Amounts need a decimal point and up
-                  to two decimals; quantities allow four decimals.
+                  {validationIssues.map((i) => (
+                    <span key={i.field}>
+                      {reviewFieldLabel(i.field)}: {i.message}
+                      <br />
+                    </span>
+                  ))}
                 </p>
               )}
               {warnings.length > 0 && (
                 <div className="entry-warnings" aria-label="Review warnings">
-                  <strong>Check before confirming</strong>
+                  <strong>
+                    Review warnings — these do not prevent saving a draft
+                  </strong>
                   <ul>
                     {warnings.map((w) => (
                       <li key={w.code}>{w.message}</li>
@@ -938,9 +1047,9 @@ export function DocumentEntry({
                 <button
                   className="button button-primary"
                   type="submit"
-                  disabled={!confirmed || !parsed.success || busy}
+                  disabled={!confirmed || busy}
                 >
-                  Save reviewed draft
+                  Save Review Draft
                 </button>
                 {doc.status === "Draft" &&
                   !doc.extraction.reviewOnly &&
@@ -953,6 +1062,7 @@ export function DocumentEntry({
                         !confirmed ||
                         busy ||
                         pending ||
+                        !postingParsed.success ||
                         billBlockingWarnings.length > 0
                       }
                       onClick={() => void createBill()}
@@ -996,6 +1106,7 @@ export function DocumentEntry({
                         !confirmed ||
                         busy ||
                         pending ||
+                        !postingParsed.success ||
                         billBlockingWarnings.length > 0
                       }
                       onClick={() => void createExpense()}

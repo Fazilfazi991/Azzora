@@ -1,4 +1,7 @@
-import { saveManualDocumentDraft } from "./documents/review.js";
+import {
+  assertReviewReadyForPosting,
+  saveManualDocumentDraft,
+} from "./documents/review.js";
 import { postJournal } from "../accounting/core.js";
 import {
   cashAccountSnapshot,
@@ -590,6 +593,7 @@ export function applyReviewAction(
       throw Error(
         "Confirm the project or company expense classification before posting.",
       );
+    assertReviewReadyForPosting(review.fields, previous);
     const f = review.fields as PostingFields;
     if (
       (f.discount && parseFils(f.discount) !== 0n) ||
@@ -707,6 +711,7 @@ export function applyReviewAction(
       throw Error(
         "Confirm supplier purchase bill classification before posting.",
       );
+    assertReviewReadyForPosting(review.fields, previous);
     const f = review.fields as PostingFields;
     if (
       (f.discount && parseFils(f.discount) !== 0n) ||

@@ -78,7 +78,7 @@ try {
   ).toHaveJSProperty("naturalWidth", 800);
   check("uploaded image preview and explicit synthetic suggestions");
   await expect(
-    page.getByRole("button", { name: "Save reviewed draft" }),
+    page.getByRole("button", { name: "Save Review Draft" }),
   ).toBeDisabled();
   await expect(
     page.getByText(/changed from AED 50.00 to AED 60.00/),
@@ -120,7 +120,7 @@ try {
     .getByLabel("Item 1 description", { exact: true })
     .fill("Interior paint reviewed");
   await expect(
-    page.getByRole("button", { name: "Save reviewed draft" }),
+    page.getByRole("button", { name: "Save Review Draft" }),
   ).toBeDisabled();
   check("editing an extracted field requires renewed confirmation");
   await page
@@ -128,7 +128,7 @@ try {
       "I checked all fields and any warnings against the original document",
     )
     .check();
-  await page.getByRole("button", { name: "Save reviewed draft" }).click();
+  await page.getByRole("button", { name: "Save Review Draft" }).click();
   await expect(
     page.getByText(
       "Draft saved. No bill, payment or journal was posted. You can reopen and edit this draft below.",
@@ -289,7 +289,7 @@ try {
       "I checked all fields and any warnings against the original document",
     )
     .check();
-  await page.getByRole("button", { name: "Save reviewed draft" }).click();
+  await page.getByRole("button", { name: "Save Review Draft" }).click();
   await expect(
     page.getByText(
       "Draft saved. No bill, payment or journal was posted. You can reopen and edit this draft below.",

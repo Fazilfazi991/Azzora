@@ -15,6 +15,7 @@ import { InvoiceEntry, PurchaseBills } from "./DocumentForms";
 import { ExpenseEntry } from "./ExpenseEntry";
 import { BankingWorkspace } from "./BankingWorkspace";
 import { OperationalReports } from "./OperationalReports";
+import { SettlementOption, settlementReference } from "./settlement-reference";
 import { ReportDates } from "./ReportDates";
 import { cashAccountsFor, type CompletionSnapshot } from "./completion-ui";
 import { accountsRequest as api, accountsUrl } from "./http";
@@ -566,9 +567,12 @@ function Settlement({
           >
             <option value="">Select a document</option>
             {open.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.id} · {item.party} · {money(item.outstandingFils)} open
-              </option>
+              <SettlementOption
+                key={item.id}
+                document={item}
+                supplier={supplier}
+                amount={money(item.outstandingFils)}
+              />
             ))}
           </Field>
           <Field
@@ -626,7 +630,14 @@ function Settlement({
               )}
             </td>
             <td>{date(item.date)}</td>
-            <td>{item.documentId}</td>
+            <td>
+              {settlementReference(
+                source.find((value) => value.id === item.documentId) || {
+                  id: item.documentId,
+                },
+                supplier,
+              )}
+            </td>
             <td>
               {accounts.find((account) => account.id === item.account)?.name ||
                 item.account ||

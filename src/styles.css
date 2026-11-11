@@ -2018,6 +2018,20 @@ dialog::backdrop {
   min-width: 680px;
   font-size: 13px;
 }
+.invoice-scroll-hint { display: none; }
+@media (max-width: 600px) {
+  .commercial-invoice-table { min-width: 900px; }
+  .invoice-scroll-hint {
+    display: block;
+    position: sticky;
+    left: 0;
+    width: fit-content;
+    margin: 0;
+    padding: 10px 16px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+}
 .commercial-table th {
   padding: 14px 16px;
   color: var(--muted);

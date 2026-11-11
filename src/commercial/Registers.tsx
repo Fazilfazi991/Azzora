@@ -110,10 +110,12 @@ export function DataTable({
   headers,
   rows,
   empty = "No records yet.",
+  invoiceLayout = false,
 }: {
   headers: string[];
   rows: ReactNode[][];
   empty?: string;
+  invoiceLayout?: boolean;
 }) {
   return (
     <div
@@ -122,7 +124,8 @@ export function DataTable({
       role="region"
       aria-label={headers.join(", ") + " table"}
     >
-      <table className="commercial-table">
+      {invoiceLayout && <p className="invoice-scroll-hint">Scroll sideways to see all invoice details.</p>}
+      <table className={`commercial-table${invoiceLayout ? " commercial-invoice-table" : ""}`}>
         <thead>
           <tr>
             {headers.map((h) => (
@@ -170,6 +173,7 @@ export function InvoiceTable({ invoices }: { invoices: Invoice[] }) {
   const { db } = useStore();
   return (
     <DataTable
+      invoiceLayout
       headers={[
         "Invoice",
         "Customer / Project",

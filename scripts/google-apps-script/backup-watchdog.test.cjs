@@ -1,0 +1,28 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const {readFileSync}=require('node:fs');
+const {join}=require('node:path');
+const {createHmac}=require('node:crypto');
+const vm=require('node:vm');
+const source=readFileSync(join(__dirname,'backup-watchdog.gs'),'utf8');
+
+function setup() {
+  const now=Date.now(), key=Buffer.alloc(32,5), owner='owner@example.test', folder='folder123';
+  const p={format:'azzora-backup-status-v1',runId:'run-1',projectRef:'test-project',capturedAt:new Date(now-3600000).toISOString(),completedAt:new Date(now-1800000).toISOString(),archiveFileId:'file123',archiveSha256:'a'.repeat(64),archiveMd5:'b'.repeat(32),archiveBytes:123,schemaDump:true,dataDump:true,rolesDump:true,objectCount:2,complete:true};
+  const sorted=Object.fromEntries(Object.entries(p).sort(([a],[b])=>a.localeCompare(b,'en')));
+  const mac=createHmac('sha256',key).update(JSON.stringify(sorted)).digest('hex');
+  const state={wrapper:{payload:p,mac},quota:{usage:'1',limit:'100'},sent:[],marker:{id:'marker1',size:'1000',shared:false,parents:[folder],owners:[{emailAddress:owner}]},archive:{id:'file123',size:'123',md5Checksum:p.archiveMd5,shared:false,parents:[folder],owners:[{emailAddress:owner}]},folder:{id:folder,mimeType:'application/vnd.google-apps.folder',shared:false,owners:[{emailAddress:owner}]}};
+  const props={OWNER_EMAIL:owner,ALERT_EMAIL:owner,FOLDER_ID:folder,PROJECT_REF:'test-project',MAX_BACKUP_AGE_HOURS:'36',MONITOR_HMAC_KEY:key.toString('base64url')};
+  const context={Date,Number,JSON,Error,Array,Object,String,PropertiesService:{getScriptProperties:()=>({getProperty:k=>props[k]})}, Utilities:{newBlob:s=>({getBytes:()=>Buffer.from(s)}),computeHmacSha256Signature:(s,k)=>[...createHmac('sha256',Buffer.from(k)).update(Buffer.from(s)).digest()],base64DecodeWebSafe:s=>[...Buffer.from(s,'base64url')]},Drive:{About:{get:()=>({storageQuota:state.quota})},Files:{list:()=>({files:state.missing?[]:[state.marker]}),get:id=>id===folder?state.folder:state.archive}},DriveApp:{getFileById:()=>({getBlob:()=>({getDataAsString:()=>JSON.stringify(state.wrapper)})})},MailApp:{getRemainingDailyQuota:()=>100,sendEmail:(...args)=>state.sent.push(args)}};
+  vm.createContext(context); vm.runInContext(source,context);
+  function resign() {const sorted=Object.fromEntries(Object.entries(state.wrapper.payload).sort(([a],[b])=>a.localeCompare(b,'en')));state.wrapper.mac=createHmac('sha256',key).update(JSON.stringify(sorted)).digest('hex')}
+  return {state,context,props,resign};
+}
+test('valid authenticated and recent full-backup marker passes without email',()=>{const {state,context}=setup();assert.equal(context.monitorBackup().ok,true);assert.equal(state.sent.length,0)});
+test('missing backup, tampered manifest, and wrong file each alert',()=>{for(const change of [s=>s.missing=true,s=>s.wrapper.payload.complete=false,s=>s.archive.size='124']) {const {state,context}=setup();change(state);assert.equal(context.monitorBackup().ok,false);assert.equal(state.sent.length,1)}});
+test('a correctly signed but stale backup alerts',()=>{const {state,context,resign}=setup();state.wrapper.payload.capturedAt='2020-01-01T00:00:00.000Z';resign();assert.equal(context.monitorBackup().ok,false);assert.equal(state.sent.length,1)});
+test('a correctly signed incomplete or wrong-scope status alerts',()=>{for(const change of [s=>s.wrapper.payload.complete=false,s=>s.wrapper.payload.schemaDump=false,s=>s.wrapper.payload.projectRef='wrong-project',s=>s.archive.md5Checksum='c'.repeat(32)]){const {state,context,resign}=setup();change(state);resign();assert.equal(context.monitorBackup().ok,false);assert.equal(state.sent.length,1)}});
+test('quota exhaustion warning and provider auth failures alert without logging errors',()=>{for(const change of [s=>s.quota.usage='90',s=>s.folder.shared=true]){const {state,context}=setup();change(state);assert.equal(context.monitorBackup().ok,false);assert.equal(state.sent.length,1)}});
+test('expired Drive authorization or duplicate markers triggers an alert without exposing the provider message',()=>{for(const change of [c=>c.Drive.About.get=()=>{throw Error('private-token-value')},c=>c.Drive.Files.list=()=>({files:[{},{}]})]){const {state,context}=setup();change(context);assert.equal(context.monitorBackup().ok,false);assert.equal(state.sent.length,1);assert.doesNotMatch(JSON.stringify(state.sent),/private-token-value/)}});
+test('unconfigured monitor never reports success and sending errors propagate',()=>{const {state,context,props}=setup();delete props.MONITOR_HMAC_KEY;assert.equal(context.monitorBackup().ok,false);assert.equal(state.sent.length,1);context.MailApp.getRemainingDailyQuota=()=>0;assert.throws(()=>context.monitorBackup(),/alert_delivery_unavailable/)});
+test('accepts status signed by actual full-backup Node signer',async()=>{const {signFreeBackupStatus}=await import('../../src/backend/free-backup-status.ts');const {state,context,props}=setup();const key=Buffer.alloc(32,5);state.wrapper.payload.projectRef='abcdefghijklmnopqrst';state.wrapper.payload.archiveFileId='fictional-file-123';state.archive.id='fictional-file-123';props.PROJECT_REF='abcdefghijklmnopqrst';state.wrapper=signFreeBackupStatus(state.wrapper.payload,key);assert.equal(context.monitorBackup().ok,true);assert.equal(state.sent.length,0)});

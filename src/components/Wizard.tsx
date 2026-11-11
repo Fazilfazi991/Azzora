@@ -42,6 +42,8 @@ export function Wizard({
 }) {
   const { store, run, pending } = useStoreCommand(),
     { db } = store;
+  const selfAssignedManager =
+    store.mode === "staging" && store.actor?.role === "project_manager";
   const [step, setStep] = useState(0);
   const [p, setP] = useState<Project>({
     id: uid(),
@@ -287,7 +289,7 @@ export function Wizard({
             <Field label="Project manager">
               <select
                 value={p.managerId}
-                disabled={store.mode === "staging" && store.actor?.role === "project_manager"}
+                disabled={selfAssignedManager}
                 onChange={(e) => set("managerId", e.target.value)}
               >
                 {!p.managerId && <option value="">No eligible project manager</option>}
@@ -299,7 +301,7 @@ export function Wizard({
                     </option>
                   ))}
               </select>
-              {store.mode === "staging" && store.actor?.role === "project_manager" && (
+              {selfAssignedManager && (
                 <small>Project Managers create projects assigned to themselves.</small>
               )}
             </Field>
@@ -391,6 +393,7 @@ export function Wizard({
             {roles.map((role) => (
               <Field key={role} label={role}>
                 <select
+                  disabled={role === "Project Manager" && selfAssignedManager}
                   value={
                     role === "Project Manager" ? p.managerId : team[role] || ""
                   }
@@ -402,6 +405,9 @@ export function Wizard({
                 >
                   {role !== "Project Manager" && (
                     <option value="">Assign later</option>
+                  )}
+                  {role === "Project Manager" && !p.managerId && (
+                    <option value="">No eligible project manager</option>
                   )}
                   {db.people
                     .filter((x) => x.status !== "Inactive")

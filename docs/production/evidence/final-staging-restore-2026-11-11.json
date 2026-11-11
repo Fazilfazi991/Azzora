@@ -7,8 +7,8 @@
   "journals": 2,
   "originals": 1,
   "capturedVersion": 42,
-  "businessSha256": "00f7057911589b4a52749953053e012413e44ea77f43d24cecb89576c589f82e",
-  "restoredSha256": "00f7057911589b4a52749953053e012413e44ea77f43d24cecb89576c589f82e",
+  "businessSha256": "89cec29cb28a931594c04507452617014f360a178d465af3c7e870ea78a19381",
+  "restoredSha256": "89cec29cb28a931594c04507452617014f360a178d465af3c7e870ea78a19381",
   "trialBalanceBalanced": true,
   "balanceSheetBalanced": true,
   "financialReportsMatch": true,
@@ -18,5 +18,7 @@
   "liabilitiesAndEquityFils": "10010000",
   "netProfitFils": "10000",
   "identityUsersRestored": false,
+  "auditIdentityRestored": false,
+  "actorsReplacedForOfflineRehearsal": true,
   "infrastructureBackupVerified": false
 }

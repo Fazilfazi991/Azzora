@@ -12,8 +12,10 @@ import { blankCustomer } from "../commercial/customer-domain";
 import { blankInvoice, newProjectDetails } from "../commercial/repository";
 import { encryptBusinessBackup, decryptBusinessBackup } from "./launch-backup";
 import {
+  freshRehearsalDatabase,
   orderRestoreJournals,
   rehearseEncryptedBusinessRestore,
+  restoreIntoFreshRehearsal,
 } from "./launch-backup-rehearsal";
 const companyId = "11111111-1111-4111-8111-111111111111",
   ownerId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -248,4 +250,37 @@ it("decrypts, verifies and restores a real synthetic business export into isolat
     "tmp/launch-encrypted-restore-evidence.json",
     JSON.stringify(report, null, 2),
   );
+}, 30000);
+it("preserves supplied fictional historical actor IDs and audit events in a disabled isolated restore", async () => {
+  const backup = await createStagingBackup(fixture(), async () => bytes, "2026-11-11T00:00:00.000Z");
+  expect(backup.data.snapshots.length).toBeGreaterThan(0);
+  const historical = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  const provenance = {
+    fictionalOnly: true as const, companyId,
+    journals: backup.data.journals.map(j => ({ id: j.id, actorId: historical })),
+    snapshots: backup.data.snapshots.map(s => ({ entityType: s.entity_type, entityId: s.entity_id, revision: s.revision, capturedBy: historical })),
+    auditEvents: [{ id: "83", actorId: historical, action: "invoice.issue", entityType: "invoice", entityId: "invoice", requestId: "synthetic-request", recordedAt: "2026-11-04T10:00:00.000Z", metadata: { fictional: true } }],
+  };
+  const { db } = await freshRehearsalDatabase();
+  try {
+    await restoreIntoFreshRehearsal(db, backup, "fictional-staging", provenance);
+    const journals = await db.query<{actor_id: string}>("select actor_id::text from azzora.journals");
+    expect(journals.rows.every(row => row.actor_id === historical)).toBe(true);
+    const snapshots = await db.query<{captured_by: string}>("select captured_by::text from azzora.snapshots");
+    expect(snapshots.rows).toHaveLength(provenance.snapshots.length);
+    expect(snapshots.rows.every(row => row.captured_by === historical)).toBe(true);
+    const events = await db.query<{ id: string; actor_id: string; action: string; entity_type: string; entity_id: string; request_id: string; metadata: unknown }>("select id::text,actor_id::text,action,entity_type,entity_id,request_id,metadata from azzora.audit_events");
+    expect(events.rows).toEqual([{ id: "83", actor_id: historical, action: "invoice.issue", entity_type: "invoice", entity_id: "invoice", request_id: "synthetic-request", metadata: { fictional: true } }]);
+    const identities = await db.query<{ email: string | null; email_confirmed_at: string | null }>("select email,email_confirmed_at from auth.users where id=$1", [historical]);
+    expect(identities.rows[0]).toMatchObject({ email: null, email_confirmed_at: null });
+    const grants = await db.query<{ n: number }>("select count(*)::int n from azzora.memberships where user_id=$1", [historical]);
+    expect(grants.rows[0].n).toBe(0);
+  } finally { await db.close(); }
+}, 30000);
+it("rejects synthetic provenance with incomplete actor inventory before restoring", async () => {
+  const backup = await createStagingBackup(fixture(), async () => bytes, "2026-11-11T00:00:00.000Z");
+  const { db } = await freshRehearsalDatabase();
+  try {
+    await expect(restoreIntoFreshRehearsal(db, backup, "fictional-staging", { fictionalOnly: true, companyId, journals: [], snapshots: [], auditEvents: [] })).rejects.toThrow(/inventory/);
+  } finally { await db.close(); }
 }, 30000);

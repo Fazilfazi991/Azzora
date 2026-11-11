@@ -18,5 +18,7 @@
   "liabilitiesAndEquityFils": "0",
   "netProfitFils": "0",
   "identityUsersRestored": false,
+  "auditIdentityRestored": false,
+  "actorsReplacedForOfflineRehearsal": true,
   "infrastructureBackupVerified": false
 }

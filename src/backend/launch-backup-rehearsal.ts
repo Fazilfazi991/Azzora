@@ -54,6 +54,15 @@ export function orderRestoreJournals(journals: CanonicalData["journals"]) {
     throw Error("Backup reversal references contain a cycle.");
   return ordered;
 }
+
+/** Synthetic-only provenance fixture. Never a production restore interface. */
+export interface SyntheticAuditFixture {
+  fictionalOnly: true;
+  companyId: string;
+  journals: { id: string; actorId: string }[];
+  snapshots: { entityType: string; entityId: string; revision: number; capturedBy: string }[];
+  auditEvents: { id: string; actorId: string; action: string; entityType: string; entityId: string; requestId: string; recordedAt: string; metadata: Record<string, unknown> }[];
+}
 export async function freshRehearsalDatabase(
   mode: "production" | "fictional-staging" = "fictional-staging",
 ) {
@@ -118,6 +127,7 @@ export async function restoreIntoFreshRehearsal(
   db: PGlite,
   input: unknown,
   mode: "production" | "fictional-staging" = "fictional-staging",
+  provenance?: SyntheticAuditFixture,
 ) {
   const backup =
       mode === "production"
@@ -125,6 +135,20 @@ export async function restoreIntoFreshRehearsal(
         : verifyStagingBackup(input),
     data = backup.data,
     company = backup.companyId || companyId;
+  if (provenance) {
+    if (mode !== "fictional-staging" || provenance.fictionalOnly !== true || provenance.companyId !== company)
+      throw Error("Audit fixture is allowed only for the matching fictional rehearsal.");
+    if (provenance.journals.length !== data.journals.length || provenance.snapshots.length !== data.snapshots.length ||
+      new Set(provenance.journals.map(v => v.id)).size !== data.journals.length ||
+      new Set(provenance.snapshots.map(v => JSON.stringify([v.entityType,v.entityId,v.revision]))).size !== data.snapshots.length ||
+      new Set(provenance.auditEvents.map(v => v.id)).size !== provenance.auditEvents.length ||
+      data.journals.some(v => !provenance.journals.some(p => p.id === v.id)) ||
+      data.snapshots.some(v => !provenance.snapshots.some(p => p.entityType === v.entity_type && p.entityId === v.entity_id && p.revision === v.revision)))
+      throw Error("Audit fixture inventory does not match business history.");
+    const safe = JSON.stringify(provenance);
+    if (/"(?:password|passwordHash|totpSecret|secret|access_token|refresh_token|session|cookie)"\s*:/i.test(safe))
+      throw Error("Credentials and sessions are forbidden in audit fixtures.");
+  }
   const existing = await db.query<{ n: number }>(
     "select count(*)::int n from azzora.records",
   );
@@ -136,10 +160,16 @@ export async function restoreIntoFreshRehearsal(
   await db.exec("begin");
   try {
     // Fresh offline fixture identity only: no exported Auth user, password or session is restored.
-    await execute(
-      "insert into auth.users(id,email,raw_app_meta_data,email_confirmed_at) values($1,'offline-owner@rehearsal.test','{\"azzora_scope\":\"fictional-staging\"}',now()) on conflict do nothing",
-      [ownerId],
-    );
+    if (!provenance)
+      await execute(
+        "insert into auth.users(id,email,raw_app_meta_data,email_confirmed_at) values($1,'offline-owner@rehearsal.test','{\"azzora_scope\":\"fictional-staging\"}',now()) on conflict do nothing",
+        [ownerId],
+      );
+    if (provenance) {
+      const ids = new Set([...provenance.journals.map(v => v.actorId), ...provenance.snapshots.map(v => v.capturedBy), ...provenance.auditEvents.map(v => v.actorId)]);
+      for (const id of ids)
+        await execute("insert into auth.users(id,email,raw_app_meta_data,email_confirmed_at,banned_until) values($1,NULL,'{}',NULL,'infinity') on conflict do nothing", [id]);
+    }
     await execute(
       "insert into azzora.companies(id,name,data_mode,version) values($1,'ISOLATED RESTORE REHEARSAL',$2,$3) on conflict(id) do update set version=excluded.version",
       [company, mode, backup.capturedCompanyVersion],
@@ -207,7 +237,7 @@ export async function restoreIntoFreshRehearsal(
           v.memo,
           v.currency,
           v.recorded_at,
-          ownerId,
+          provenance?.journals.find(p => p.id === v.id)?.actorId || ownerId,
           ...(hasReversal ? [v.reversal_of || null] : []),
         ],
       );
@@ -238,9 +268,11 @@ export async function restoreIntoFreshRehearsal(
           v.revision,
           JSON.stringify(v.payload),
           v.sha256,
-          ownerId,
+          provenance?.snapshots.find(p => p.entityType === v.entity_type && p.entityId === v.entity_id && p.revision === v.revision)?.capturedBy || ownerId,
         ],
       );
+    for (const event of provenance?.auditEvents || [])
+      await execute("insert into azzora.audit_events(id,company_id,actor_id,action,entity_type,entity_id,request_id,recorded_at,metadata) overriding system value values($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)", [event.id, company, event.actorId, event.action, event.entityType, event.entityId, event.requestId, event.recordedAt, JSON.stringify(event.metadata)]);
     const allocationProjector = (
       await db.query<{ present: boolean }>(
         "select to_regprocedure($1) is not null present",
@@ -351,6 +383,8 @@ export async function rehearseEncryptedBusinessRestore(
       liabilitiesAndEquityFils: balance.liabilitiesAndEquityFils,
       netProfitFils: profit.netProfitFils,
       identityUsersRestored: false,
+      auditIdentityRestored: false,
+      actorsReplacedForOfflineRehearsal: true,
       infrastructureBackupVerified: false,
     };
   } finally {

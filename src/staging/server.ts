@@ -33,6 +33,7 @@ import {
 } from "../accounts-review/reporting.js";
 import { reviewPdf } from "../accounts-review/pdf.js";
 import { ProductionPolicyError } from "../accounting/production-policy.js";
+import { ReviewRecordingError } from "../accounts-review/domain.js";
 import { extractDocument } from "../accounts-review/documents/service.js";
 import { BlobReviewStore } from "../accounts-review/hosted-store.js";
 import { DocumentExtractionError } from "../accounts-review/documents/extraction-status.js";
@@ -634,7 +635,8 @@ export function createStagingHandler(
           code:
             error instanceof StagingServiceError ||
             error instanceof StagingPolicyError ||
-            error instanceof ProductionPolicyError
+            error instanceof ProductionPolicyError ||
+            error instanceof ReviewRecordingError
               ? error.code
               : "request_rejected",
           elapsedMs: Math.round(performance.now() - started),
@@ -678,6 +680,12 @@ export function createStagingHandler(
             issues: error.issues,
             requestId,
           },
+          requestId,
+        );
+      if (error instanceof ReviewRecordingError)
+        return json(
+          error.status,
+          { error: error.message, code: error.code, requestId },
           requestId,
         );
       return json(

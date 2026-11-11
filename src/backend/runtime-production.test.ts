@@ -14,6 +14,7 @@ import { StagingServiceError, type StagingRpc } from "../staging/supabase.js";
 import { createEmptyProductionCompany } from "../finance/production-policy.js";
 import { emptyOperations } from "../operations/migration.js";
 import { blankFields } from "../accounts-review/documents/model.js";
+import { ReviewRecordingError } from "../accounts-review/domain.js";
 
 export const productionEnv = () => ({
   AZZORA_DEPLOYMENT_MODE: "production-candidate",
@@ -559,4 +560,25 @@ it("blocks real financial actions, external extraction and legal PDFs even for t
     f.calls.mock.calls.filter(([name]) => name === "staging_company_commit"),
   ).toHaveLength(0);
   expect(f.storage.store).not.toHaveBeenCalled();
+});
+it("returns a precise409 for a trusted recording-clock conflict rather than disguising it as a generic validation failure", async () => {
+  const rpc = vi.fn();
+  const auth = {
+    handle: vi.fn(),
+    requireActor: vi.fn(async () => {
+      throw new ReviewRecordingError(
+        "recording_clock_stale",
+        "The ledger advanced. Refresh before retrying.",
+      );
+    }),
+  } as unknown as ReturnType<typeof createStagingAuth>;
+  const response = await createStagingHandler({ auth, rpc })(
+    new Request("https://example.test/api/staging/accounts/snapshot"),
+  );
+  expect(response.status).toBe(409);
+  expect(await response.json()).toMatchObject({
+    code: "recording_clock_stale",
+    error: "The ledger advanced. Refresh before retrying.",
+  });
+  expect(rpc).not.toHaveBeenCalled();
 });

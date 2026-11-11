@@ -1,6 +1,7 @@
 -- FICTIONAL SECURITY FIXTURE ONLY. Adds a separate company; it does not alter
 -- authentication, grants, policies, Company A, or any real/production data.
--- REVIEW ONLY: apply only to the owner-authorized synthetic staging project.
+-- OFFLINE TEST ONLY. Never apply this record fixture to hosted staging: the
+-- missing canonical metadata would interfere with Company B owner bootstrap.
 begin;
 do $$ begin
   if not exists (select 1 from azzora.environment_config

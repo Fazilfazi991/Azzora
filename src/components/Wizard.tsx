@@ -20,6 +20,7 @@ import { createProject } from "../domain/repository";
 import { templates } from "../domain/seed";
 import { Modal, Field, personName } from "./ui";
 import { CustomerForm } from "../commercial/Customers";
+import { projectManagerDefault } from "./project-manager-default";
 export function Wizard({
   onClose,
   onCreated,
@@ -65,8 +66,7 @@ export function Wizard({
     value: 0,
     start: today(),
     due: addDays(today(), 90),
-    managerId:
-      db.people.find((person) => person.status !== "Inactive")?.id || "",
+    managerId: projectManagerDefault(db.people, store.mode, store.actor),
     priority: "Normal",
     status: "Active",
   });
@@ -96,11 +96,12 @@ export function Wizard({
       step === 0 &&
       (!p.name.trim() ||
         !client.trim() ||
+        !p.managerId ||
         !p.code.trim() ||
         p.value < 0 ||
         p.due < p.start)
     ) {
-      setError("Enter project name, client, unique code and valid dates.");
+      setError("Enter project name, client, project manager, unique code and valid dates.");
       return;
     }
     if (step === 1 && (!p.location.trim() || !p.disciplines.length)) {
@@ -286,8 +287,10 @@ export function Wizard({
             <Field label="Project manager">
               <select
                 value={p.managerId}
+                disabled={store.mode === "staging" && store.actor?.role === "project_manager"}
                 onChange={(e) => set("managerId", e.target.value)}
               >
+                {!p.managerId && <option value="">No eligible project manager</option>}
                 {db.people
                   .filter((x) => x.status !== "Inactive")
                   .map((x) => (
@@ -296,6 +299,9 @@ export function Wizard({
                     </option>
                   ))}
               </select>
+              {store.mode === "staging" && store.actor?.role === "project_manager" && (
+                <small>Project Managers create projects assigned to themselves.</small>
+              )}
             </Field>
             <Field label="Priority">
               <select

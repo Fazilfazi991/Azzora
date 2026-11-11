@@ -4,6 +4,7 @@
  * download verification; this does not certify recovery or authenticate GitHub.
  */
 const STATUS_NAME = 'azzora-backup-status-v1.json';
+const APPROVED_RECIPIENT = 'fazil4fazi@gmail.com';
 const STATUS_FIELDS = ['archiveBytes','archiveFileId','archiveMd5','archiveSha256','capturedAt','complete','completedAt','dataDump','format','objectCount','projectRef','rolesDump','runId','schemaDump'];
 
 function canonicalStatus(payload) {
@@ -45,9 +46,11 @@ function monitorBackup() {
   const props=PropertiesService.getScriptProperties();
   const owner=props.getProperty('OWNER_EMAIL'), recipient=props.getProperty('ALERT_EMAIL'), folderId=props.getProperty('FOLDER_ID');
   const projectRef=props.getProperty('PROJECT_REF'), maxAgeHours=Number(props.getProperty('MAX_BACKUP_AGE_HOURS'));
+  // Do not send any mail if recipient configuration has been changed.
+  if (owner!==APPROVED_RECIPIENT || recipient!==APPROVED_RECIPIENT) throw Error('monitor_recipient_not_authorized');
   let problems=[];
   try {
-    if (!owner || owner!==recipient || !folderId || !projectRef || !Number.isFinite(maxAgeHours) || maxAgeHours<=0 || maxAgeHours>168) throw Error('monitor_not_configured');
+    if (!/^[A-Za-z0-9_-]{1,200}$/.test(folderId || '') || !/^[a-z0-9]{20}$/.test(projectRef || '') || !Number.isFinite(maxAgeHours) || maxAgeHours<=0 || maxAgeHours>168) throw Error('monitor_not_configured');
     const key=Utilities.base64DecodeWebSafe(props.getProperty('MONITOR_HMAC_KEY') || '');
     if (key.length!==32) throw Error('monitor_not_configured');
     const quota=Drive.About.get({fields:'storageQuota'}).storageQuota;
@@ -80,7 +83,9 @@ function monitorBackup() {
   return {ok:true};
 }
 function sendTestAlert() {
-  const recipient=PropertiesService.getScriptProperties().getProperty('ALERT_EMAIL');
-  if (!recipient || MailApp.getRemainingDailyQuota()<1) throw Error('alert_delivery_unavailable');
+  const props=PropertiesService.getScriptProperties();
+  const recipient=props.getProperty('ALERT_EMAIL');
+  if (recipient!==APPROVED_RECIPIENT || props.getProperty('OWNER_EMAIL')!==APPROVED_RECIPIENT) throw Error('monitor_recipient_not_authorized');
+  if (MailApp.getRemainingDailyQuota()<1) throw Error('alert_delivery_unavailable');
   MailApp.sendEmail(recipient,'AZZORA backup monitor test','This is a test alert. Automatic backup and restore readiness must be verified separately.');
 }

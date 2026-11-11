@@ -7,3 +7,5 @@ Before any retry, a read-only application snapshot confirmed the receipt had com
 One deliberate replay of the exact action, expected version and persisted idempotency key returned HTTP 200. The subsequent application snapshot and canonical database query still showed one fixture receipt, one linked journal, the same journal identity digest, version 517, unchanged outstanding balance, and balanced reports. No duplicate receipt or journal was observed in this test.
 
 The interruption simulates a client losing its response; it does not demonstrate every possible network failure or prove the cause of earlier HTTP 503 errors. No production deployment or real-company data was changed. The fictional transaction and private test identifiers were preserved.
+
+A later read-only canonical audit found one allocation of 100 fils and journal lines totaling 100 fils on each side. This audit occurred after the replay; allocation count was not captured before it.

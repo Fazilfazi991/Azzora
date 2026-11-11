@@ -7,3 +7,5 @@ During the lock, the payment request returned HTTP 503 after 13.968 seconds incl
 A single deliberate replay of the same action and original key returned 200. Application version became 523, payable AED 17, and reports remained balanced. Canonical reconciliation found one payment, one journal and one allocation of 100 fils, with equal debit and credit of 100 fils. Synthetic records and private test identifiers were retained.
 
 The deliberate lock and HTTP 503 do not by themselves establish the precise database error, identify the original intermittent 503's cause, or prove production readiness. No production system or real-company data was changed.
+
+Subsequent safe Vercel metadata confirms the induced request reached staging_company_commit and returned PostgreSQL 57014 at 15:02:39 UTC (RPC 9,360 ms).

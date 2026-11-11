@@ -52,6 +52,13 @@ it("requires authenticated identity before reading canonical company data", asyn
   expect((await handle(request("/manager/snapshot"))).status).toBe(401);
   expect(calls).not.toHaveBeenCalled();
 });
+it("rejects the unsupported session alias without reading company data", async () => {
+  const { handle, calls } = setup();
+  const response = await handle(request("/session"));
+  expect(response.status).toBe(404);
+  expect(await response.json()).toEqual({ error: "Unknown staging route." });
+  expect(calls).not.toHaveBeenCalled();
+});
 it("returns only the Manager projection and no session or journal payload", async () => {
   const { handle } = setup();
   const r = await handle(request("/manager/snapshot"));

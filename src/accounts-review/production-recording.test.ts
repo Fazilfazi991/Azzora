@@ -31,7 +31,7 @@ it("production journal recording time comes only from separate trusted context, 
   const before = fixture(),
     next = applyReviewAction(
       before,
-      { ...invoice(), recordedAt: "1999-01-01T00:00:00.000Z" } as ReviewAction,
+    { ...invoice(), recordedAt: "1999-01-01T00:00:00.000Z" } as unknown as ReviewAction,
       recording,
     );
   expect(next.accounting.journals[0]).toMatchObject({ date, recordedAt });

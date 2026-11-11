@@ -451,9 +451,19 @@ describe("fictional business backup integrity and isolated restore", () => {
     expect(parsed.provenance.journals).toHaveLength(2);
     const proof = await rehearseEncryptedBusinessRestore(envelope, key, { companyId, keyId: "fictional-staging-owner-key-v1" });
     expect(proof).toMatchObject({ schemaFromArchive: true, liveSchemaVerified: false, auditActorReferencesRestored: true, identityUsersRestored: false, membershipsRestored: false, financialReportsMatch: true });
+    const isolated = await freshAuthoritativeDatabase();
+    try {
+      const p = parsed.provenance;
+      const ids = new Set([...p.journals.map(x=>x.actorId), ...p.snapshots.map(x=>x.capturedBy), ...p.auditEvents.map(x=>x.actorId), ...p.commandReceipts.map(x=>x.actorId)]);
+      for (const id of ids) await isolated.db.query("insert into auth.users(id,banned_until) values($1,now()+interval '1 year')",[id]);
+      const opts = {isolatedOnly:true as const, requireDisabledHistoricalUsers:true as const, companyId, journals:p.journals, snapshots:p.snapshots, auditEvents:p.auditEvents, commandReceipts:p.commandReceipts};
+      await expect(restoreAuthoritative(isolated.db, archive, "fictional-staging", opts)).rejects.toThrow(/exist and be disabled/);
+      await isolated.db.query("update auth.users set banned_until='infinity'");
+      expect((await restoreAuthoritative(isolated.db, archive, "fictional-staging", opts)).capturedVersion).toBe(source.version);
+    } finally { await isolated.db.close(); }
     const { db } = await freshAuthoritativeDatabase();
     try {
-      await expect(restoreAuthoritative(db, archive, "fictional-staging", { isolatedOnly: true, providerProvisionedHistoricalUsers: true, companyId, journals: parsed.provenance.journals, snapshots: parsed.provenance.snapshots, auditEvents: parsed.provenance.auditEvents, commandReceipts: parsed.provenance.commandReceipts })).rejects.toThrow(/provisioned and disabled/);
+      await expect(restoreAuthoritative(db, archive, "fictional-staging", { isolatedOnly: true, requireDisabledHistoricalUsers: true, companyId, journals: parsed.provenance.journals, snapshots: parsed.provenance.snapshots, auditEvents: parsed.provenance.auditEvents, commandReceipts: parsed.provenance.commandReceipts })).rejects.toThrow(/exist and be disabled/);
       expect((await db.query<{n:number}>("select count(*)::int n from azzora.records")).rows[0].n).toBe(0);
       const restored = await restoreAuthoritative(db, archive, "fictional-staging", { isolatedOnly: true, companyId, journals: parsed.provenance.journals, snapshots: parsed.provenance.snapshots, auditEvents: parsed.provenance.auditEvents, commandReceipts: parsed.provenance.commandReceipts });
       expect(restored.capturedVersion).toBe(source.version);
@@ -480,7 +490,7 @@ describe("fictional business backup integrity and isolated restore", () => {
     identity.role = "accountant";
     identity.mfaVerifiedAt = Date.now();
     expect((await handler(request())).status).toBe(403);
-  }, 30_000);
+  }, 60_000);
   it("preserves historical snapshot bytes while verifying inline originals against private pointers", async () => {
     const source = fixture();
     const record = source.data.records.find(

@@ -10,7 +10,9 @@ A database backup does **not** contain Storage object bytes. The [CLI reference]
 
 ## Before the first real transaction
 
-The owner selected Google Drive account `fazil4fazi@gmail.com` as the separate encrypted backup destination and the same address for failure alerts. The folder [AZZORA Accounts Encrypted Backups](https://drive.google.com/drive/folders/1KovOXn8MzI6wuBS5fJq-seUIFjsddcMd) was created and its owner-only sharing verified on 11 November 2026. It is an empty destination, not an operational backup or notification system.
+The owner selected Google Drive account `fazil4fazi@gmail.com` as the separate encrypted backup destination and the same address for failure alerts. The folder [AZZORA Accounts Encrypted Backups](https://drive.google.com/drive/folders/1KovOXn8MzI6wuBS5fJq-seUIFjsddcMd) was created and its owner-only sharing verified on 11 November 2026. It is not an operational backup or notification system.
+
+On 11 November 2026 an explicitly named **synthetic test only** encrypted archive was uploaded manually to that private folder. The downloaded bytes matched the original SHA-256 (`45f365d365eb82e951b3114b99e875f9157dd113d6c5ecff8bdecb9662952cf2`). Using its disposable test key, an isolated restore reproduced 8 records, 2 journals and 1 original; restored and source business hashes and financial reports matched. No real records or cloud database were involved. The test file remains in the folder. This manual test did not exercise an unattended scheduler, continuous backup, Auth/infrastructure recovery or alert delivery. Gmail connector identity matched the selected account, but no message was sent and no delivery mechanism was configured.
 
 Record the operator and independent restore reviewer, backup schedule, escalation, retention and deletion rules, capacity, RPO/RTO, and drill frequency. Those details remain undecided and unverified; daily encrypted capture and an isolated restore before launch are proposals, not approved guarantees. Account for the free plan's limits and inactivity behavior. No scheduled job, monitoring alert, or retention policy is currently established.
 

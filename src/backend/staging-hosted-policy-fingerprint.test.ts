@@ -1,0 +1,3 @@
+import {it, expect} from 'vitest';
+import {freshRehearsalDatabase} from './launch-backup-rehearsal';
+it('matches reviewed hosted staging policy metadata captured 2026-11-11',async()=>{const {db}=await freshRehearsalDatabase(); try {const x=await db.query(`select count(*) policy_count, md5(string_agg(tablename || '|' || policyname || '|' || permissive || '|' || roles::text || '|' || cmd || '|' || coalesce(qual,'') || '|' || coalesce(with_check,''), E'\\n' order by tablename,policyname)) policy_digest from pg_policies where schemaname='azzora'`);expect(x.rows).toEqual([{policy_count: 11, policy_digest:'cbaba811f466e79e4a887fac296cfc6a'}]);} finally {await db.close()}},60000);

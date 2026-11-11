@@ -126,6 +126,36 @@ it("keeps immutable journals and idempotency while avoiding one full workspace r
         )
       ).rows[0].result;
     await commit(0, "benchmark-initialize-01", data, true);
+    // Local database-only fault: fail after canonical business records have been
+    // inserted, immediately before their journal can be inserted. No runtime
+    // switch or remotely callable fault-injection endpoint is added.
+    await db.exec(`create function public.test_reject_settlement_journal() returns trigger
+      language plpgsql as $$begin
+        if new.source_type in ('receipt','supplier_payment') then
+          raise exception 'injected journal insertion failure';
+        end if;
+        return new;
+      end$$;
+      create trigger test_reject_settlement_journal before insert on azzora.journals
+      for each row execute function public.test_reject_settlement_journal();`);
+    for (const type of ["receipt", "supplier_payment"]) {
+      const candidate = structuredClone(data);
+      const id = `fault-${type}`;
+      candidate.records.push({ entity_type: type, id, project_id: null,
+        party_id: null, department_id: null, payload: {}, status: "draft" });
+      candidate.journals.push({ ...structuredClone(opening),
+        id: `journal-${id}`, posting_key: `posting-${id}`,
+        source_type: type, source_id: id });
+      await expect(commit(1, `fault-test-${type}-0001`, candidate, false, true)).rejects
+        .toThrow("injected journal insertion failure");
+      const evidence = await db.query<{ records: number; journals: number; version: number }>(
+        `select (select count(*)::int from azzora.records where id=$1) records,
+          (select count(*)::int from azzora.journals where source_id=$1) journals,
+          (select version::int from azzora.companies where id=$2) version`, [id, company]);
+      expect(evidence.rows[0]).toEqual({ records: 0, journals: 0, version: 1 });
+    }
+    await db.exec(`drop trigger test_reject_settlement_journal on azzora.journals;
+      drop function public.test_reject_settlement_journal();`);
     // Test-only counter wraps the original projection without changing its output.
     await db.exec(`alter function azzora.staging_canonical_data(uuid) rename to staging_canonical_data_original;
       create sequence public.projection_counter;

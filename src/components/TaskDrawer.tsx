@@ -7,6 +7,7 @@ import { today, uid } from "../domain/logic";
 import { Modal, Field, Empty, personName } from "./ui";
 import { Attachments } from "./uploads";
 import { WorkflowError } from "../workforce/ui";
+import { onOrAfter } from "../planning/calendar";
 import {
   draftScheduleProposal,
   draftTaskCreation,
@@ -28,7 +29,18 @@ export function TaskDrawer({
 }) {
   const { store, run, pending } = useStoreCommand(),
     { db } = store;
-  const [draft, setDraft] = useState(structuredClone(task));
+  const [draft, setDraft] = useState(() => {
+    const initial = structuredClone(task);
+    if (!db.tasks.some((item) => item.id === task.id)) {
+      const calendar = getProjectPlanning(db, task.projectId).calendar;
+      initial.start = onOrAfter(calendar, initial.start);
+      initial.due = onOrAfter(
+        calendar,
+        initial.due < initial.start ? initial.start : initial.due,
+      );
+    }
+    return initial;
+  });
   const [comment, setComment] = useState("");
   const [scheduleReason, setScheduleReason] = useState("");
   const [progressNote, setProgressNote] = useState("");

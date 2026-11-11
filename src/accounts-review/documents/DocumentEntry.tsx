@@ -16,6 +16,7 @@ import {
 } from "./model";
 import { draftFieldsSchema, fieldsSchema } from "./model";
 import { UnitAutocomplete } from "./UnitAutocomplete";
+import { reviewFieldsEqual } from "./field-comparison";
 import { reviewFieldLabel, type ReviewFieldIssue } from "./review-errors";
 import { blankManualReview, inspectFields, scopeFor } from "./review";
 import "./entry.css";
@@ -101,9 +102,7 @@ export function DocumentEntry({
     if (manualDoc?.id === selected) supplierInput.current?.focus();
   }, [manualDoc, selected]);
   const converted = Boolean(doc?.convertedBillId || doc?.convertedExpenseId);
-  const pending = Boolean(
-    doc && JSON.stringify(doc.fields) !== JSON.stringify(fields),
-  );
+  const pending = Boolean(doc && !reviewFieldsEqual(doc.fields, fields));
   useEffect(() => {
     onPendingChange(pending);
     return () => onPendingChange(false);

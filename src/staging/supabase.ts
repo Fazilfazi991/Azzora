@@ -79,7 +79,18 @@ function createScopedRpc(
         redirect: "error",
         signal: AbortSignal.timeout(25_000),
       });
-    } catch {
+    } catch (error) {
+      if (!production)
+        console.warn(
+          JSON.stringify({
+            event: "staging_rpc_transport_failure",
+            failure:
+              error instanceof Error &&
+              (error.name === "TimeoutError" || error.name === "AbortError")
+                ? "timeout_or_abort"
+                : "network_failure",
+          }),
+        );
       throw new StagingServiceError(503, "staging_service_unavailable");
     }
     if (!response.ok) {
@@ -101,6 +112,30 @@ function createScopedRpc(
         );
       if (["PT400", "23514", "23503", "22023"].includes(body?.code || ""))
         throw new StagingServiceError(400, "staging_validation_failed");
+      if (!production) {
+        const allowedStatuses = [500, 502, 503, 504];
+        const allowedCodes = [
+          "57014",
+          "55P03",
+          "40P01",
+          "53300",
+          "PGRST000",
+          "PGRST001",
+          "PGRST002",
+          "PGRST003",
+        ];
+        console.warn(
+          JSON.stringify({
+            event: "staging_rpc_upstream_failure",
+            status: allowedStatuses.includes(response.status)
+              ? response.status
+              : "other",
+            code: allowedCodes.includes(body?.code || "")
+              ? body!.code
+              : "other",
+          }),
+        );
+      }
       throw new StagingServiceError(503, "staging_service_unavailable");
     }
     if (response.status === 204) return undefined as T;

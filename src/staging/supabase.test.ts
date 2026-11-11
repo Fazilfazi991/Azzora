@@ -1,5 +1,9 @@
-import { expect, it } from "vitest";
-import { createStagingRpc, stagingConfig } from "./supabase";
+import { expect, it, vi } from "vitest";
+import {
+  createProductionRpc,
+  createStagingRpc,
+  stagingConfig,
+} from "./supabase";
 const config = {
   url: "https://hkhomrrvxtcxnxvdlkoh.supabase.co",
   publishableKey: "sb_publishable_fixture",
@@ -36,6 +40,71 @@ it("does not forward financial SQL error details or retry uncertain writes", asy
     "staging_service_unavailable",
   );
   expect(calls).toBe(1);
+});
+it("logs only allowlisted upstream failure metadata without changing staging responses", async () => {
+  const log = vi.spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    let calls = 0;
+    const call = createStagingRpc(config, (async () => {
+      calls++;
+      return Response.json(
+        { code: "57014", message: "private document and credential" },
+        { status: 500 },
+      );
+    }) as typeof fetch);
+    await expect(
+      call("staging_company_commit", { private: "never log" }),
+    ).rejects.toThrow("staging_service_unavailable");
+    expect(calls).toBe(1);
+    expect(log).toHaveBeenCalledWith(
+      JSON.stringify({
+        event: "staging_rpc_upstream_failure",
+        status: 500,
+        code: "57014",
+      }),
+    );
+    expect(JSON.stringify(log.mock.calls)).not.toMatch(
+      /private|credential|never log/,
+    );
+    log.mockClear();
+    const unknown = createStagingRpc(config, (async () =>
+      Response.json(
+        { code: "private secret", message: "sensitive" },
+        { status: 418 },
+      )) as typeof fetch);
+    await expect(unknown("staging_company_commit")).rejects.toThrow(
+      "staging_service_unavailable",
+    );
+    expect(log).toHaveBeenCalledWith(
+      JSON.stringify({
+        event: "staging_rpc_upstream_failure",
+        status: "other",
+        code: "other",
+      }),
+    );
+    log.mockClear();
+    const offline = createStagingRpc(config, (async () => {
+      throw Error("private network details");
+    }) as typeof fetch);
+    await expect(offline("staging_company_commit")).rejects.toThrow(
+      "staging_service_unavailable",
+    );
+    expect(log).toHaveBeenCalledWith(
+      JSON.stringify({
+        event: "staging_rpc_transport_failure",
+        failure: "network_failure",
+      }),
+    );
+    log.mockClear();
+    const prod = createProductionRpc(config, (async () =>
+      Response.json({ code: "57014" }, { status: 500 })) as typeof fetch);
+    await expect(prod("staging_company_commit")).rejects.toThrow(
+      "staging_service_unavailable",
+    );
+    expect(log).not.toHaveBeenCalled();
+  } finally {
+    log.mockRestore();
+  }
 });
 it("keeps conflicts explicit and avoids exposing server credentials in URLs", async () => {
   const call = createStagingRpc(config, (async (url, options) => {

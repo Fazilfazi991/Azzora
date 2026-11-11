@@ -1,0 +1,22 @@
+{
+  "archiveMode": "fictional-staging",
+  "isolated": true,
+  "cloudDatabaseUsed": false,
+  "migrationCount": 10,
+  "records": 8,
+  "journals": 2,
+  "originals": 1,
+  "capturedVersion": 42,
+  "businessSha256": "00f7057911589b4a52749953053e012413e44ea77f43d24cecb89576c589f82e",
+  "restoredSha256": "00f7057911589b4a52749953053e012413e44ea77f43d24cecb89576c589f82e",
+  "trialBalanceBalanced": true,
+  "balanceSheetBalanced": true,
+  "financialReportsMatch": true,
+  "trialDebitFils": "10010000",
+  "trialCreditFils": "10010000",
+  "totalAssetsFils": "10010000",
+  "liabilitiesAndEquityFils": "10010000",
+  "netProfitFils": "10000",
+  "identityUsersRestored": false,
+  "infrastructureBackupVerified": false
+}

@@ -8,7 +8,11 @@ import {
   canonicalBusinessSha256,
 } from "../staging/backup.js";
 import { hydrateCanonical, type CanonicalData } from "../staging/canonical.js";
-import { buildTrialBalance, buildBalanceSheet } from "../accounting/reports.js";
+import {
+  buildTrialBalance,
+  buildBalanceSheet,
+  buildProfitAndLoss,
+} from "../accounting/reports.js";
 import {
   decryptBusinessBackup,
   type EncryptedBusinessBackup,
@@ -272,15 +276,26 @@ export async function rehearseEncryptedBusinessRestore(
     if (before !== after)
       throw Error("Restored logical business hash differs.");
     const accounting = hydrateCanonical(data).finance.accounting,
+      sourceAccounting = hydrateCanonical(backup.data).finance.accounting,
       asOf =
         data.journals
           .map((j) => j.posting_date)
           .sort()
           .at(-1) || "2020-01-01",
       trial = buildTrialBalance(accounting, asOf),
-      balance = buildBalanceSheet(accounting, asOf);
+      balance = buildBalanceSheet(accounting, asOf),
+      sourceTrial = buildTrialBalance(sourceAccounting, asOf),
+      sourceBalance = buildBalanceSheet(sourceAccounting, asOf),
+      profit = buildProfitAndLoss(accounting, "0001-01-01", asOf),
+      sourceProfit = buildProfitAndLoss(sourceAccounting, "0001-01-01", asOf);
     if (!trial.balanced || !balance.balanced)
       throw Error("Restored statements do not reconcile.");
+    if (
+      JSON.stringify(trial) !== JSON.stringify(sourceTrial) ||
+      JSON.stringify(balance) !== JSON.stringify(sourceBalance) ||
+      JSON.stringify(profit) !== JSON.stringify(sourceProfit)
+    )
+      throw Error("Restored financial reports differ from the source archive.");
     return {
       archiveMode: mode,
       isolated: true,
@@ -294,6 +309,12 @@ export async function rehearseEncryptedBusinessRestore(
       restoredSha256: after,
       trialBalanceBalanced: trial.balanced,
       balanceSheetBalanced: balance.balanced,
+      financialReportsMatch: true,
+      trialDebitFils: trial.totalDebitFils,
+      trialCreditFils: trial.totalCreditFils,
+      totalAssetsFils: balance.assets.totalFils,
+      liabilitiesAndEquityFils: balance.liabilitiesAndEquityFils,
+      netProfitFils: profit.netProfitFils,
       identityUsersRestored: false,
       infrastructureBackupVerified: false,
     };

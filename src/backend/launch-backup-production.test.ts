@@ -123,6 +123,9 @@ it("production-format capture restores exactly through the seedless reviewed pro
   expect(report.businessSha256).toBe(report.restoredSha256);
   expect(report.originals).toBe(1);
   expect(report.journals).toBe(0);
+  expect(report.financialReportsMatch).toBe(true);
+  expect(report.trialDebitFils).toBe("0");
+  expect(report.trialCreditFils).toBe("0");
   expect(report.cloudDatabaseUsed).toBe(false);
   await mkdir("tmp", { recursive: true });
   await writeFile(

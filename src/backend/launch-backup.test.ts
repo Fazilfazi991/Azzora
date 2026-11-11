@@ -187,6 +187,9 @@ it("decrypts, verifies and restores a real synthetic business export into isolat
   expect(report.businessSha256).toBe(report.restoredSha256);
   expect(report.trialBalanceBalanced).toBe(true);
   expect(report.balanceSheetBalanced).toBe(true);
+  expect(report.financialReportsMatch).toBe(true);
+  expect(report.trialDebitFils).toBe(report.trialCreditFils);
+  expect(report.totalAssetsFils).toBe(report.liabilitiesAndEquityFils);
   expect(report.identityUsersRestored).toBe(false);
   await mkdir("tmp", { recursive: true });
   await writeFile(

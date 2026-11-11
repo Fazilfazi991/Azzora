@@ -88,7 +88,12 @@ function fixture() {
     people,
     accounts: createReviewState().accounting.accounts,
     periods: [
-      { id: "test-open", start: day, end: "2026-12-31", status: "Open" },
+      {
+        id: "test-open",
+        start: "2026-01-01",
+        end: "2026-12-31",
+        status: "Open",
+      },
     ],
   });
 }
@@ -411,7 +416,9 @@ it("runs zero-tax item invoices, allocations, purchases, payments, approved proj
     ],
   }).state;
   const o = options(s);
+  let transactionClock = Date.parse(now);
   const run = (action: unknown, user = actor("accountant")) => {
+    o.context.now = new Date((transactionClock += 1000)).toISOString();
     s = applySharedCommand(
       s,
       { kind: "accounts.action", payload: { action } },
@@ -584,6 +591,7 @@ it("runs zero-tax item invoices, allocations, purchases, payments, approved proj
     },
   };
   limit.context = { ...o.context, approvals: approvals(limit.policy) };
+  limit.context.now = new Date((transactionClock += 1000)).toISOString();
   expect(() =>
     applySharedCommand(
       s,
@@ -617,6 +625,6 @@ it("runs zero-tax item invoices, allocations, purchases, payments, approved proj
       issue: true,
       invoiceType: "Normal Invoice",
     }),
-  ).toThrow();
+  ).toThrow(/Historical/);
   expect(s).toEqual(before);
 });

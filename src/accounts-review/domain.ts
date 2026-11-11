@@ -196,22 +196,59 @@ const document = (
       .reduce((sum, value) => sum + BigInt(value.deltaFils), 0n),
 });
 const stamp = (date: string) => `${date}T12:00:00.000Z`;
+/** Server/transaction recording time is separate from a user-selected posting date. Never populate this from an action payload. */
+export interface ReviewRecordingContext {
+  mode: "production";
+  recordedAt: string;
+}
+export class ReviewRecordingError extends Error {
+  readonly status = 409;
+  constructor(
+    public readonly code: "recording_context_invalid" | "recording_clock_stale",
+    message: string,
+  ) {
+    super(message);
+  }
+}
+function requireRecordingContext(context: ReviewRecordingContext): void {
+  if (
+    context.mode !== "production" ||
+    !/^\d{4}-\d{2}-\d{2}T/.test(context.recordedAt) ||
+    !Number.isFinite(Date.parse(context.recordedAt)) ||
+    new Date(context.recordedAt).toISOString() !== context.recordedAt
+  )
+    throw new ReviewRecordingError(
+      "recording_context_invalid",
+      "A trusted canonical UTC production recording timestamp is required.",
+    );
+}
 function journal(
   state: ReviewState,
   id: string,
   date: string,
   memo: string,
   lines: JournalLine[],
+  recording?: ReviewRecordingContext,
 ): void {
   // Preserve append order for new same-day postings. Identical seed timestamps
   // otherwise let random IDs place spending before its funding in the ledger.
   // Existing journals are never rewritten.
   const priorTimes = state.accounting.journals
-    .filter((entry) => entry.date === date)
+    .filter((entry) => Boolean(recording) || entry.date === date)
     .map((entry) => Date.parse(entry.recordedAt));
-  const recordedAt = new Date(
-    Math.max(Date.parse(stamp(date)), ...priorTimes.map((time) => time + 1)),
-  ).toISOString();
+  if (recording) {
+    requireRecordingContext(recording);
+    if (priorTimes.some((t) => t >= Date.parse(recording.recordedAt)))
+      throw new ReviewRecordingError(
+        "recording_clock_stale",
+        "The trusted recording clock must follow existing journal recording times. Refresh the transaction context and retry; no timestamp was invented.",
+      );
+  }
+  const recordedAt =
+    recording?.recordedAt ||
+    new Date(
+      Math.max(Date.parse(stamp(date)), ...priorTimes.map((time) => time + 1)),
+    ).toISOString();
   state.accounting = postJournal(state.accounting, {
     id: `J-${id}`,
     postingKey: `review:${id}`,
@@ -541,7 +578,16 @@ export function attachment(
 export function applyReviewAction(
   previous: ReviewState,
   action: ReviewAction,
+  recording?: ReviewRecordingContext,
 ): ReviewState {
+  if (recording) requireRecordingContext(recording);
+  const recordJournal = (
+    state: ReviewState,
+    id: string,
+    date: string,
+    memo: string,
+    lines: JournalLine[],
+  ) => journal(state, id, date, memo, lines, recording);
   if (action.kind === "create-cash-account")
     return createCashAccount(previous, action);
   if (action.kind === "document-manual")
@@ -649,24 +695,28 @@ export function applyReviewAction(
       throw Error(
         "The selected ledger does not match the approved expense category.",
       );
-    const next = applyReviewAction(previous, {
-      kind: "expense",
-      id: action.id,
-      payee: f.supplier,
-      date: f.date,
-      description: (
-        f.items
-          .map((item) => item.description)
-          .filter(Boolean)
-          .join(", ") || f.reference
-      ).slice(0, 140),
-      amount: f.total,
-      account: action.account,
-      ledgerId: ledger.id,
-      scope: f.kind === "project-expense" ? "project" : "company",
-      projectId: f.projectId || undefined,
-      departmentId: departmentId(f.department),
-    });
+    const next = applyReviewAction(
+      previous,
+      {
+        kind: "expense",
+        id: action.id,
+        payee: f.supplier,
+        date: f.date,
+        description: (
+          f.items
+            .map((item) => item.description)
+            .filter(Boolean)
+            .join(", ") || f.reference
+        ).slice(0, 140),
+        amount: f.total,
+        account: action.account,
+        ledgerId: ledger.id,
+        scope: f.kind === "project-expense" ? "project" : "company",
+        projectId: f.projectId || undefined,
+        departmentId: departmentId(f.department),
+      },
+      recording,
+    );
     const expense = next.expenses.find((item) => item.id === action.id)!;
     expense.attachmentId = review.attachmentId;
     expense.sourceReviewId = review.id;
@@ -762,37 +812,41 @@ export function applyReviewAction(
     );
     if (!category || !["cost", "operating"].includes(category.expenseAccountId))
       throw Error("Choose a supported approved demo expense mapping.");
-    const bill = applyReviewAction(previous, {
-      kind: "bill",
-      id: action.id,
-      party: f.supplier,
-      date: f.date,
-      due: f.dueDate,
-      description: (
-        f.items
-          .map((item) => item.description)
-          .filter(Boolean)
-          .join(", ") || f.reference
-      ).slice(0, 140),
-      amount: f.total,
-      category:
-        category.expenseAccountId === "cost"
-          ? "Cost of Sales"
-          : "Operating Expense",
-      poReference: f.purchaseOrderReference,
-      invoiceReference: f.reference,
-      sourceReviewId: review.id,
-      projectId: f.projectId || undefined,
-      ledgerId: f.ledgerId || undefined,
-      departmentId: departmentId(f.department),
-      items: f.items.map((item) => ({
-        description: item.description,
-        quantity: item.quantity,
-        unit: item.unit,
-        rate: item.unitRate,
-        productId: item.productId || undefined,
-      })),
-    });
+    const bill = applyReviewAction(
+      previous,
+      {
+        kind: "bill",
+        id: action.id,
+        party: f.supplier,
+        date: f.date,
+        due: f.dueDate,
+        description: (
+          f.items
+            .map((item) => item.description)
+            .filter(Boolean)
+            .join(", ") || f.reference
+        ).slice(0, 140),
+        amount: f.total,
+        category:
+          category.expenseAccountId === "cost"
+            ? "Cost of Sales"
+            : "Operating Expense",
+        poReference: f.purchaseOrderReference,
+        invoiceReference: f.reference,
+        sourceReviewId: review.id,
+        projectId: f.projectId || undefined,
+        ledgerId: f.ledgerId || undefined,
+        departmentId: departmentId(f.department),
+        items: f.items.map((item) => ({
+          description: item.description,
+          quantity: item.quantity,
+          unit: item.unit,
+          rate: item.unitRate,
+          productId: item.productId || undefined,
+        })),
+      },
+      recording,
+    );
     const created = bill.bills.find((item) => item.id === action.id)!;
     created.attachmentId = review.attachmentId;
     const converted = bill.documentEntries!.reviews.find(
@@ -832,7 +886,7 @@ export function applyReviewAction(
         "The source account has insufficient posted funds on this date.",
       );
     const reference = required(action.reference, "Transfer reference", 140);
-    journal(next, id, date, `Internal transfer ${reference}`, [
+    recordJournal(next, id, date, `Internal transfer ${reference}`, [
       line(to.id, amount, 0n),
       line(from.id, 0n, amount),
     ]);
@@ -900,7 +954,7 @@ export function applyReviewAction(
     if (existing) next.invoices[next.invoices.indexOf(existing)] = invoice;
     else next.invoices.push(invoice);
     if (action.issue && invoice.invoiceType !== "Proforma")
-      journal(next, id, date, `Invoice ${id}`, [
+      recordJournal(next, id, date, `Invoice ${id}`, [
         line("receivables", amount, 0n),
         line("revenue", 0n, amount, invoice.projectId),
       ]);
@@ -911,7 +965,7 @@ export function applyReviewAction(
     invoice.status = "Issued";
     invoice.revision = (invoice.revision || 0) + 1;
     if (invoice.invoiceType !== "Proforma")
-      journal(next, id, invoice.date, `Invoice ${id}`, [
+      recordJournal(next, id, invoice.date, `Invoice ${id}`, [
         line("receivables", BigInt(invoice.amountFils), 0n),
         line("revenue", 0n, BigInt(invoice.amountFils), invoice.projectId),
       ]);
@@ -1007,7 +1061,7 @@ export function applyReviewAction(
     if (existing) next.bills[next.bills.indexOf(existing)] = item;
     else next.bills.push(item);
     if (item.status === "Draft") return next;
-    journal(next, id, date, `Purchase bill ${id}`, [
+    recordJournal(next, id, date, `Purchase bill ${id}`, [
       line(
         item.expenseAccountId ||
           (action.category === "Cost of Sales" ? "cost" : "operating"),
@@ -1024,7 +1078,7 @@ export function applyReviewAction(
       throw Error("Only an unposted bill draft can be issued.");
     bill.status = "Issued";
     bill.revision = (bill.revision || 0) + 1;
-    journal(next, id, bill.date, "Purchase bill " + id, [
+    recordJournal(next, id, bill.date, "Purchase bill " + id, [
       line(
         bill.expenseAccountId ||
           (bill.category === "Cost of Sales" ? "cost" : "operating"),
@@ -1085,7 +1139,7 @@ export function applyReviewAction(
             : required(action.reference, "Payment reference", 140),
       },
     ];
-    journal(
+    recordJournal(
       next,
       id,
       date,
@@ -1146,7 +1200,7 @@ export function applyReviewAction(
       departmentId: department,
       attachmentId: attachment(next, `${id}-file`, action.attachment),
     });
-    journal(next, id, date, `Paid expense ${id}`, [
+    recordJournal(next, id, date, `Paid expense ${id}`, [
       line(
         ledger.accountId,
         amount,

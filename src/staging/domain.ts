@@ -76,6 +76,7 @@ import {
   createReviewState,
   type ReviewAction,
   type ReviewDocument,
+  type ReviewRecordingContext,
   type ReviewState,
 } from "../accounts-review/domain.js";
 import { departmentId, departments } from "../accounts-review/banking.js";
@@ -187,6 +188,26 @@ function finishCommand(
             field: "journals",
             code: "history-overwrite",
             message: "Production journal history cannot be overwritten.",
+          },
+        ]);
+      if (
+        !options ||
+        after
+          .slice(before.length)
+          .some(
+            (j) =>
+              j.recordedAt !== options.context.now ||
+              before.some(
+                (old) => Date.parse(old.recordedAt) >= Date.parse(j.recordedAt),
+              ),
+          )
+      )
+        throw new ProductionPolicyError([
+          {
+            field: "recordedAt",
+            code: "recording-context-mismatch",
+            message:
+              "New journal records must use a fresh trusted transaction recording timestamp; no client/posting-date timestamp is accepted.",
           },
         ]);
       const amount = after
@@ -503,7 +524,11 @@ export function sharedCommandScope(
   };
 }
 
-function syncManagerInvoice(state: SharedCompanyState, id: string) {
+function syncManagerInvoice(
+  state: SharedCompanyState,
+  id: string,
+  recording?: ReviewRecordingContext,
+) {
   const invoice = state.manager.invoices.find((item) => item.id === id)!;
   const total = invoiceTotals(invoice);
   if (invoice.status === "Issued" && total.vat !== 0n)
@@ -528,7 +553,7 @@ function syncManagerInvoice(state: SharedCompanyState, id: string) {
     invoiceType: "Normal Invoice",
     ...(old ? { revision: old.revision || 0 } : {}),
   };
-  state.finance = applyReviewAction(state.finance, fields);
+  state.finance = applyReviewAction(state.finance, fields, recording);
   const projected = state.finance.invoices.find((item) => item.id === id)!;
   projected.invoiceReference = invoice.number;
   const allocations = invoiceCreditLines(invoice);
@@ -684,6 +709,7 @@ function applyAccounts(
   state: SharedCompanyState,
   input: ReviewAction,
   actor: SharedActor,
+  recording?: ReviewRecordingContext,
 ) {
   refreshCatalog(state);
   let action = structuredClone(input);
@@ -782,7 +808,7 @@ function applyAccounts(
           "Save the review draft and obtain an independently approved expense submission before production posting.",
       },
     ]);
-  state.finance = applyReviewAction(state.finance, action);
+  state.finance = applyReviewAction(state.finance, action, recording);
   syncFinanceBillCosts(state);
   if (
     ["invoice", "update-invoice-draft", "issue-invoice"].includes(action.kind)
@@ -856,6 +882,10 @@ export function applySharedCommand(
       "The client-review identity cannot access a production company.",
     );
   const scope = sharedCommandScope(previous, command);
+  const recording: ReviewRecordingContext | undefined =
+    previous.mode === "production" && production
+      ? { mode: "production", recordedAt: production.context.now }
+      : undefined;
   requireWorkspace(actor, scope.workspace);
   if (previous.mode === "production" && scope.financial)
     productionGate(previous, actor, scope, production);
@@ -927,10 +957,11 @@ export function applySharedCommand(
   }
   if (isCommercialCommand(command.kind)) {
     const invoices = new Set(next.manager.invoices.map((value) => value.id));
-    applyCommercialCommand(next, command, actor);
+    applyCommercialCommand(next, command, actor, recording);
     if (command.kind === "variation.invoice")
       for (const invoice of next.manager.invoices)
-        if (!invoices.has(invoice.id)) syncManagerInvoice(next, invoice.id);
+        if (!invoices.has(invoice.id))
+          syncManagerInvoice(next, invoice.id, recording);
     refreshCommercialView(next);
     refreshCatalog(next);
     return finishCommand(previous, next, command, actor, production);
@@ -1136,7 +1167,7 @@ export function applySharedCommand(
         typeof p.milestoneId === "string" ? p.milestoneId : "",
       );
       saveInvoice(next.manager, invoice);
-      syncManagerInvoice(next, invoice.id);
+      syncManagerInvoice(next, invoice.id, recording);
       break;
     }
     case "invoice.save": {
@@ -1150,7 +1181,7 @@ export function applySharedCommand(
         );
       delete (invoice as Invoice & { stagingOrigin?: string }).stagingOrigin;
       saveInvoice(next.manager, invoice);
-      syncManagerInvoice(next, invoice.id);
+      syncManagerInvoice(next, invoice.id, recording);
       break;
     }
     case "invoice.issue": {
@@ -1165,7 +1196,7 @@ export function applySharedCommand(
           "Issue this Accountant-origin invoice in the Accountant Portal; VAT policy remains pending.",
         );
       issueInvoice(next.manager, id);
-      syncManagerInvoice(next, id);
+      syncManagerInvoice(next, id, recording);
       break;
     }
     case "payment.record": {
@@ -1201,6 +1232,7 @@ export function applySharedCommand(
           reference: payment.reference,
         },
         actor,
+        recording,
       );
       break;
     }
@@ -1330,21 +1362,25 @@ export function applySharedCommand(
           "VAT-bearing supplier bills remain blocked pending tax policy.",
         );
       refreshCatalog(next);
-      next.finance = applyReviewAction(next.finance, {
-        kind: "bill",
-        id: bill.id,
-        party: bill.supplierSnapshot.name,
-        date: bill.date,
-        due: bill.due,
-        description: `Supplier bill ${bill.reference}`,
-        amount: amountString(BigInt(bill.gross)),
-        category: "Cost of Sales",
-        poReference: next.manager.operations!.orders.find(
-          (item) => item.id === bill.poId,
-        )!.number,
-        invoiceReference: bill.reference,
-        projectId: bill.projectId,
-      });
+      next.finance = applyReviewAction(
+        next.finance,
+        {
+          kind: "bill",
+          id: bill.id,
+          party: bill.supplierSnapshot.name,
+          date: bill.date,
+          due: bill.due,
+          description: `Supplier bill ${bill.reference}`,
+          amount: amountString(BigInt(bill.gross)),
+          category: "Cost of Sales",
+          poReference: next.manager.operations!.orders.find(
+            (item) => item.id === bill.poId,
+          )!.number,
+          invoiceReference: bill.reference,
+          projectId: bill.projectId,
+        },
+        recording,
+      );
       break;
     }
     case "procurement.payment": {
@@ -1376,6 +1412,7 @@ export function applySharedCommand(
           reference: payment.reference,
         },
         actor,
+        recording,
       );
       break;
     }
@@ -1484,7 +1521,7 @@ export function applySharedCommand(
         ].includes(action.kind)
       )
         throw Error("Unsupported finance command.");
-      applyAccounts(next, action, actor);
+      applyAccounts(next, action, actor, recording);
       break;
     }
     default:

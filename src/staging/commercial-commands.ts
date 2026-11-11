@@ -26,6 +26,7 @@ import {
   documentOutstanding,
 } from "../finance/settlement.js";
 import { reviewSnapshot } from "../accounts-review/domain.js";
+import type { ReviewRecordingContext } from "../accounts-review/domain.js";
 import { today } from "../domain/logic.js";
 
 export class StagingPolicyError extends Error {
@@ -174,7 +175,12 @@ export function refreshCommercialView(state: SharedCompanyState) {
       })),
   ];
 }
-function reverseSource(state: SharedCompanyState, id: string, reason: string) {
+function reverseSource(
+  state: SharedCompanyState,
+  id: string,
+  reason: string,
+  recording?: ReviewRecordingContext,
+) {
   const original = state.finance.accounting.journals.find(
     (v) => v.source.id === id && !v.reversalOf,
   );
@@ -186,8 +192,8 @@ function reverseSource(state: SharedCompanyState, id: string, reason: string) {
     id: `REV-${original.id}`,
     postingKey: `staging:reverse:${original.postingKey}`,
     originalId: original.id,
-    date: today(),
-    recordedAt: new Date().toISOString(),
+    date: recording?.recordedAt.slice(0, 10) || today(),
+    recordedAt: recording?.recordedAt || new Date().toISOString(),
     reason,
   }).state;
 }
@@ -195,6 +201,7 @@ export function applyCommercialCommand(
   state: SharedCompanyState,
   command: SharedCommand,
   actor: SharedActor,
+  recording?: ReviewRecordingContext,
 ): void {
   const p = obj(command.payload),
     db = state.manager,
@@ -264,7 +271,7 @@ export function applyCommercialCommand(
         postingKey: `staging:credit:${id}`,
         source: { kind: "Credit Note", id, action: "Issue" },
         date: credit.date,
-        recordedAt: new Date().toISOString(),
+        recordedAt: recording?.recordedAt || new Date().toISOString(),
         memo: `Fictional credit ${credit.number}`,
         currency: "AED",
         lines: [
@@ -356,7 +363,7 @@ export function applyCommercialCommand(
         reason = text(p.reason),
         issued = db.invoices.find((v) => v.id === id)?.status === "Issued";
       cancelInvoice(db, id, reason);
-      if (issued) reverseSource(state, id, reason);
+      if (issued) reverseSource(state, id, reason, recording);
       break;
     }
     case "payment.reverse": {
@@ -370,7 +377,7 @@ export function applyCommercialCommand(
         date: today(),
         reason,
       });
-      reverseSource(state, id, reason);
+      reverseSource(state, id, reason, recording);
       break;
     }
     case "procurement.cancel-order":
@@ -383,7 +390,7 @@ export function applyCommercialCommand(
       const id = text(p.id),
         reason = text(p.reason);
       operations.cancelBill(db, id, reason, personId);
-      reverseSource(state, id, reason);
+      reverseSource(state, id, reason, recording);
       break;
     }
     case "procurement.reverse-payment": {
@@ -400,7 +407,7 @@ export function applyCommercialCommand(
           reason,
         },
       );
-      reverseSource(state, id, reason);
+      reverseSource(state, id, reason, recording);
       break;
     }
     case "approval.reassign":

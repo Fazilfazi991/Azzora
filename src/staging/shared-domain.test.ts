@@ -17,6 +17,9 @@ import {
   type SharedCompanyState,
 } from "./domain";
 import { hydrateCanonical, serializeCanonical } from "./canonical";
+import { createStagingHandler } from "./server";
+import type { createStagingAuth, StagingActor } from "./auth";
+import type { StagingRpc } from "./supabase";
 
 const people: Person[] = [
   ["owner", "Owner", "Owner"],
@@ -410,6 +413,77 @@ describe("shared fictional company domain and canonical projections", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].payload.manager).toBeTruthy();
     expect(rows[0].payload.finance).toBeTruthy();
+  });
+  it("returns an actionable safe error for a duplicate receipt reference without committing any financial state", async () => {
+    const f = sale();
+    f.run(
+      "accounts.action",
+      {
+        action: {
+          kind: "receipt",
+          id: "first-receipt",
+          documentId: f.invoiceId,
+          date: "2026-11-04",
+          amount: "100",
+          account: "bank",
+          reference: "FICT-REF-1",
+        },
+      },
+      actor("accountant"),
+    );
+    const prior = serializeCanonical(f.state());
+    const identity: StagingActor = {
+      userId: "accountant",
+      companyId: "fictional",
+      email: "accountant@staging.test",
+      role: "accountant",
+      workspace: "accountant",
+      sessionHash: "fictional-session",
+      assurance: "aal2",
+      providerSessionId: "fictional-provider",
+      projectIds: ["p1"],
+      capabilities: ["finance.read", "finance.draft", "finance.simulate"],
+    };
+    const auth = {
+      requireActor: vi.fn(async () => identity),
+    } as unknown as ReturnType<typeof createStagingAuth>;
+    const rpc = vi.fn(async (name: string) => {
+      if (name === "staging_company_read") return { version: 7, data: prior };
+      throw Error("unexpected canonical mutation");
+    });
+    const handle = createStagingHandler({ auth, rpc: rpc as StagingRpc });
+    const response = await handle(
+      new Request("https://staging.test/api/staging/accounts/action", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Azzora-Expected-Version": "7",
+          "X-Azzora-Idempotency-Key": "duplicate-ref-test-0001",
+        },
+        body: JSON.stringify({
+          kind: "receipt",
+          id: "different-receipt",
+          documentId: f.invoiceId,
+          date: "2026-11-04",
+          amount: "100",
+          account: "bank",
+          reference: "  fict-ref-1  ",
+        }),
+      }),
+    );
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      code: "duplicate_payment_reference",
+      error:
+        "Duplicate payment reference for this account. Open the existing receipt or enter a different reference.",
+    });
+    expect(JSON.stringify(body)).not.toContain("fict-ref-1");
+    expect(JSON.stringify(body)).not.toContain("different-receipt");
+    expect(
+      rpc.mock.calls.some(([name]) => name === "staging_company_commit"),
+    ).toBe(false);
+    expect(serializeCanonical(f.state())).toEqual(prior);
   });
   it("rejects duplicate invoice issue and over-allocation without altering the prior shared state", () => {
     const f = sale();

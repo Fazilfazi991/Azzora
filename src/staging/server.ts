@@ -1,4 +1,5 @@
 import { ReviewDraftError } from "../accounts-review/documents/review-errors.js";
+import { DuplicateReceiptError } from "../commercial/receipt-errors.js";
 /** Server-only fictional staging BFF. Real posting is disabled; AI requires explicit admission and the shared evaluation cap. */
 import { createHash, randomUUID } from "node:crypto";
 import { prepareManagerFiles, readManagerFile } from "./manager-files.js";
@@ -752,7 +753,8 @@ export function createStagingHandler(
             error instanceof StagingServiceError ||
             error instanceof StagingPolicyError ||
             error instanceof ProductionPolicyError ||
-            error instanceof ReviewRecordingError
+            error instanceof ReviewRecordingError ||
+            error instanceof DuplicateReceiptError
               ? error.code
               : "request_rejected",
           elapsedMs: Math.round(performance.now() - started),
@@ -799,6 +801,12 @@ export function createStagingHandler(
           requestId,
         );
       if (error instanceof ReviewRecordingError)
+        return json(
+          error.status,
+          { error: error.message, code: error.code, requestId },
+          requestId,
+        );
+      if (error instanceof DuplicateReceiptError)
         return json(
           error.status,
           { error: error.message, code: error.code, requestId },

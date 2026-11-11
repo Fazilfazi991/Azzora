@@ -22,6 +22,7 @@ import {
 import { customerSnapshot } from "./customer-domain.js";
 import { initializeCommercial } from "./migration.js";
 import { getOperations } from "../operations/migration.js";
+import { DuplicateReceiptError } from "./receipt-errors.js";
 
 export function validDate(value: string) {
   if (
@@ -494,17 +495,19 @@ export function postPayment(db: Database, payment: Payment) {
   const normalized = (s: string) => s.trim().toLowerCase();
   if (
     db.payments.some(
-      (p) =>
-        p.id === payment.id ||
-        p.postingKey === payment.postingKey ||
-        (!p.reversedAt &&
-          normalized(p.reference) === normalized(payment.reference) &&
-          normalized(p.bank) === normalized(payment.bank)),
+      (p) => p.id === payment.id || p.postingKey === payment.postingKey,
     )
   )
-    throw Error(
-      "Duplicate receipt posting/reference. Open the existing receipt or use a distinct bank reference.",
-    );
+    throw new DuplicateReceiptError("identity");
+  if (
+    db.payments.some(
+      (p) =>
+        !p.reversedAt &&
+        normalized(p.reference) === normalized(payment.reference) &&
+        normalized(p.bank) === normalized(payment.bank),
+    )
+  )
+    throw new DuplicateReceiptError("reference");
   const value = cents(payment.amount);
   if (value <= 0n || value > balanceDue(db, i))
     throw Error(

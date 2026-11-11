@@ -131,17 +131,21 @@ it("keeps immutable journals and idempotency while avoiding one full workspace r
       create sequence public.projection_counter;
       create function azzora.staging_canonical_data(p_company uuid) returns jsonb language plpgsql volatile set search_path='' as $$begin perform nextval('public.projection_counter'); return azzora.staging_canonical_data_original(p_company); end$$;`);
     const current = (
-      await db.query<Record<string, unknown>>("select azzora.staging_canonical_data_original($1) data", [
-        company,
-      ])
+      await db.query<Record<string, unknown>>(
+        "select azzora.staging_canonical_data_original($1) data",
+        [company],
+      )
     ).rows[0].data as typeof data;
     await db.exec("select setval('public.projection_counter',1,false)");
     const before = performance.now();
     await commit(1, "benchmark-before-00001", current);
     const beforeMs = performance.now() - before;
     const baselineCalls = Number(
-      (await db.query<Record<string, unknown>>("select last_value from public.projection_counter"))
-        .rows[0].last_value,
+      (
+        await db.query<Record<string, unknown>>(
+          "select last_value from public.projection_counter",
+        )
+      ).rows[0].last_value,
     );
     const duplicateNew = structuredClone(current);
     duplicateNew.records.push({
@@ -210,6 +214,11 @@ it("keeps immutable journals and idempotency while avoiding one full workspace r
         "select prosecdef,proconfig,proacl::text,proowner from pg_proc where oid='public.staging_company_commit(text,bigint,text,text,text,jsonb,jsonb,boolean)'::regprocedure",
       )
     ).rows[0];
+    const definitionBefore = (
+      await db.query<Record<string, unknown>>(
+        "select pg_get_functiondef('public.staging_company_commit(text,bigint,text,text,text,jsonb,jsonb,boolean)'::regprocedure) definition",
+      )
+    ).rows[0].definition;
     await db.exec(
       await readFile(
         new URL(`../../supabase/migrations/${optimization}`, import.meta.url),
@@ -227,8 +236,11 @@ it("keeps immutable journals and idempotency while avoiding one full workspace r
     const result = await commit(2, "benchmark-after-000001", current);
     const afterMs = performance.now() - after;
     const optimizedCalls = Number(
-      (await db.query<Record<string, unknown>>("select last_value from public.projection_counter"))
-        .rows[0].last_value,
+      (
+        await db.query<Record<string, unknown>>(
+          "select last_value from public.projection_counter",
+        )
+      ).rows[0].last_value,
     );
     expect(baselineCalls).toBeGreaterThanOrEqual(72);
     expect(optimizedCalls).toBeLessThanOrEqual(2);
@@ -274,9 +286,10 @@ it("keeps immutable journals and idempotency while avoiding one full workspace r
     tampered.journals[0].memo = "tampered";
     // Use the refreshed full canonical snapshot to include the new journal.
     const complete = (
-      await db.query<Record<string, unknown>>("select azzora.staging_canonical_data_original($1) data", [
-        company,
-      ])
+      await db.query<Record<string, unknown>>(
+        "select azzora.staging_canonical_data_original($1) data",
+        [company],
+      )
     ).rows[0].data as typeof data;
     tampered.records = complete.records;
     tampered.journals = structuredClone(complete.journals);
@@ -306,6 +319,41 @@ it("keeps immutable journals and idempotency while avoiding one full workspace r
       ),
     ).rejects.toThrow("Reviewed staging commit markers changed");
     await db.exec("rollback");
+    await db.exec(
+      await readFile(
+        new URL(
+          "../../supabase/rollbacks/rollback_20261111065734.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    );
+    expect(
+      (
+        await db.query<Record<string, unknown>>(
+          "select pg_get_functiondef('public.staging_company_commit(text,bigint,text,text,text,jsonb,jsonb,boolean)'::regprocedure) definition",
+        )
+      ).rows[0].definition,
+    ).toBe(definitionBefore);
+    expect(
+      (
+        await db.query<Record<string, unknown>>(
+          "select prosecdef,proconfig,proacl::text,proowner from pg_proc where oid='public.staging_company_commit(text,bigint,text,text,text,jsonb,jsonb,boolean)'::regprocedure",
+        )
+      ).rows[0],
+    ).toEqual(identityBefore);
+    await expect(
+      db.exec(
+        await readFile(
+          new URL(
+            "../../supabase/rollbacks/rollback_20261111065734.sql",
+            import.meta.url,
+          ),
+          "utf8",
+        ),
+      ),
+    ).rejects.toThrow("Reviewed optimized staging commit markers changed");
+    await db.exec("rollback");
     process.stdout.write(
       JSON.stringify({
         synthetic: true,
@@ -322,4 +370,3 @@ it("keeps immutable journals and idempotency while avoiding one full workspace r
     await db.close();
   }
 }, 180_000);
-

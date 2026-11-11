@@ -45,6 +45,7 @@ export interface CaptureAuthority {
     companyId: string;
     grantId: string;
     requestId: string;
+    credentialHash: string;
     outcome: "success" | "failure";
     now: string;
   }): Promise<boolean>;
@@ -116,6 +117,7 @@ export async function createUnattendedBackupCandidate(
     try {
       await dependencies.authority.finish({
         ...scope,
+        credentialHash,
         outcome: "failure",
         now: dependencies.now().toISOString(),
       });
@@ -128,6 +130,7 @@ export async function createUnattendedBackupCandidate(
   try {
     released = await dependencies.authority.finish({
       ...scope,
+      credentialHash,
       outcome: "success",
       now: dependencies.now().toISOString(),
     });

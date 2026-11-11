@@ -1,0 +1,23 @@
+{
+  "checkedAt": "2026-11-11T03:56:30.316Z",
+  "source": "npm security advisories bulk API",
+  "lockfileVersion": 3,
+  "matches": [
+    {
+      "name": "minimatch",
+      "id": 1244623,
+      "severity": "moderate",
+      "title": "minimatch has potential denial of service via globparts amplification",
+      "url": "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "range": ">=7.0.0 <11.0.1",
+      "affected": [
+        {
+          "version": "10.2.6",
+          "dev": true,
+          "path": "node_modules/@typescript-eslint/typescript-estree/node_modules/minimatch"
+        }
+      ]
+    }
+  ],
+  "productionCriticalHigh": 0
+}

@@ -1,0 +1,15 @@
+{
+  "isolated": true,
+  "cloudDatabaseUsed": false,
+  "migrationCount": 10,
+  "records": 8,
+  "journals": 2,
+  "originals": 1,
+  "capturedVersion": 42,
+  "businessSha256": "e8944529f058b4c0626206a24e50afb0038fc01a8b360034ae97e170051bc6e4",
+  "restoredSha256": "e8944529f058b4c0626206a24e50afb0038fc01a8b360034ae97e170051bc6e4",
+  "trialBalanceBalanced": true,
+  "balanceSheetBalanced": true,
+  "identityUsersRestored": false,
+  "infrastructureBackupVerified": false
+}

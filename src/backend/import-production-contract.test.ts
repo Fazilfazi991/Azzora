@@ -105,7 +105,7 @@ it("explicit isolated synthetic onboarding returns an authoritative closed produ
     "insert into storage.buckets values('azzora-private','azzora-private',false,2097152,array['application/pdf','image/png','image/jpeg']);",
   );
   await db.query(
-    `insert into azzora.production_environment(company_id,project_ref,region,vercel_project_id,configuration_approval_id,allowed_origins,storage_bucket,approved_by,approval_evidence_sha256,approved_at) values($1,'abcdefghijklmnopqrst','ap-southeast-1','prj_QAonly','QA-ONLY-NOT-REAL-APPROVAL',array['https://candidate-qa.invalid'],'azzora-private',$2,$3,now())`,
+    `insert into azzora.production_environment(company_id,project_ref,region,vercel_project_id,configuration_approval_id,allowed_origins,storage_bucket,approved_by,approval_evidence_sha256,approved_at) values($1,'zwjiztnsxenluqybxhhz','ap-southeast-1','prj_QAonly','QA-ONLY-NOT-REAL-APPROVAL',array['https://candidate-qa.invalid'],'azzora-private',$2,$3,now())`,
     [company, owner, "d".repeat(64)],
   );
   const value = (await call("azzora_runtime_identity", [company])).rows[0].r;

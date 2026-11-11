@@ -5,6 +5,7 @@ import { buildBalanceSheet, buildTrialBalance } from "../accounting/reports.js";
 import type { StoredStagingAttachment } from "./storage.js";
 
 const format = "azzora-fictional-staging-business-backup" as const;
+const productionFormat = "azzora-production-business-backup" as const;
 const maximumOriginalBytes = 2_000_000;
 const maximumTotalOriginalBytes = 64 * 1024 * 1024;
 const mimeExtensions = {
@@ -40,11 +41,19 @@ export interface StagingBackup {
     manifestSha256: string;
   };
 }
+export interface ProductionBusinessBackup extends Omit<
+  StagingBackup,
+  "format" | "mode"
+> {
+  format: typeof productionFormat;
+  mode: "production";
+}
+export type BusinessBackup = StagingBackup | ProductionBusinessBackup;
 export type ReadBackupOriginal = (
   file: StoredStagingAttachment,
 ) => Promise<Uint8Array | { bytes: Uint8Array }>;
 const invalid = (message: string): never => {
-  throw Error(`Staging backup rejected: ${message}`);
+  throw Error(`Business backup rejected: ${message}`);
 };
 const object = (value: unknown): Record<string, unknown> => {
   if (!value || typeof value !== "object" || Array.isArray(value))
@@ -310,7 +319,10 @@ function canonicalCounts(
     }, 0);
   return counts;
 }
-function validateCanonical(data: CanonicalData) {
+function validateCanonical(
+  data: CanonicalData,
+  mode: "fictional-staging" | "production" = "fictional-staging",
+) {
   if (
     Object.keys(object(data)).some(
       (key) =>
@@ -329,8 +341,8 @@ function validateCanonical(data: CanonicalData) {
     invalid("unexpected canonical section");
   noCredentials(data);
   const state = hydrateCanonical(data);
-  if (state.mode !== "fictional-staging")
-    invalid("fictional-only mode is required");
+  if (state.mode !== mode)
+    invalid("backup mode does not match the canonical company");
   const sources = new Set(
     data.records.map((record) =>
       JSON.stringify([record.entity_type, record.id]),
@@ -362,7 +374,7 @@ function validateCanonical(data: CanonicalData) {
   return state;
 }
 function manifestHash(
-  backup: Omit<StagingBackup, "manifest">,
+  backup: Omit<BusinessBackup, "manifest">,
   canonicalSha256: string,
   counts: BackupCounts,
   originalsSha256: string,
@@ -382,17 +394,24 @@ function manifestHash(
 }
 
 /** Authorization belongs to the BFF: current Owner, AAL2 and access.manage only. */
-export async function createStagingBackup(
+async function createBusinessBackup(
   source: { version: number; data: CanonicalData; companyId?: string },
   readOriginal: ReadBackupOriginal,
-  capturedAt = new Date().toISOString(),
-): Promise<StagingBackup> {
+  capturedAt: string,
+  mode: "fictional-staging" | "production",
+): Promise<BusinessBackup> {
   if (!Number.isSafeInteger(source.version) || source.version < 1)
     invalid("invalid company version");
   if (!Number.isFinite(Date.parse(capturedAt))) invalid("invalid capture time");
   if (source.companyId && !/^[0-9a-f-]{36}$/.test(source.companyId))
     invalid("invalid company scope");
-  validateCanonical(source.data);
+  if (
+    mode === "production" &&
+    (!source.companyId ||
+      source.companyId === "11111111-1111-4111-8111-111111111111")
+  )
+    invalid("explicit separate production company scope is required");
+  validateCanonical(source.data, mode);
   const refs = privateReferences(source.data, source.companyId),
     originals: StagingBackup["originals"] = [];
   if (
@@ -423,12 +442,14 @@ export async function createStagingBackup(
       base64: Buffer.from(bytes).toString("base64"),
     });
   }
-  const backup: Omit<StagingBackup, "manifest"> = {
-    format,
+  const backup: Omit<BusinessBackup, "manifest"> = {
+    format: mode === "production" ? productionFormat : format,
     schemaVersion: 1,
-    mode: "fictional-staging",
+    mode,
     warning:
-      "FICTIONAL TEST BUSINESS DATA ONLY. Plaintext export; exclude from Git and protect offline. Not a production accounting backup or identity recovery package.",
+      mode === "production"
+        ? "PRIVATE PRODUCTION BUSINESS DATA. Encrypt with the owner-managed backup key; exclude from Git and public storage. Excludes Auth/security infrastructure; not a PITR or offsite-backup service."
+        : "FICTIONAL TEST BUSINESS DATA ONLY. Plaintext export; exclude from Git and protect offline. Not a production accounting backup or identity recovery package.",
     capturedAt,
     ...(source.companyId ? { companyId: source.companyId } : {}),
     capturedCompanyVersion: source.version,
@@ -451,11 +472,14 @@ export async function createStagingBackup(
         originalsSha256,
       ),
     },
-  };
+  } as BusinessBackup;
 }
 
 /** Offline integrity validation; never connects to, resets or restores a cloud database. */
-export function verifyStagingBackup(value: unknown): StagingBackup {
+function verifyBusinessBackup(
+  value: unknown,
+  mode: "fictional-staging" | "production",
+): BusinessBackup {
   const row = object(value);
   if (
     Object.keys(row).some(
@@ -476,11 +500,13 @@ export function verifyStagingBackup(value: unknown): StagingBackup {
   )
     invalid("unexpected export section");
   if (
-    row.format !== format ||
+    row.format !== (mode === "production" ? productionFormat : format) ||
     row.schemaVersion !== 1 ||
-    row.mode !== "fictional-staging" ||
+    row.mode !== mode ||
     typeof row.warning !== "string" ||
-    !row.warning.startsWith("FICTIONAL TEST") ||
+    !row.warning.startsWith(
+      mode === "production" ? "PRIVATE PRODUCTION" : "FICTIONAL TEST",
+    ) ||
     typeof row.capturedAt !== "string" ||
     !Number.isFinite(Date.parse(row.capturedAt)) ||
     !Number.isSafeInteger(row.capturedCompanyVersion) ||
@@ -488,8 +514,15 @@ export function verifyStagingBackup(value: unknown): StagingBackup {
     !Array.isArray(row.originals)
   )
     invalid("unsupported format, scope, version or capture time");
+  if (
+    mode === "production" &&
+    (typeof row.companyId !== "string" ||
+      !/^[0-9a-f-]{36}$/.test(row.companyId) ||
+      row.companyId === "11111111-1111-4111-8111-111111111111")
+  )
+    invalid("explicit separate production company scope is required");
   noCredentials(row);
-  const backup = structuredClone(value) as StagingBackup;
+  const backup = structuredClone(value) as BusinessBackup;
   const refs = privateReferences(backup.data, backup.companyId);
   if (backup.originals.length !== refs.length)
     invalid("missing or duplicate originals");
@@ -535,6 +568,41 @@ export function verifyStagingBackup(value: unknown): StagingBackup {
       manifestHash(backup, canonicalSha256, counts, originalsSha256)
   )
     invalid("integrity manifest differs");
-  validateCanonical(backup.data);
+  validateCanonical(backup.data, mode);
   return backup;
+}
+
+/** Retained staging-only API. Production archives cannot pass this verifier. */
+export async function createStagingBackup(
+  source: { version: number; data: CanonicalData; companyId?: string },
+  readOriginal: ReadBackupOriginal,
+  capturedAt = new Date().toISOString(),
+): Promise<StagingBackup> {
+  return (await createBusinessBackup(
+    source,
+    readOriginal,
+    capturedAt,
+    "fictional-staging",
+  )) as StagingBackup;
+}
+export function verifyStagingBackup(value: unknown): StagingBackup {
+  return verifyBusinessBackup(value, "fictional-staging") as StagingBackup;
+}
+/** Production capture validates explicit production canonical metadata; never relabels staging data. */
+export async function createProductionBusinessBackup(
+  source: { version: number; data: CanonicalData; companyId: string },
+  readOriginal: ReadBackupOriginal,
+  capturedAt = new Date().toISOString(),
+): Promise<ProductionBusinessBackup> {
+  return (await createBusinessBackup(
+    source,
+    readOriginal,
+    capturedAt,
+    "production",
+  )) as ProductionBusinessBackup;
+}
+export function verifyProductionBusinessBackup(
+  value: unknown,
+): ProductionBusinessBackup {
+  return verifyBusinessBackup(value, "production") as ProductionBusinessBackup;
 }

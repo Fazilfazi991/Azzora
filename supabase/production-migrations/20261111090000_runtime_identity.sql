@@ -15,8 +15,8 @@ revoke all on function azzora.assert_journal_balance() from public,anon,authenti
 create table azzora.production_environment (
  singleton boolean primary key default true check(singleton),
  company_id uuid not null unique references azzora.companies(id) check(company_id<>'11111111-1111-4111-8111-111111111111'::uuid),
- project_ref text not null check(project_ref ~ '^[a-z]{20}$' and project_ref<>'hkhomrrvxtcxnxvdlkoh'),
- region text not null check(length(region)>2),
+ project_ref text not null check(project_ref='zwjiztnsxenluqybxhhz'),
+ region text not null check(region='ap-southeast-1'),
  vercel_project_id text not null check(vercel_project_id ~ '^prj_[A-Za-z0-9]+$' and vercel_project_id not in ('prj_inNGMsufKkeDUTS1Sn5whmwIVWuw')),
  configuration_approval_id text not null check(length(configuration_approval_id)>5),
  allowed_origins text[] not null check(cardinality(allowed_origins)>0),
@@ -415,7 +415,7 @@ begin
  perform azzora.assert_production_environment();select * into e from azzora.production_environment where company_id=p_company_id;
  if not found then raise exception 'Approved company required' using errcode='PT403';end if;
  if exists(select 1 from azzora.records r where r.company_id=e.company_id and r.payload::text ~ '"(mode|dataClass|dataMode)"[[:space:]]*:[[:space:]]*"(fictional-staging|synthetic|fictional)"') then raise exception 'Fictional data detected' using errcode='PT503';end if;
- return jsonb_build_object('schemaVersion',1,'contractVersion','azzora-canonical-production-v1','projectRef',e.project_ref,'companyId',e.company_id,'environment','production','region',e.region,'vercelProjectId',e.vercel_project_id,'configurationApprovalId',e.configuration_approval_id,'financialPostingEnabled',false,'realDocumentProcessingEnabled',false,'fictionalData',false,'privateStorageBucket',e.storage_bucket,'backendCommandsInstalled',true,'allowedOrigins',to_jsonb(e.allowed_origins));
+ return jsonb_build_object('schemaVersion',1,'contractVersion','azzora-canonical-production-v1','projectRef',e.project_ref,'companyId',e.company_id,'environment','production','region',e.region,'vercelProjectId',e.vercel_project_id,'configurationApprovalId',e.configuration_approval_id,'financialPostingEnabled',false,'realDocumentProcessingEnabled',false,'fictionalData',false,'privateStorageBucket',e.storage_bucket,'backendCommandsInstalled',not exists(select 1 from (values ('public.azzora_production_company_read(text,text)'),('public.azzora_production_company_commit(text,bigint,text,text,text,jsonb,jsonb,boolean)'),('public.azzora_production_company_people(text)'),('public.azzora_production_auth_grant(uuid)'),('public.azzora_production_auth_actor(text)'),('public.azzora_production_auth_rate(text)'),('public.azzora_production_auth_pending_put(text,uuid,uuid,text,text)'),('public.azzora_production_auth_pending_get(text)'),('public.azzora_production_auth_pending_delete(text)'),('public.azzora_production_auth_session_put(text,text,uuid,uuid,uuid,text,text,text)'),('public.azzora_production_auth_session_get(text)'),('public.azzora_production_auth_session_revoke(text)'),('public.azzora_production_auth_session_touch(text)'),('public.azzora_production_auth_tokens_update(text,integer,text)')) required(signature) where to_regprocedure(required.signature) is null),'allowedOrigins',to_jsonb(e.allowed_origins));
 end $$;
 do $$ declare f record;begin
  for f in select p.oid::regprocedure signature from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and (p.proname like 'azzora_production_%' or p.proname='azzora_runtime_identity') loop

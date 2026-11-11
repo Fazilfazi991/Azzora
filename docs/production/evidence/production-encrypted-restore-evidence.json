@@ -1,0 +1,16 @@
+{
+  "archiveMode": "production",
+  "isolated": true,
+  "cloudDatabaseUsed": false,
+  "migrationCount": 2,
+  "records": 2,
+  "journals": 0,
+  "originals": 1,
+  "capturedVersion": 1,
+  "businessSha256": "27ac8d950cac2adb885eb86114a9175cbdc7dfbc160e46af48626071fd6ed7bc",
+  "restoredSha256": "27ac8d950cac2adb885eb86114a9175cbdc7dfbc160e46af48626071fd6ed7bc",
+  "trialBalanceBalanced": true,
+  "balanceSheetBalanced": true,
+  "identityUsersRestored": false,
+  "infrastructureBackupVerified": false
+}

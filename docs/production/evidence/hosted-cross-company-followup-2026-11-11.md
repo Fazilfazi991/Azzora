@@ -24,4 +24,10 @@ Direct protected-preview Chrome at 390 px passed Manager and Accountant login, A
 
 An independent local test invocation covering candidate production runtime, authentication and financial policy completed 32 test files and 568 tests successfully. These are local isolated tests, not evidence that live production database permissions were applied or verified.
 
+## Hosted role and session matrix
+
+All eight fictional Company A and B Owner, Manager, Accountant and Site Engineer identities passed direct protected-preview BFF checks. Owner and Accountant sessions remained unauthenticated until their TOTP challenges completed. For each identity, the selected authorized workspace returned 200, the other workspace returned 403, logout returned 200, and replay of that same revoked session returned 401. Anonymous session lookup returned 401. These test immediate revocation, not time-based expiry. The hosted clock and live session expiration settings were not altered; time-based idle/absolute/provider expiry has isolated unit coverage only.
+
+Company B's Manager and Accountant also completed a direct Chrome 390 px login and refresh test (Accountant with TOTP), with five routes per role and no page exceptions. Together with the previous Company A mobile pass, this covers 20 route visits across four mobile role sessions. Screenshot inspection confirms the hosted pre-fix Manager invoice table has narrow columns; the separate local correction was tested but not deployed. Mobile screenshots in the ignored `tmp/launch-independent-qa/company-b-mobile-followup/` contain fictional fixtures and were not committed.
+
 No production records, deployment, real posting settings or live aliases were changed. The staged tests used uniquely keyed fictional records. Combined with previous BFF private-file and project-denial tests, these results extend but do not complete the full security acceptance matrix.

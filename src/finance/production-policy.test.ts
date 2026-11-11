@@ -334,6 +334,36 @@ describe("production preparation and fail-closed policy", () => {
     expect(d.finance.documentEntries!.reviews).toHaveLength(1);
     expect(d.finance.accounting).toEqual(s.finance.accounting);
   });
+  it("does not let a zero-tax approval issue a Tax Invoice or implicit legacy Tax type", () => {
+    const s = fixture(),
+      before = structuredClone(s);
+    for (const invoiceType of [undefined, "Tax Invoice"]) {
+      expect(() =>
+        applySharedCommand(
+          s,
+          {
+            kind: "accounts.action",
+            payload: {
+              action: {
+                kind: "invoice",
+                id: "tax-forbidden",
+                party: "Synthetic",
+                date: day,
+                due: day,
+                description: "Synthetic",
+                amount: "10.00",
+                issue: true,
+                invoiceType,
+              },
+            },
+          },
+          actor("accountant"),
+          options(s),
+        ),
+      ).toThrow(/Tax Invoice issuance/);
+      expect(s).toEqual(before);
+    }
+  });
 });
 
 it("runs zero-tax item invoices, allocations, purchases, payments, approved project expense and transfer through ONE existing journal; failures preserve history", () => {

@@ -859,6 +859,26 @@ export function applySharedCommand(
   requireWorkspace(actor, scope.workspace);
   if (previous.mode === "production" && scope.financial)
     productionGate(previous, actor, scope, production);
+  if (previous.mode === "production" && command.kind === "accounts.action") {
+    const action = object(object(command.payload).action);
+    const issuing =
+      action.kind === "issue-invoice" ||
+      ((action.kind === "invoice" || action.kind === "update-invoice-draft") &&
+        action.issue === true);
+    const invoiceType =
+      action.kind === "issue-invoice"
+        ? previous.finance.invoices.find((i) => i.id === action.id)?.invoiceType
+        : action.invoiceType;
+    if (issuing && (invoiceType || "Tax Invoice") === "Tax Invoice")
+      throw new ProductionPolicyError([
+        {
+          field: "invoiceType",
+          code: "legal-tax-invoice-pending",
+          message:
+            "Legal Tax Invoice issuance remains blocked until the approved tax policy, legal PDF and tax posting implementation pass acceptance.",
+        },
+      ]);
+  }
   if (scope.workspace === "accountant") {
     if (!role(actor, ["owner", "admin", "accountant"]))
       throw new AccessDenied("Accountant permission is required.");

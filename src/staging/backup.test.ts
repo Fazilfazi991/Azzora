@@ -22,6 +22,10 @@ import {
 import { blankCustomer } from "../commercial/customer-domain";
 import { blankInvoice, newProjectDetails } from "../commercial/repository";
 import { buildTrialBalance } from "../accounting/reports";
+import { createStagingHandler } from "./server";
+import type { createStagingAuth, StagingActor } from "./auth";
+import type { StagingRpc } from "./supabase";
+import { decryptBusinessBackup } from "../backend/launch-backup";
 
 const companyId = "11111111-1111-4111-8111-111111111111",
   ownerId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -304,6 +308,72 @@ export async function restoreIntoFreshRehearsal(db: PGlite, input: unknown) {
   };
 }
 describe("fictional business backup integrity and isolated restore", () => {
+  it("downloads encrypted owner backup and restores the actual returned archive with verified original bytes", async () => {
+    const source = fixture();
+    const key = Buffer.alloc(32, 7);
+    const identity: StagingActor = {
+      userId: ownerId,
+      companyId,
+      email: "owner@staging.azzora.test",
+      role: "owner_admin",
+      workspace: "manager",
+      sessionHash: "fixture",
+      assurance: "aal2",
+      mfaVerifiedAt: Date.now(),
+      providerSessionId: "fixture",
+      projectIds: [],
+      capabilities: ["access.manage"],
+    };
+    const auth = {
+      requireActor: async () => identity,
+      handle: vi.fn(),
+    } as unknown as ReturnType<typeof createStagingAuth>;
+    const rpc = vi.fn(async (name: string) => {
+      if (name === "staging_company_read")
+        return { version: source.version, data: source.data };
+      throw Error("Unexpected RPC");
+    }) as unknown as StagingRpc;
+    const storage = {
+      read: vi.fn(async () => bytes),
+      store: vi.fn(),
+    } as unknown as NonNullable<
+      Parameters<typeof createStagingHandler>[0]
+    >["storage"];
+    const handler = createStagingHandler({
+      auth,
+      rpc,
+      storage,
+      stagingManualBackupKey: key,
+    });
+    const request = () =>
+      new Request("https://staging.test/api/staging/manager/backup/encrypted");
+    const response = await handler(request());
+    expect(response.status).toBe(200);
+    const envelope = await response.json();
+    expect(envelope.format).toBe("azzora-encrypted-business-backup-v1");
+    expect(JSON.stringify(envelope)).not.toContain("Fictional Backup Client");
+    const clear = decryptBusinessBackup(envelope, key, {
+      companyId,
+      keyId: "fictional-staging-owner-key-v1",
+    });
+    const archive = verifyStagingBackup(
+      JSON.parse(Buffer.from(clear).toString()),
+    );
+    const { db } = await freshRehearsalDatabase();
+    try {
+      const restored = await restoreIntoFreshRehearsal(db, archive);
+      expect(restored.capturedVersion).toBe(source.version);
+      expect(restored.originals.get(objectKey)).toEqual(Buffer.from(bytes));
+      expect(archive.manifest.counts.journals).toBe(2);
+    } finally {
+      await db.close();
+    }
+    identity.mfaVerifiedAt = Date.now() - 16 * 60_000;
+    expect((await handler(request())).status).toBe(403);
+    identity.role = "accountant";
+    identity.mfaVerifiedAt = Date.now();
+    expect((await handler(request())).status).toBe(403);
+  }, 30_000);
   it("preserves historical snapshot bytes while verifying inline originals against private pointers", async () => {
     const source = fixture();
     const record = source.data.records.find(

@@ -19,6 +19,8 @@ export interface VerifiedIdentity {
   providerSessionId: string;
   assurance: "aal1" | "aal2";
   expiresAt: number;
+  /** Provider-verified time of a TOTP challenge, when present. */
+  mfaVerifiedAt?: number;
 }
 export interface IdentityProvider {
   /** Must verify signature/issuer/audience/expiry online or using trusted JWKS, never decode-only. */

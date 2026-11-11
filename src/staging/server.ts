@@ -5,6 +5,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { prepareManagerFiles, readManagerFile } from "./manager-files.js";
 import { StagingPolicyError } from "./commercial-commands.js";
 import { createStagingBackup, type ReadBackupOriginal } from "./backup.js";
+import { encryptBusinessBackup } from "../backend/launch-backup.js";
 import { createStagingAuth, type StagingActor } from "./auth.js";
 import {
   rpc as defaultRpc,
@@ -144,6 +145,7 @@ export function createStagingHandler(
       format: "azzora-encrypted-business-backup-v1";
       ciphertext: string;
     }>;
+    stagingManualBackupKey?: Uint8Array;
   } = {},
 ) {
   const rpc = options.rpc ?? defaultRpc;
@@ -326,7 +328,10 @@ export function createStagingHandler(
         String(state.mode) !== (production ? "production" : "fictional-staging")
       )
         throw new StagingServiceError(503, "workspace_environment_mismatch");
-      if (path === "/manager/backup" && request.method === "GET") {
+      if (
+        (path === "/manager/backup" || path === "/manager/backup/encrypted") &&
+        request.method === "GET"
+      ) {
         if (
           actor.role !== "owner_admin" ||
           actor.assurance !== "aal2" ||
@@ -335,6 +340,13 @@ export function createStagingHandler(
           throw Object.assign(new Error("Owner backup access required"), {
             status: 403,
           });
+        if (
+          (production || path === "/manager/backup/encrypted") &&
+          (!actor.mfaVerifiedAt ||
+            actor.mfaVerifiedAt > Date.now() ||
+            Date.now() - actor.mfaVerifiedAt > 15 * 60_000)
+        )
+          throw new StagingServiceError(403, "backup_recent_mfa_required");
         if (production && !options.productionBackup)
           throw new StagingServiceError(
             503,
@@ -347,13 +359,49 @@ export function createStagingHandler(
         };
         const readOriginal: ReadBackupOriginal = (file) =>
           originals.read(actor.companyId, file);
+        const stagingEncrypted =
+          !production && path === "/manager/backup/encrypted";
+        const stagingRaw = stagingEncrypted
+          ? process.env.AZZORA_STAGING_MANUAL_BACKUP_KEY || ""
+          : "";
+        if (
+          stagingEncrypted &&
+          !options.stagingManualBackupKey &&
+          (!/^[A-Za-z0-9_-]{43}$/.test(stagingRaw) ||
+            Buffer.from(stagingRaw, "base64url").toString("base64url") !==
+              stagingRaw ||
+            [
+              process.env.AZZORA_STAGING_SERVICE_KEY,
+              process.env.AZZORA_STAGING_AUTH_KEY,
+              process.env.AZZORA_STAGING_PUBLISHABLE_KEY,
+              process.env.AZZORA_PRODUCTION_BACKUP_KEY,
+            ].includes(stagingRaw))
+        )
+          throw new StagingServiceError(
+            503,
+            "staging_owner_backup_key_required",
+          );
         const backup = production
           ? await options.productionBackup!(
               source,
               readOriginal,
               sharedActor(actor),
             )
-          : await createStagingBackup(source, readOriginal);
+          : stagingEncrypted
+            ? await (async () => {
+                const archive = await createStagingBackup(source, readOriginal);
+                return encryptBusinessBackup(
+                  Buffer.from(JSON.stringify(archive)),
+                  options.stagingManualBackupKey ||
+                    Buffer.from(stagingRaw, "base64url"),
+                  {
+                    companyId: source.companyId,
+                    keyId: "fictional-staging-owner-key-v1",
+                    capturedAt: archive.capturedAt,
+                  },
+                );
+              })()
+            : await createStagingBackup(source, readOriginal);
         if (
           production &&
           (!("format" in backup) ||
@@ -380,9 +428,10 @@ export function createStagingHandler(
         return new Response(body, {
           headers: {
             "Content-Type": "application/json",
-            "Content-Disposition": production
-              ? "attachment; filename=AZZORA-production-business-backup.encrypted.json"
-              : "attachment; filename=AZZORA-fictional-staging-backup.json",
+            "Content-Disposition":
+              production || stagingEncrypted
+                ? `attachment; filename=AZZORA-${production ? "production" : "fictional-staging"}-business-backup.encrypted.json`
+                : "attachment; filename=AZZORA-fictional-staging-backup.json",
             "Cache-Control": "no-store, private",
             "X-Content-Type-Options": "nosniff",
           },
@@ -767,6 +816,22 @@ export function createStagingHandler(
             error: error.message,
             code: error.code,
             issues: error.issues,
+            requestId,
+          },
+          requestId,
+        );
+      if (
+        error instanceof StagingServiceError &&
+        [
+          "backup_recent_mfa_required",
+          "staging_owner_backup_key_required",
+        ].includes(error.code)
+      )
+        return json(
+          error.status,
+          {
+            error: "A recent authenticator sign-in is required.",
+            code: error.code,
             requestId,
           },
           requestId,

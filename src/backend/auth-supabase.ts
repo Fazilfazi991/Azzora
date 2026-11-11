@@ -87,11 +87,24 @@ export function createSupabaseTokenVerifier(options: {
         !["aal1", "aal2"].includes(String(claims.aal))
       )
         throw Error();
+      const methods = Array.isArray(claims.amr) ? claims.amr : [];
+      const totpTimes = methods.flatMap((entry: unknown) => {
+        if (!entry || typeof entry !== "object") return [];
+        const value = entry as Record<string, unknown>;
+        return value.method === "totp" &&
+          typeof value.timestamp === "number" &&
+          Number.isSafeInteger(value.timestamp) &&
+          value.timestamp > 0 &&
+          value.timestamp * 1000 <= at
+          ? [value.timestamp * 1000]
+          : [];
+      });
       return {
         userId: user.id,
         providerSessionId: claims.session_id,
         assurance: claims.aal as "aal1" | "aal2",
         expiresAt: claims.exp * 1000,
+        ...(totpTimes.length ? { mfaVerifiedAt: Math.max(...totpTimes) } : {}),
       };
     } catch {
       throw new AccessDenied("authentication_required", 401);

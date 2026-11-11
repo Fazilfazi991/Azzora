@@ -2,6 +2,12 @@
 
 Status: **not operational; launch blocked**. This runbook prepares the work without authorizing real-company imports, postings, user invitations, cloud restoration or traffic changes. Production project `zwjiztnsxenluqybxhhz` is separate from fictional staging `hkhomrrvxtcxnxvdlkoh`. Confirm the exact project, region and account again before every operation; do not infer a target from the active CLI link.
 
+## Manual business export candidate
+
+Settings → Backup & Restore requests an encrypted business archive only for an Owner/Admin with a currently verified TOTP within 15 minutes. An expired/missing provider MFA timestamp is rejected; sign out and sign in with the authenticator again. The production archive uses the separately configured owner-managed backup key. Fictional staging requires a distinct `AZZORA_STAGING_MANUAL_BACKUP_KEY` (canonical base64url 32 bytes), never the production, session or service key. A missing key fails closed. Keep each key securely separate from its downloaded archive and never commit it.
+
+The download contains application business records, journals and referenced originals with checksums, but **does not include PostgreSQL schema/migration history or Supabase Auth/MFA factors**. It is not a complete disaster-recovery backup and does not by itself establish account restoration. The browser can confirm only that a download was started, not that the file reached disk or was successfully restored; it must not report this as a verified backup. To rehearse recovery, use the existing `scripts/launch-import-recovery.mjs` decrypt and restore-rehearsal commands in an isolated environment using the correct separately held key and company/key identity. Compare archive counts, journal totals and original hashes before relying on it. Reprovisioning identities and restoring schema/migrations require a separately approved, independently tested recovery process.
+
 ## What the selected free plan provides
 
 On 11 November 2026, [Supabase's backup guidance](https://supabase.com/docs/guides/platform/backups) states that automatic daily backups are provided on Pro, Team and Enterprise and recommends off-site CLI exports for Free. Its [Free-plan answer](https://supabase.com/kb/faqs/platform/free-plan-backups) says Free has no automatic database backup and PITR is a paid-plan add-on. The project was previously observed on Free with no dashboard backups. Recheck actual plan and dashboard before launch; do not claim managed backups, offsite copies, PITR or disaster recovery exist.

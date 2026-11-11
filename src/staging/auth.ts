@@ -26,6 +26,8 @@ export interface StagingActor {
   workspace: "manager" | "accountant";
   sessionHash: string;
   assurance: "aal1" | "aal2";
+  /** Taken only from the currently verified provider access token. */
+  mfaVerifiedAt?: number;
   providerSessionId: string;
   projectIds: string[];
   capabilities: string[];
@@ -372,7 +374,12 @@ export function createStagingAuth(
         throw new AuthError(403, "Multi-factor verification is required.");
     }
     await rpc("staging_auth_session_touch", { p_hash: sessionHash });
-    return { actor, token, t, version: stored.version };
+    return {
+      actor: { ...actor, mfaVerifiedAt: verified.mfaVerifiedAt },
+      token,
+      t,
+      version: stored.version,
+    };
   }
   const recovery = createStagingRecovery({
     rpc,

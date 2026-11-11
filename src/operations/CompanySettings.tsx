@@ -4,6 +4,7 @@ import { Field } from "../components/ui";
 import { Attachments } from "../components/uploads";
 import { getOperations } from "./migration";
 import { saveSettings } from "./repository";
+import { ManualBackup } from "./ManualBackup";
 export function CompanySettings() {
   const { store, run, pending } = useStoreCommand(),
     { db } = store;
@@ -12,6 +13,7 @@ export function CompanySettings() {
   const [logoError, setLogoError] = useState("");
   return (
     <section className="panel">
+      <ManualBackup store={store} />
       <h2>Company & Financial Settings</h2>
       <p className="muted">
         {store.mode === "staging"

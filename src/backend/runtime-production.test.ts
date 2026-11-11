@@ -231,6 +231,7 @@ function productionAuthFixture(
     workspace: "manager",
     sessionHash: "",
     assurance: "aal2",
+    mfaVerifiedAt: Date.now(),
     providerSessionId: sid,
     projectIds: [],
     capabilities: ["project.read", "project.write", "access.manage"],
@@ -435,6 +436,7 @@ function productionServerFixture(
     workspace: "accountant",
     sessionHash: "opaque",
     assurance: "aal2",
+    mfaVerifiedAt: Date.now(),
     providerSessionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
     projectIds: [],
     capabilities: [
@@ -621,6 +623,13 @@ it("exports only an encrypted production backup for current Owner MFA, retaining
     ).toString(),
   );
   expect(verifyProductionBusinessBackup(original).mode).toBe("production");
+  f.actor.mfaVerifiedAt = Date.now() - 16 * 60_000;
+  const stale = await f.handle(f.request("/manager/backup"));
+  expect(stale.status).toBe(403);
+  expect(await stale.json()).toMatchObject({
+    code: "backup_recent_mfa_required",
+  });
+  f.actor.mfaVerifiedAt = Date.now();
   f.actor.role = "project_manager";
   expect((await f.handle(f.request("/manager/backup"))).status).toBe(403);
   const missing = productionServerFixture();

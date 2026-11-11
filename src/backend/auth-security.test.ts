@@ -366,6 +366,30 @@ describe("Supabase online JWT verification", () => {
     });
     expect(s.transport).toHaveBeenCalledOnce();
   });
+  it("reports only a valid provider-verified TOTP timestamp, never a future value or another factor", async () => {
+    const s = setupVerifier(Response.json({ id: uid, is_anonymous: false }));
+    expect(
+      await s.verify(
+        token({
+          ...claims(),
+          amr: [
+            { method: "totp", timestamp: 1799999950 },
+            { method: "totp", timestamp: 1800000001 },
+            { method: "password", timestamp: 1800000000 },
+          ],
+        }),
+      ),
+    ).toMatchObject({ mfaVerifiedAt: 1799999950000 });
+    const failed = setupVerifier(new Response("", { status: 401 }));
+    await expect(
+      failed.verify(
+        token({
+          ...claims(),
+          amr: [{ method: "totp", timestamp: 1800000000 }],
+        }),
+      ),
+    ).rejects.toThrow("authentication_required");
+  });
   it.each([
     { iss: "https://evil.test/auth/v1" },
     { aud: "service_role" },

@@ -51,6 +51,14 @@ it("keeps company-scoped foreign keys and private-schema access intact", async (
   try { await expect(db.query("select * from azzora.attachments where id='SECURITY-B-FILE'")).rejects.toThrow(/permission denied/); }
   finally { await db.exec("reset role"); }
 });
+it("confirms the deployed single-company grant also denies all four Company B role identities", async () => {
+  for (let i=0; i<roles.length; i++) {
+    const a=roles[i], user=uuid(i+31);
+    await db.query("insert into auth.users(id,email,raw_app_meta_data,email_confirmed_at) values($1,$2,'{\"azzora_scope\":\"fictional-staging\"}',now())",[user,`company-b-${a.role}@staging.azzora.test`]);
+    await db.query("insert into azzora.memberships(company_id,user_id,role,active,finance_access,workspaces,capabilities) values($1,$2,$3,true,$4,$5,ARRAY[]::text[])",[companyB,user,a.role,a.role === "owner_admin" || a.role === "accountant",[a.workspace]]);
+    await expect(db.query("select public.staging_auth_grant($1)",[user])).rejects.toThrow(/membership denied/i);
+  }
+});
 it("rejects repeated fixture application without overwriting the foreign company", async () => {
   await expect(db.exec(await readFile(new URL("../../tests/fixtures/foreign-company-security.sql", import.meta.url),"utf8"))).rejects.toThrow(/already exists/);
 });

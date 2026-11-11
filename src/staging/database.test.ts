@@ -138,12 +138,16 @@ it("initializes fictional canonical records and one opening journal through one 
   expect(restored.manager.people[0].id).toBe(owner);
 });
 it("captures staging-only provenance for the verified Owner and denies browser roles or revoked sessions", async () => {
+  const recoveryHash = "9".repeat(64);
+  await db.query("insert into azzora.audit_events(company_id,actor_id,action,entity_type,entity_id,request_id) values($1,$2,'recovery.issued','identity',$2::uuid::text,$3)", [company, owner, recoveryHash]);
   const capture = (await db.query("select public.staging_owner_backup($1) result", [hash])).rows[0].result as { companyId: string; provenance: { memberships: unknown[]; journals: unknown[]; auditEvents: unknown[] } };
   expect(capture.companyId).toBe(company);
   expect(capture.provenance.memberships.length).toBeGreaterThan(0);
   expect(capture.provenance.journals.length).toBeGreaterThan(0);
   expect(JSON.stringify(capture)).not.toContain(hash);
   expect(JSON.stringify(capture)).not.toContain(session);
+  expect(JSON.stringify(capture)).not.toContain(recoveryHash);
+  expect(JSON.stringify(capture.provenance.auditEvents)).toContain('recovery.issued');
   await expect(db.query("select public.staging_owner_backup($1)", ["f".repeat(64)])).rejects.toThrow(/expired or revoked/);
   const privileges = (await db.query("select has_function_privilege('anon','public.staging_owner_backup(text)','execute') a,has_function_privilege('authenticated','public.staging_owner_backup(text)','execute') b,has_function_privilege('service_role','public.staging_owner_backup(text)','execute') c")).rows[0];
   expect(privileges).toEqual({ a: false, b: false, c: true });

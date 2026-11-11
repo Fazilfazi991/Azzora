@@ -196,12 +196,16 @@ it("privileged sessions require live provider session and MFA, then actual sessi
   ).rejects.toThrow(/expired or revoked/);
 });
 it("owner MFA captures company-scoped provenance without Auth credentials; revoked sessions and browser roles cannot call it", async () => {
+  const recoveryHash = "8".repeat(64);
+  await db.query("insert into azzora.audit_events(company_id,actor_id,action,entity_type,entity_id,request_id) values($1,$2,'recovery.issued','identity',$2::uuid::text,$3)", [company, owner, recoveryHash]);
   const result = (await call("azzora_production_owner_backup", [token])).rows[0].r as { companyId: string; provenance: { memberships: unknown[]; auditEvents: unknown[] } };
   expect(result.companyId).toBe(company);
   expect(result.provenance.memberships.length).toBeGreaterThan(0);
   expect(JSON.stringify(result)).not.toMatch(/password|totpSecret|encrypted-QA-only|providerSessionId/);
   expect(JSON.stringify(result)).not.toContain(token);
   expect(JSON.stringify(result)).not.toContain(provider);
+  expect(JSON.stringify(result)).not.toContain(recoveryHash);
+  expect(JSON.stringify(result.provenance.auditEvents)).toContain("recovery.issued");
   await expect(call("azzora_production_owner_backup", ["f".repeat(64)])).rejects.toThrow(/expired or revoked/);
   const manager = "77777777-7777-4777-8777-777777777777", managerProvider = "12121212-1212-4212-8212-121212121212", managerToken = "6".repeat(64);
   await db.query("insert into auth.users(id,email,raw_app_meta_data,email_confirmed_at) values($1,'manager-qa@example.invalid','{\"azzora_scope\":\"production\"}',now())", [manager]);

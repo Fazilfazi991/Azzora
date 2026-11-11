@@ -16,7 +16,7 @@
     },
     {
       "path": "supabase/production-migrations/20261111122552_production_owner_backup_provenance.sql",
-      "sha256": "c4560a243405467f87a1d1554055db6e78fe16d6c67d08568831252fbcff3723"
+      "sha256": "ab0ab4c46f2f333b81958ec13220a70719abc41d96fa67aa2341176c8ce322aa"
     }
   ],
   "excluded": "All synthetic-staging migrations; never run db push against an unreviewed production target.",

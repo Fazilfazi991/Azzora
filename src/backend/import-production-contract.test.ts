@@ -340,3 +340,135 @@ it("anon/authenticated roles cannot execute production RPCs or access private re
     await db.exec("reset role");
   }
 });
+
+it("isolates a second unapproved company and rejects cross-company identity, reads and references", async () => {
+  // This is a second synthetic company in an in-memory database. Production
+  // currently approves one company per environment; it is not a multi-tenant
+  // hosted acceptance test.
+  const foreignCompany = "44444444-4444-4444-8444-444444444444";
+  const foreignUser = "55555555-5555-4555-8555-555555555555";
+  const foreignParty = "foreign-only-customer";
+  await db.query(
+    "insert into azzora.companies(id,name) values($1,'FOREIGN QA COMPANY')",
+    [foreignCompany],
+  );
+  await db.query(
+    "insert into auth.users(id,email,raw_app_meta_data,email_confirmed_at) values($1,'foreign-owner@example.invalid','{\"azzora_scope\":\"production\"}',now())",
+    [foreignUser],
+  );
+  await db.query(
+    "insert into azzora.memberships(company_id,user_id,role,active,finance_access,workspaces,capabilities) values($1,$2,'owner_admin',true,true,array['manager'],array['project.read','project.write'])",
+    [foreignCompany, foreignUser],
+  );
+  await db.query(
+    "insert into azzora.parties(company_id,id,kind,payload) values($1,$2,'customer','{\"name\":\"FOREIGN-ONLY-SECRET\"}')",
+    [foreignCompany, foreignParty],
+  );
+  await db.query(
+    "insert into azzora.records(company_id,entity_type,id,payload,status) values($1,'document','foreign-document','{\"name\":\"FOREIGN-ONLY-DOCUMENT\"}','current')",
+    [foreignCompany],
+  );
+  await expect(
+    call("azzora_production_auth_grant", [foreignUser]),
+  ).rejects.toThrow(/membership denied/);
+  await expect(
+    call("azzora_runtime_identity", [foreignCompany]),
+  ).rejects.toThrow(/Approved company/);
+  await expect(
+    call("azzora_production_auth_session_put", [
+      "7".repeat(64),
+      csrf,
+      owner,
+      provider,
+      foreignCompany,
+      "manager",
+      "aal2",
+      "encrypted-QA-only",
+    ]),
+  ).rejects.toThrow(/Workspace denied/);
+  const before = (
+    await call("azzora_production_company_read", [token, "manager"])
+  ).rows[0].r as {
+    data: ReturnType<typeof empty>;
+    version: number;
+  };
+  expect(JSON.stringify(before)).not.toContain("FOREIGN-ONLY");
+  expect(
+    JSON.stringify(
+      (await call("azzora_production_company_people", [token])).rows[0].r,
+    ),
+  ).not.toContain("foreign-owner@example.invalid");
+  const crossReference = {
+    ...before.data,
+    projects: [
+      { id: "cross-company-project", customer_id: foreignParty, payload: {} },
+    ],
+  };
+  await expect(
+    commit(before.version, "qa-cross-company-ref-001", crossReference),
+  ).rejects.toThrow();
+  expect(
+    (await call("azzora_production_company_read", [token, "manager"])).rows[0]
+      .r,
+  ).toEqual(before);
+  expect(
+    (
+      await db.query<{ n: number }>(
+        "select count(*)::int n from azzora.parties where company_id=$1 and id=$2",
+        [foreignCompany, foreignParty],
+      )
+    ).rows[0].n,
+  ).toBe(1);
+  await db.exec("set role service_role");
+  try {
+    await expect(
+      db.query("select azzora.production_canonical_data($1)", [foreignCompany]),
+    ).rejects.toThrow(/permission denied/);
+  } finally {
+    await db.exec("reset role");
+  }
+});
+
+it("denies idle-expired, hard-expired and provider-revoked sessions in the production SQL contract", async () => {
+  const providerSession = "66666666-6666-4666-8666-666666666666";
+  await db.query(
+    "insert into auth.sessions values($1,$2,'aal2',now()+interval '1 hour')",
+    [providerSession, owner],
+  );
+  const idle = "8".repeat(64),
+    hard = "9".repeat(64),
+    revoked = "e".repeat(64);
+  for (const hash of [idle, hard, revoked])
+    await call("azzora_production_auth_session_put", [
+      hash,
+      csrf,
+      owner,
+      providerSession,
+      company,
+      "manager",
+      "aal2",
+      "encrypted-QA-only",
+    ]);
+  await db.query(
+    "update azzora.sessions set last_seen_at=now()-interval '16 minutes' where token_hash=$1",
+    [idle],
+  );
+  await expect(
+    call("azzora_production_company_read", [idle, "manager"]),
+  ).rejects.toThrow(/Session expired or revoked/);
+  await db.query(
+    "update azzora.sessions set created_at=now()-interval '9 hours',expires_at=now()-interval '1 minute' where token_hash=$1",
+    [hard],
+  );
+  await expect(
+    call("azzora_production_company_read", [hard, "manager"]),
+  ).rejects.toThrow(/Session expired or revoked/);
+  expect(
+    (await call("azzora_production_company_read", [revoked, "manager"])).rows[0]
+      .r,
+  ).toBeDefined();
+  await db.query("delete from auth.sessions where id=$1", [providerSession]);
+  await expect(
+    call("azzora_production_company_read", [revoked, "manager"]),
+  ).rejects.toThrow(/Provider session revoked or downgraded/);
+});

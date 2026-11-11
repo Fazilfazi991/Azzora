@@ -13,7 +13,7 @@ Four Company B role scenarios passed after one test-harness correction: Owner, P
 | Accounts | Accountant | 403 | 200 | 200 | 401 |
 | Manager | Site Staff | 200 | 403 | 200 | 401 |
 
-This is 4/4 completed role scenarios, including 2/2 MFA challenges, 8/8 workspace status assertions, and 4/4 local session revocations. An initial test assumed an Owner authenticated into Manager could call the Accounts workspace and failed when the service returned 403; the test was corrected to reflect the workspace-scoped session and rerun. This does not independently verify the Owner's separate Accounts login, global provider revocation, recovery, every command's authorization, or mobile/browser operations.
+This is 4/4 completed role scenarios, including 2/2 MFA challenges, 8/8 workspace status assertions, and 4/4 local session revocations. An initial test assumed an Owner authenticated into Manager could call the Accounts workspace and failed when the service returned 403; the test was corrected to reflect the workspace-scoped session and rerun. A further separate Owner Accounts login initially failed at MFA verification with HTTP 401; a single subsequent attempt passed MFA, Accounts 200, Manager 403, logout 200 and old-session 401. The first MFA failure's cause is unproven; neither factor reset nor configuration change occurred. This does not independently verify global provider revocation, recovery, every command's authorization, or mobile/browser operations.
 
 ## Cross-company reads and writes
 

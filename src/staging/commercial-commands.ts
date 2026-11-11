@@ -7,7 +7,11 @@ import type {
   SharedCompanyState,
 } from "./domain.js";
 import { cancelInvoice, reversePayment } from "../commercial/repository.js";
-import { cents, invoiceTotals, amountString } from "../commercial/calculations.js";
+import {
+  cents,
+  invoiceTotals,
+  amountString,
+} from "../commercial/calculations.js";
 import * as operations from "../operations/repository.js";
 import type {
   Budget,
@@ -17,7 +21,10 @@ import type {
 } from "../operations/model.js";
 import { closeCommercial } from "../operations/closure-domain.js";
 import { postJournal, reverseJournal } from "../accounting/core.js";
-import { reverseSettlement, documentOutstanding } from "../finance/settlement.js";
+import {
+  reverseSettlement,
+  documentOutstanding,
+} from "../finance/settlement.js";
 import { reviewSnapshot } from "../accounts-review/domain.js";
 import { today } from "../domain/logic.js";
 
@@ -203,7 +210,9 @@ export function applyCommercialCommand(
   if (
     financial.has(command.kind) &&
     (!owner(actor) ||
-      !actor.grant.capabilities.includes("finance.simulate") ||
+      !actor.grant.capabilities.includes(
+        state.mode === "production" ? "finance.post" : "finance.simulate",
+      ) ||
       actor.assurance !== "aal2")
   )
     throw new AccessDenied(

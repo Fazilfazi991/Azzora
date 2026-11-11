@@ -905,15 +905,18 @@ describe("shared fictional company domain and canonical projections", () => {
       ),
     ).toThrow(/MFA/);
   });
-  it("refuses production data and arbitrary full-state replacement", () => {
+  it("refuses production financial writes without approved context and arbitrary full-state replacement", () => {
     const f = fixture();
     expect(() =>
       applySharedCommand(
         { ...f.state(), mode: "production" } as unknown as SharedCompanyState,
-        { kind: "customer.save", payload: {} },
+        {
+          kind: "accounts.action",
+          payload: { action: { kind: "receipt", id: "blocked-production" } },
+        },
         actor("owner"),
       ),
-    ).toThrow(/fictional/);
+    ).toThrow(/disabled/);
     expect(() => f.run("manager.replace", { db: f.state().manager })).toThrow(
       /not supported/,
     );

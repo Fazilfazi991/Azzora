@@ -1,10 +1,21 @@
 import { isPasswordOnlyClientReview } from "../backend/client-review-policy.js";
+import {
+  assertProductionPostingAllowed,
+  productionPolicyDigest,
+  productionCompanySettingsDigest,
+  ProductionPolicyError,
+  type ProductionAccountingPolicy,
+  type ProductionPostingContext,
+} from "../accounting/production-policy.js";
 import type {
   AuthorizedActor,
   BackendAction,
   Workspace,
 } from "../backend/permissions.js";
-import { applyManagerCommand, managerCommandScope } from "./manager-commands.js";
+import {
+  applyManagerCommand,
+  managerCommandScope,
+} from "./manager-commands.js";
 import {
   isCommercialCommand,
   commercialCommandScope,
@@ -87,10 +98,11 @@ export interface ExpenseSubmission {
   comments?: string;
   approvedAt?: string;
   approvalSnapshot?: string;
+  approvalPolicyDigest?: string;
 }
 export interface SharedCompanyState {
   version: 1;
-  mode: "fictional-staging";
+  mode: "fictional-staging" | "production";
   manager: Database;
   finance: ReviewState;
   expenseSubmissions: ExpenseSubmission[];
@@ -99,6 +111,112 @@ export interface SharedCompanyState {
 export interface SharedCommand {
   kind: string;
   payload: unknown;
+}
+/** Server-injected only. These receipts/configuration are never taken from a command payload. */
+export interface ProductionCommandOptions {
+  policy: ProductionAccountingPolicy;
+  context: Omit<
+    ProductionPostingContext,
+    | "actor"
+    | "companyId"
+    | "companySettingsDigest"
+    | "chartDigest"
+    | "projectId"
+    | "amountFils"
+  >;
+}
+function productionGate(
+  state: SharedCompanyState,
+  actor: SharedActor,
+  scope: SharedCommandScope,
+  options?: ProductionCommandOptions,
+  amountFils?: string,
+  operation: "post" | "approve-expense" = "post",
+) {
+  if (!options)
+    throw new ProductionPolicyError([
+      {
+        field: "approvals",
+        code: "policy-not-configured",
+        message:
+          "Real financial posting remains disabled until approved policy, production contract and cutover activation receipts are configured.",
+      },
+    ]);
+  assertProductionPostingAllowed(options.policy, {
+    ...options.context,
+    actor,
+    companyId: actor.companyId,
+    companySettingsDigest: productionCompanySettingsDigest(
+      state.manager.operations?.settings,
+    ),
+    chartDigest: productionPolicyDigest(state.finance.accounting.accounts),
+    projectId: scope.projectId,
+    amountFils,
+    operation,
+  });
+}
+function finishCommand(
+  previous: SharedCompanyState,
+  next: SharedCompanyState,
+  command: SharedCommand,
+  actor: SharedActor,
+  options?: ProductionCommandOptions,
+) {
+  if (previous.mode === "production") {
+    const before = previous.finance.accounting.journals,
+      after = next.finance.accounting.journals;
+    const changed = JSON.stringify(before) !== JSON.stringify(after),
+      scope = sharedCommandScope(previous, command);
+    if (changed && !scope.financial)
+      throw new ProductionPolicyError([
+        {
+          field: "command",
+          code: "unclassified-financial-write",
+          message:
+            "A financial mutation cannot bypass the production posting gate through a nonfinancial command.",
+        },
+      ]);
+    if (changed) {
+      // Existing journals and original allocations are immutable. Corrections append exact reversals.
+      if (
+        after.length < before.length ||
+        before.some((v, i) => JSON.stringify(v) !== JSON.stringify(after[i]))
+      )
+        throw new ProductionPolicyError([
+          {
+            field: "journals",
+            code: "history-overwrite",
+            message: "Production journal history cannot be overwritten.",
+          },
+        ]);
+      const amount = after
+        .slice(before.length)
+        .reduce(
+          (sum, j) =>
+            sum + j.lines.reduce((s, l) => s + BigInt(l.debitFils), 0n),
+          0n,
+        );
+      const cutoff = options?.policy.cutover?.date;
+      if (
+        !cutoff ||
+        after
+          .slice(before.length)
+          .some(
+            (j) => j.date < cutoff || j.date < options!.policy.effectiveFrom,
+          )
+      )
+        throw new ProductionPolicyError([
+          {
+            field: "date",
+            code: "historical-posting-blocked",
+            message:
+              "Historical transactions before the approved cutover/effective date must use a separately reviewed opening import, not ordinary posting.",
+          },
+        ]);
+      productionGate(previous, actor, scope, options, amount.toString());
+    }
+  }
+  return next;
 }
 export type SharedActor = AuthorizedActor & { personId?: string };
 export interface SharedCommandScope {
@@ -620,6 +738,20 @@ function applyAccounts(
     const submission = state.expenseSubmissions.find(
       (item) => item.id === action.id,
     );
+    if (
+      state.mode === "production" &&
+      (!submission ||
+        submission.status !== "Approved" ||
+        submission.submittedBy === submission.approvedBy)
+    )
+      throw new ProductionPolicyError([
+        {
+          field: "expense",
+          code: "expense-approval-required",
+          message:
+            "An independently approved, source-linked expense submission is required before production posting.",
+        },
+      ]);
     if (submission) {
       if (submission.status !== "Approved")
         throw Error(
@@ -638,6 +770,18 @@ function applyAccounts(
       };
     }
   }
+  if (
+    state.mode === "production" &&
+    action.kind === "create-expense-from-review"
+  )
+    throw new ProductionPolicyError([
+      {
+        field: "expense",
+        code: "review-expense-approval-required",
+        message:
+          "Save the review draft and obtain an independently approved expense submission before production posting.",
+      },
+    ]);
   state.finance = applyReviewAction(state.finance, action);
   syncFinanceBillCosts(state);
   if (
@@ -695,17 +839,36 @@ export function applySharedCommand(
   previous: SharedCompanyState,
   command: SharedCommand,
   actor: SharedActor,
+  production?: ProductionCommandOptions,
 ): SharedCompanyState {
-  if (previous.mode !== "fictional-staging" || previous.version !== 1)
-    throw Error("Only explicitly fictional staging data is supported.");
+  if (
+    !["fictional-staging", "production"].includes(previous.mode) ||
+    previous.version !== 1
+  )
+    throw Error(
+      "An explicit supported company mode and schema version are required.",
+    );
+  if (
+    previous.mode === "production" &&
+    actor.authenticationPolicy?.includes("client-review")
+  )
+    throw new AccessDenied(
+      "The client-review identity cannot access a production company.",
+    );
   const scope = sharedCommandScope(previous, command);
   requireWorkspace(actor, scope.workspace);
+  if (previous.mode === "production" && scope.financial)
+    productionGate(previous, actor, scope, production);
   if (scope.workspace === "accountant") {
     if (!role(actor, ["owner", "admin", "accountant"]))
       throw new AccessDenied("Accountant permission is required.");
     if (
       !actor.grant.capabilities.includes(
-        scope.financial ? "finance.simulate" : "finance.draft",
+        scope.financial
+          ? previous.mode === "production"
+            ? "finance.post"
+            : "finance.simulate"
+          : "finance.draft",
       )
     )
       throw new AccessDenied(
@@ -740,7 +903,7 @@ export function applySharedCommand(
   if (applyManagerCommand(next, command, actor)) {
     refreshCommercialView(next);
     refreshCatalog(next);
-    return next;
+    return finishCommand(previous, next, command, actor, production);
   }
   if (isCommercialCommand(command.kind)) {
     const invoices = new Set(next.manager.invoices.map((value) => value.id));
@@ -750,7 +913,7 @@ export function applySharedCommand(
         if (!invoices.has(invoice.id)) syncManagerInvoice(next, invoice.id);
     refreshCommercialView(next);
     refreshCatalog(next);
-    return next;
+    return finishCommand(previous, next, command, actor, production);
   }
   const p = object(command.payload);
   switch (command.kind) {
@@ -1235,6 +1398,15 @@ export function applySharedCommand(
       );
       if (!submission || submission.status !== "Submitted")
         throw Error("Choose a pending expense submission.");
+      if (previous.mode === "production")
+        productionGate(
+          previous,
+          actor,
+          scope,
+          production,
+          parseFils(submission.amount).toString(),
+          "approve-expense",
+        );
       if (submission.submittedBy === actor.userId)
         throw new AccessDenied(
           "Only an independent approver may decide a pending expense.",
@@ -1244,11 +1416,33 @@ export function applySharedCommand(
       submission.approvedBy = actor.userId;
       submission.comments = text(p.comments, "Decision comments");
       submission.approvedAt = new Date().toISOString();
+      if (previous.mode === "production")
+        submission.approvalPolicyDigest = productionPolicyDigest(
+          production!.policy,
+        );
       submission.approvalSnapshot = JSON.stringify({ ...submission });
       break;
     }
     case "accounts.action": {
       const action = object(p.action) as unknown as ReviewAction;
+      if (previous.mode === "production" && action.kind === "expense") {
+        const submission = next.expenseSubmissions.find(
+          (s) => s.id === action.id,
+        );
+        if (
+          !submission ||
+          submission.approvalPolicyDigest !==
+            productionPolicyDigest(production!.policy)
+        )
+          throw new ProductionPolicyError([
+            {
+              field: "expense",
+              code: "expense-policy-approval-required",
+              message:
+                "The expense submission must be independently approved under the current accounting policy before posting.",
+            },
+          ]);
+      }
       if (
         ![
           "invoice",
@@ -1280,7 +1474,7 @@ export function applySharedCommand(
   }
   refreshCommercialView(next);
   refreshCatalog(next);
-  return next;
+  return finishCommand(previous, next, command, actor, production);
 }
 
 export function sharedManagerView(

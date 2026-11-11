@@ -1,0 +1,19 @@
+{
+  "format": "azzora-reviewed-production-migrations-v1",
+  "automaticApply": false,
+  "fixtureSeeding": false,
+  "approvedProject": null,
+  "approvedCompany": null,
+  "region": "Singapore",
+  "files": [
+    {
+      "path": "supabase/migrations/20261104081228_canonical_backend_foundation.sql",
+      "sha256": "7ded030d64b437fa9bb065563d5b716b39aaaf7c746098d6a762be9ed00a3eac"
+    },
+    {
+      "path": "supabase/production-migrations/20261111090000_runtime_identity.sql",
+      "sha256": "d87adf7ad0fb52a1db073e6af6c69d708cdad89ecb7cdf678cf9cabaabd3d434"
+    }
+  ],
+  "excluded": "All synthetic-staging migrations; never run db push against an unreviewed production target."
+}

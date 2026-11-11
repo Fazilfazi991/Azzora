@@ -16,6 +16,14 @@ Provision a separate independently generated 32-byte owner-managed backup key an
 
 The candidate backend requires current Owner/Admin MFA (AAL2), `access.manage` and exact company scope for its `GET /api/staging/manager/backup` route, which the candidate Vercel configuration rewrites to the separate production handler; an independently configured backup key is mandatory. The endpoint returns an AES-256-GCM encrypted business archive, not a complete platform backup. Its production configuration is not deployed or tested against the production project. Obtain the encrypted file through a protected, authenticated session, confirm format, company/key ID, timestamp, successful decrypt and expected counts, then place it in the approved private offsite destination and verify an independent copy. Treat proof files and their aggregate financial totals as confidential. Do not write a plaintext export to a public folder or source control.
 
+The offline helper now supports a fail-closed health check for one already captured encrypted production business archive:
+
+```powershell
+node scripts/launch-import-recovery.mjs verify-production-backup --input <private-encrypted-archive.json> --key-file <owner-managed-key-file> --company <company-uuid> --key-id <key-id> --max-age-seconds <approved-positive-age-limit>
+```
+
+The operator must choose the age limit; no RPO is implied or configured. The command authenticates/decrypts the archive, verifies its production format, company/key scope, original-file and canonical manifest, inner/outer capture time, and freshness against the local system clock. It returns JSON and exit code 0 only when those checks pass; a missing, invalid, future-dated, tampered or stale archive returns a nonzero exit. Keep the clock synchronized and treat process/OS access to the key and encrypted file as privileged. This helper does not fetch or create a backup, check any offsite location, install a schedule, send a notification, verify Auth/infrastructure recovery or prove disaster recovery. A separately authorized operator must securely wire and test those services and alert on failures or absence; a scheduler that simply never runs is not detected by this command alone.
+
 Separately establish and test the recovery of database schema and data, custom grants/RLS/RPCs, private object bytes and metadata, Auth identities/MFA recovery, environment secrets, DNS and runtime configuration. Revoke overly broad default privileges and validate deny-by-default policies on an isolated target before connecting any users. Do not infer that a copied database dump or business archive can restore these services. Log each capture's source project, company, version, file checksum, manifest, locations, permissions, operator and time without credentials.
 
 ## Restore rehearsal and incident procedure

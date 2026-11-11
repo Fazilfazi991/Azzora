@@ -12,10 +12,11 @@ if (
     "encrypt",
     "decrypt",
     "restore-rehearsal",
+    "verify-production-backup",
   ].includes(command)
 ) {
   console.error(
-    "Use prepare-import | verify-import | encrypt | decrypt | restore-rehearsal, with explicit --input/--output paths. Key operations require --key-file, --company and --key-id.",
+    "Use prepare-import | verify-import | encrypt | decrypt | restore-rehearsal | verify-production-backup. Key operations require --key-file, --company and --key-id; verification also requires --max-age-seconds.",
   );
   process.exit(1);
 }
@@ -37,7 +38,7 @@ await fs.mkdir("tmp/launch-tools", { recursive: true });
 await build({
   stdin: {
     contents:
-      'export {prepareImportReview,verifyImportReview} from "./src/backend/import-plan.ts"; export {encryptBusinessBackup,decryptBusinessBackup} from "./src/backend/launch-backup.ts"; export {rehearseEncryptedBusinessRestore} from "./src/backend/launch-backup-rehearsal.ts";',
+      'export {prepareImportReview,verifyImportReview} from "./src/backend/import-plan.ts"; export {encryptBusinessBackup,decryptBusinessBackup} from "./src/backend/launch-backup.ts"; export {rehearseEncryptedBusinessRestore} from "./src/backend/launch-backup-rehearsal.ts"; export {checkProductionBackupHealth} from "./src/backend/backup-health.ts";',
     resolveDir: process.cwd(),
     loader: "ts",
   },
@@ -116,6 +117,20 @@ try {
           warning: "Private plaintext output; no database was restored.",
         }),
       );
+    } else if (command === "verify-production-backup") {
+      const age = required("--max-age-seconds");
+      if (!/^[1-9][0-9]*$/.test(age))
+        throw Error("--max-age-seconds must be an explicit positive integer.");
+      const status = tool.checkProductionBackupHealth(
+        await json(input),
+        key,
+        scope,
+        {
+          now: new Date(),
+          maxAgeSeconds: Number(age),
+        },
+      );
+      console.log(JSON.stringify(status));
     } else {
       const report = await tool.rehearseEncryptedBusinessRestore(
         await json(input),

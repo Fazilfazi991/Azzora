@@ -16,4 +16,12 @@ Each Accountant submitted a uniquely keyed fictional receipt against the other c
 
 Using the Supabase publishable key and a Company B Manager provider access token, unauthenticated `staging_auth_grant` returned 401, authenticated `staging_auth_grant` returned 403, authenticated `staging_company_read` returned 403, and a direct `azzora` schema REST request returned 406. The authenticated Storage bucket-list endpoint returned 200 with an empty list; it is accurately recorded as an empty result, not a denied request. This confirms these specific exposed endpoints do not yield the targeted data for the tested identities. It is not a full RLS audit, a privileged-role test, nor a direct test of every Storage policy.
 
+A follow-up provider matrix passed for all eight authenticated A/B Owner, Manager, Accountant and Engineer identities. Owner and Accountant access tokens were verified at AAL2 after TOTP; Manager and Engineer tokens were AAL1. Each token received HTTP 403 from both tested privileged RPCs and HTTP 406 when requesting the private `azzora` schema. Each bucket-list request returned HTTP 200 with zero visible buckets. This expands endpoint exposure coverage to privileged roles but does not test every underlying row-level policy, direct object path or SQL role.
+
+## Mobile browser and local policy follow-up
+
+Direct protected-preview Chrome at 390 px passed Manager and Accountant login, Accountant TOTP, refresh, and ten routes: Manager dashboard, customers, projects, quotations and accounts; Accountant dashboard, invoices, bills, receipts and P&L. No page exceptions were observed. This pass did not test logout. Full-page screenshot inspection showed Accountant P&L readable; Manager Accounts recent-invoices columns are narrow on mobile, long fictional references wrap heavily, and right-side columns lie beyond the initial viewport. Screenshots are retained in ignored `tmp/launch-independent-qa/direct-mobile-followup/`.
+
+An independent local test invocation covering candidate production runtime, authentication and financial policy completed 32 test files and 568 tests successfully. These are local isolated tests, not evidence that live production database permissions were applied or verified.
+
 No production records, deployment, real posting settings or live aliases were changed. The staged tests used uniquely keyed fictional records. Combined with previous BFF private-file and project-denial tests, these results extend but do not complete the full security acceptance matrix.

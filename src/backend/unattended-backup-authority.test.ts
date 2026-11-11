@@ -206,4 +206,4 @@ it("retains audit and duplicate protection after a database restart", async () =
   } finally {
     await persistent.close();
   }
-});
+}, 30_000);

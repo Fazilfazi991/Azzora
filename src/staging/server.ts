@@ -5,7 +5,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { prepareManagerFiles, readManagerFile } from "./manager-files.js";
 import { StagingPolicyError } from "./commercial-commands.js";
 import { createStagingBackup, type ReadBackupOriginal } from "./backup.js";
-import { encryptBusinessBackup } from "../backend/launch-backup.js";
+import { createAuthoritativeStagingBackup } from "../backend/launch-backup.js";
 import { isDistinctBackupKey } from "../backend/backup-key-policy.js";
 import { createStagingAuth, type StagingActor } from "./auth.js";
 import {
@@ -387,16 +387,18 @@ export function createStagingHandler(
             )
           : stagingEncrypted
             ? await (async () => {
-                const archive = await createStagingBackup(source, readOriginal);
-                return encryptBusinessBackup(
-                  Buffer.from(JSON.stringify(archive)),
+                const capture = await rpc("staging_owner_backup", { p_session_hash: actor.sessionHash });
+                return createAuthoritativeStagingBackup(
+                  capture,
+                  readOriginal,
                   options.stagingManualBackupKey ||
                     Buffer.from(stagingRaw, "base64url"),
                   {
                     companyId: source.companyId,
                     keyId: "fictional-staging-owner-key-v1",
-                    capturedAt: archive.capturedAt,
+                    capturedAt: new Date().toISOString(),
                   },
+                  sharedActor(actor),
                 );
               })()
             : await createStagingBackup(source, readOriginal);

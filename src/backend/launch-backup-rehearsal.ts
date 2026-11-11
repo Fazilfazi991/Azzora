@@ -16,6 +16,7 @@ import {
 import {
   decryptBusinessBackup,
   verifyAuthoritativeProductionArchive,
+  verifyAuthoritativeStagingArchive,
   type EncryptedBusinessBackup,
 } from "./launch-backup.js";
 const companyId = "11111111-1111-4111-8111-111111111111",
@@ -325,7 +326,7 @@ export async function rehearseEncryptedBusinessRestore(
 ) {
   const raw = decryptBusinessBackup(encrypted, key, expected),
     parsed = JSON.parse(Buffer.from(raw).toString("utf8")),
-    authoritative = parsed.format === "azzora-authoritative-production-backup-v2" ? verifyAuthoritativeProductionArchive(parsed, expected.companyId) : undefined,
+    authoritative = parsed.format === "azzora-authoritative-production-backup-v2" ? verifyAuthoritativeProductionArchive(parsed, expected.companyId) : parsed.format === "azzora-authoritative-staging-backup-v2" ? verifyAuthoritativeStagingArchive(parsed, expected.companyId) : undefined,
     business = authoritative?.business || parsed,
     mode =
       business.format === "azzora-production-business-backup"

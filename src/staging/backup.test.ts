@@ -25,7 +25,8 @@ import { buildTrialBalance } from "../accounting/reports";
 import { createStagingHandler } from "./server";
 import type { createStagingAuth, StagingActor } from "./auth";
 import type { StagingRpc } from "./supabase";
-import { decryptBusinessBackup } from "../backend/launch-backup";
+import { decryptBusinessBackup, verifyAuthoritativeStagingArchive } from "../backend/launch-backup";
+import { freshRehearsalDatabase as freshAuthoritativeDatabase, rehearseEncryptedBusinessRestore, restoreIntoFreshRehearsal as restoreAuthoritative } from "../backend/launch-backup-rehearsal";
 
 const companyId = "11111111-1111-4111-8111-111111111111",
   ownerId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -368,6 +369,7 @@ describe("fictional business backup integrity and isolated restore", () => {
         if (key) expect(body).not.toContain(key);
       }
       expect(read).not.toHaveBeenCalled();
+      expect(vi.mocked(rpc).mock.calls.every(([name]) => name !== "staging_owner_backup")).toBe(true);
     } finally {
       vi.unstubAllEnvs();
     }
@@ -395,6 +397,13 @@ describe("fictional business backup integrity and isolated restore", () => {
     const rpc = vi.fn(async (name: string) => {
       if (name === "staging_company_read")
         return { version: source.version, data: source.data };
+      if (name === "staging_owner_backup")
+        return { ...source, provenance: {
+          memberships: [{ userId: ownerId, role: "owner_admin", active: true, financeAccess: true, workspaces: ["manager"], capabilities: ["access.manage"] }], assignments: [],
+          journals: source.data.journals.map(j => ({ id: j.id, actorId: ownerId })),
+          snapshots: source.data.snapshots.map(s => ({ entityType: s.entity_type, entityId: s.entity_id, revision: s.revision, capturedBy: ownerId, capturedAt: "2026-11-11T00:00:00Z" })),
+          auditEvents: [{ id: "3", actorId: ownerId, action: "invoice.issue", entityType: "invoice", entityId: "invoice", requestId: "fictional", recordedAt: "2026-11-11T00:00:00Z", metadata: {} }], commandReceipts: [],
+        } };
       throw Error("Unexpected RPC");
     }) as unknown as StagingRpc;
     const storage = {
@@ -420,15 +429,30 @@ describe("fictional business backup integrity and isolated restore", () => {
       companyId,
       keyId: "fictional-staging-owner-key-v1",
     });
-    const archive = verifyStagingBackup(
-      JSON.parse(Buffer.from(clear).toString()),
-    );
-    const { db } = await freshRehearsalDatabase();
+    const parsed = verifyAuthoritativeStagingArchive(JSON.parse(Buffer.from(clear).toString()), companyId);
+    const archive = parsed.business;
+    expect(parsed.provenance.journals).toHaveLength(2);
+    const proof = await rehearseEncryptedBusinessRestore(envelope, key, { companyId, keyId: "fictional-staging-owner-key-v1" });
+    expect(proof).toMatchObject({ auditActorReferencesRestored: true, identityUsersRestored: false, membershipsRestored: false, financialReportsMatch: true });
+    const { db } = await freshAuthoritativeDatabase();
     try {
-      const restored = await restoreIntoFreshRehearsal(db, archive);
+      const restored = await restoreAuthoritative(db, archive, "fictional-staging", { isolatedOnly: true, companyId, journals: parsed.provenance.journals, snapshots: parsed.provenance.snapshots, auditEvents: parsed.provenance.auditEvents, commandReceipts: parsed.provenance.commandReceipts });
       expect(restored.capturedVersion).toBe(source.version);
       expect(restored.originals.get(objectKey)).toEqual(Buffer.from(bytes));
       expect(archive.manifest.counts.journals).toBe(2);
+      // Deliberate synthetic-only reprovision: archived identities are not activated.
+      await expect(db.query("select public.staging_auth_grant($1)", [ownerId])).rejects.toThrow(/membership denied/);
+      const replacement = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", provider = "cccccccc-cccc-4ccc-8ccc-cccccccccccc", token = "a".repeat(64);
+      await db.query("insert into auth.users(id,email,raw_app_meta_data,email_confirmed_at) values($1,'owner@staging.azzora.test','{\"azzora_scope\":\"fictional-staging\"}',now())", [replacement]);
+      await db.query("insert into auth.sessions values($1,$2,'aal2',now()+interval '1 hour')", [provider, replacement]);
+      await db.query("select public.staging_auth_fixture_membership($1,$2,'owner_admin')", [replacement, companyId]);
+      await expect(db.query("select public.staging_auth_session_put($1,$2,$3,$4,$5,'manager','aal1','synthetic')", [token, "b".repeat(64), replacement, provider, companyId])).rejects.toThrow(/MFA/);
+      await db.query("insert into auth.mfa_factors values('dddddddd-dddd-4ddd-8ddd-dddddddddddd',$1,'verified','totp')", [replacement]);
+      await db.query("select public.staging_auth_session_put($1,$2,$3,$4,$5,'manager','aal2','synthetic')", [token, "b".repeat(64), replacement, provider, companyId]);
+      const opened = (await db.query<{data: {companyId?: string}}>("select public.staging_company_read($1,'manager') data", [token])).rows[0].data;
+      expect(opened).toMatchObject({ version: source.version });
+      await db.query("select public.staging_auth_session_revoke($1)", [token]);
+      await expect(db.query("select public.staging_company_read($1,'manager')", [token])).rejects.toThrow(/expired or revoked/);
     } finally {
       await db.close();
     }

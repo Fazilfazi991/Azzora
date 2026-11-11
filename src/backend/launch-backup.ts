@@ -11,6 +11,8 @@ import {
   stableBackupJson,
   createProductionBusinessBackup,
   verifyProductionBusinessBackup,
+  createStagingBackup,
+  verifyStagingBackup,
   type ReadBackupOriginal,
 } from "../staging/backup.js";
 import type { CanonicalData } from "../staging/canonical.js";
@@ -219,6 +221,31 @@ export async function createAuthoritativeProductionBackup(
 export function verifyAuthoritativeProductionArchive(input: unknown, companyId: string) {
   const outer = z.object({ format: z.literal("azzora-authoritative-production-backup-v2"), companyId: z.uuid(), business: z.unknown(), provenance: z.unknown() }).strict().parse(input);
   const business = verifyProductionBusinessBackup(outer.business);
+  const checked = validateAuthoritativeCapture({ version: business.capturedCompanyVersion, companyId: outer.companyId, data: business.data, provenance: outer.provenance }, companyId);
+  if (business.companyId !== checked.companyId) throw Error("Backup company mismatch.");
+  return { business, provenance: checked.provenance };
+}
+
+/** Fictional-only staging equivalent; never accepts or labels production state. */
+export async function createAuthoritativeStagingBackup(
+  capture: unknown,
+  readOriginal: ReadBackupOriginal,
+  key: Uint8Array,
+  scope: { companyId: string; keyId: string; capturedAt: string },
+  actor: AuthorizedActor,
+): Promise<EncryptedBusinessBackup> {
+  authorize(actor, "access.manage", { companyId: scope.companyId });
+  if (actor.assurance !== "aal2" || !actor.grant.roles.includes("owner"))
+    throw Error("Current Owner MFA is required for staging backup.");
+  const row = validateAuthoritativeCapture(capture, scope.companyId);
+  const business = await createStagingBackup({ version: row.version, companyId: row.companyId, data: row.data }, readOriginal, scope.capturedAt);
+  const archive = { format: "azzora-authoritative-staging-backup-v2", companyId: row.companyId, business, provenance: row.provenance };
+  return encryptBusinessBackup(Buffer.from(JSON.stringify(archive)), key, scope);
+}
+
+export function verifyAuthoritativeStagingArchive(input: unknown, companyId: string) {
+  const outer = z.object({ format: z.literal("azzora-authoritative-staging-backup-v2"), companyId: z.uuid(), business: z.unknown(), provenance: z.unknown() }).strict().parse(input);
+  const business = verifyStagingBackup(outer.business);
   const checked = validateAuthoritativeCapture({ version: business.capturedCompanyVersion, companyId: outer.companyId, data: business.data, provenance: outer.provenance }, companyId);
   if (business.companyId !== checked.companyId) throw Error("Backup company mismatch.");
   return { business, provenance: checked.provenance };

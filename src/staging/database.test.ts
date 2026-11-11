@@ -137,6 +137,17 @@ it("initializes fictional canonical records and one opening journal through one 
   expect(restored.finance.accounting.journals).toHaveLength(1);
   expect(restored.manager.people[0].id).toBe(owner);
 });
+it("captures staging-only provenance for the verified Owner and denies browser roles or revoked sessions", async () => {
+  const capture = (await db.query("select public.staging_owner_backup($1) result", [hash])).rows[0].result as { companyId: string; provenance: { memberships: unknown[]; journals: unknown[]; auditEvents: unknown[] } };
+  expect(capture.companyId).toBe(company);
+  expect(capture.provenance.memberships.length).toBeGreaterThan(0);
+  expect(capture.provenance.journals.length).toBeGreaterThan(0);
+  expect(JSON.stringify(capture)).not.toContain(hash);
+  expect(JSON.stringify(capture)).not.toContain(session);
+  await expect(db.query("select public.staging_owner_backup($1)", ["f".repeat(64)])).rejects.toThrow(/expired or revoked/);
+  const privileges = (await db.query("select has_function_privilege('anon','public.staging_owner_backup(text)','execute') a,has_function_privilege('authenticated','public.staging_owner_backup(text)','execute') b,has_function_privilege('service_role','public.staging_owner_backup(text)','execute') c")).rows[0];
+  expect(privileges).toEqual({ a: false, b: false, c: true });
+});
 it("replays the same actor-bound command without posting or auditing twice", async () => {
   expect(await commit(0, "fixture-init-00000001", undefined, true)).toEqual({
     version: 1,
@@ -230,5 +241,9 @@ it("gives verified Owner company administration while PM remains assignment-scop
  await db.query("select public.staging_auth_session_put($1,$2,$3,$4,$5,'manager','aal1','local-fixture-encrypted')",[ph,"e".repeat(64),pm,ps,company]);
  const m=(await db.query("select public.staging_auth_actor($1) a",[ph])).rows[0].a as {projectIds:string[];capabilities:string[]};
  expect(m.projectIds).toEqual([]);expect(m.capabilities).toContain("document.submit");
+ await expect(db.query("select public.staging_owner_backup($1)",[ph])).rejects.toThrow(/Owner MFA/);
+ const ownerBackup=(await db.query("select public.staging_owner_backup($1) result",[hash])).rows[0].result;
+ expect(JSON.stringify(ownerBackup)).not.toContain("foreign-project");
+ expect(JSON.stringify(ownerBackup)).toContain("owner-unassigned");
  await expect(db.query("select public.staging_company_commit($1,3,'unassigned-command-01',$2,'site.save',$3::jsonb,'{}'::jsonb,false)",[ph,"d".repeat(64),JSON.stringify({workspace:"manager",projectId:"owner-unassigned",financial:false})])).rejects.toThrow("Assigned project required");
 });

@@ -124,6 +124,53 @@ it("does not allow a generic SQL or arbitrary public RPC transport", async () =>
     "unsupported_staging_rpc",
   );
 });
+it("emits bounded staging timing only for approved RPCs without sensitive data", async () => {
+  const info = vi.spyOn(console, "info").mockImplementation(() => {});
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    const ok = createStagingRpc(config, (async () =>
+      Response.json({ private: "record" })) as typeof fetch);
+    await ok("staging_company_read", { session: "secret" });
+    expect(info).toHaveBeenCalledTimes(1);
+    const event = JSON.parse(String(info.mock.calls[0][0]));
+    expect(event).toMatchObject({
+      event: "staging_rpc_timing",
+      rpc: "staging_company_read",
+      status: 200,
+      code: "other",
+    });
+    expect(event.elapsedMs).toBeGreaterThanOrEqual(0);
+    expect(event.elapsedMs).toBeLessThanOrEqual(120_000);
+    expect(JSON.stringify(info.mock.calls)).not.toMatch(
+      /secret|record|sb_secret/,
+    );
+    info.mockClear();
+    const failure = createStagingRpc(config, (async () =>
+      Response.json(
+        { code: "57014", message: "secret" },
+        { status: 500 },
+      )) as typeof fetch);
+    await expect(
+      failure("staging_company_commit", { private: "secret" }),
+    ).rejects.toThrow("staging_service_unavailable");
+    expect(JSON.parse(String(info.mock.calls[0][0]))).toMatchObject({
+      rpc: "staging_company_commit",
+      status: 500,
+      code: "57014",
+    });
+    expect(JSON.stringify(info.mock.calls)).not.toContain("secret");
+    info.mockClear();
+    const prod = createProductionRpc(config, (async () =>
+      Response.json({})) as typeof fetch);
+    await prod("staging_company_read");
+    expect(info).not.toHaveBeenCalled();
+    await ok("staging_arbitrary_sensitive_name");
+    expect(info).not.toHaveBeenCalled();
+  } finally {
+    info.mockRestore();
+    warn.mockRestore();
+  }
+});
 it.each([204, 200])(
   "accepts a successful void RPC with HTTP %s and an empty body",
   async (status) => {

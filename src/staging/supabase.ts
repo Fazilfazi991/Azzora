@@ -44,6 +44,30 @@ export type StagingRpc = <T = unknown>(
   params?: Record<string, unknown>,
 ) => Promise<T>;
 
+// Staging diagnostics intentionally contain no payload, identity, credentials,
+// URLs or SQL text. Vercel's invocation ID correlates these with request logs.
+const timedStagingRpcNames = new Set([
+  "staging_company_read",
+  "staging_company_commit",
+  "staging_auth_actor",
+]);
+const timingStatuses = new Set([
+  200, 204, 400, 401, 403, 409, 429, 500, 502, 503, 504,
+]);
+const timingCodes = new Set([
+  "57014",
+  "55P03",
+  "40P01",
+  "53300",
+  "PGRST000",
+  "PGRST001",
+  "PGRST002",
+  "PGRST003",
+  "PT409",
+  "40001",
+  "23505",
+]);
+
 function createScopedRpc(
   config: StagingConfig,
   transport: typeof fetch,
@@ -63,6 +87,23 @@ function createScopedRpc(
       production && name !== "azzora_runtime_identity"
         ? name.replace(/^staging_/, "azzora_production_")
         : name;
+    const started = Date.now();
+    const timed = !production && timedStagingRpcNames.has(name);
+    const recordTiming = (status: number | "transport", code?: string) => {
+      if (!timed) return;
+      console.info(
+        JSON.stringify({
+          event: "staging_rpc_timing",
+          rpc: name,
+          elapsedMs: Math.min(120_000, Math.max(0, Date.now() - started)),
+          status:
+            typeof status === "number" && !timingStatuses.has(status)
+              ? "other"
+              : status,
+          code: code && timingCodes.has(code) ? code : "other",
+        }),
+      );
+    };
     let response: Response;
     try {
       response = await transport(`${config.url}/rest/v1/rpc/${functionName}`, {
@@ -80,6 +121,7 @@ function createScopedRpc(
         signal: AbortSignal.timeout(25_000),
       });
     } catch (error) {
+      recordTiming("transport");
       if (!production)
         console.warn(
           JSON.stringify({
@@ -98,6 +140,7 @@ function createScopedRpc(
       const body = (await response.json().catch(() => null)) as {
         code?: string;
       } | null;
+      recordTiming(response.status, body?.code);
       if (response.status === 429 || body?.code === "PT429")
         throw new StagingServiceError(429, "staging_rate_limited");
       if (
@@ -138,6 +181,7 @@ function createScopedRpc(
       }
       throw new StagingServiceError(503, "staging_service_unavailable");
     }
+    recordTiming(response.status);
     if (response.status === 204) return undefined as T;
     const value = await response.text();
     if (!value.trim()) return undefined as T;

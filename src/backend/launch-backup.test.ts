@@ -11,7 +11,10 @@ import { serializeCanonical } from "../staging/canonical";
 import { blankCustomer } from "../commercial/customer-domain";
 import { blankInvoice, newProjectDetails } from "../commercial/repository";
 import { encryptBusinessBackup, decryptBusinessBackup } from "./launch-backup";
-import { rehearseEncryptedBusinessRestore } from "./launch-backup-rehearsal";
+import {
+  orderRestoreJournals,
+  rehearseEncryptedBusinessRestore,
+} from "./launch-backup-rehearsal";
 const companyId = "11111111-1111-4111-8111-111111111111",
   ownerId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const actor: SharedActor = {
@@ -165,6 +168,50 @@ it("rejects wrong key, company scope, tampered ciphertext/tag/hash/timestamp and
   expect(() =>
     encryptBusinessBackup(Buffer.from("x"), Buffer.alloc(4), scope),
   ).toThrow(/32-byte/);
+});
+it("restores a reversal sorted before its original without changing archive or financial history", async () => {
+  const input = fixture();
+  const original = input.data.journals.find((j) => j.id === "staging-opening")!;
+  const reversal = {
+    ...structuredClone(original),
+    id: "aaa-reversal",
+    posting_key: "fictional-reversal",
+    source_action: "reverse",
+    reversal_of: original.id,
+    lines: original.lines.map((line) => ({
+      ...line,
+      debit_fils: line.credit_fils,
+      credit_fils: line.debit_fils,
+    })),
+  };
+  input.data.journals.unshift(reversal);
+  const before = JSON.stringify(input.data);
+  const backup = await createStagingBackup(
+    input,
+    async () => bytes,
+    scope.capturedAt,
+  );
+  const key = randomBytes(32),
+    encrypted = encryptBusinessBackup(
+      Buffer.from(JSON.stringify(backup)),
+      key,
+      scope,
+    );
+  const report = await rehearseEncryptedBusinessRestore(encrypted, key, scope);
+  expect(JSON.stringify(input.data)).toBe(before);
+  expect(report.journals).toBe(3);
+  expect(report.businessSha256).toBe(report.restoredSha256);
+  expect(report.financialReportsMatch).toBe(true);
+}, 30000);
+it("rejects missing, cyclic or duplicate reversal dependencies before restore", () => {
+  const original = fixture().data.journals[0];
+  expect(() =>
+    orderRestoreJournals([{ ...original, reversal_of: "missing" }]),
+  ).toThrow(/missing/);
+  expect(() =>
+    orderRestoreJournals([{ ...original, reversal_of: original.id }]),
+  ).toThrow(/cycle/);
+  expect(() => orderRestoreJournals([original, original])).toThrow(/Duplicate/);
 });
 it("decrypts, verifies and restores a real synthetic business export into isolated PostgreSQL with exact history/originals and reconciled reports", async () => {
   const backup = await createStagingBackup(

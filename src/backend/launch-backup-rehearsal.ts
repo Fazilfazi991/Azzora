@@ -19,6 +19,41 @@ import {
 } from "./launch-backup.js";
 const companyId = "11111111-1111-4111-8111-111111111111",
   ownerId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+
+/** Restore originals before reversals without mutating the archive or its
+ * canonical order. A missing parent or a cycle is always a hard failure. */
+export function orderRestoreJournals(journals: CanonicalData["journals"]) {
+  const byId = new Map<string, CanonicalData["journals"][number]>();
+  const children = new Map<string, string[]>();
+  const pending = new Map<string, number>();
+  for (const journal of journals) {
+    if (byId.has(journal.id)) throw Error("Duplicate journal in backup.");
+    byId.set(journal.id, journal);
+  }
+  for (const journal of journals) {
+    if (journal.reversal_of) {
+      if (!byId.has(journal.reversal_of))
+        throw Error("Backup reversal original is missing.");
+      pending.set(journal.id, 1);
+      const list = children.get(journal.reversal_of) || [];
+      list.push(journal.id);
+      children.set(journal.reversal_of, list);
+    } else pending.set(journal.id, 0);
+  }
+  const ready = journals.filter((journal) => pending.get(journal.id) === 0);
+  const ordered: CanonicalData["journals"] = [];
+  for (let i = 0; i < ready.length; i++) {
+    const journal = ready[i];
+    ordered.push(journal);
+    for (const child of children.get(journal.id) || []) {
+      pending.set(child, 0);
+      ready.push(byId.get(child)!);
+    }
+  }
+  if (ordered.length !== journals.length)
+    throw Error("Backup reversal references contain a cycle.");
+  return ordered;
+}
 export async function freshRehearsalDatabase(
   mode: "production" | "fictional-staging" = "fictional-staging",
 ) {
@@ -154,7 +189,7 @@ export async function restoreIntoFreshRehearsal(
           "select count(*)::int n from information_schema.columns where table_schema='azzora' and table_name='journals' and column_name='reversal_of'",
         )
       ).rows[0].n > 0;
-    for (const v of data.journals) {
+    for (const v of orderRestoreJournals(data.journals)) {
       if (v.reversal_of && !hasReversal)
         throw Error("Reversal migration required before restore.");
       await execute(

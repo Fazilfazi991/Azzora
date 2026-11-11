@@ -361,6 +361,9 @@ describe("fictional business backup integrity and isolated restore", () => {
         expect(response.status).toBe(503);
         const body = await response.text();
         expect(body).toContain("staging_owner_backup_key_required");
+        expect(body).toContain(
+          "Encrypted backup is not configured. No file was downloaded.",
+        );
         expect(body).not.toContain("Fictional Backup Client");
         if (key) expect(body).not.toContain(key);
       }

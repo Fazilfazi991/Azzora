@@ -830,7 +830,10 @@ export function createStagingHandler(
         return json(
           error.status,
           {
-            error: "A recent authenticator sign-in is required.",
+            error:
+              error.code === "backup_recent_mfa_required"
+                ? "A recent authenticator sign-in is required."
+                : "Encrypted backup is not configured. No file was downloaded.",
             code: error.code,
             requestId,
           },

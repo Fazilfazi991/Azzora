@@ -632,6 +632,7 @@ it("exports only an encrypted production backup for current Owner MFA, retaining
   expect(stale.status).toBe(403);
   expect(await stale.json()).toMatchObject({
     code: "backup_recent_mfa_required",
+    error: "A recent authenticator sign-in is required.",
   });
   f.actor.mfaVerifiedAt = Date.now();
   f.actor.role = "project_manager";
@@ -643,6 +644,7 @@ it("exports only an encrypted production backup for current Owner MFA, retaining
   expect(missingResponse.status).toBe(503);
   expect(await missingResponse.json()).toMatchObject({
     code: "production_backup_adapter_required",
+    error: "Encrypted backup is not configured. No file was downloaded.",
   });
   const missingKey = productionServerFixture(1, false, async () => {
     throw new StagingServiceError(503, "production_owner_backup_key_required");
@@ -653,6 +655,7 @@ it("exports only an encrypted production backup for current Owner MFA, retaining
   expect(missingKeyResponse.status).toBe(503);
   expect(await missingKeyResponse.json()).toMatchObject({
     code: "production_owner_backup_key_required",
+    error: "Encrypted backup is not configured. No file was downloaded.",
   });
   expect(
     f.calls.mock.calls.filter(([name]) => name === "staging_company_commit"),

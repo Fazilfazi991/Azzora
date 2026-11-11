@@ -6,6 +6,7 @@ import {
 } from "../staging/supabase.js";
 import { createPrivateAttachmentStorage } from "../staging/storage.js";
 import { createStagingHandler } from "../staging/server.js";
+import { createProtectedProductionBackup } from "./launch-backup.js";
 import {
   assertProductionIdentity,
   productionRuntime,
@@ -41,6 +42,35 @@ export function createProductionCandidate(
         auth,
         storage,
         production: runtime,
+        productionBackup: async (source, read, actor) => {
+          const env = options.env || process.env,
+            raw = env.AZZORA_PRODUCTION_BACKUP_KEY || "",
+            keyId = env.AZZORA_PRODUCTION_BACKUP_KEY_ID || "";
+          if (
+            !/^[A-Za-z0-9_-]{43}$/.test(raw) ||
+            !/^[A-Za-z0-9][A-Za-z0-9._:-]{3,127}$/.test(keyId) ||
+            [
+              runtime.encryptionKey,
+              runtime.serviceKey,
+              runtime.publishableKey,
+            ].includes(raw)
+          )
+            throw new StagingServiceError(
+              503,
+              "production_owner_backup_key_required",
+            );
+          return createProtectedProductionBackup(
+            source,
+            read,
+            Buffer.from(raw, "base64url"),
+            {
+              companyId: runtime.companyId,
+              keyId,
+              capturedAt: new Date().toISOString(),
+            },
+            actor,
+          );
+        },
       })(request);
     } catch (error) {
       const status = error instanceof StagingServiceError ? error.status : 503;

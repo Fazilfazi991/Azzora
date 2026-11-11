@@ -15,6 +15,11 @@ import { createEmptyProductionCompany } from "../finance/production-policy.js";
 import { emptyOperations } from "../operations/migration.js";
 import { blankFields } from "../accounts-review/documents/model.js";
 import { ReviewRecordingError } from "../accounts-review/domain.js";
+import {
+  createProtectedProductionBackup,
+  decryptBusinessBackup,
+} from "./launch-backup.js";
+import { verifyProductionBusinessBackup } from "../staging/backup.js";
 
 export const productionEnv = () => ({
   AZZORA_DEPLOYMENT_MODE: "production-candidate",
@@ -413,7 +418,13 @@ it("rejects staging email before provider login and disables the fictional manua
   ).toBe(503);
   expect(f.calls).not.toHaveBeenCalled();
 });
-function productionServerFixture(initialVersion = 1, wrongMode = false) {
+function productionServerFixture(
+  initialVersion = 1,
+  wrongMode = false,
+  productionBackup?: NonNullable<
+    Parameters<typeof createStagingHandler>[0]
+  >["productionBackup"],
+) {
   const runtime = productionRuntime(productionEnv());
   const actor: StagingActor = {
     userId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
@@ -472,6 +483,7 @@ function productionServerFixture(initialVersion = 1, wrongMode = false) {
     auth,
     storage,
     production: runtime,
+    productionBackup,
   });
   const request = (path: string, body?: unknown) =>
     new Request("https://candidate.example.test/api/staging" + path, {
@@ -484,7 +496,7 @@ function productionServerFixture(initialVersion = 1, wrongMode = false) {
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
-  return { handle, request, calls, storage, getData: () => data };
+  return { handle, request, calls, storage, actor, getData: () => data };
 }
 it("never bootstraps sample data on a production first login and rejects wrong-environment canonical records", async () => {
   const fresh = productionServerFixture(0);
@@ -581,4 +593,98 @@ it("returns a precise409 for a trusted recording-clock conflict rather than disg
     error: "The ledger advanced. Refresh before retrying.",
   });
   expect(rpc).not.toHaveBeenCalled();
+});
+it("exports only an encrypted production backup for current Owner MFA, retaining verified hashes and rejecting other roles", async () => {
+  const key = Buffer.alloc(32, 7),
+    c = productionEnv().AZZORA_PRODUCTION_COMPANY_ID,
+    keyId = "fixture-owner-key-v1",
+    f = productionServerFixture(1, false, (source, read, actor) =>
+      createProtectedProductionBackup(
+        source,
+        read,
+        key,
+        { companyId: c, keyId, capturedAt: "2026-11-11T00:00:00.000Z" },
+        actor,
+      ),
+    );
+  const r = await f.handle(f.request("/manager/backup"));
+  expect(r.status).toBe(200);
+  expect(r.headers.get("content-disposition")).toContain("encrypted.json");
+  const envelope = await r.json();
+  expect(envelope.format).toBe("azzora-encrypted-business-backup-v1");
+  expect(JSON.stringify(envelope)).not.toContain(
+    "Fictional isolated production-contract harness",
+  );
+  const original = JSON.parse(
+    Buffer.from(
+      decryptBusinessBackup(envelope, key, { companyId: c, keyId }),
+    ).toString(),
+  );
+  expect(verifyProductionBusinessBackup(original).mode).toBe("production");
+  f.actor.role = "project_manager";
+  expect((await f.handle(f.request("/manager/backup"))).status).toBe(403);
+  const missing = productionServerFixture();
+  expect(
+    (await missing.handle(missing.request("/manager/backup"))).status,
+  ).toBe(503);
+  expect(
+    f.calls.mock.calls.filter(([name]) => name === "staging_company_commit"),
+  ).toHaveLength(0);
+});
+it("offers Owner-only synthetic import review without initializing or publishing any company records or echoing source rows", async () => {
+  const f = productionServerFixture(0),
+    source = {
+      companyId: productionEnv().AZZORA_PRODUCTION_COMPANY_ID,
+      sourceId: "synthetic-bounded-import",
+      dataClass: "synthetic-rehearsal",
+      cutoverDate: "2026-11-11",
+      originalUtf8: '{"customer":"Synthetic private import original"}',
+      rows: [
+        {
+          kind: "customer",
+          sourceId: "c1",
+          preservedId: "c1",
+          payload: { name: "Synthetic private import original" },
+        },
+      ],
+    };
+  const r = await f.handle(f.request("/manager/import/preview", source));
+  expect(r.status).toBe(200);
+  const review = await r.json();
+  expect(review.persisted).toBe(false);
+  expect(review.financialPostingAllowed).toBe(false);
+  expect(review.targetCompanyVersion).toBe(0);
+  expect(review.rows).toBeUndefined();
+  expect(review.originalUtf8).toBeUndefined();
+  expect(JSON.stringify(review)).not.toContain(
+    "Synthetic private import original",
+  );
+  expect(review.sha256).toMatch(/^[a-f0-9]{64}$/);
+  expect(
+    (
+      await f.handle(
+        f.request("/manager/import/preview", {
+          ...source,
+          dataClass: "authorized-company-export",
+        }),
+      )
+    ).status,
+  ).toBe(423);
+  expect(
+    (
+      await f.handle(
+        f.request("/manager/import/preview", {
+          ...source,
+          companyId: "foreign",
+        }),
+      )
+    ).status,
+  ).toBe(403);
+  f.actor.role = "accountant";
+  expect(
+    (await f.handle(f.request("/manager/import/preview", source))).status,
+  ).toBe(403);
+  expect(
+    f.calls.mock.calls.filter(([name]) => name === "staging_company_commit"),
+  ).toHaveLength(0);
 });

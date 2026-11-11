@@ -31,3 +31,11 @@ Dependency: finance commit `0b9ec82eb4b72bbabc4fa7831fb8009751f47cb8` (copied lo
 -Cloud contract migration, private bucket setup, secure candidate secrets and real hosted tests have not been run by this agent. Free-tier provisioning does not itself prove backup, permanence, retention or availability requirements.
 
 All independently executable changes use existing architecture and preserve staging behavior. Existing Manager/Accounts live aliases and GitHub main are untouched.
+
+## Encrypted capture and import-review adapter follow-up
+
+The production business-backup HTTP adapter is now wired to the separately tested explicit production archive and AES-256-GCM encryption module. It requires current Owner MFA/access.manage and a distinct server-only 32-byte base64url `AZZORA_PRODUCTION_BACKUP_KEY` plus `AZZORA_PRODUCTION_BACKUP_KEY_ID`. Missing keys fail closed; there is no plaintext production response or staging/session-key fallback. This resolves the business-backup adapter source gap above, not the still-pending infrastructure/Auth recovery and hosted rehearsal gates.
+
+`POST /manager/import/preview` accepts an authorized Owner's bounded synthetic rehearsal package and returns only hashes, controls, counts and issues. It persists nothing, does not echo source rows or original content, and cannot initialize a company, import records or post finances. Real-company packages remain423 pending migration approval and verified backup; durable approved import/cutover is not claimed by this endpoint.
+
+Follow-up verification:24/24 tests across runtime-production, production encrypted capture/isolated restore and existing staging backup passed. TypeScript and scoped ESLint passed. Tests cover encrypted export/decryption/production-format validation, non-owner denial, missing adapter, version-zero preview, no source echo, foreign-company/real-import rejection and no canonical commits. Requires migration commits2c66b01790f6163f7068e28aea57d911cc34e1a1 and3e11c22eed39182bdf253c99094a9149f279408a; the latter makes reviewed SQL source checksums portable across CRLF/LF checkouts without changing business-archive hashes.

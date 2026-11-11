@@ -3,7 +3,7 @@ import { ReviewDraftError } from "../accounts-review/documents/review-errors.js"
 import { createHash, randomUUID } from "node:crypto";
 import { prepareManagerFiles, readManagerFile } from "./manager-files.js";
 import { StagingPolicyError } from "./commercial-commands.js";
-import { createStagingBackup } from "./backup.js";
+import { createStagingBackup, type ReadBackupOriginal } from "./backup.js";
 import { createStagingAuth, type StagingActor } from "./auth.js";
 import {
   rpc as defaultRpc,
@@ -34,6 +34,7 @@ import {
 import { reviewPdf } from "../accounts-review/pdf.js";
 import { ProductionPolicyError } from "../accounting/production-policy.js";
 import { ReviewRecordingError } from "../accounts-review/domain.js";
+import { prepareImportReview } from "../backend/import-plan.js";
 import { extractDocument } from "../accounts-review/documents/service.js";
 import { BlobReviewStore } from "../accounts-review/hosted-store.js";
 import { DocumentExtractionError } from "../accounts-review/documents/extraction-status.js";
@@ -134,6 +135,14 @@ export function createStagingHandler(
       store: typeof storePrivateAttachment;
       read: typeof readPrivateAttachment;
     };
+    productionBackup?: (
+      source: { version: number; data: CanonicalData; companyId: string },
+      read: ReadBackupOriginal,
+      actor: SharedActor,
+    ) => Promise<{
+      format: "azzora-encrypted-business-backup-v1";
+      ciphertext: string;
+    }>;
   } = {},
 ) {
   const rpc = options.rpc ?? defaultRpc;
@@ -184,6 +193,101 @@ export function createStagingHandler(
         });
       stage = "read";
       let loaded = await read();
+      if (path === "/manager/import/preview" && request.method === "POST") {
+        if (
+          actor.role !== "owner_admin" ||
+          actor.assurance !== "aal2" ||
+          !actor.capabilities.includes("access.manage")
+        )
+          return json(
+            403,
+            {
+              error:
+                "Current Owner access with MFA is required for import review.",
+            },
+            requestId,
+          );
+        if (
+          !request.headers
+            .get("Content-Type")
+            ?.toLowerCase()
+            .startsWith("application/json")
+        )
+          return json(415, { error: "JSON is required." }, requestId);
+        const raw = await request.text();
+        if (Buffer.byteLength(raw) > 2_900_000)
+          return json(
+            413,
+            {
+              error:
+                "Use a review package below the 2.9 MB request limit; no records were saved.",
+            },
+            requestId,
+          );
+        let input: Record<string, unknown>;
+        try {
+          input = JSON.parse(raw);
+          if (!input || Array.isArray(input) || typeof input !== "object")
+            throw Error();
+        } catch {
+          return json(
+            422,
+            {
+              error:
+                "Provide a valid JSON import review package; no records were saved.",
+            },
+            requestId,
+          );
+        }
+        if (input.companyId !== actor.companyId)
+          return json(
+            403,
+            { error: "Import review must use this authorized company." },
+            requestId,
+          );
+        if (input.dataClass !== "synthetic-rehearsal")
+          return json(
+            423,
+            {
+              error:
+                "Real-company import review requires explicit migration approval and verified backup. No records were saved.",
+              code: "real_import_approval_required",
+            },
+            requestId,
+          );
+        try {
+          const review = prepareImportReview(input);
+          return json(
+            200,
+            {
+              format: review.format,
+              companyId: review.companyId,
+              sourceId: review.sourceId,
+              dataClass: review.dataClass,
+              cutoverDate: review.cutoverDate,
+              sha256: review.sha256,
+              originalSha256: review.originalSha256,
+              counts: review.counts,
+              controls: review.controls,
+              issues: review.issues,
+              reviewOnly: true,
+              persisted: false,
+              financialPostingAllowed: false,
+              targetCompanyVersion: loaded.version,
+            },
+            requestId,
+          );
+        } catch {
+          return json(
+            422,
+            {
+              error:
+                "Check the required import fields, formats and business-only source contents; no records were saved.",
+            },
+            requestId,
+          );
+        }
+      }
       if (loaded.version === 0) {
         if (production)
           return json(
@@ -222,16 +326,6 @@ export function createStagingHandler(
       )
         throw new StagingServiceError(503, "workspace_environment_mismatch");
       if (path === "/manager/backup" && request.method === "GET") {
-        if (production)
-          return json(
-            503,
-            {
-              error:
-                "Production backup requires the separately verified backup and recovery adapter.",
-              code: "production_backup_adapter_required",
-            },
-            requestId,
-          );
         if (
           actor.role !== "owner_admin" ||
           actor.assurance !== "aal2" ||
@@ -240,14 +334,35 @@ export function createStagingHandler(
           throw Object.assign(new Error("Owner backup access required"), {
             status: 403,
           });
-        const backup = await createStagingBackup(
-          {
-            version: loaded.version,
-            data: loaded.data,
-            companyId: actor.companyId,
-          },
-          (file) => originals.read(actor.companyId, file),
-        );
+        if (production && !options.productionBackup)
+          throw new StagingServiceError(
+            503,
+            "production_backup_adapter_required",
+          );
+        const source = {
+          version: loaded.version,
+          data: loaded.data,
+          companyId: actor.companyId,
+        };
+        const readOriginal: ReadBackupOriginal = (file) =>
+          originals.read(actor.companyId, file);
+        const backup = production
+          ? await options.productionBackup!(
+              source,
+              readOriginal,
+              sharedActor(actor),
+            )
+          : await createStagingBackup(source, readOriginal);
+        if (
+          production &&
+          (!("format" in backup) ||
+            backup.format !== "azzora-encrypted-business-backup-v1" ||
+            !("ciphertext" in backup))
+        )
+          throw new StagingServiceError(
+            503,
+            "production_backup_format_invalid",
+          );
         const bytes = new TextEncoder().encode(JSON.stringify(backup));
         let offset = 0;
         const body = new ReadableStream<Uint8Array>({
@@ -264,8 +379,9 @@ export function createStagingHandler(
         return new Response(body, {
           headers: {
             "Content-Type": "application/json",
-            "Content-Disposition":
-              "attachment; filename=AZZORA-fictional-staging-backup.json",
+            "Content-Disposition": production
+              ? "attachment; filename=AZZORA-production-business-backup.encrypted.json"
+              : "attachment; filename=AZZORA-fictional-staging-backup.json",
             "Cache-Control": "no-store, private",
             "X-Content-Type-Options": "nosniff",
           },

@@ -61,6 +61,8 @@ export function orderRestoreJournals(journals: CanonicalData["journals"]) {
 /** Synthetic-only provenance fixture. Never a production restore interface. */
 export interface IsolatedAuditProvenance {
   isolatedOnly: true;
+  /** Historical users must have been created and disabled through the target Auth administrator. */
+  providerProvisionedHistoricalUsers?: true;
   companyId: string;
   journals: { id: string; actorId: string }[];
   snapshots: { entityType: string; entityId: string; revision: number; capturedBy: string; capturedAt: string }[];
@@ -176,8 +178,14 @@ export async function restoreIntoFreshRehearsal(
       );
     if (provenance) {
       const ids = new Set([...provenance.journals.map(v => v.actorId), ...provenance.snapshots.map(v => v.capturedBy), ...provenance.auditEvents.map(v => v.actorId), ...(provenance.commandReceipts || []).map(v => v.actorId)]);
-      for (const id of ids)
-        await execute("insert into auth.users(id,email,raw_app_meta_data,email_confirmed_at,banned_until) values($1,NULL,'{}',NULL,'infinity') on conflict do nothing", [id]);
+      for (const id of ids) {
+        if (provenance.providerProvisionedHistoricalUsers) {
+          const found = await db.query<{n:number}>("select count(*)::int n from auth.users where id=$1 and banned_until > now() + interval '50 years'",[id]);
+          if (found.rows[0].n !== 1) throw Error('Historical Auth identity must be provisioned and disabled by the target provider.');
+        } else {
+          await execute("insert into auth.users(id,email,raw_app_meta_data,email_confirmed_at,banned_until) values($1,NULL,'{}',NULL,'infinity') on conflict do nothing", [id]);
+        }
+      }
     }
     await execute(
       "insert into azzora.companies(id,name,data_mode,version) values($1,'ISOLATED RESTORE REHEARSAL',$2,$3) on conflict(id) do update set version=excluded.version",

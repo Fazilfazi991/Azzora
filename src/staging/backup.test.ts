@@ -453,6 +453,8 @@ describe("fictional business backup integrity and isolated restore", () => {
     expect(proof).toMatchObject({ schemaFromArchive: true, liveSchemaVerified: false, auditActorReferencesRestored: true, identityUsersRestored: false, membershipsRestored: false, financialReportsMatch: true });
     const { db } = await freshAuthoritativeDatabase();
     try {
+      await expect(restoreAuthoritative(db, archive, "fictional-staging", { isolatedOnly: true, providerProvisionedHistoricalUsers: true, companyId, journals: parsed.provenance.journals, snapshots: parsed.provenance.snapshots, auditEvents: parsed.provenance.auditEvents, commandReceipts: parsed.provenance.commandReceipts })).rejects.toThrow(/provisioned and disabled/);
+      expect((await db.query<{n:number}>("select count(*)::int n from azzora.records")).rows[0].n).toBe(0);
       const restored = await restoreAuthoritative(db, archive, "fictional-staging", { isolatedOnly: true, companyId, journals: parsed.provenance.journals, snapshots: parsed.provenance.snapshots, auditEvents: parsed.provenance.auditEvents, commandReceipts: parsed.provenance.commandReceipts });
       expect(restored.capturedVersion).toBe(source.version);
       expect(restored.originals.get(objectKey)).toEqual(Buffer.from(bytes));

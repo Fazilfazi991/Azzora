@@ -10,7 +10,9 @@ A database backup does **not** contain Storage object bytes. The [CLI reference]
 
 ## Before the first real transaction
 
-Record owner, operator and independent restore reviewer, backup schedule, success/failure notification recipient and escalation, retention and deletion rules, encrypted offsite destination, capacity and access controls, RPO/RTO, and drill frequency. All are **undecided and unverified**; daily encrypted capture and an isolated restore before launch are proposals, not approved guarantees. Account for the free plan's limits and inactivity behavior. No scheduled job, monitoring alert, offsite store or retention policy is currently established.
+The owner selected Google Drive account `fazil4fazi@gmail.com` as the separate encrypted backup destination and the same address for failure alerts. The folder [AZZORA Accounts Encrypted Backups](https://drive.google.com/drive/folders/1KovOXn8MzI6wuBS5fJq-seUIFjsddcMd) was created and its owner-only sharing verified on 11 November 2026. It is an empty destination, not an operational backup or notification system.
+
+Record the operator and independent restore reviewer, backup schedule, escalation, retention and deletion rules, capacity, RPO/RTO, and drill frequency. Those details remain undecided and unverified; daily encrypted capture and an isolated restore before launch are proposals, not approved guarantees. Account for the free plan's limits and inactivity behavior. No scheduled job, monitoring alert, or retention policy is currently established.
 
 Provision a separate independently generated 32-byte owner-managed backup key and key ID using a secret manager or equivalent protected process; do not reuse the database, Supabase service, session or AI keys. Store recoverable key material separately from encrypted files, restrict access, record rotation and recovery custodians, and test key recovery. Losing the key prevents decryption. Never commit or print credentials, backup plaintext, source documents or keys.
 

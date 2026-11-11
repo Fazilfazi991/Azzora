@@ -3,6 +3,9 @@ import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
 import { createPrivateAttachmentStorage } from "./storage";
+import { createStagingHandler } from "./server";
+import type { createStagingAuth } from "./auth";
+import type { StagingRpc } from "./supabase";
 
 // Offline review of a proposed staging-only admission patch; this does not
 // establish hosted authentication, Storage isolation, or production readiness.
@@ -184,6 +187,78 @@ it("retains current privileged MFA, session and workspace checks for both compan
         db.query("select public.staging_company_read($1,$2)", [token, wrong]),
       ).rejects.toThrow(/Workspace denied/);
     }
+});
+
+it("bootstraps empty fictional companies independently through the actual staging handler", async () => {
+  const rpc = async (name: string, p: Record<string, unknown>) => {
+    const keys: Record<string, string[]> = {
+      staging_company_read: ["p_session_hash", "p_workspace"],
+      staging_company_people: ["p_session_hash"],
+      staging_company_commit: [
+        "p_session_hash",
+        "p_expected_version",
+        "p_idempotency_key",
+        "p_fingerprint",
+        "p_command",
+        "p_scope",
+        "p_data",
+        "p_bootstrap",
+      ],
+    };
+    if (!keys[name]) throw Error("Unexpected offline RPC: " + name);
+    const args = keys[name].map((key) =>
+      ["p_scope", "p_data"].includes(key) ? JSON.stringify(p[key]) : p[key],
+    );
+    const placeholders = keys[name]
+      .map(
+        (key, i) =>
+          `$${i + 1}${["p_scope", "p_data"].includes(key) ? "::jsonb" : ""}`,
+      )
+      .join(",");
+    return (
+      await db.query<{ r: unknown }>(
+        `select public.${name}(${placeholders}) r`,
+        args,
+      )
+    ).rows[0].r;
+  };
+  const auth = {
+    requireActor: async (request: Request) => {
+      const token = request.headers.get("x-fictional-test-session");
+      return (
+        await db.query<{ r: unknown }>(
+          "select public.staging_auth_actor($1) r",
+          [token],
+        )
+      ).rows[0].r;
+    },
+  } as unknown as ReturnType<typeof createStagingAuth>;
+  const handle = createStagingHandler({ rpc: rpc as StagingRpc, auth });
+  const read = (token: string) =>
+    handle(
+      new Request("https://fixture.invalid/api/staging/manager/snapshot", {
+        headers: { "x-fictional-test-session": token },
+      }),
+    );
+  expect((await read(hash(6))).status).toBe(409); // Company B Manager cannot bootstrap.
+  expect((await read(hash(5))).status).toBe(200); // Its MFA Owner initializes Company B only.
+  const versions = await db.query<{ id: string; version: number }>(
+    "select id,version::int version from azzora.companies where id in ($1,$2) order by id",
+    [a, b],
+  );
+  expect(versions.rows).toEqual([
+    { id: a, version: 0 },
+    { id: b, version: 1 },
+  ]);
+  expect((await read(hash(1))).status).toBe(200);
+  const ready = await db.query<{ id: string; version: number }>(
+    "select id,version::int version from azzora.companies where id in ($1,$2) order by id",
+    [a, b],
+  );
+  expect(ready.rows).toEqual([
+    { id: a, version: 1 },
+    { id: b, version: 1 },
+  ]);
 });
 
 it("isolates canonical customers, projects, invoices, receipts and accounts in both directions", async () => {

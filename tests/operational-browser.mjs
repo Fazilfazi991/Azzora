@@ -27,6 +27,12 @@ try {
         viewport: { width, height: 1000 },
       }),
       page = await context.newPage();
+    if (process.env.QA_OPERATIONAL_FIXED_TIME) {
+      const fixedTime = new Date(process.env.QA_OPERATIONAL_FIXED_TIME);
+      if (!Number.isFinite(fixedTime.getTime()))
+        throw Error("QA_OPERATIONAL_FIXED_TIME must be a valid date.");
+      await page.clock.setFixedTime(fixedTime);
+    }
     page.setDefaultTimeout(15000);
     page.on("pageerror", (e) => errors.push(e.message));
     page.on("console", (m) => {

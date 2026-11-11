@@ -330,6 +330,28 @@ it("isolates canonical customers, projects, invoices, receipts and accounts in b
   ).toBe(0);
 });
 
+it("does not let a Company A identity claim Company B even with a forged extra membership", async () => {
+  const ownerA = uid(1),
+    ownerProvider = uid(31);
+  await db.query(
+    "insert into azzora.memberships(company_id,user_id,role,active,finance_access,workspaces,capabilities) values($1,$2,'owner_admin',true,true,array['manager','accountant'],array['project.read','project.write'])",
+    [b, ownerA],
+  );
+  expect(
+    (
+      await db.query<{ r: unknown }>("select public.staging_auth_grant($1) r", [
+        ownerA,
+      ])
+    ).rows[0].r,
+  ).toMatchObject({ companyId: a, role: "owner_admin" });
+  await expect(
+    db.query(
+      "select public.staging_auth_session_put($1,$2,$3,$4,$5,'manager','aal2','fixture-only')",
+      ["a".repeat(64), "f".repeat(64), ownerA, ownerProvider, b],
+    ),
+  ).rejects.toThrow(/Workspace denied/);
+});
+
 it("fails closed for an expanded Company B capability or wrong trusted purpose", async () => {
   await db.query(
     "update azzora.memberships set capabilities=capabilities||array['access.manage'] where company_id=$1 and user_id=$2",

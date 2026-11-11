@@ -61,6 +61,7 @@ beforeAll(async () => {
   for (const name of [
     "../supabase/migrations/20261104081228_canonical_backend_foundation.sql",
     "../supabase/production-migrations/20261111090000_runtime_identity.sql",
+    "../supabase/production-migrations/20261111122552_production_owner_backup_provenance.sql",
   ])
     await db.exec(
       await readFile(new URL("../" + name, import.meta.url), "utf8"),
@@ -193,6 +194,27 @@ it("privileged sessions require live provider session and MFA, then actual sessi
   await expect(
     call("azzora_production_company_read", ["f".repeat(64), "accountant"]),
   ).rejects.toThrow(/expired or revoked/);
+});
+it("owner MFA captures company-scoped provenance without Auth credentials; revoked sessions and browser roles cannot call it", async () => {
+  const result = (await call("azzora_production_owner_backup", [token])).rows[0].r as { companyId: string; provenance: { memberships: unknown[]; auditEvents: unknown[] } };
+  expect(result.companyId).toBe(company);
+  expect(result.provenance.memberships.length).toBeGreaterThan(0);
+  expect(JSON.stringify(result)).not.toMatch(/password|totpSecret|encrypted-QA-only|providerSessionId/);
+  expect(JSON.stringify(result)).not.toContain(token);
+  expect(JSON.stringify(result)).not.toContain(provider);
+  await expect(call("azzora_production_owner_backup", ["f".repeat(64)])).rejects.toThrow(/expired or revoked/);
+  const manager = "77777777-7777-4777-8777-777777777777", managerProvider = "12121212-1212-4212-8212-121212121212", managerToken = "6".repeat(64);
+  await db.query("insert into auth.users(id,email,raw_app_meta_data,email_confirmed_at) values($1,'manager-qa@example.invalid','{\"azzora_scope\":\"production\"}',now())", [manager]);
+  await db.query("insert into azzora.memberships(company_id,user_id,role,active,finance_access,workspaces,capabilities) values($1,$2,'project_manager',true,false,array['manager'],array['project.read','access.manage'])", [company, manager]);
+  await db.query("insert into auth.sessions values($1,$2,'aal1',now()+interval '1 hour')", [managerProvider, manager]);
+  await call("azzora_production_auth_session_put", [managerToken, csrf, manager, managerProvider, company, "manager", "aal1", "synthetic"]);
+  await expect(call("azzora_production_owner_backup", [managerToken])).rejects.toThrow(/Owner MFA/);
+  const foreign = "55555555-5555-4555-8555-555555555555";
+  await db.query("insert into azzora.companies(id,name) values($1,'unregistered synthetic company')", [foreign]);
+  await expect(call("azzora_production_auth_grant", ["00000000-0000-4000-8000-000000000000"])).rejects.toThrow(/membership denied/);
+  expect(result.companyId).not.toBe(foreign);
+  const grants = await db.query<{ anon_ok: boolean; auth_ok: boolean; service_ok: boolean }>("select has_function_privilege('anon','public.azzora_production_owner_backup(text)','execute') anon_ok, has_function_privilege('authenticated','public.azzora_production_owner_backup(text)','execute') auth_ok, has_function_privilege('service_role','public.azzora_production_owner_backup(text)','execute') service_ok");
+  expect(grants.rows[0]).toEqual({ anon_ok: false, auth_ok: false, service_ok: true });
 });
 it("zero initialization preserves one canonical store without creating journals or fixture parties", async () => {
   expect(

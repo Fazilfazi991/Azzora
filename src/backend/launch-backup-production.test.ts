@@ -119,7 +119,7 @@ it("production-format capture restores exactly through the seedless reviewed pro
     ),
     report = await rehearseEncryptedBusinessRestore(envelope, key, scope);
   expect(report.archiveMode).toBe("production");
-  expect(report.migrationCount).toBe(2);
+  expect(report.migrationCount).toBe(3);
   expect(report.businessSha256).toBe(report.restoredSha256);
   expect(report.originals).toBe(1);
   expect(report.journals).toBe(0);

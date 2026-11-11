@@ -400,6 +400,14 @@ export function createStagingHandler(
                 );
               })()
             : await createStagingBackup(source, readOriginal);
+        if (production || stagingEncrypted) {
+          const current = await auth.requireActor(request, "manager");
+          if (current.userId !== actor.userId || current.companyId !== actor.companyId || current.sessionHash !== actor.sessionHash || current.role !== "owner_admin" || current.assurance !== "aal2" || !current.capabilities.includes("access.manage"))
+            throw new StagingServiceError(403, "backup_access_revoked");
+          if (production) assertProductionActor(current, production);
+          if (!current.mfaVerifiedAt || current.mfaVerifiedAt > Date.now() || Date.now() - current.mfaVerifiedAt > 15 * 60_000)
+            throw new StagingServiceError(403, "backup_recent_mfa_required");
+        }
         if (
           production &&
           (!("format" in backup) ||

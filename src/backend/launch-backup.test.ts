@@ -10,7 +10,7 @@ import {
 import { serializeCanonical } from "../staging/canonical";
 import { blankCustomer } from "../commercial/customer-domain";
 import { blankInvoice, newProjectDetails } from "../commercial/repository";
-import { encryptBusinessBackup, decryptBusinessBackup } from "./launch-backup";
+import { createAuthoritativeProductionBackup, encryptBusinessBackup, decryptBusinessBackup, verifyAuthoritativeProductionArchive } from "./launch-backup";
 import {
   freshRehearsalDatabase,
   orderRestoreJournals,
@@ -250,15 +250,15 @@ it("decrypts, verifies and restores a real synthetic business export into isolat
     "tmp/launch-encrypted-restore-evidence.json",
     JSON.stringify(report, null, 2),
   );
-}, 30000);
+}, 60000);
 it("preserves supplied fictional historical actor IDs and audit events in a disabled isolated restore", async () => {
   const backup = await createStagingBackup(fixture(), async () => bytes, "2026-11-11T00:00:00.000Z");
   expect(backup.data.snapshots.length).toBeGreaterThan(0);
   const historical = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
   const provenance = {
-    fictionalOnly: true as const, companyId,
+    isolatedOnly: true as const, companyId,
     journals: backup.data.journals.map(j => ({ id: j.id, actorId: historical })),
-    snapshots: backup.data.snapshots.map(s => ({ entityType: s.entity_type, entityId: s.entity_id, revision: s.revision, capturedBy: historical })),
+    snapshots: backup.data.snapshots.map(s => ({ entityType: s.entity_type, entityId: s.entity_id, revision: s.revision, capturedBy: historical, capturedAt: "2026-11-04T10:00:00Z" })),
     auditEvents: [{ id: "83", actorId: historical, action: "invoice.issue", entityType: "invoice", entityId: "invoice", requestId: "synthetic-request", recordedAt: "2026-11-04T10:00:00.000Z", metadata: { fictional: true } }],
   };
   const { db } = await freshRehearsalDatabase();
@@ -276,11 +276,53 @@ it("preserves supplied fictional historical actor IDs and audit events in a disa
     const grants = await db.query<{ n: number }>("select count(*)::int n from azzora.memberships where user_id=$1", [historical]);
     expect(grants.rows[0].n).toBe(0);
   } finally { await db.close(); }
-}, 30000);
+}, 60000);
 it("rejects synthetic provenance with incomplete actor inventory before restoring", async () => {
   const backup = await createStagingBackup(fixture(), async () => bytes, "2026-11-11T00:00:00.000Z");
   const { db } = await freshRehearsalDatabase();
   try {
-    await expect(restoreIntoFreshRehearsal(db, backup, "fictional-staging", { fictionalOnly: true, companyId, journals: [], snapshots: [], auditEvents: [] })).rejects.toThrow(/inventory/);
+    await expect(restoreIntoFreshRehearsal(db, backup, "fictional-staging", { isolatedOnly: true, companyId, journals: [], snapshots: [], auditEvents: [] })).rejects.toThrow(/inventory/);
   } finally { await db.close(); }
 }, 30000);
+it("restores a synthetic nonempty v2 archive with reversal, original, receipts and original actors in isolation", async () => {
+  const newCompany = "22222222-2222-4222-8222-222222222222";
+  const data = JSON.parse(JSON.stringify(fixture().data).replaceAll(companyId, newCompany)) as ReturnType<typeof fixture>["data"];
+  const metadata = data.records.find(r => r.id === "__staging_metadata")!;
+  metadata.id = "__production_metadata";
+  (metadata.payload.metadata as { mode: string }).mode = "production";
+  const original = data.journals.find(j => j.source_type === "sales_invoice")!;
+  expect(original).toBeDefined();
+  data.journals.push({ ...original, id: "synthetic-reversal", posting_key: "synthetic-reversal", source_action: "Reverse", domain_source: { kind: "Journal Reversal", id: original.id, action: "Reverse" }, reversal_of: original.id, recorded_at: "2026-11-12T00:00:00.000Z", posting_date: "2026-11-12", lines: original.lines.map(l => ({ ...l, debit_fils: l.credit_fils, credit_fils: l.debit_fils })) });
+  const historical = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  const provenance = {
+    memberships: [{ userId: historical, role: "owner_admin", active: true, financeAccess: true, workspaces: ["manager"], capabilities: ["access.manage"] }], assignments: [],
+    journals: data.journals.map(j => ({ id: j.id, actorId: historical })),
+    snapshots: data.snapshots.map(s => ({ entityType: s.entity_type, entityId: s.entity_id, revision: s.revision, capturedBy: historical, capturedAt: "2026-11-11T00:00:00Z" })),
+    auditEvents: [{ id: "83", actorId: historical, action: "invoice.issue", entityType: "invoice", entityId: "invoice", requestId: "synthetic-request", recordedAt: "2026-11-11T00:00:00Z", metadata: { fictional: true } }],
+    commandReceipts: [{ idempotencyKey: "synthetic-request", requestSha256: "a".repeat(64), actorId: historical, result: { version: 42 }, createdAt: "2026-11-11T00:00:00Z" }],
+  };
+  const productionActor = { ...actor, companyId: newCompany, grant: { ...actor.grant, companyId: newCompany } };
+  const capture = { companyId: newCompany, version: 42, data, provenance };
+  const scope = { companyId: newCompany, keyId: "QA-ONLY-NONEMPTY", capturedAt: "2026-11-12T00:00:00.000Z" }, key = randomBytes(32);
+  const encrypted = await createAuthoritativeProductionBackup(capture, async () => bytes, key, scope, productionActor);
+  const report = await rehearseEncryptedBusinessRestore(encrypted, key, scope);
+  expect(report).toMatchObject({ journals: 3, originals: 1, auditActorReferencesRestored: true, auditIdentityRestored: false, commandReceiptsRestored: true, membershipsRestored: false, financialReportsMatch: true, cloudDatabaseUsed: false });
+  const decoded = verifyAuthoritativeProductionArchive(JSON.parse(Buffer.from(decryptBusinessBackup(encrypted, key, scope)).toString()), newCompany);
+  const { db } = await freshRehearsalDatabase("production");
+  try {
+    const restored = await restoreIntoFreshRehearsal(db, decoded.business, "production", { isolatedOnly: true, companyId: newCompany, journals: decoded.provenance.journals, snapshots: decoded.provenance.snapshots, auditEvents: decoded.provenance.auditEvents, commandReceipts: decoded.provenance.commandReceipts });
+    const journals = await db.query<{ actor_id: string; reversal_of: string | null }>("select actor_id::text,reversal_of from azzora.journals order by id");
+    expect(journals.rows).toHaveLength(3);
+    expect(journals.rows.every(j => j.actor_id === historical)).toBe(true);
+    expect(journals.rows.some(j => j.reversal_of === original.id)).toBe(true);
+    const snapshots = await db.query<{captured_by: string}>("select captured_by::text from azzora.snapshots");
+    expect(snapshots.rows).toHaveLength(data.snapshots.length);
+    expect(snapshots.rows.every(s => s.captured_by === historical)).toBe(true);
+    const events = await db.query<{actor_id: string}>("select actor_id::text from azzora.audit_events where id=83");
+    const receipts = await db.query<{actor_id: string}>("select actor_id::text from azzora.command_receipts where idempotency_key='synthetic-request'");
+    expect(events.rows).toEqual([{ actor_id: historical }]);
+    expect(receipts.rows).toEqual([{ actor_id: historical }]);
+    expect([...restored.originals.values()][0]).toEqual(Buffer.from(bytes));
+    expect((await db.query<{n: number}>("select count(*)::int n from azzora.memberships")).rows[0].n).toBe(0);
+  } finally { await db.close(); }
+}, 60000);

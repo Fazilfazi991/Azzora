@@ -13,6 +13,10 @@
     {
       "path": "supabase/production-migrations/20261111090000_runtime_identity.sql",
       "sha256": "0e0994d1c73e8a2d1f1af5374865666aa5ed8cbe941ec51983ffa46b6c7161c0"
+    },
+    {
+      "path": "supabase/production-migrations/20261111122552_production_owner_backup_provenance.sql",
+      "sha256": "c4560a243405467f87a1d1554055db6e78fe16d6c67d08568831252fbcff3723"
     }
   ],
   "excluded": "All synthetic-staging migrations; never run db push against an unreviewed production target.",

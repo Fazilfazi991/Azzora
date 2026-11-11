@@ -6,7 +6,7 @@ import {
 } from "../staging/supabase.js";
 import { createPrivateAttachmentStorage } from "../staging/storage.js";
 import { createStagingHandler } from "../staging/server.js";
-import { createProtectedProductionBackup } from "./launch-backup.js";
+import { createAuthoritativeProductionBackup } from "./launch-backup.js";
 import { isDistinctBackupKey } from "./backup-key-policy.js";
 import {
   assertProductionIdentity,
@@ -63,13 +63,16 @@ export function createProductionCandidate(
         auth,
         storage,
         production: runtime,
-        productionBackup: async (source, read, actor) => {
+        productionBackup: async (_source, read, actor) => {
           const { key, keyId } = resolveProductionBackupKey(
             options.env || process.env,
             runtime,
           );
-          return createProtectedProductionBackup(
-            source,
+          const capture = await rpc("staging_owner_backup", {
+            p_session_hash: actor.sessionId,
+          });
+          return createAuthoritativeProductionBackup(
+            capture,
             read,
             key,
             {

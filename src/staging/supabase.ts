@@ -197,6 +197,7 @@ const productionRpcNames = new Set([
   "staging_company_read",
   "staging_company_commit",
   "staging_company_people",
+  "staging_owner_backup",
   "staging_auth_grant",
   "staging_auth_actor",
   "staging_auth_rate",

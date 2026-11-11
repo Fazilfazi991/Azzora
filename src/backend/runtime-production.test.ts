@@ -698,6 +698,28 @@ it("rejects noncanonical or reused owner backup key bytes", () => {
     ).key,
   ).toEqual(Buffer.alloc(32, 8));
 });
+it("does not release an encrypted backup when Owner access is revoked during capture", async () => {
+  const key = Buffer.alloc(32, 7), c = productionEnv().AZZORA_PRODUCTION_COMPANY_ID;
+  const f = productionServerFixture(1, false, async (source, read, actor) => {
+    const backup = await createProtectedProductionBackup(source, read, key, { companyId: c, keyId: "fixture-owner-key-v1", capturedAt: "2026-11-11T00:00:00.000Z" }, actor);
+    f.actor.role = "project_manager";
+    return backup;
+  });
+  const response = await f.handle(f.request("/manager/backup"));
+  expect(response.status).toBe(403);
+  expect((await response.text())).not.toContain("ciphertext");
+});
+it("does not release an encrypted backup if MFA freshness expires during capture", async () => {
+  const key = Buffer.alloc(32, 7), c = productionEnv().AZZORA_PRODUCTION_COMPANY_ID;
+  const f = productionServerFixture(1, false, async (source, read, actor) => {
+    const backup = await createProtectedProductionBackup(source, read, key, { companyId: c, keyId: "fixture-owner-key-v1", capturedAt: "2026-11-11T00:00:00.000Z" }, actor);
+    f.actor.mfaVerifiedAt = Date.now() - 16 * 60_000;
+    return backup;
+  });
+  const response = await f.handle(f.request("/manager/backup"));
+  expect(response.status).toBe(403);
+  expect(await response.json()).toMatchObject({ code: "backup_recent_mfa_required" });
+});
 it("offers Owner-only synthetic import review without initializing or publishing any company records or echoing source rows", async () => {
   const f = productionServerFixture(0),
     source = {

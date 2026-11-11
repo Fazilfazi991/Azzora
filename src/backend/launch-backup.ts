@@ -10,6 +10,7 @@ import { z } from "zod";
 import {
   stableBackupJson,
   createProductionBusinessBackup,
+  verifyProductionBusinessBackup,
   type ReadBackupOriginal,
 } from "../staging/backup.js";
 import type { CanonicalData } from "../staging/canonical.js";
@@ -160,4 +161,65 @@ export async function createProtectedProductionBackup(
     scope.capturedAt,
   );
   return encryptBusinessBackup(Buffer.from(JSON.stringify(backup)), key, scope);
+}
+
+function validateAuthoritativeCapture(capture: unknown, companyId: string) {
+  const id = z.string().min(1).max(200), uuid = z.uuid();
+  const provenanceSchema = z.object({
+    memberships: z.array(z.object({ userId: uuid, role: id, active: z.boolean(), financeAccess: z.boolean(), workspaces: z.array(id), capabilities: z.array(id) }).strict()),
+    assignments: z.array(z.object({ user_id: uuid, project_id: id, active: z.boolean() }).strict()),
+    journals: z.array(z.object({ id, actorId: uuid }).strict()),
+    snapshots: z.array(z.object({ entityType: id, entityId: id, revision: z.number().int().positive(), capturedBy: uuid, capturedAt: id }).strict()),
+    auditEvents: z.array(z.object({ id: z.string().regex(/^[1-9]\d{0,18}$/), actorId: uuid, action: id, entityType: id, entityId: id, requestId: id, recordedAt: id, metadata: z.record(z.string(), z.unknown()) }).strict()),
+    commandReceipts: z.array(z.object({ idempotencyKey: id, requestSha256: z.string().regex(/^[a-f0-9]{64}$/), actorId: uuid, result: z.record(z.string(), z.unknown()), createdAt: id }).strict()),
+  }).strict();
+  const row = z.object({ version: z.number().int().positive(), companyId: uuid, data: z.unknown(), provenance: provenanceSchema }).strict().parse(capture);
+  if (row.companyId !== companyId) throw Error("Backup company mismatch.");
+  const forbid = (v: unknown): void => {
+    if (Array.isArray(v)) { v.forEach(forbid); return; }
+    if (v && typeof v === "object") for (const [k, x] of Object.entries(v)) {
+      if (/^(password|passwordhash|encryptedpassword|secret|apikey|servicekey|privatekey|totpsecret|mfa|mfasecret|recoverycode|accesstoken|refreshtoken|session|sessionid|providersessionid|sessionhash|sessiontokenhash|tokenhash|jwt|cookie|csrf|credentials)$/i.test(k.replace(/[_-]/g, ""))) throw Error("Credentials are forbidden in provenance.");
+      forbid(x);
+    }
+  };
+  forbid(row.provenance);
+  const data = row.data as CanonicalData;
+  const equalKeys = (left: string[], right: string[]) => {
+    if (left.length !== right.length || new Set(left).size !== left.length || new Set(right).size !== right.length) return false;
+    const ordered = [...right].sort();
+    return [...left].sort().every((value, index) => value === ordered[index]);
+  };
+  if (!Array.isArray(data?.journals) || !Array.isArray(data?.snapshots) ||
+    !equalKeys(data.journals.map(j=>j.id), row.provenance.journals.map(j=>j.id)) ||
+    !equalKeys(data.snapshots.map(s=>JSON.stringify([s.entity_type,s.entity_id,s.revision])), row.provenance.snapshots.map(s=>JSON.stringify([s.entityType,s.entityId,s.revision]))) ||
+    new Set(row.provenance.auditEvents.map(e=>e.id)).size !== row.provenance.auditEvents.length ||
+    new Set(row.provenance.memberships.map(m=>m.userId)).size !== row.provenance.memberships.length)
+    throw Error("Backup provenance is incomplete or duplicated.");
+  return { ...row, data };
+}
+
+/** The owner-only RPC returns one PostgreSQL snapshot; provenance never goes to an unencrypted response. */
+export async function createAuthoritativeProductionBackup(
+  capture: unknown,
+  readOriginal: ReadBackupOriginal,
+  key: Uint8Array,
+  scope: { companyId: string; keyId: string; capturedAt: string },
+  actor: AuthorizedActor,
+): Promise<EncryptedBusinessBackup> {
+  authorize(actor, "access.manage", { companyId: scope.companyId });
+  if (actor.assurance !== "aal2" || !actor.grant.roles.includes("owner"))
+    throw Error("Current Owner MFA is required for authoritative backup.");
+  const row = validateAuthoritativeCapture(capture, scope.companyId);
+  const business = await createProductionBusinessBackup({ version: row.version, companyId: row.companyId, data: row.data }, readOriginal, scope.capturedAt);
+  const archive = { format: "azzora-authoritative-production-backup-v2", companyId: row.companyId, business, provenance: row.provenance };
+  return encryptBusinessBackup(Buffer.from(JSON.stringify(archive)), key, scope);
+}
+
+/** Offline verifier; legacy business-only archives remain handled by the existing verifier. */
+export function verifyAuthoritativeProductionArchive(input: unknown, companyId: string) {
+  const outer = z.object({ format: z.literal("azzora-authoritative-production-backup-v2"), companyId: z.uuid(), business: z.unknown(), provenance: z.unknown() }).strict().parse(input);
+  const business = verifyProductionBusinessBackup(outer.business);
+  const checked = validateAuthoritativeCapture({ version: business.capturedCompanyVersion, companyId: outer.companyId, data: business.data, provenance: outer.provenance }, companyId);
+  if (business.companyId !== checked.companyId) throw Error("Backup company mismatch.");
+  return { business, provenance: checked.provenance };
 }

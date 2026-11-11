@@ -15,6 +15,7 @@ import {
 } from "../accounting/reports.js";
 import {
   decryptBusinessBackup,
+  verifyAuthoritativeProductionArchive,
   type EncryptedBusinessBackup,
 } from "./launch-backup.js";
 const companyId = "11111111-1111-4111-8111-111111111111",
@@ -56,12 +57,13 @@ export function orderRestoreJournals(journals: CanonicalData["journals"]) {
 }
 
 /** Synthetic-only provenance fixture. Never a production restore interface. */
-export interface SyntheticAuditFixture {
-  fictionalOnly: true;
+export interface IsolatedAuditProvenance {
+  isolatedOnly: true;
   companyId: string;
   journals: { id: string; actorId: string }[];
-  snapshots: { entityType: string; entityId: string; revision: number; capturedBy: string }[];
+  snapshots: { entityType: string; entityId: string; revision: number; capturedBy: string; capturedAt: string }[];
   auditEvents: { id: string; actorId: string; action: string; entityType: string; entityId: string; requestId: string; recordedAt: string; metadata: Record<string, unknown> }[];
+  commandReceipts?: { idempotencyKey: string; requestSha256: string; actorId: string; result: Record<string, unknown>; createdAt: string }[];
 }
 export async function freshRehearsalDatabase(
   mode: "production" | "fictional-staging" = "fictional-staging",
@@ -86,6 +88,7 @@ export async function freshRehearsalDatabase(
     const allowed = [
       "supabase/migrations/20261104081228_canonical_backend_foundation.sql",
       "supabase/production-migrations/20261111090000_runtime_identity.sql",
+      "supabase/production-migrations/20261111122552_production_owner_backup_provenance.sql",
     ];
     if (
       JSON.stringify(manifest.files.map((f) => f.path)) !==
@@ -127,7 +130,7 @@ export async function restoreIntoFreshRehearsal(
   db: PGlite,
   input: unknown,
   mode: "production" | "fictional-staging" = "fictional-staging",
-  provenance?: SyntheticAuditFixture,
+  provenance?: IsolatedAuditProvenance,
 ) {
   const backup =
       mode === "production"
@@ -136,8 +139,8 @@ export async function restoreIntoFreshRehearsal(
     data = backup.data,
     company = backup.companyId || companyId;
   if (provenance) {
-    if (mode !== "fictional-staging" || provenance.fictionalOnly !== true || provenance.companyId !== company)
-      throw Error("Audit fixture is allowed only for the matching fictional rehearsal.");
+    if (provenance.isolatedOnly !== true || provenance.companyId !== company)
+      throw Error("Audit provenance requires matching isolated rehearsal scope.");
     if (provenance.journals.length !== data.journals.length || provenance.snapshots.length !== data.snapshots.length ||
       new Set(provenance.journals.map(v => v.id)).size !== data.journals.length ||
       new Set(provenance.snapshots.map(v => JSON.stringify([v.entityType,v.entityId,v.revision]))).size !== data.snapshots.length ||
@@ -166,7 +169,7 @@ export async function restoreIntoFreshRehearsal(
         [ownerId],
       );
     if (provenance) {
-      const ids = new Set([...provenance.journals.map(v => v.actorId), ...provenance.snapshots.map(v => v.capturedBy), ...provenance.auditEvents.map(v => v.actorId)]);
+      const ids = new Set([...provenance.journals.map(v => v.actorId), ...provenance.snapshots.map(v => v.capturedBy), ...provenance.auditEvents.map(v => v.actorId), ...(provenance.commandReceipts || []).map(v => v.actorId)]);
       for (const id of ids)
         await execute("insert into auth.users(id,email,raw_app_meta_data,email_confirmed_at,banned_until) values($1,NULL,'{}',NULL,'infinity') on conflict do nothing", [id]);
     }
@@ -260,7 +263,7 @@ export async function restoreIntoFreshRehearsal(
     }
     for (const v of data.snapshots)
       await execute(
-        "insert into azzora.snapshots(company_id,entity_type,entity_id,revision,payload,sha256,captured_by) values($1,$2,$3,$4,$5::jsonb,$6,$7)",
+        "insert into azzora.snapshots(company_id,entity_type,entity_id,revision,payload,sha256,captured_by,captured_at) values($1,$2,$3,$4,$5::jsonb,$6,$7,$8)",
         [
           company,
           v.entity_type,
@@ -269,10 +272,15 @@ export async function restoreIntoFreshRehearsal(
           JSON.stringify(v.payload),
           v.sha256,
           provenance?.snapshots.find(p => p.entityType === v.entity_type && p.entityId === v.entity_id && p.revision === v.revision)?.capturedBy || ownerId,
+          provenance?.snapshots.find(p => p.entityType === v.entity_type && p.entityId === v.entity_id && p.revision === v.revision)?.capturedAt || "2020-01-01T00:00:00Z",
         ],
       );
     for (const event of provenance?.auditEvents || [])
       await execute("insert into azzora.audit_events(id,company_id,actor_id,action,entity_type,entity_id,request_id,recorded_at,metadata) overriding system value values($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)", [event.id, company, event.actorId, event.action, event.entityType, event.entityId, event.requestId, event.recordedAt, JSON.stringify(event.metadata)]);
+    if (provenance?.auditEvents.length)
+      await db.exec("select setval(pg_get_serial_sequence('azzora.audit_events','id'), (select max(id) from azzora.audit_events), true)");
+    for (const receipt of provenance?.commandReceipts || [])
+      await execute("insert into azzora.command_receipts(company_id,idempotency_key,request_sha256,actor_id,result,created_at) values($1,$2,$3,$4,$5::jsonb,$6)", [company, receipt.idempotencyKey, receipt.requestSha256, receipt.actorId, JSON.stringify(receipt.result), receipt.createdAt]);
     const allocationProjector = (
       await db.query<{ present: boolean }>(
         "select to_regprocedure($1) is not null present",
@@ -317,19 +325,25 @@ export async function rehearseEncryptedBusinessRestore(
 ) {
   const raw = decryptBusinessBackup(encrypted, key, expected),
     parsed = JSON.parse(Buffer.from(raw).toString("utf8")),
+    authoritative = parsed.format === "azzora-authoritative-production-backup-v2" ? verifyAuthoritativeProductionArchive(parsed, expected.companyId) : undefined,
+    business = authoritative?.business || parsed,
     mode =
-      parsed.format === "azzora-production-business-backup"
+      business.format === "azzora-production-business-backup"
         ? "production"
         : "fictional-staging",
     backup =
       mode === "production"
-        ? verifyProductionBusinessBackup(parsed)
-        : verifyStagingBackup(parsed);
+        ? verifyProductionBusinessBackup(business)
+        : verifyStagingBackup(business);
   if (backup.companyId !== expected.companyId)
     throw Error("Inner backup scope differs from encrypted company scope.");
   const { db, migrations } = await freshRehearsalDatabase(mode);
   try {
-    const restored = await restoreIntoFreshRehearsal(db, backup, mode);
+    const p = authoritative?.provenance;
+    const restored = await restoreIntoFreshRehearsal(db, backup, mode, p ? {
+      isolatedOnly: true, companyId: expected.companyId, journals: p.journals, snapshots: p.snapshots,
+      auditEvents: p.auditEvents, commandReceipts: p.commandReceipts,
+    } : undefined);
     const data = (
       await db.query<{ data: CanonicalData }>(
         mode === "production"
@@ -384,7 +398,10 @@ export async function rehearseEncryptedBusinessRestore(
       netProfitFils: profit.netProfitFils,
       identityUsersRestored: false,
       auditIdentityRestored: false,
-      actorsReplacedForOfflineRehearsal: true,
+      auditActorReferencesRestored: Boolean(p),
+      actorsReplacedForOfflineRehearsal: !p,
+      membershipsRestored: false,
+      commandReceiptsRestored: Boolean(p),
       infrastructureBackupVerified: false,
     };
   } finally {

@@ -27,12 +27,15 @@ Executable offline commands:
 ```powershell
 node scripts/launch-import-recovery.mjs prepare-import --input private-source.json --output private-review.json
 node scripts/launch-import-recovery.mjs verify-import --input private-review.json
+node scripts/launch-import-recovery.mjs verify-originals --input private-review.json --manifest private-originals.json --output private-originals-check.json
 node scripts/launch-import-recovery.mjs encrypt --input reviewed-business-backup.json --output protected-backup.json --key-file OWNER-MANAGED-KEY.bin --company APPROVED-COMPANY-UUID --key-id OWNER-KEY-REFERENCE --captured-at CANONICAL-UTC-TIMESTAMP
 node scripts/launch-import-recovery.mjs decrypt --input protected-backup.json --output private-restored-archive.json --key-file OWNER-MANAGED-KEY.bin --company APPROVED-COMPANY-UUID --key-id OWNER-KEY-REFERENCE
 node scripts/launch-import-recovery.mjs restore-rehearsal --input protected-backup.json --output restore-proof.json --key-file OWNER-MANAGED-KEY.bin --company APPROVED-COMPANY-UUID --key-id OWNER-KEY-REFERENCE
 ```
 
-These commands have no network/import/apply/posting action. Existing files are never overwritten (`wx`). Plaintext originals/reviews/decrypted outputs must be protected offline, never committed or publicly uploaded. Keys are read from the explicit Owner-managed file, never printed, embedded in envelopes or stored in Git. All five commands were actually exercised with synthetic source and a disposable QA key; the restore completed in new in-memory PostgreSQL.
+These commands have no network/import/apply/posting action. Existing files are never overwritten (`wx`). Plaintext originals/reviews/decrypted outputs must be protected offline, never committed or publicly uploaded. Keys are read from the explicit Owner-managed file, never printed, embedded in envelopes or stored in Git. The recovery commands were exercised with synthetic source and a disposable QA key; the restore completed in new in-memory PostgreSQL.
+
+`verify-originals` takes an explicit JSON array such as `[{"documentId":"DOC-1","originalName":"fictional.pdf","file":"fictional.pdf"}]`; file paths resolve relative to that private manifest. Each historical-document row must contain `payload.originalName` and `payload.originalSha256`. The tool reads the original bytes, checks the exact name and SHA-256, and writes a private result bound to the review digest. Missing, changed, duplicated, unexpected or unlabelled originals block verification; a review with no historical-document rows reports `not-required` rather than claiming attachment coverage. Each file is limited to 100 MiB and all files in one check to 250 MiB. Original contents are not copied into the result. This is an offline integrity preflight, not an authenticated approval, backup, storage upload, complete inventory or publication gate: `approveImportReview` does not consume its result. A manifest hash is not a signature. Before any future real cutover, the accountant must independently reconcile the full original inventory and approve an enforceable publication procedure that binds the exact review and verified originals; the actual publish/import path remains blocked.
 
 ## Encrypted production capture and restore
 

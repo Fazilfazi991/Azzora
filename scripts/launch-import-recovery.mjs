@@ -1,6 +1,9 @@
 // Offline migration/recovery workbench. No network, cloud apply, production import or financial-posting command exists.
 import fs from "node:fs/promises";
 import path from "node:path";
+import process from "node:process";
+import console from "node:console";
+import { Buffer } from "node:buffer";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 const [command, ...flags] = process.argv.slice(2),
@@ -9,6 +12,7 @@ if (
   ![
     "prepare-import",
     "verify-import",
+    "verify-originals",
     "encrypt",
     "decrypt",
     "restore-rehearsal",
@@ -16,7 +20,7 @@ if (
   ].includes(command)
 ) {
   console.error(
-    "Use prepare-import | verify-import | encrypt | decrypt | restore-rehearsal | verify-production-backup. Key operations require --key-file, --company and --key-id; verification also requires --max-age-seconds.",
+    "Use prepare-import | verify-import | verify-originals | encrypt | decrypt | restore-rehearsal | verify-production-backup. Original verification requires --input, --manifest and --output; key operations require --key-file, --company and --key-id; backup verification also requires --max-age-seconds.",
   );
   process.exit(1);
 }
@@ -38,7 +42,7 @@ await fs.mkdir("tmp/launch-tools", { recursive: true });
 await build({
   stdin: {
     contents:
-      'export {prepareImportReview,verifyImportReview} from "./src/backend/import-plan.ts"; export {encryptBusinessBackup,decryptBusinessBackup} from "./src/backend/launch-backup.ts"; export {rehearseEncryptedBusinessRestore} from "./src/backend/launch-backup-rehearsal.ts"; export {checkProductionBackupHealth} from "./src/backend/backup-health.ts";',
+      'export {prepareImportReview,verifyImportReview} from "./src/backend/import-plan.ts"; export {verifyImportOriginals} from "./src/backend/import-originals.ts"; export {encryptBusinessBackup,decryptBusinessBackup} from "./src/backend/launch-backup.ts"; export {rehearseEncryptedBusinessRestore} from "./src/backend/launch-backup-rehearsal.ts"; export {checkProductionBackupHealth} from "./src/backend/backup-health.ts";',
     resolveDir: process.cwd(),
     loader: "ts",
   },
@@ -80,6 +84,70 @@ try {
         financialPostingAllowed: false,
       }),
     );
+  } else if (command === "verify-originals") {
+    const manifestFile = path.resolve(required("--manifest"));
+    const entries = await json(manifestFile);
+    if (!Array.isArray(entries) || entries.length > 10000)
+      throw Error(
+        "Original manifest must be an array of at most 10,000 files.",
+      );
+    const originals = [];
+    let total = 0;
+    for (const entry of entries) {
+      if (
+        !entry ||
+        Object.keys(entry).sort().join(",") !==
+          "documentId,file,originalName" ||
+        typeof entry.documentId !== "string" ||
+        typeof entry.originalName !== "string" ||
+        typeof entry.file !== "string" ||
+        !entry.file.trim()
+      )
+        throw Error(
+          "Each original manifest entry requires documentId, originalName and file only.",
+        );
+      const file = path.resolve(path.dirname(manifestFile), entry.file);
+      let stat;
+      try {
+        stat = await fs.stat(file);
+      } catch (error) {
+        if (error?.code === "ENOENT") continue;
+        throw error;
+      }
+      if (
+        !stat.isFile() ||
+        stat.size > 100 * 1024 * 1024 ||
+        total + stat.size > 250 * 1024 * 1024
+      )
+        throw Error(
+          "Originals must be files under 100 MiB each and 250 MiB total per check.",
+        );
+      const bytes = await fs.readFile(file);
+      if (bytes.byteLength !== stat.size)
+        throw Error(
+          "An original changed during verification; retry with a stable copy.",
+        );
+      total += bytes.byteLength;
+      originals.push({
+        documentId: entry.documentId,
+        originalName: entry.originalName,
+        bytes,
+      });
+    }
+    const result = tool.verifyImportOriginals(await json(input), originals);
+    await write(required("--output"), JSON.stringify(result, null, 2) + "\n");
+    console.log(
+      JSON.stringify({
+        status: result.status,
+        documentCount: result.documentCount,
+        verifiedCount: result.verifiedCount,
+        issues: result.issues.length,
+        manifestSha256: result.manifestSha256,
+        publication: result.publication,
+        financialPostingAllowed: false,
+      }),
+    );
+    if (result.status === "blocked") process.exitCode = 1;
   } else {
     const keyFile = await fs.readFile(required("--key-file"));
     const key =

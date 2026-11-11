@@ -308,6 +308,67 @@ export async function restoreIntoFreshRehearsal(db: PGlite, input: unknown) {
   };
 }
 describe("fictional business backup integrity and isolated restore", () => {
+  it("refuses missing, malformed, noncanonical or reused staging keys without returning plaintext", async () => {
+    const source = fixture();
+    const identity: StagingActor = {
+      userId: ownerId,
+      companyId,
+      email: "owner@staging.azzora.test",
+      role: "owner_admin",
+      workspace: "manager",
+      sessionHash: "fixture",
+      assurance: "aal2",
+      mfaVerifiedAt: Date.now(),
+      providerSessionId: "fixture",
+      projectIds: [],
+      capabilities: ["access.manage"],
+    };
+    const auth = {
+      requireActor: async () => identity,
+      handle: vi.fn(),
+    } as unknown as ReturnType<typeof createStagingAuth>;
+    const rpc = vi.fn(async () => ({
+      version: source.version,
+      data: source.data,
+    })) as unknown as StagingRpc;
+    const read = vi.fn(async () => bytes);
+    const storage = { read, store: vi.fn() } as unknown as NonNullable<
+      Parameters<typeof createStagingHandler>[0]
+    >["storage"];
+    const handler = createStagingHandler({ auth, rpc, storage });
+    const request = () =>
+      new Request("https://staging.test/api/staging/manager/backup/encrypted");
+    const canonical = Buffer.alloc(32, 9).toString("base64url");
+    const alphabet =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    const equivalent =
+      canonical.slice(0, -1) +
+      alphabet[alphabet.indexOf(canonical.at(-1)!) + 1];
+    expect(Buffer.from(equivalent, "base64url")).toEqual(
+      Buffer.from(canonical, "base64url"),
+    );
+    try {
+      for (const [key, authKey] of [
+        ["", ""],
+        ["bad", ""],
+        [equivalent, ""],
+        [canonical, canonical],
+        [canonical, equivalent],
+      ]) {
+        vi.stubEnv("AZZORA_STAGING_MANUAL_BACKUP_KEY", key);
+        vi.stubEnv("AZZORA_STAGING_AUTH_KEY", authKey);
+        const response = await handler(request());
+        expect(response.status).toBe(503);
+        const body = await response.text();
+        expect(body).toContain("staging_owner_backup_key_required");
+        expect(body).not.toContain("Fictional Backup Client");
+        if (key) expect(body).not.toContain(key);
+      }
+      expect(read).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
   it("downloads encrypted owner backup and restores the actual returned archive with verified original bytes", async () => {
     const source = fixture();
     const key = Buffer.alloc(32, 7);

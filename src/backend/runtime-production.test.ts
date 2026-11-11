@@ -4,7 +4,10 @@ import {
   assertProductionIdentity,
   assertProductionActor,
 } from "./runtime-production.js";
-import { createProductionCandidate } from "./runtime-handler.js";
+import {
+  createProductionCandidate,
+  resolveProductionBackupKey,
+} from "./runtime-handler.js";
 import { createProductionRpc } from "../staging/supabase.js";
 import { serializeCanonical, hydrateCanonical } from "../staging/canonical.js";
 import { createSharedCompanyState } from "../staging/domain.js";
@@ -20,6 +23,7 @@ import {
   decryptBusinessBackup,
 } from "./launch-backup.js";
 import { verifyProductionBusinessBackup } from "../staging/backup.js";
+import { isDistinctBackupKey } from "./backup-key-policy.js";
 
 export const productionEnv = () => ({
   AZZORA_DEPLOYMENT_MODE: "production-candidate",
@@ -633,12 +637,63 @@ it("exports only an encrypted production backup for current Owner MFA, retaining
   f.actor.role = "project_manager";
   expect((await f.handle(f.request("/manager/backup"))).status).toBe(403);
   const missing = productionServerFixture();
-  expect(
-    (await missing.handle(missing.request("/manager/backup"))).status,
-  ).toBe(503);
+  const missingResponse = await missing.handle(
+    missing.request("/manager/backup"),
+  );
+  expect(missingResponse.status).toBe(503);
+  expect(await missingResponse.json()).toMatchObject({
+    code: "production_backup_adapter_required",
+  });
+  const missingKey = productionServerFixture(1, false, async () => {
+    throw new StagingServiceError(503, "production_owner_backup_key_required");
+  });
+  const missingKeyResponse = await missingKey.handle(
+    missingKey.request("/manager/backup/encrypted"),
+  );
+  expect(missingKeyResponse.status).toBe(503);
+  expect(await missingKeyResponse.json()).toMatchObject({
+    code: "production_owner_backup_key_required",
+  });
   expect(
     f.calls.mock.calls.filter(([name]) => name === "staging_company_commit"),
   ).toHaveLength(0);
+});
+it("rejects noncanonical or reused owner backup key bytes", () => {
+  const key = Buffer.alloc(32, 9).toString("base64url");
+  const alphabet =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  const equivalent =
+    key.slice(0, -1) + alphabet[alphabet.indexOf(key.at(-1)!) + 1];
+  expect(Buffer.from(equivalent, "base64url")).toEqual(
+    Buffer.from(key, "base64url"),
+  );
+  expect(isDistinctBackupKey(equivalent, [])).toBe(false);
+  expect(isDistinctBackupKey(key, [equivalent])).toBe(false);
+  expect(isDistinctBackupKey(key, [key])).toBe(false);
+  expect(
+    isDistinctBackupKey(key, [Buffer.alloc(32, 8).toString("base64url")]),
+  ).toBe(true);
+  const runtime = productionRuntime(productionEnv());
+  for (const bad of ["", "invalid", equivalent, key]) {
+    expect(() =>
+      resolveProductionBackupKey(
+        {
+          AZZORA_PRODUCTION_BACKUP_KEY: bad,
+          AZZORA_PRODUCTION_BACKUP_KEY_ID: "owner-key",
+        },
+        runtime,
+      ),
+    ).toThrow("production_owner_backup_key_required");
+  }
+  expect(
+    resolveProductionBackupKey(
+      {
+        AZZORA_PRODUCTION_BACKUP_KEY: Buffer.alloc(32, 8).toString("base64url"),
+        AZZORA_PRODUCTION_BACKUP_KEY_ID: "owner-key",
+      },
+      runtime,
+    ).key,
+  ).toEqual(Buffer.alloc(32, 8));
 });
 it("offers Owner-only synthetic import review without initializing or publishing any company records or echoing source rows", async () => {
   const f = productionServerFixture(0),

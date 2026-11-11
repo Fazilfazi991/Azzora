@@ -6,6 +6,7 @@ import { prepareManagerFiles, readManagerFile } from "./manager-files.js";
 import { StagingPolicyError } from "./commercial-commands.js";
 import { createStagingBackup, type ReadBackupOriginal } from "./backup.js";
 import { encryptBusinessBackup } from "../backend/launch-backup.js";
+import { isDistinctBackupKey } from "../backend/backup-key-policy.js";
 import { createStagingAuth, type StagingActor } from "./auth.js";
 import {
   rpc as defaultRpc,
@@ -367,15 +368,12 @@ export function createStagingHandler(
         if (
           stagingEncrypted &&
           !options.stagingManualBackupKey &&
-          (!/^[A-Za-z0-9_-]{43}$/.test(stagingRaw) ||
-            Buffer.from(stagingRaw, "base64url").toString("base64url") !==
-              stagingRaw ||
-            [
-              process.env.AZZORA_STAGING_SERVICE_KEY,
-              process.env.AZZORA_STAGING_AUTH_KEY,
-              process.env.AZZORA_STAGING_PUBLISHABLE_KEY,
-              process.env.AZZORA_PRODUCTION_BACKUP_KEY,
-            ].includes(stagingRaw))
+          !isDistinctBackupKey(stagingRaw, [
+            process.env.AZZORA_STAGING_SERVICE_KEY,
+            process.env.AZZORA_STAGING_AUTH_KEY,
+            process.env.AZZORA_STAGING_PUBLISHABLE_KEY,
+            process.env.AZZORA_PRODUCTION_BACKUP_KEY,
+          ])
         )
           throw new StagingServiceError(
             503,
@@ -825,6 +823,8 @@ export function createStagingHandler(
         [
           "backup_recent_mfa_required",
           "staging_owner_backup_key_required",
+          "production_owner_backup_key_required",
+          "production_backup_adapter_required",
         ].includes(error.code)
       )
         return json(

@@ -7,10 +7,31 @@ import {
 import { createPrivateAttachmentStorage } from "../staging/storage.js";
 import { createStagingHandler } from "../staging/server.js";
 import { createProtectedProductionBackup } from "./launch-backup.js";
+import { isDistinctBackupKey } from "./backup-key-policy.js";
 import {
   assertProductionIdentity,
   productionRuntime,
+  type ProductionRuntime,
 } from "./runtime-production.js";
+
+/** Resolve a canonical, independent owner key without logging its value. */
+export function resolveProductionBackupKey(
+  env: Record<string, string | undefined>,
+  runtime: ProductionRuntime,
+) {
+  const raw = env.AZZORA_PRODUCTION_BACKUP_KEY || "";
+  const keyId = env.AZZORA_PRODUCTION_BACKUP_KEY_ID || "";
+  if (
+    !isDistinctBackupKey(raw, [
+      runtime.encryptionKey,
+      runtime.serviceKey,
+      runtime.publishableKey,
+    ]) ||
+    !/^[A-Za-z0-9][A-Za-z0-9._:-]{3,127}$/.test(keyId)
+  )
+    throw new StagingServiceError(503, "production_owner_backup_key_required");
+  return { key: Buffer.from(raw, "base64url"), keyId };
+}
 
 /** No environment fallback, fixture bootstrap, client-review exception or automatic activation. */
 export function createProductionCandidate(
@@ -43,26 +64,14 @@ export function createProductionCandidate(
         storage,
         production: runtime,
         productionBackup: async (source, read, actor) => {
-          const env = options.env || process.env,
-            raw = env.AZZORA_PRODUCTION_BACKUP_KEY || "",
-            keyId = env.AZZORA_PRODUCTION_BACKUP_KEY_ID || "";
-          if (
-            !/^[A-Za-z0-9_-]{43}$/.test(raw) ||
-            !/^[A-Za-z0-9][A-Za-z0-9._:-]{3,127}$/.test(keyId) ||
-            [
-              runtime.encryptionKey,
-              runtime.serviceKey,
-              runtime.publishableKey,
-            ].includes(raw)
-          )
-            throw new StagingServiceError(
-              503,
-              "production_owner_backup_key_required",
-            );
+          const { key, keyId } = resolveProductionBackupKey(
+            options.env || process.env,
+            runtime,
+          );
           return createProtectedProductionBackup(
             source,
             read,
-            Buffer.from(raw, "base64url"),
+            key,
             {
               companyId: runtime.companyId,
               keyId,

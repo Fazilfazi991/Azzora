@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Store } from "../store";
+import { backupFailureMessage } from "./manual-backup-message";
 
 export function ManualBackup({ store }: { store: Store }) {
   const [backupBusy, setBackupBusy] = useState(false);
@@ -18,13 +19,7 @@ export function ManualBackup({ store }: { store: Store }) {
         const result = (await response.json().catch(() => ({}))) as {
           code?: string;
         };
-        throw Error(
-          result.code === "backup_recent_mfa_required"
-            ? "Sign out and sign in again with your authenticator, then retry."
-            : result.code === "staging_owner_backup_key_required"
-              ? "Encrypted staging backup is not configured. No file was downloaded."
-              : "Backup could not be downloaded. Check your sign-in and try again.",
-        );
+        throw Error(backupFailureMessage(result.code));
       }
       const envelope = (await response.json()) as {
         format?: string;

@@ -1,0 +1,11 @@
+# Fictional staging commit phase diagnostic — 11 November 2026
+
+A temporary, hash-guarded diagnostic was applied only to the authorized fictional staging project, using the reviewed SQL fixtures in this commit's parent. The full pre-install function definition SHA-256 was `939ebdba057852a914b78d0195eab925812b3adff3a0d872c079b409aa77fbd6`. Its owner was `postgres`, ACL `{postgres=X/postgres,service_role=X/postgres}`, security definer was enabled, and search path was empty. The phase messages contain fixed labels and elapsed milliseconds only. Database settings observed were `log_min_error_statement=error`, `log_min_messages=warning`, `log_statement=ddl`.
+
+A fictional Accountant submitted two identical concurrent receipt requests with one persisted idempotency key against the larger synthetic company. Both returned HTTP 200, in 6.049 and 8.853 seconds measured from the client. Reconciliation found one new receipt, version 515 to 516, and an AED 1 reduction of the selected fictional invoice balance. Trial balance and balance sheet remained balanced. The requests reached the database commit about three seconds apart, so this was not a concurrent database-lock stress test.
+
+The successful commit's cumulative PostgreSQL function timings were: authentication 26 ms, row lock 30 ms, guards 116 ms, projects 135 ms, records 260 ms, before journals 266 ms, journals 383 ms, snapshots 399 ms, and return 407 ms. The same-key replay logged authentication at 181 ms and lock at 182 ms before returning early. These values measure function phases, not the complete request; they do not isolate where the remaining client elapsed time was spent.
+
+The exact guarded rollback completed successfully. An independent query after rollback confirmed the original full SHA-256 above, original owner and ACL, security-definer setting and empty search path. No production deployment or data was modified.
+
+No 503 occurred in this diagnostic. The findings do not establish the cause of the earlier intermittent 503, prove a sustained performance target, or justify an optimization or timeout increase. The earlier artificial-lock reproduction demonstrates only that sufficiently prolonged contention can produce the same error class.

@@ -135,10 +135,17 @@ export function prepareImportReview(input: unknown): ImportReview {
     ids = new Set<string>(),
     sources = new Set<string>(),
     references = new Set<string>(),
+    partyIds = new Set<string>(),
     parties = new Set(
       s.rows
         .filter((r) => r.kind === "customer" || r.kind === "supplier")
         .map((r) => r.preservedId),
+    ),
+    customers = new Set(
+      s.rows.filter((r) => r.kind === "customer").map((r) => r.preservedId),
+    ),
+    suppliers = new Set(
+      s.rows.filter((r) => r.kind === "supplier").map((r) => r.preservedId),
     ),
     projects = new Set(
       s.rows.filter((r) => r.kind === "project").map((r) => r.preservedId),
@@ -166,6 +173,17 @@ export function prepareImportReview(input: unknown): ImportReview {
         "Resolve repeated target IDs explicitly; no overwrite is inferred.",
       );
     ids.add(key);
+    // Customers and suppliers both write to the canonical parties table, whose
+    // identity key is shared across kinds. Never let one silently replace the
+    // other merely because their source types differ.
+    if (r.kind === "customer" || r.kind === "supplier") {
+      if (partyIds.has(r.preservedId))
+        add(
+          "duplicate-party-id",
+          "Customer and supplier IDs share a namespace; resolve this ID collision before approval.",
+        );
+      partyIds.add(r.preservedId);
+    }
     if (sources.has(sourceKey))
       add(
         "duplicate-source-record",
@@ -177,6 +195,24 @@ export function prepareImportReview(input: unknown): ImportReview {
         "missing-party",
         "Map the referenced customer/supplier in this reviewed package.",
       );
+    if (r.partyId && parties.has(r.partyId)) {
+      const requiresCustomer = [
+        "project",
+        "sales-invoice",
+        "historical-quotation",
+      ].includes(r.kind);
+      const requiresSupplier = r.kind === "supplier-bill";
+      if (
+        (requiresCustomer && !customers.has(r.partyId)) ||
+        (requiresSupplier && !suppliers.has(r.partyId))
+      )
+        add(
+          "party-kind-mismatch",
+          requiresSupplier
+            ? "Map this supplier bill to a reviewed supplier, not a customer."
+            : "Map this customer-facing record to a reviewed customer, not a supplier.",
+        );
+    }
     if (r.projectId && !projects.has(r.projectId))
       add(
         "missing-project",
@@ -187,12 +223,12 @@ export function prepareImportReview(input: unknown): ImportReview {
         r.kind,
       )
     ) {
-      if (!r.documentNumber)
+      if (!r.documentNumber?.trim())
         add(
           "missing-document-number",
           "Preserve the original issued document number.",
         );
-      if (r.documentNumber) {
+      if (r.documentNumber?.trim()) {
         const ref = JSON.stringify([
           r.kind,
           r.kind === "supplier-bill" ? r.partyId || "" : "",

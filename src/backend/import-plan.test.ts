@@ -205,6 +205,42 @@ it("does not guess absent balances, unresolved mappings, duplicate IDs/reference
     }),
   ).toThrow(/reconciliation/);
 });
+it("blocks shared party-ID collisions, wrong party kinds and blank issued numbers before quarantine approval", () => {
+  const s = source();
+  s.rows[1].preservedId = "C-001";
+  s.rows[4].partyId = "C-001";
+  let review = prepareImportReview(s);
+  expect(review.issues).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ code: "duplicate-party-id", row: 2 }),
+    ]),
+  );
+  expect(() =>
+    approveImportReview(review, [], {
+      companyId: company,
+      manifestSha256: "b".repeat(64),
+      verifiedAt: "2026-11-11T00:00:00Z",
+    }),
+  ).toThrow(/reconciliation/);
+
+  s.rows[1].preservedId = "S-001";
+  s.rows[2].partyId = "S-001";
+  s.rows[3].partyId = "S-001";
+  s.rows[4].partyId = "C-001";
+  s.rows[3].documentNumber = "   ";
+  review = prepareImportReview(s);
+  expect(review.issues).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ code: "party-kind-mismatch", row: 3 }),
+      expect.objectContaining({ code: "party-kind-mismatch", row: 4 }),
+      expect.objectContaining({ code: "party-kind-mismatch", row: 5 }),
+      expect.objectContaining({ code: "missing-document-number", row: 4 }),
+    ]),
+  );
+  expect(review.rows[3].documentNumber).toBe("   ");
+  expect(review.publication).toBe("quarantined");
+  expect(review.financialPostingAllowed).toBe(false);
+});
 it("rejects credential-bearing data, invalid monetary types and any hash/control/original tampering", () => {
   const s = source();
   s.rows[0].payload.password = "not-a-real-password";

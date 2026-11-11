@@ -51,8 +51,13 @@ export function stagingRuntimeOrigins(
         clientAlias !==
           "https://azzora-accounts-client-review-faziils-projects.vercel.app"
       )
-        throw Error("Only the existing Accounts client-review alias is permitted.");
-      return new Set([`https://${host}`, ...(clientAlias ? [clientAlias] : [])]);
+        throw Error(
+          "Only the existing Accounts client-review alias is permitted.",
+        );
+      return new Set([
+        `https://${host}`,
+        ...(clientAlias ? [clientAlias] : []),
+      ]);
     }
     if (
       env.VERCEL_ENV !== "preview" ||
@@ -70,14 +75,24 @@ export function stagingRuntimeOrigins(
       throw Error("The dedicated staging project identity is not configured.");
     if (env.VERCEL_PROJECT_NAME !== slug)
       throw Error("Existing live projects cannot run this staging handler.");
-    // Branch URL remains stable across rebuilds and works with Standard Protection.
-    // VERCEL_URL is deliberately not trusted/required for this protection mode.
-    const host = env.VERCEL_BRANCH_URL || "";
+    // CLI previews need not have a Git branch URL. VERCEL_URL is supplied by
+    // Vercel, not the request, and identifies this immutable deployment. Use it
+    // only in the approved dedicated project and never as an outbound fetch URL.
+    const branch = env.VERCEL_BRANCH_URL || "";
+    const deployment = env.VERCEL_URL || "";
     if (
-      !/^[a-z0-9-]+\.vercel\.app$/.test(host) ||
-      !host.startsWith(slug + "-git-")
+      branch &&
+      !/^azzora-shared-staging-git-[a-z0-9-]+\.vercel\.app$/.test(branch)
     )
-      throw Error("The protected staging branch origin is unavailable.");
+      throw Error("The protected staging branch origin is invalid.");
+    if (
+      !branch &&
+      !/^azzora-shared-staging-[a-z0-9]+-faziils-projects\.vercel\.app$/.test(
+        deployment,
+      )
+    )
+      throw Error("The protected staging deployment origin is unavailable.");
+    const host = branch || deployment;
     if (
       configured.some(
         (v) =>

@@ -13,6 +13,41 @@ it("trusts the exact system branch origin only after explicit project approval",
   expect([...stagingRuntimeOrigins(approved)]).toEqual([
     "https://" + approved.VERCEL_BRANCH_URL,
   ]));
+it("allows only the immutable system deployment origin for a CLI Preview without a branch", () => {
+  const cli = {
+    ...approved,
+    VERCEL_BRANCH_URL: "",
+    VERCEL_URL: "azzora-shared-staging-6qeybia1b-faziils-projects.vercel.app",
+  };
+  expect([...stagingRuntimeOrigins(cli)]).toEqual([
+    `https://${cli.VERCEL_URL}`,
+  ]);
+  for (const invalid of [
+    "azzora-shared-staging-6qeybia1b-other.vercel.app",
+    "azzora-shared-staging-faziils-projects.vercel.app",
+    "azzora-shared-staging-6qeybia1b-faziils-projects.vercel.app.evil.test",
+    "azzora-shared-staging-6qeybia1b-faziils-projects.vercel.app@evil.test",
+    "",
+  ])
+    expect(() =>
+      stagingRuntimeOrigins({ ...cli, VERCEL_URL: invalid }),
+    ).toThrow();
+  expect(() =>
+    stagingRuntimeOrigins({ ...cli, VERCEL_PROJECT_ID: "prj_Other" }),
+  ).toThrow();
+  expect(() =>
+    stagingRuntimeOrigins({ ...cli, VERCEL_ENV: "production" }),
+  ).toThrow();
+  expect(() =>
+    stagingRuntimeOrigins({
+      ...cli,
+      AZZORA_STAGING_DEPLOYMENT_APPROVED: "false",
+    }),
+  ).toThrow();
+  expect(() =>
+    stagingRuntimeOrigins({ ...cli, VERCEL_BRANCH_URL: "bad.example" }),
+  ).toThrow();
+});
 it("rejects production promotion and missing approval", () => {
   expect(() =>
     stagingRuntimeOrigins({ ...approved, VERCEL_ENV: "production" }),

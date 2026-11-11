@@ -11,6 +11,10 @@ import { stagingRuntimeOrigins } from "./deployment.js";
 import { rpc as configuredRpc } from "./supabase.js";
 import { createSupabaseTokenVerifier } from "../backend/auth-supabase.js";
 import { createStagingRecovery } from "./auth-recovery.js";
+import {
+  assertProductionActor,
+  type ProductionRuntime,
+} from "../backend/runtime-production.js";
 
 export interface StagingActor {
   authenticationPolicy?: string;
@@ -71,16 +75,16 @@ const json = (status: number, value: unknown, cookie?: string) =>
       ...(cookie ? { "Set-Cookie": cookie } : {}),
     },
   });
-const cookie = (token: string, maxAge: number) =>
-  `${cookieName}=${token}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=${maxAge}`;
+const cookie = (token: string, maxAge: number, name = cookieName) =>
+  `${name}=${token}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=${maxAge}`;
 const clearCookie = `${cookieName}=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0`;
-function tokenFrom(request: Request): string {
+function tokenFrom(request: Request, name = cookieName): string {
   const parts = (request.headers.get("cookie") || "")
     .split(";")
     .map((v) => v.trim())
-    .filter((v) => v.startsWith(cookieName + "="));
+    .filter((v) => v.startsWith(name + "="));
   if (parts.length !== 1) throw new AuthError(401, "Sign in is required.");
-  const token = parts[0].slice(cookieName.length + 1);
+  const token = parts[0].slice(name.length + 1);
   if (!/^[A-Za-z0-9_-]{43}$/.test(token))
     throw new AuthError(401, "Sign in is required.");
   return token;
@@ -110,23 +114,48 @@ export function createStagingAuth(
     publishableKey?: string;
     encryptionKey?: string;
     serviceKey?: string;
+    production?: ProductionRuntime;
   } = {},
 ) {
   const rpc = options.rpc || configuredRpc;
   const transport = options.fetch || fetch;
   const now = options.now || Date.now;
-  const url = options.url || process.env.AZZORA_STAGING_SUPABASE_URL || "";
-  if (url !== "https://hkhomrrvxtcxnxvdlkoh.supabase.co")
+  const production = options.production;
+  if (production && !options.rpc)
+    throw Error(
+      "Production authentication requires an explicitly isolated RPC adapter.",
+    );
+  const sessionCookieName = production ? "__Host-azzora_session" : cookieName;
+  const sessionCookie = (token: string, maxAge: number) =>
+    cookie(token, maxAge, sessionCookieName);
+  const clearSessionCookie = production
+    ? `${sessionCookieName}=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0`
+    : clearCookie;
+  const url =
+    production?.url ||
+    options.url ||
+    process.env.AZZORA_STAGING_SUPABASE_URL ||
+    "";
+  if (!production && url !== "https://hkhomrrvxtcxnxvdlkoh.supabase.co")
     throw new Error("Approved staging identity URL is required.");
   const publishableKey =
-    options.publishableKey || process.env.AZZORA_STAGING_PUBLISHABLE_KEY || "";
+    production?.publishableKey ||
+    options.publishableKey ||
+    process.env.AZZORA_STAGING_PUBLISHABLE_KEY ||
+    "";
   const key = Buffer.from(
-    options.encryptionKey || process.env.AZZORA_STAGING_AUTH_KEY || "",
+    production?.encryptionKey ||
+      options.encryptionKey ||
+      process.env.AZZORA_STAGING_AUTH_KEY ||
+      "",
     "base64url",
   );
   if (key.length !== 32)
     throw new Error("Staging session encryption must be configured.");
-  const origins = options.allowedOrigins || stagingRuntimeOrigins();
+  const origins =
+    production?.allowedOrigins ||
+    options.allowedOrigins ||
+    stagingRuntimeOrigins();
   if (!origins.size) throw new Error("Explicit staging origins are required.");
   const verifyToken = createSupabaseTokenVerifier({
     url,
@@ -253,8 +282,19 @@ export function createStagingAuth(
     pendingHash?: string,
   ) {
     const identity = await verifyToken(t.access_token);
-    if (identity.userId !== grant.userId)
+    if (
+      identity.userId !== grant.userId ||
+      !grant.workspaces.includes(workspace)
+    )
       throw new AuthError(401, "Identity verification failed.");
+    if (production) {
+      assertProductionActor(grant, production);
+      if (
+        ["owner_admin", "accountant"].includes(grant.role) &&
+        identity.assurance !== "aal2"
+      )
+        throw new AuthError(403, "Multi-factor verification is required.");
+    }
     const token = opaque();
     const sessionHash = hash(token);
     await rpc("staging_auth_session_put", {
@@ -269,11 +309,15 @@ export function createStagingAuth(
     });
     if (pendingHash)
       await rpc("staging_auth_pending_delete", { p_hash: pendingHash });
-    return json(200, { status: "authenticated" }, cookie(token, 8 * 3600));
+    return json(
+      200,
+      { status: "authenticated" },
+      sessionCookie(token, 8 * 3600),
+    );
   }
   async function load(request: Request) {
     boundary(request, !["GET", "HEAD"].includes(request.method));
-    const token = tokenFrom(request);
+    const token = tokenFrom(request, sessionCookieName);
     const sessionHash = hash(token);
     if (!["GET", "HEAD"].includes(request.method)) requireCsrf(request, token);
     let stored = await rpc<{
@@ -319,6 +363,14 @@ export function createStagingAuth(
     const actor = await rpc<StagingActor>("staging_auth_actor", {
       p_session_hash: sessionHash,
     });
+    if (production) {
+      assertProductionActor(actor, production);
+      if (
+        ["owner_admin", "accountant"].includes(actor.role) &&
+        actor.assurance !== "aal2"
+      )
+        throw new AuthError(403, "Multi-factor verification is required.");
+    }
     await rpc("staging_auth_session_touch", { p_hash: sessionHash });
     return { actor, token, t, version: stored.version };
   }
@@ -337,7 +389,10 @@ export function createStagingAuth(
     transport,
     url,
     serviceKey: () =>
-      options.serviceKey || process.env.AZZORA_STAGING_SERVICE_KEY || "",
+      production?.serviceKey ||
+      options.serviceKey ||
+      process.env.AZZORA_STAGING_SERVICE_KEY ||
+      "",
   });
   return {
     async requireActor(request: Request, workspace?: "manager" | "accountant") {
@@ -349,6 +404,11 @@ export function createStagingAuth(
     async handle(request: Request, path: string): Promise<Response> {
       try {
         boundary(request, request.method !== "GET");
+        if (production && path.startsWith("/auth/recovery/"))
+          return json(503, {
+            error:
+              "Production account recovery requires the approved, verified recovery service. Contact the administrator.",
+          });
         if (path.startsWith("/auth/recovery/"))
           return recovery.handle(request, path);
         if (path === "/auth/login" && request.method === "POST") {
@@ -361,14 +421,21 @@ export function createStagingAuth(
             typeof data.password === "string" ? data.password : "";
           const workspace = data.workspace;
           if (
-            !email.endsWith("@staging.azzora.test") ||
+            (production
+              ? !/^[^\s@]{1,64}@[^\s@]{1,190}$/.test(email) ||
+                email.endsWith("@staging.azzora.test")
+              : !email.endsWith("@staging.azzora.test")) ||
             !password ||
             password.length > 256 ||
             !["manager", "accountant"].includes(String(workspace))
           )
             throw new AuthError(401, "Sign-in failed.");
           const rateKey = hash(
-            email + ":" + (request.headers.get("x-forwarded-for") || "staging"),
+            email +
+              ":" +
+              (production
+                ? "production"
+                : request.headers.get("x-forwarded-for") || "staging"),
           );
           if (
             !(await rpc<boolean>("staging_auth_rate", { p_key_hash: rateKey }))
@@ -387,6 +454,7 @@ export function createStagingAuth(
           const grant = await rpc<Grant>("staging_auth_grant", {
             p_user_id: identity.userId,
           });
+          if (production) assertProductionActor(grant, production);
           if (!grant.workspaces.includes(workspace as string))
             throw new AuthError(
               403,
@@ -394,10 +462,11 @@ export function createStagingAuth(
             );
           if (
             !["owner_admin", "accountant"].includes(grant.role) ||
-            isPasswordOnlyClientReview({
-              ...grant,
-              workspace: String(workspace),
-            })
+            (!production &&
+              isPasswordOnlyClientReview({
+                ...grant,
+                workspace: String(workspace),
+              }))
           )
             return finish(t, grant, workspace as "manager" | "accountant");
           const user = await provider<{
@@ -430,7 +499,11 @@ export function createStagingAuth(
             }>(
               "/factors",
               "POST",
-              { factor_type: "totp", friendly_name: "AZZORA staging " + now() },
+              {
+                factor_type: "totp",
+                friendly_name:
+                  (production ? "AZZORA " : "AZZORA staging ") + now(),
+              },
               t.access_token,
             );
             factorId = enrolled.id;
@@ -467,11 +540,11 @@ export function createStagingAuth(
               csrf: csrf(token),
               ...(qrCode ? { qrCode, uri } : {}),
             },
-            cookie(token, 300),
+            sessionCookie(token, 300),
           );
         }
         if (path === "/auth/mfa/verify" && request.method === "POST") {
-          const token = tokenFrom(request);
+          const token = tokenFrom(request, sessionCookieName);
           requireCsrf(request, token);
           const pendingHash = hash(token);
           const data = await input(request);
@@ -508,11 +581,11 @@ export function createStagingAuth(
             projectIds: state.actor.projectIds,
             capabilities: state.actor.capabilities,
             csrf: csrf(state.token),
-            mode: "fictional-staging",
+            mode: production ? "production-candidate" : "fictional-staging",
           });
         }
         if (path === "/auth/logout" && request.method === "POST") {
-          const token = tokenFrom(request);
+          const token = tokenFrom(request, sessionCookieName);
           requireCsrf(request, token);
           const sessionHash = hash(token);
           let accessToken: string | undefined;
@@ -536,7 +609,7 @@ export function createStagingAuth(
               /* Local server session is already durably revoked. */
             }
           }
-          return json(200, { status: "signed-out" }, clearCookie);
+          return json(200, { status: "signed-out" }, clearSessionCookie);
         }
         return json(404, { error: "Unknown authentication route." });
       } catch (error) {

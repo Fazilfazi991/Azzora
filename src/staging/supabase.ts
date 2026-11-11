@@ -44,19 +44,28 @@ export type StagingRpc = <T = unknown>(
   params?: Record<string, unknown>,
 ) => Promise<T>;
 
-export function createStagingRpc(
+function createScopedRpc(
   config: StagingConfig,
-  transport: typeof fetch = fetch,
+  transport: typeof fetch,
+  production = false,
 ): StagingRpc {
   return async <T>(
     name: string,
     params: Record<string, unknown> = {},
   ): Promise<T> => {
-    if (!/^(?:azzora_)?staging_[a-z0-9_]+$/.test(name))
+    if (
+      production
+        ? !productionRpcNames.has(name)
+        : !/^(?:azzora_)?staging_[a-z0-9_]+$/.test(name)
+    )
       throw new StagingServiceError(400, "unsupported_staging_rpc");
+    const functionName =
+      production && name !== "azzora_runtime_identity"
+        ? name.replace(/^staging_/, "azzora_production_")
+        : name;
     let response: Response;
     try {
-      response = await transport(`${config.url}/rest/v1/rpc/${name}`, {
+      response = await transport(`${config.url}/rest/v1/rpc/${functionName}`, {
         method: "POST",
         headers: {
           apikey: config.serviceKey,
@@ -103,6 +112,36 @@ export function createStagingRpc(
       throw new StagingServiceError(503, "staging_response_invalid");
     }
   };
+}
+const productionRpcNames = new Set([
+  "azzora_runtime_identity",
+  "staging_company_read",
+  "staging_company_commit",
+  "staging_company_people",
+  "staging_auth_grant",
+  "staging_auth_actor",
+  "staging_auth_rate",
+  "staging_auth_pending_put",
+  "staging_auth_pending_get",
+  "staging_auth_pending_delete",
+  "staging_auth_session_put",
+  "staging_auth_session_get",
+  "staging_auth_session_revoke",
+  "staging_auth_session_touch",
+  "staging_auth_tokens_update",
+]);
+export function createStagingRpc(
+  config: StagingConfig,
+  transport: typeof fetch = fetch,
+): StagingRpc {
+  return createScopedRpc(config, transport);
+}
+/** Compatibility names are internal only; no production HTTP request targets a staging RPC. */
+export function createProductionRpc(
+  config: StagingConfig,
+  transport: typeof fetch = fetch,
+): StagingRpc {
+  return createScopedRpc(config, transport, true);
 }
 /** Lazy so ordinary Manager/Accounts builds never require staging credentials. */
 export const rpc: StagingRpc = <T>(

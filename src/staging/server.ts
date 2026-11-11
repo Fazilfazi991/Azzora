@@ -32,6 +32,7 @@ import {
   selectedSnapshot,
 } from "../accounts-review/reporting.js";
 import { reviewPdf } from "../accounts-review/pdf.js";
+import { ProductionPolicyError } from "../accounting/production-policy.js";
 import { extractDocument } from "../accounts-review/documents/service.js";
 import { BlobReviewStore } from "../accounts-review/hosted-store.js";
 import { DocumentExtractionError } from "../accounts-review/documents/extraction-status.js";
@@ -46,6 +47,10 @@ import {
   digestOf,
 } from "../accounts-review/documents/providers.js";
 import { storePrivateAttachment, readPrivateAttachment } from "./storage.js";
+import {
+  assertProductionActor,
+  type ProductionRuntime,
+} from "../backend/runtime-production.js";
 
 const json = (status: number, value: unknown, requestId?: string) =>
   new Response(JSON.stringify(value), {
@@ -86,6 +91,7 @@ export function stagingAction(
   input: Record<string, unknown>,
   actor: StagingActor,
   key: string,
+  production = false,
 ): Record<string, unknown> {
   if (input.id !== undefined) return input;
   const prefixes: Record<string, string> = {
@@ -116,15 +122,29 @@ export function stagingAction(
   })
     .slice(0, 20)
     .toUpperCase();
-  return { ...input, id: `${prefix}-STG-${suffix}` };
+  return { ...input, id: `${prefix}-${production ? "" : "STG-"}${suffix}` };
 }
 export function createStagingHandler(
   options: {
     rpc?: StagingRpc;
     auth?: ReturnType<typeof createStagingAuth>;
+    production?: ProductionRuntime;
+    storage?: {
+      store: typeof storePrivateAttachment;
+      read: typeof readPrivateAttachment;
+    };
   } = {},
 ) {
   const rpc = options.rpc ?? defaultRpc;
+  const production = options.production;
+  if (production && (!options.rpc || !options.auth || !options.storage))
+    throw Error(
+      "Production handlers require explicitly isolated RPC, authentication and storage adapters.",
+    );
+  const originals = options.storage || {
+    store: storePrivateAttachment,
+    read: readPrivateAttachment,
+  };
   let auth = options.auth;
   return async (request: Request): Promise<Response> => {
     const requestId = randomUUID(),
@@ -136,7 +156,7 @@ export function createStagingHandler(
         "/" +
         (
           url.searchParams.get("route") ||
-          url.pathname.replace(/^\/api\/staging\/?/, "")
+          url.pathname.replace(/^\/api\/(?:staging|production)\/?/, "")
         ).replace(/^\/+/, "");
       if (url.protocol !== "https:")
         return json(403, { error: "HTTPS is required." });
@@ -154,6 +174,7 @@ export function createStagingHandler(
         return json(404, { error: "Unknown staging route." });
       stage = "authentication";
       let actor = await auth.requireActor(request, requestedWorkspace);
+      if (production) assertProductionActor(actor, production);
       const workspace = requestedWorkspace || actor.workspace;
       const read = () =>
         rpc<Loaded>("staging_company_read", {
@@ -163,6 +184,16 @@ export function createStagingHandler(
       stage = "read";
       let loaded = await read();
       if (loaded.version === 0) {
+        if (production)
+          return json(
+            409,
+            {
+              error:
+                "This company requires approved setup or a reviewed import before use. No sample records or opening balances were created.",
+              code: "production_company_setup_required",
+            },
+            requestId,
+          );
         if (actor.role !== "owner_admin" || actor.assurance !== "aal2")
           return json(409, {
             error:
@@ -185,7 +216,21 @@ export function createStagingHandler(
         loaded = await read();
       }
       let state = hydrateCanonical(loaded.data);
+      if (
+        String(state.mode) !== (production ? "production" : "fictional-staging")
+      )
+        throw new StagingServiceError(503, "workspace_environment_mismatch");
       if (path === "/manager/backup" && request.method === "GET") {
+        if (production)
+          return json(
+            503,
+            {
+              error:
+                "Production backup requires the separately verified backup and recovery adapter.",
+              code: "production_backup_adapter_required",
+            },
+            requestId,
+          );
         if (
           actor.role !== "owner_admin" ||
           actor.assurance !== "aal2" ||
@@ -200,7 +245,7 @@ export function createStagingHandler(
             data: loaded.data,
             companyId: actor.companyId,
           },
-          (file) => readPrivateAttachment(actor.companyId, file),
+          (file) => originals.read(actor.companyId, file),
         );
         const bytes = new TextEncoder().encode(JSON.stringify(backup));
         let offset = 0;
@@ -229,7 +274,12 @@ export function createStagingHandler(
         const id = decodeURIComponent(path.slice(7));
         const result =
           workspace === "manager"
-            ? await readManagerFile(state, sharedActor(actor), id)
+            ? await readManagerFile(
+                state,
+                sharedActor(actor),
+                id,
+                originals.read,
+              )
             : await (async () => {
                 const file = state.finance.attachments.find(
                   (value) => value.id === id,
@@ -239,7 +289,7 @@ export function createStagingHandler(
                     404,
                     "staging_attachment_not_found",
                   );
-                return readPrivateAttachment(
+                return originals.read(
                   actor.companyId,
                   file as Parameters<typeof readPrivateAttachment>[1],
                 );
@@ -294,8 +344,15 @@ export function createStagingHandler(
                 state,
                 sharedActor(actor),
               ),
-              documentAi:
-                process.env.AZZORA_AI_GENERAL_DOCUMENTS === "fictional-v1"
+              documentAi: production
+                ? {
+                    enabled: false,
+                    provider: "deepseek",
+                    status: "disabled",
+                    message:
+                      "External AI processing requires approved real-document data-processing and retention controls. Manual entry remains available.",
+                  }
+                : process.env.AZZORA_AI_GENERAL_DOCUMENTS === "fictional-v1"
                   ? documentAvailability(
                       configuredDocumentRuntime(new BlobReviewStore()),
                     )
@@ -318,22 +375,32 @@ export function createStagingHandler(
         request.method === "GET" &&
         path.startsWith("/accounts/pdf/")
       )
-        return new Response(
-          reviewPdf(
-            state.finance,
-            decodeURIComponent(path.slice(14)),
-            reportSelection(url),
-          ),
-          {
-            headers: {
-              "Content-Type": "application/pdf",
-              "X-Content-Type-Options": "nosniff",
-              "Cache-Control": "no-store, private",
-              "Content-Disposition":
-                "attachment; filename=AZZORA-fictional-staging.pdf",
-            },
-          },
-        );
+        return production
+          ? json(
+              423,
+              {
+                error:
+                  "Production financial PDFs require the approved accounting and legal-document policy.",
+                code: "production_document_policy_required",
+              },
+              requestId,
+            )
+          : new Response(
+              reviewPdf(
+                state.finance,
+                decodeURIComponent(path.slice(14)),
+                reportSelection(url),
+              ),
+              {
+                headers: {
+                  "Content-Type": "application/pdf",
+                  "X-Content-Type-Options": "nosniff",
+                  "Cache-Control": "no-store, private",
+                  "Content-Disposition":
+                    "attachment; filename=AZZORA-fictional-staging.pdf",
+                },
+              },
+            );
       if (
         workspace === "accountant" &&
         request.method === "GET" &&
@@ -343,7 +410,7 @@ export function createStagingHandler(
           (value) => value.id === decodeURIComponent(path.slice(21)),
         );
         if (!file) return json(404, { error: "Attachment not found." });
-        const result = await readPrivateAttachment(
+        const result = await originals.read(
           actor.companyId,
           file as Parameters<typeof readPrivateAttachment>[1],
         );
@@ -394,7 +461,7 @@ export function createStagingHandler(
       const isUpload = path === "/accounts/documents/extract";
       const action =
         workspace === "accountant" && !isUpload
-          ? stagingAction(input, actor, key)
+          ? stagingAction(input, actor, key, Boolean(production))
           : input;
       if (
         path !== "/manager/command" &&
@@ -430,7 +497,18 @@ export function createStagingHandler(
         await commit(undefined, {});
       } else if (isUpload) {
         const parsed = extractionInputSchema.parse(input);
+        if (production && parsed.mode !== "manual")
+          return json(
+            423,
+            {
+              error:
+                "Real documents cannot be sent to an AI provider until data-processing and operating-budget approval is recorded. Manual entry remains available.",
+              code: "production_document_processing_disabled",
+            },
+            requestId,
+          );
         const general =
+          !production &&
           process.env.AZZORA_AI_GENERAL_DOCUMENTS === "fictional-v1";
         const authorization =
           general && parsed.mode !== "manual"
@@ -474,7 +552,7 @@ export function createStagingHandler(
         const next = { ...state, finance: result.state };
         for (let i = 0; i < next.finance.attachments.length; i++)
           if (next.finance.attachments[i].data)
-            next.finance.attachments[i] = await storePrivateAttachment(
+            next.finance.attachments[i] = await originals.store(
               actor.companyId,
               next.finance.attachments[i],
             );
@@ -489,15 +567,30 @@ export function createStagingHandler(
       } else {
         stage = "validate";
         const scope = sharedCommandScope(state, command);
+        if (production && scope.financial)
+          return json(
+            423,
+            {
+              error:
+                "Real financial posting requires approved company policy and a separately authorized cutover.",
+              code: "production_financial_posting_disabled",
+            },
+            requestId,
+          );
         const next = applySharedCommand(state, command, sharedActor(actor));
         if (workspace === "manager") {
           stage = "private-file";
-          await prepareManagerFiles(state, next, sharedActor(actor));
+          await prepareManagerFiles(
+            state,
+            next,
+            sharedActor(actor),
+            originals.store,
+          );
         }
         selectedSnapshot(next.finance, reportSelection(url));
         for (let i = 0; i < next.finance.attachments.length; i++)
           if (next.finance.attachments[i].data)
-            next.finance.attachments[i] = await storePrivateAttachment(
+            next.finance.attachments[i] = await originals.store(
               actor.companyId,
               next.finance.attachments[i],
             );
@@ -532,13 +625,16 @@ export function createStagingHandler(
             : 400;
       console.warn(
         JSON.stringify({
-          event: "staging_request_failed",
+          event: production
+            ? "production_request_failed"
+            : "staging_request_failed",
           requestId,
           stage,
           status,
           code:
             error instanceof StagingServiceError ||
-            error instanceof StagingPolicyError
+            error instanceof StagingPolicyError ||
+            error instanceof ProductionPolicyError
               ? error.code
               : "request_rejected",
           elapsedMs: Math.round(performance.now() - started),
@@ -572,6 +668,17 @@ export function createStagingHandler(
               "X-Azzora-Request-ID": requestId,
             },
           },
+        );
+      if (error instanceof ProductionPolicyError)
+        return json(
+          error.status,
+          {
+            error: error.message,
+            code: error.code,
+            issues: error.issues,
+            requestId,
+          },
+          requestId,
         );
       return json(
         status,

@@ -123,8 +123,9 @@ export async function readManagerFile(
   state: SharedCompanyState,
   actor: SharedActor,
   id: string,
+  read = readPrivateAttachment,
 ) {
   const file = permittedManagerFile(state, actor, id);
   if (!file) throw new StagingServiceError(404, "staging_attachment_not_found");
-  return readPrivateAttachment(actor.companyId, file);
+  return read(actor.companyId, file);
 }

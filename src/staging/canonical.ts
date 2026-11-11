@@ -8,7 +8,7 @@ import type {
 import type { Database } from "../domain/model.js";
 import type { ReviewState } from "../accounts-review/domain.js";
 import { cashAccountsFor, departments } from "../accounts-review/banking.js";
-import { createSharedCompanyState, type SharedCompanyState } from "./domain.js";
+import type { SharedCompanyState } from "./domain.js";
 import { refreshCommercialView } from "./commercial-commands.js";
 
 export interface CanonicalRecord {
@@ -158,10 +158,8 @@ const digest = (value: unknown) =>
 
 /** One canonical row per entity; Manager and Accountant representations are compatible views of that row. */
 export function serializeCanonical(state: SharedCompanyState): CanonicalData {
-  if (state.mode !== "fictional-staging")
-    throw Error(
-      "Canonical serialization requires explicit fictional staging scope.",
-    );
+  if (!["fictional-staging", "production"].includes(state.mode))
+    throw Error("Canonical serialization requires explicit workspace scope.");
   const records = new Map<string, CanonicalRecord>();
   const add = (type: string, id: string, field: string, value: unknown) => {
     if (!id) throw Error(`Canonical ${type} ID is missing.`);
@@ -250,15 +248,22 @@ export function serializeCanonical(state: SharedCompanyState): CanonicalData {
   delete financeMeta.documentEntries;
   for (const submission of state.expenseSubmissions)
     add("expense", submission.id, "submission", submission);
-  add("workspace_metadata", "__staging_metadata", "metadata", {
-    version: 1,
-    mode: state.mode,
-    manager: managerMeta,
-    operations: operationMeta,
-    finance: financeMeta,
-    documentEntryVersion: state.finance.documentEntries?.version || 1,
-    documentDefaults: state.finance.documentEntries?.defaults || [],
-  });
+  add(
+    "workspace_metadata",
+    String(state.mode) === "production"
+      ? "__production_metadata"
+      : "__staging_metadata",
+    "metadata",
+    {
+      version: 1,
+      mode: state.mode,
+      manager: managerMeta,
+      operations: operationMeta,
+      finance: financeMeta,
+      documentEntryVersion: state.finance.documentEntries?.version || 1,
+      documentDefaults: state.finance.documentEntries?.defaults || [],
+    },
+  );
 
   const parties = new Map<string, CanonicalData["parties"][number]>();
   for (const client of state.manager.clients)
@@ -474,13 +479,28 @@ export function serializeCanonical(state: SharedCompanyState): CanonicalData {
 
 /** Reconstructs views from normalized authoritative records. No seeded company records are merged in. */
 export function hydrateCanonical(data: CanonicalData): SharedCompanyState {
-  const meta = data.records.find(
+  const metadataRecords = data.records.filter(
     (record) =>
       record.entity_type === "workspace_metadata" &&
-      record.id === "__staging_metadata",
-  )?.payload.metadata as Record<string, unknown> | undefined;
-  if (!meta || meta.mode !== "fictional-staging" || meta.version !== 1)
-    throw Error("Fictional company metadata is missing or incompatible.");
+      ["__staging_metadata", "__production_metadata"].includes(record.id),
+  );
+  const meta =
+    metadataRecords.length === 1
+      ? (metadataRecords[0].payload.metadata as
+          Record<string, unknown> | undefined)
+      : undefined;
+  if (
+    !meta ||
+    !["fictional-staging", "production"].includes(String(meta.mode)) ||
+    meta.version !== 1 ||
+    metadataRecords[0].id !==
+      (meta.mode === "production"
+        ? "__production_metadata"
+        : "__staging_metadata")
+  )
+    throw Error(
+      "Company metadata is missing or incompatible; preserve the original records for recovery.",
+    );
   if (
     meta.documentEntryVersion !== undefined &&
     meta.documentEntryVersion !== 1
@@ -488,7 +508,15 @@ export function hydrateCanonical(data: CanonicalData): SharedCompanyState {
     throw Error(
       "Document entry metadata is incompatible; preserve the original records for recovery.",
     );
-  const state = createSharedCompanyState();
+  // Rehydrate existing authoritative data only. Even a temporary fixture seed here
+  // would risk leaking demo balances into a newly approved real company.
+  const state: SharedCompanyState = {
+    version: 1,
+    mode: meta.mode as SharedCompanyState["mode"],
+    manager: {} as Database,
+    finance: {} as ReviewState,
+    expenseSubmissions: [],
+  };
   state.canonicalSnapshots = structuredClone(data.snapshots || []);
   state.manager = revive<Database>({
     ...(meta.manager as object),

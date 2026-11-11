@@ -4,6 +4,7 @@ import { createReviewState, reviewSnapshot } from "../accounts-review/domain";
 import { blankFields } from "../accounts-review/documents/model";
 import { blankCustomer } from "../commercial/customer-domain";
 import { newProjectDetails } from "../commercial/repository";
+import { blankLine } from "../quotation/repository";
 import { emptyOperations } from "../operations/migration";
 import {
   createEmptyProductionCompany,
@@ -165,6 +166,120 @@ const fullContext = (s: SharedCompanyState, o = options(s)) => ({
     s.manager.operations!.settings,
   ),
   chartDigest: productionPolicyDigest(s.finance.accounting.accounts),
+});
+
+it("Manager quotation to shared invoice and receipt keeps transaction-clock timestamps and one authoritative balance", () => {
+  let s = fixture();
+  const run = (
+    kind: string,
+    payload: unknown,
+    o?: ProductionCommandOptions,
+  ) => {
+    s = applySharedCommand(s, { kind, payload }, actor(), o);
+  };
+  run("customer.save", {
+    customer: {
+      ...blankCustomer(),
+      id: "c1",
+      name: "Synthetic shared customer",
+      contact: "Synthetic",
+    },
+  });
+  run("project.create", {
+    project: {
+      ...newProjectDetails(
+        s.manager,
+        "c1",
+        "Synthetic integrated project",
+        "Synthetic location",
+      ),
+      id: "p1",
+      managerId: "pm",
+    },
+    standard: false,
+    planMode: "empty",
+  });
+  run("quotation.new", { projectId: "p1" });
+  const q = structuredClone(s.manager.quotations[0]);
+  q.date = day;
+  q.vatEnabled = false;
+  q.sections = [
+    {
+      id: "scope",
+      number: "1",
+      title: "Synthetic scope",
+      rows: [
+        {
+          ...blankLine("1.1"),
+          id: "item",
+          description: "Synthetic services",
+          quantity: "2",
+          rate: "50.00",
+          unit: "Nos",
+        },
+      ],
+    },
+  ];
+  q.payments = [
+    {
+      id: "full",
+      number: "1",
+      description: "Synthetic complete",
+      percentage: "100",
+      notes: "",
+    },
+  ];
+  run("quotation.save", { quotation: q, validate: true });
+  for (const status of ["Finalized", "Sent", "Accepted"])
+    run("quotation.status", { id: q.id, status });
+  run("quotation.convert", { quotationId: q.id, projectId: "p1" });
+  run("invoice.from-quotation", { quotationId: q.id });
+  const invoice = structuredClone(s.manager.invoices[0]);
+  invoice.date = day;
+  invoice.due = day;
+  run("invoice.save", { invoice });
+  const o = options(s);
+  o.context.now = "2026-11-11T19:43:00.000Z";
+  run(
+    "invoice.issue",
+    { id: invoice.id, recordedAt: "1999-01-01T00:00:00.000Z" },
+    o,
+  );
+  expect(s.finance.invoices).toHaveLength(1);
+  expect(s.finance.invoices[0].id).toBe(invoice.id);
+  expect(s.finance.accounting.journals).toHaveLength(1);
+  expect(s.finance.accounting.journals[0].recordedAt).toBe(o.context.now);
+  o.context.now = "2026-11-11T19:43:01.000Z";
+  run(
+    "payment.record",
+    {
+      payment: {
+        id: "manager-receipt",
+        number: "",
+        invoiceId: invoice.id,
+        customerId: "c1",
+        projectId: "p1",
+        date: day,
+        amount: "40.00",
+        method: "Bank Transfer",
+        reference: "SYN-RCPT",
+        bank: "bank",
+        notes: "Synthetic receipt",
+        attachments: [],
+        postingKey: "manager-receipt",
+        createdAt: now,
+      },
+    },
+    o,
+  );
+  expect(s.manager.payments).toHaveLength(1);
+  expect(s.finance.receipts).toHaveLength(1);
+  expect(s.finance.accounting.journals).toHaveLength(2);
+  expect(s.finance.accounting.journals[1].recordedAt).toBe(o.context.now);
+  expect(reviewSnapshot(s.finance, day).invoices[0].outstandingFils).toBe(
+    "6000",
+  );
+  expect(reviewSnapshot(s.finance, day).trial.balanced).toBe(true);
 });
 
 describe("production preparation and fail-closed policy", () => {

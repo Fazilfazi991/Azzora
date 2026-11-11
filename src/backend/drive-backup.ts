@@ -34,22 +34,35 @@ export async function uploadAndVerifyDriveBackup(input: {
   await input.verifyArchive(archive);
   const request = input.fetchImpl ?? globalThis.fetch;
   const headers = { Authorization: `Bearer ${input.accessToken}` };
-  const folderResponse = await request(
-    `${api}${input.folderId}?fields=id,mimeType,shared,owners(emailAddress)`,
-    { headers, redirect: "error" },
-  );
-  if (!folderResponse.ok) throw Error("Backup destination cannot be verified.");
-  const folder = await folderResponse.json();
-  if (
-    folder.id !== input.folderId ||
-    folder.mimeType !== "application/vnd.google-apps.folder" ||
-    folder.shared !== false ||
-    !Array.isArray(folder.owners) ||
-    folder.owners.length !== 1 ||
-    folder.owners[0]?.emailAddress?.toLowerCase() !==
-      input.expectedOwnerEmail.toLowerCase()
-  )
-    throw Error("Backup destination ownership or privacy check failed.");
+  const verifyMetadata = async (
+    id: string,
+    mimeType: string,
+    parent?: string,
+  ) => {
+    const r = await request(
+      `${api}${id}?fields=id,mimeType,shared,parents,owners(emailAddress)`,
+      { headers, redirect: "error" },
+    );
+    if (!r.ok) throw Error("Backup destination cannot be verified.");
+    const item = await r.json();
+    if (
+      item.id !== id ||
+      item.mimeType !== mimeType ||
+      item.shared !== false ||
+      !Array.isArray(item.owners) ||
+      item.owners.length !== 1 ||
+      item.owners[0]?.emailAddress?.toLowerCase() !==
+        input.expectedOwnerEmail.toLowerCase() ||
+      (parent !== undefined &&
+        (!Array.isArray(item.parents) ||
+          item.parents.length !== 1 ||
+          item.parents[0] !== parent))
+    )
+      throw Error(
+        "Backup destination ownership, location or privacy check failed.",
+      );
+  };
+  await verifyMetadata(input.folderId, "application/vnd.google-apps.folder");
   const initial = await request(
     "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,parents",
     {
@@ -110,18 +123,39 @@ export async function uploadAndVerifyDriveBackup(input: {
   if (
     !safeId.test(metadata.id ?? "") ||
     !Array.isArray(metadata.parents) ||
-    !metadata.parents.includes(input.folderId)
+    metadata.parents.length !== 1 ||
+    metadata.parents[0] !== input.folderId
   )
     throw Error(
       "Uploaded backup metadata is invalid; inspect Drive before another attempt.",
     );
+  await verifyMetadata(metadata.id, "application/json", input.folderId);
+  await verifyMetadata(input.folderId, "application/vnd.google-apps.folder");
   const download = await request(`${api}${metadata.id}?alt=media`, {
     headers,
     redirect: "error",
   });
   if (!download.ok)
     throw Error("Uploaded backup could not be independently downloaded.");
-  const downloaded = Buffer.from(await download.arrayBuffer());
+  if (!download.body) throw Error("Downloaded backup body is missing.");
+  const reader = download.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const next = await reader.read();
+      if (next.done) break;
+      total += next.value.byteLength;
+      if (total > archive.byteLength) {
+        await reader.cancel();
+        throw Error("Downloaded backup exceeds the expected size.");
+      }
+      chunks.push(next.value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const downloaded = Buffer.concat(chunks, total);
   const before = createHash("sha256").update(archive).digest();
   const after = createHash("sha256").update(downloaded).digest();
   if (!timingSafeEqual(before, after))

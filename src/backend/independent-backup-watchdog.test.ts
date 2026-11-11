@@ -4,10 +4,13 @@ import { createBackupMonitorReceipt } from "./backup-monitor";
 import {
   runIndependentBackupWatchdog,
   sendBackupFailureEmail,
+  signIndependentRestoreProof,
 } from "./independent-backup-watchdog";
-
-const key = randomBytes(32);
-const companyId = "22222222-2222-4222-8222-222222222222";
+const key = randomBytes(32),
+  restoreProofKey = randomBytes(32),
+  companyId = "22222222-2222-4222-8222-222222222222",
+  fileId = "archive_0123456789",
+  sha256 = "a".repeat(64);
 const expected = {
   companyId,
   keyId: "QA",
@@ -23,41 +26,79 @@ const receipt = createBackupMonitorReceipt(key, {
   result: "pass",
   backupCapturedAt: "2026-11-11T00:00:00.000Z",
 });
-it("reports healthy only after a signed fresh receipt and independent remote verification", async () => {
-  const verifyRemoteAndRestore = vi.fn(async () => {}),
+const payload = {
+  companyId,
+  keyId: "QA",
+  fileId,
+  sha256,
+  capturedAt: "2026-11-11T00:00:00.000Z",
+  restoredAt: "2026-11-11T00:05:00.000Z",
+  verification: "isolated-restore-and-manifest-verified" as const,
+};
+const common = {
+  receipt,
+  key,
+  restoreProofKey,
+  expectedFileId: fileId,
+  expectedSha256: sha256,
+  maxRestoreAgeSeconds: 1800,
+  expected,
+};
+it("requires independently signed matching file, digest, company and restore", async () => {
+  const verifyRemoteAndRestore = vi.fn(async () =>
+      signIndependentRestoreProof(payload, restoreProofKey),
+    ),
     sendAlert = vi.fn(async () => {});
   expect(
     (
       await runIndependentBackupWatchdog({
-        receipt,
-        key,
-        expected,
+        ...common,
         verifyRemoteAndRestore,
         sendAlert,
       })
     ).healthy,
   ).toBe(true);
-  expect(verifyRemoteAndRestore).toHaveBeenCalledWith(
-    "2026-11-11T00:00:00.000Z",
-  );
   expect(sendAlert).not.toHaveBeenCalled();
 });
-it("requests an alert for missing or stale scheduled output and remote verification failure", async () => {
-  for (const [candidate, remoteFails] of [
-    [null, false],
-    [receipt, true],
-  ] as const) {
+it("alerts on missing output, noop verification, wrong digest, tampering, stale restore and same proof key", async () => {
+  const proof = signIndependentRestoreProof(payload, restoreProofKey);
+  const cases = [
+    { receipt: null, proof },
+    { receipt, proof: undefined },
+    {
+      receipt,
+      proof: signIndependentRestoreProof(
+        { ...payload, sha256: "b".repeat(64) },
+        restoreProofKey,
+      ),
+    },
+    {
+      receipt,
+      proof: {
+        ...proof,
+        payload: { ...proof.payload, fileId: "archive_changed123" },
+      },
+    },
+    {
+      receipt,
+      proof: signIndependentRestoreProof(
+        { ...payload, restoredAt: "2026-11-11T00:00:00.000Z" },
+        restoreProofKey,
+      ),
+      maxRestoreAgeSeconds: 1,
+    },
+    { receipt, proof, restoreProofKey: key },
+  ];
+  for (const c of cases) {
     const sendAlert = vi.fn(async () => {});
-    const verifyRemoteAndRestore = vi.fn(async () => {
-      if (remoteFails) throw Error("failed");
-    });
     expect(
       (
         await runIndependentBackupWatchdog({
-          receipt: candidate,
-          key,
-          expected,
-          verifyRemoteAndRestore,
+          ...common,
+          receipt: c.receipt,
+          restoreProofKey: c.restoreProofKey ?? restoreProofKey,
+          maxRestoreAgeSeconds: c.maxRestoreAgeSeconds ?? 1800,
+          verifyRemoteAndRestore: async () => c.proof,
           sendAlert,
         })
       ).healthy,
@@ -68,9 +109,8 @@ it("requests an alert for missing or stale scheduled output and remote verificat
 it("propagates failed alert dispatch", async () => {
   await expect(
     runIndependentBackupWatchdog({
+      ...common,
       receipt: null,
-      key,
-      expected,
       verifyRemoteAndRestore: vi.fn(),
       sendAlert: vi.fn(async () => {
         throw Error("down");
@@ -82,14 +122,11 @@ it("sends a generic alert through Gmail and never claims mailbox delivery", asyn
   const request = vi.fn(
     async () => new Response(JSON.stringify({ id: "fictional" })),
   );
-  const result = await sendBackupFailureEmail({
-    recipient: "owner@example.test",
-    accessToken: "test-token",
-    fetchImpl: request as unknown as typeof fetch,
-  });
-  expect(result).toEqual({
-    acceptedByProvider: true,
-    mailboxDeliveryVerified: false,
-  });
-  expect(request).toHaveBeenCalledTimes(1);
+  expect(
+    await sendBackupFailureEmail({
+      recipient: "owner@example.test",
+      accessToken: "test-token",
+      fetchImpl: request as unknown as typeof fetch,
+    }),
+  ).toEqual({ acceptedByProvider: true, mailboxDeliveryVerified: false });
 });

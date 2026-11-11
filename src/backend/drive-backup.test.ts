@@ -10,6 +10,13 @@ const folder = {
   shared: false,
   owners: [{ emailAddress: "owner@example.test" }],
 };
+const file = {
+  id: fileId,
+  mimeType: "application/json",
+  shared: false,
+  owners: [{ emailAddress: "owner@example.test" }],
+  parents: [folderId],
+};
 const json = (value: unknown) =>
   new Response(JSON.stringify(value), { status: 200 });
 const session = () =>
@@ -42,6 +49,8 @@ describe("offsite encrypted archive transport", () => {
       .mockResolvedValueOnce(json(folder))
       .mockResolvedValueOnce(session())
       .mockResolvedValueOnce(json({ id: fileId, parents: [folderId] }))
+      .mockResolvedValueOnce(json(file))
+      .mockResolvedValueOnce(json(folder))
       .mockResolvedValueOnce(new Response(archive));
     const result = await uploadAndVerifyDriveBackup(
       setup(request as unknown as typeof fetch, verify),
@@ -49,7 +58,7 @@ describe("offsite encrypted archive transport", () => {
     expect(result.fileId).toBe(fileId);
     expect(result.sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(verify).toHaveBeenCalledTimes(2);
-    expect(request).toHaveBeenCalledTimes(4);
+    expect(request).toHaveBeenCalledTimes(6);
   });
   it("refuses a shared or wrong-owner folder before upload", async () => {
     const request = vi
@@ -80,10 +89,42 @@ describe("offsite encrypted archive transport", () => {
       .mockResolvedValueOnce(json(folder))
       .mockResolvedValueOnce(session())
       .mockResolvedValueOnce(json({ id: fileId, parents: [folderId] }))
+      .mockResolvedValueOnce(json(file))
+      .mockResolvedValueOnce(json(folder))
       .mockResolvedValueOnce(new Response("corrupted"));
     await expect(
       uploadAndVerifyDriveBackup(setup(request as unknown as typeof fetch)),
     ).rejects.toThrow("integrity");
+  });
+  it("rejects changed upload permissions and folder permissions", async () => {
+    for (const [f, d] of [
+      [{ ...file, shared: true }, folder],
+      [file, { ...folder, shared: true }],
+    ]) {
+      const request = vi
+        .fn()
+        .mockResolvedValueOnce(json(folder))
+        .mockResolvedValueOnce(session())
+        .mockResolvedValueOnce(json({ id: fileId, parents: [folderId] }))
+        .mockResolvedValueOnce(json(f))
+        .mockResolvedValueOnce(json(d));
+      await expect(
+        uploadAndVerifyDriveBackup(setup(request as unknown as typeof fetch)),
+      ).rejects.toThrow("privacy");
+    }
+  });
+  it("rejects an oversized streamed download", async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce(json(folder))
+      .mockResolvedValueOnce(session())
+      .mockResolvedValueOnce(json({ id: fileId, parents: [folderId] }))
+      .mockResolvedValueOnce(json(file))
+      .mockResolvedValueOnce(json(folder))
+      .mockResolvedValueOnce(new Response("x".repeat(archive.length + 1)));
+    await expect(
+      uploadAndVerifyDriveBackup(setup(request as unknown as typeof fetch)),
+    ).rejects.toThrow("expected size");
   });
   it("does not retry an ambiguous upload", async () => {
     const request = vi

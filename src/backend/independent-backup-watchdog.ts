@@ -1,5 +1,41 @@
 /** Candidate only: invoke from a separately hosted scheduler. Gmail acceptance is not mailbox-delivery proof. */
 import { checkBackupMonitorReceipt } from "./backup-monitor.js";
+import { createHmac, timingSafeEqual } from "node:crypto";
+import { z } from "zod";
+
+const proofPayload = z
+  .object({
+    companyId: z.uuid(),
+    keyId: z.string().min(1).max(200),
+    fileId: z.string().regex(/^[A-Za-z0-9_-]{10,200}$/),
+    sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    capturedAt: z.string().datetime(),
+    restoredAt: z.string().datetime(),
+    verification: z.literal("isolated-restore-and-manifest-verified"),
+  })
+  .strict();
+type ProofPayload = z.infer<typeof proofPayload>;
+const proofSchema = z
+  .object({ payload: proofPayload, signature: z.string() })
+  .strict();
+const sign = (payload: ProofPayload, key: Uint8Array) =>
+  createHmac("sha256", key)
+    .update("AZZORA independent offsite restore proof v1\0")
+    .update(JSON.stringify(payload))
+    .digest();
+/** Called only by independently protected restoration verifier after its actual drill. */
+export function signIndependentRestoreProof(
+  payload: ProofPayload,
+  restoreProofKey: Uint8Array,
+) {
+  if (restoreProofKey.byteLength !== 32)
+    throw Error("Restore proof key is invalid.");
+  const checked = proofPayload.parse(payload);
+  return {
+    payload: checked,
+    signature: sign(checked, restoreProofKey).toString("base64url"),
+  };
+}
 
 export async function sendBackupFailureEmail(input: {
   accessToken: string;
@@ -46,6 +82,10 @@ export async function sendBackupFailureEmail(input: {
 export async function runIndependentBackupWatchdog(input: {
   receipt: unknown;
   key: Uint8Array;
+  restoreProofKey: Uint8Array;
+  expectedFileId: string;
+  expectedSha256: string;
+  maxRestoreAgeSeconds: number;
   expected: {
     companyId: string;
     keyId: string;
@@ -53,7 +93,7 @@ export async function runIndependentBackupWatchdog(input: {
     maxMonitorAgeSeconds: number;
     now: Date;
   };
-  verifyRemoteAndRestore: (backupCapturedAt: string) => Promise<void>;
+  verifyRemoteAndRestore: (backupCapturedAt: string) => Promise<unknown>;
   sendAlert: () => Promise<void>;
 }) {
   try {
@@ -62,7 +102,41 @@ export async function runIndependentBackupWatchdog(input: {
       input.key,
       input.expected,
     );
-    await input.verifyRemoteAndRestore(checked.backupCapturedAt);
+    if (
+      input.key.byteLength !== 32 ||
+      input.restoreProofKey.byteLength !== 32 ||
+      timingSafeEqual(input.key, input.restoreProofKey)
+    )
+      throw Error("Independent proof key required.");
+    if (
+      !Number.isSafeInteger(input.maxRestoreAgeSeconds) ||
+      input.maxRestoreAgeSeconds < 1 ||
+      input.maxRestoreAgeSeconds > 31536000
+    )
+      throw Error("Invalid restore age.");
+    const proof = proofSchema.parse(
+      await input.verifyRemoteAndRestore(checked.backupCapturedAt),
+    );
+    const actual = Buffer.from(proof.signature, "base64url"),
+      wanted = sign(proof.payload, input.restoreProofKey);
+    const restored = Date.parse(proof.payload.restoredAt),
+      captured = Date.parse(proof.payload.capturedAt),
+      now = input.expected.now.getTime();
+    if (
+      actual.length !== wanted.length ||
+      actual.toString("base64url") !== proof.signature ||
+      !timingSafeEqual(actual, wanted) ||
+      proof.payload.companyId !== input.expected.companyId ||
+      proof.payload.keyId !== input.expected.keyId ||
+      proof.payload.fileId !== input.expectedFileId ||
+      proof.payload.sha256 !== input.expectedSha256 ||
+      proof.payload.capturedAt !== checked.backupCapturedAt ||
+      !Number.isFinite(restored) ||
+      restored < captured ||
+      restored > now ||
+      now - restored > input.maxRestoreAgeSeconds * 1000
+    )
+      throw Error("Independent restore proof is invalid or stale.");
     return { healthy: true as const, alertRequested: false as const };
   } catch {
     // Alert failures propagate: a caller must not report a notification as delivered.

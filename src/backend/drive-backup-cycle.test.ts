@@ -14,6 +14,16 @@ it("captures an encrypted fictional archive, checks its manifest, uploads, downl
   const request = vi.fn(
     async (url: string | URL | Request, init?: RequestInit) => {
       const target = String(url);
+      if (target.includes("archive_0123456789?fields=id,mimeType"))
+        return new Response(
+          JSON.stringify({
+            id: "archive_0123456789",
+            mimeType: "application/json",
+            shared: false,
+            owners: [{ emailAddress: "owner@example.test" }],
+            parents: [folderId],
+          }),
+        );
       if (target.includes("?fields=id,mimeType"))
         return new Response(
           JSON.stringify({

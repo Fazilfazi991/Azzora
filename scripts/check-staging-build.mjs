@@ -1,6 +1,7 @@
 // Build preflight only. Never logs secret values or changes Vercel configuration.
 import process from "node:process";
 import console from "node:console";
+import "./generate-staging-schema-bundle.mjs";
 const env = process.env;
 if (env.VITE_AZZORA_STAGING !== "1" || env.AZZORA_ACCOUNTS_PREVIEW === "1")
   throw Error("Build both independent workspaces in shared staging mode.");

@@ -430,10 +430,22 @@ describe("fictional business backup integrity and isolated restore", () => {
       keyId: "fictional-staging-owner-key-v1",
     });
     const parsed = verifyAuthoritativeStagingArchive(JSON.parse(Buffer.from(clear).toString()), companyId);
+    expect(parsed.schemaBundle?.files).toHaveLength(12);
+    const altered = JSON.parse(Buffer.from(clear).toString());
+    altered.schemaBundle.files[0].sql += '\n-- tampered';
+    expect(() => verifyAuthoritativeStagingArchive(altered, companyId)).toThrow(/Untrusted staging migration/);
+    const legacy = JSON.parse(Buffer.from(clear).toString());
+    legacy.format = 'azzora-authoritative-staging-backup-v2';
+    delete legacy.schemaBundle;
+    delete legacy.schemaScope;
+    expect(verifyAuthoritativeStagingArchive(legacy, companyId).schemaBundle).toBeUndefined();
+    const reordered = JSON.parse(Buffer.from(clear).toString());
+    reordered.schemaBundle.files.reverse();
+    expect(() => verifyAuthoritativeStagingArchive(reordered, companyId)).toThrow(/Untrusted staging migration/);
     const archive = parsed.business;
     expect(parsed.provenance.journals).toHaveLength(2);
     const proof = await rehearseEncryptedBusinessRestore(envelope, key, { companyId, keyId: "fictional-staging-owner-key-v1" });
-    expect(proof).toMatchObject({ auditActorReferencesRestored: true, identityUsersRestored: false, membershipsRestored: false, financialReportsMatch: true });
+    expect(proof).toMatchObject({ schemaFromArchive: true, liveSchemaVerified: false, auditActorReferencesRestored: true, identityUsersRestored: false, membershipsRestored: false, financialReportsMatch: true });
     const { db } = await freshAuthoritativeDatabase();
     try {
       const restored = await restoreAuthoritative(db, archive, "fictional-staging", { isolatedOnly: true, companyId, journals: parsed.provenance.journals, snapshots: parsed.provenance.snapshots, auditEvents: parsed.provenance.auditEvents, commandReceipts: parsed.provenance.commandReceipts });

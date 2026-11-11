@@ -17,6 +17,21 @@ import {
 } from "../staging/backup.js";
 import type { CanonicalData } from "../staging/canonical.js";
 import { authorize, type AuthorizedActor } from "./permissions.js";
+import { stagingSchemaBundle } from "./staging-schema-bundle.generated.js";
+// Retain each reviewed historical bundle in this catalog when migrations evolve.
+// An unknown version fails closed instead of executing archive-supplied SQL.
+const supportedStagingSchemaBundles = [stagingSchemaBundle] as const;
+export function verifyStagingSchemaBundle(input: unknown) {
+  const bundle = z.object({format:z.literal('azzora-staging-schema-bundle-v1'),files:z.array(z.object({name:z.string(),sql:z.string(),sha256:z.string().regex(/^[a-f0-9]{64}$/)}).strict())}).strict().parse(input);
+  const trusted = supportedStagingSchemaBundles.find(candidate => candidate.files.length === bundle.files.length && candidate.files.every((file,index) => file.name === bundle.files[index].name && file.sha256 === bundle.files[index].sha256));
+  if (!trusted) throw Error('Untrusted staging migration catalog.');
+  bundle.files.forEach((file,index) => {
+    const expected=trusted.files[index];
+    if (file.name !== expected.name || file.sha256 !== expected.sha256 || createHash('sha256').update(file.sql).digest('hex') !== expected.sha256)
+      throw Error('Untrusted staging migration bundle.');
+  });
+  return bundle;
+}
 const envelopeSchema = z
   .object({
     format: z.literal("azzora-encrypted-business-backup-v1"),
@@ -239,14 +254,17 @@ export async function createAuthoritativeStagingBackup(
     throw Error("Current Owner MFA is required for staging backup.");
   const row = validateAuthoritativeCapture(capture, scope.companyId);
   const business = await createStagingBackup({ version: row.version, companyId: row.companyId, data: row.data }, readOriginal, scope.capturedAt);
-  const archive = { format: "azzora-authoritative-staging-backup-v2", companyId: row.companyId, business, provenance: row.provenance };
+  const archive = { format: "azzora-authoritative-staging-backup-v3", companyId: row.companyId, business, provenance: row.provenance, schemaBundle:stagingSchemaBundle, schemaScope:'reviewed-source-baseline-live-schema-unverified' };
   return encryptBusinessBackup(Buffer.from(JSON.stringify(archive)), key, scope);
 }
 
 export function verifyAuthoritativeStagingArchive(input: unknown, companyId: string) {
-  const outer = z.object({ format: z.literal("azzora-authoritative-staging-backup-v2"), companyId: z.uuid(), business: z.unknown(), provenance: z.unknown() }).strict().parse(input);
+  const outer = z.object({ format: z.enum(["azzora-authoritative-staging-backup-v2","azzora-authoritative-staging-backup-v3"]), companyId: z.uuid(), business: z.unknown(), provenance: z.unknown(), schemaBundle:z.unknown().optional(), schemaScope:z.literal('reviewed-source-baseline-live-schema-unverified').optional() }).strict().parse(input);
+  if (outer.format === 'azzora-authoritative-staging-backup-v3' && !outer.schemaScope) throw Error('Schema scope is required.');
+  const schemaBundle = outer.format === 'azzora-authoritative-staging-backup-v3' ? verifyStagingSchemaBundle(outer.schemaBundle) : undefined;
+  if (outer.format === 'azzora-authoritative-staging-backup-v2' && (outer.schemaBundle !== undefined || outer.schemaScope !== undefined)) throw Error('Unexpected legacy schema bundle.');
   const business = verifyStagingBackup(outer.business);
   const checked = validateAuthoritativeCapture({ version: business.capturedCompanyVersion, companyId: outer.companyId, data: business.data, provenance: outer.provenance }, companyId);
   if (business.companyId !== checked.companyId) throw Error("Backup company mismatch.");
-  return { business, provenance: checked.provenance };
+  return { business, provenance: checked.provenance, schemaBundle };
 }

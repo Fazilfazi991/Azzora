@@ -17,6 +17,7 @@ import {
   decryptBusinessBackup,
   verifyAuthoritativeProductionArchive,
   verifyAuthoritativeStagingArchive,
+  verifyStagingSchemaBundle,
   type EncryptedBusinessBackup,
 } from "./launch-backup.js";
 const companyId = "11111111-1111-4111-8111-111111111111",
@@ -68,6 +69,7 @@ export interface IsolatedAuditProvenance {
 }
 export async function freshRehearsalDatabase(
   mode: "production" | "fictional-staging" = "fictional-staging",
+  bundledSchema?: unknown,
 ) {
   const db = new PGlite();
   await db.exec(`create role anon;create role authenticated;create role service_role;
@@ -110,6 +112,9 @@ export async function freshRehearsalDatabase(
       await db.exec(sql);
       migrations.push(file.path);
     }
+  } else if (bundledSchema) {
+    const bundle=verifyStagingSchemaBundle(bundledSchema);
+    for (const file of bundle.files) { await db.exec(file.sql); migrations.push(file.name); }
   } else {
     migrations = (
       await readdir(new URL("../../supabase/migrations/", import.meta.url))
@@ -326,7 +331,7 @@ export async function rehearseEncryptedBusinessRestore(
 ) {
   const raw = decryptBusinessBackup(encrypted, key, expected),
     parsed = JSON.parse(Buffer.from(raw).toString("utf8")),
-    authoritative = parsed.format === "azzora-authoritative-production-backup-v2" ? verifyAuthoritativeProductionArchive(parsed, expected.companyId) : parsed.format === "azzora-authoritative-staging-backup-v2" ? verifyAuthoritativeStagingArchive(parsed, expected.companyId) : undefined,
+    authoritative = parsed.format === "azzora-authoritative-production-backup-v2" ? verifyAuthoritativeProductionArchive(parsed, expected.companyId) : parsed.format === "azzora-authoritative-staging-backup-v2" || parsed.format === "azzora-authoritative-staging-backup-v3" ? verifyAuthoritativeStagingArchive(parsed, expected.companyId) : undefined,
     business = authoritative?.business || parsed,
     mode =
       business.format === "azzora-production-business-backup"
@@ -338,7 +343,8 @@ export async function rehearseEncryptedBusinessRestore(
         : verifyStagingBackup(business);
   if (backup.companyId !== expected.companyId)
     throw Error("Inner backup scope differs from encrypted company scope.");
-  const { db, migrations } = await freshRehearsalDatabase(mode);
+  const bundledSchema=authoritative && 'schemaBundle' in authoritative ? authoritative.schemaBundle : undefined;
+  const { db, migrations } = await freshRehearsalDatabase(mode,bundledSchema);
   try {
     const p = authoritative?.provenance;
     const restored = await restoreIntoFreshRehearsal(db, backup, mode, p ? {
@@ -383,6 +389,8 @@ export async function rehearseEncryptedBusinessRestore(
       isolated: true,
       cloudDatabaseUsed: false,
       migrationCount: migrations.length,
+      schemaFromArchive: Boolean(bundledSchema),
+      liveSchemaVerified: false,
       records: data.records.length,
       journals: data.journals.length,
       originals: restored.originals.size,

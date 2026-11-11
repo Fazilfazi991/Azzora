@@ -252,7 +252,7 @@ begin
 end $$;
 create or replace function public.azzora_production_company_commit(p_session_hash text,p_expected_version bigint,p_idempotency_key text,p_fingerprint text,p_command text,p_scope jsonb,p_data jsonb,p_bootstrap boolean default false)
 returns jsonb language plpgsql security definer set search_path='' as $$
-declare a jsonb; c uuid; actor uuid; v bigint; old_receipt azzora.command_receipts; r jsonb; j jsonb; l jsonb; old_j jsonb; result jsonb; project text; new_project boolean; needed text;
+declare a jsonb; c uuid; actor uuid; v bigint; old_receipt azzora.command_receipts; r jsonb; j jsonb; l jsonb; old_j jsonb; cached_journals jsonb; result jsonb; project text; new_project boolean; needed text;
 begin
  a:=public.azzora_production_auth_actor(p_session_hash); c:=(a->>'companyId')::uuid; actor:=(a->>'userId')::uuid;
  -- Lock live authorization and provider-session rows through the commit point.
@@ -382,7 +382,12 @@ begin
   on conflict(company_id,id) do update set locked=excluded.locked where azzora.accounting_periods.start_date=excluded.start_date and azzora.accounting_periods.end_date=excluded.end_date;
  end loop;
  for j in select value from jsonb_array_elements(p_data->'journals') loop
-  select value into old_j from jsonb_array_elements(azzora.production_canonical_data(c)->'journals') where value->>'id'=j->>'id';
+  -- The company row remains locked for the whole transaction. Reuse its
+  -- authoritative journal projection until this transaction inserts a journal.
+  if cached_journals is null then
+   cached_journals:=azzora.production_canonical_data(c)->'journals';
+  end if;
+  select value into old_j from jsonb_array_elements(cached_journals) where value->>'id'=j->>'id';
   if old_j is not null then
    -- Normalize optional dimension metadata before exact immutable comparison.
    select jsonb_set(j,'{lines}',coalesce(jsonb_agg(value||jsonb_build_object('domain_dimensions',coalesce(value->'domain_dimensions','{}'::jsonb)) order by (value->>'line_no')::integer),'[]'::jsonb)) into j from jsonb_array_elements(j->'lines');
@@ -391,6 +396,7 @@ begin
    if not p_bootstrap and not coalesce((p_scope->>'financial')::boolean,false) then raise exception 'Nonfinancial command attempted a journal' using errcode='PT403'; end if;
    insert into azzora.journals(company_id,id,posting_key,source_type,source_id,source_action,posting_date,period_id,memo,currency,recorded_at,actor_id,domain_source,reversal_of)
    values(c,j->>'id',j->>'posting_key',j->>'source_type',j->>'source_id',j->>'source_action',(j->>'posting_date')::date,j->>'period_id',j->>'memo',j->>'currency',(j->>'recorded_at')::timestamptz,actor,coalesce(j->'domain_source','{}'::jsonb),nullif(j->>'reversal_of',''));
+   cached_journals:=null;
    for l in select value from jsonb_array_elements(j->'lines') loop
     insert into azzora.journal_lines(company_id,journal_id,line_no,account_id,debit_fils,credit_fils,project_id,party_id,department_id,domain_dimensions)
     values(c,j->>'id',(l->>'line_no')::integer,l->>'account_id',(l->>'debit_fils')::numeric,(l->>'credit_fils')::numeric,nullif(l->>'project_id',''),nullif(l->>'party_id',''),nullif(l->>'department_id',''),coalesce(l->'domain_dimensions','{}'::jsonb));

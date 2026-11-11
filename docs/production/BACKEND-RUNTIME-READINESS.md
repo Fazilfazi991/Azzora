@@ -1,5 +1,9 @@
 # Production runtime/Auth wiring — backend agent
 
+## Journal projection performance preparation
+
+The reviewed seedless production migration now caches the existing canonical journal projection within the same company-row-locked transaction, invalidating the cache after a journal insertion. Authorization, immutability, idempotency and the hard disabled financial-posting gate are unchanged. An isolated synthetic SQL-contract benchmark of 898 records and 72 existing journals reduced projection calls from 72 to one and measured 1,977 ms versus 249 ms in one local run; hosted performance is not established by this measurement. No production migration or write was performed. New journal insertion remains blocked by the existing production policy gate, so future changes to activate posting require renewed duplicate/new-journal, concurrency and authorization acceptance before release.
+
 Date:11 November2026. Status: source implemented and isolated tests pass; real-company activation remains disabled. No live deployment, cloud migration, production connection, real invitation or paid call was performed.
 
 ## Implemented

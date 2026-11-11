@@ -1,0 +1,14 @@
+# Financial failure coverage matrix — 11 November 2026
+
+Scope: fictional staging Preview application `771725f9f1dd5020b78b921dc7f1998722446233`, except the explicitly local isolated database fault test. PASS means the evidence meets the stated scenario for that side; PARTIAL identifies missing acceptance evidence. This is not evidence for a later candidate or production.
+
+| Scenario | Receipt | Supplier payment |
+| --- | --- | --- |
+| 1. Normal save and balanced journal, allocation and outstanding | PARTIAL — `STAGING-RECEIPT-JOURNAL-REPLAY.md` confirms one receipt and journal, outstanding and balanced reports, but does not independently count/sum allocation and journal lines. | PASS — `STAGING-SUPPLIER-PAYMENT-CONCURRENCY.md`: one payment, journal and allocation; debit/credit and outstanding reconcile. |
+| 2. Concurrent identical key; changed payload rejected | PARTIAL — hosted concurrent identical-key receipt in `hosted-concurrent-receipt-2026-11-11.md`; changed-payload rejection and canonical allocation/line totals were not demonstrated in that hosted receipt check. | PASS — `STAGING-SUPPLIER-PAYMENT-CONCURRENCY.md`: 200/200, one posting, changed payload 409, canonical allocation and journal totals. |
+| 3. Distinct concurrent competing payments | NOT RUN — no hosted receipt-specific test with both requests targeting the same receivable and canonical allocation/journal reconciliation. | PASS — `STAGING-SUPPLIER-PAYMENT-CONCURRENCY.md`: 200/409, one 4,000-fils allocation, balanced journal and remaining payable. |
+| 4. Lock/timeout before commit and deliberate same-key retry | PARTIAL — `STAGING-FINANCIAL-LOCK-TIMEOUT.md`: induced lock 503, no receipt/journal, retry once; exact DB error and allocation/line totals not confirmed. | PARTIAL — `STAGING-SUPPLIER-LOCK-TIMEOUT.md`: induced lock 503, no payment/journal/allocation, retry once with balanced 100-fils lines; exact database timeout error not confirmed. |
+| 5. Failure between business and journal write | PARTIAL — local-only PGlite `src/staging/commit-performance.test.ts` trigger deliberately rejects journal insertion; record/journal counts remain zero and version unchanged. It uses synthetic canonical shapes and does not inspect hosted allocation effects. | PARTIAL — same isolated trigger and limitations, for `supplier_payment` canonical type. No public fault endpoint exists. |
+| 6. Commit succeeds; response lost; resolve and replay | PARTIAL — `STAGING-RECEIPT-JOURNAL-REPLAY.md` proves one receipt and same journal identity before and after replay, but not exact allocation and journal-line totals. | PASS — `STAGING-SUPPLIER-LOST-RESPONSE.md` confirms commit before same-key replay and one payment/journal/allocation with equal debit/credit afterwards. |
+
+The local fault test passed 1/1; it is not a hosted test. No scenario establishes the root cause of the earlier intermittent 503. Its cause remains unknown and no timeout increase or blind retry was introduced.

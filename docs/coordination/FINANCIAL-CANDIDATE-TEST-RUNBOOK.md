@@ -1,0 +1,34 @@
+# Financial acceptance for the final protected Preview
+
+Use only the final immutable Preview of Vercel project `azzora-shared-staging`, connected to the authorized fictional Supabase staging project. Confirm its exact deployment ID and source SHA with the coordinator before running. Never point these tests at production, real records, or a stable client alias. The harness rejects hosts outside the dedicated `azzora-shared-staging-<deployment>-faziils-projects.vercel.app` Preview pattern.
+
+## Prerequisites
+
+- Obtain an exclusive fictional staging write window from the other agents, and ensure each selected invoice or supplier bill is fictional, issued, open, and has adequate outstanding value. Financial writes here are simulated staging records, not real transactions.
+- Supply an existing fictional Accountant MFA credential JSON with `email`, `password`, and `totpSecret` fields through `AZZORA_FIXTURE_CREDENTIALS`; never print or commit it. Use an existing owner-restricted directory in `AZZORA_PRIVATE_DIR` for persisted action IDs, keys and session headers. Preserve its files until reconciliation is complete. Restrict filesystem ACLs before use; Unix file mode flags alone do not establish Windows ACLs.
+- Set `AZZORA_PREVIEW_ORIGIN` to the exact verified immutable Preview origin, `AZZORA_VERCEL_CLI` to the installed CLI JS entry point, `AZZORA_SETTLEMENT` to `receipt` or `supplier-payment`, and `AZZORA_CASE` to a fresh lowercase hyphenated case label (3–40 characters). Optional `AZZORA_AMOUNT` is a decimal AED amount. Each `prepare` creates a new private record and refuses to overwrite one.
+- Ensure each chosen case label has zero matching canonical records/journals/allocations before dispatch. The SQL below is read-only; execute in the staging SQL editor only. Replace `<case>` and `<type>` with the literal case label and `receipt` or `supplier_payment`, respectively. Do not include private IDs or credentials.
+
+```sql
+select json_build_object(
+  'records',(select count(*) from azzora.records where entity_type='<type>' and id like 'acceptance-<case>-%'),
+  'journals',(select count(*) from azzora.journals where source_type='<type>' and source_id like 'acceptance-<case>-%'),
+  'allocations',(select count(*) from azzora.allocations where settlement_type='<type>' and settlement_id like 'acceptance-<case>-%'),
+  'allocated_fils',(select coalesce(sum(amount_fils),0) from azzora.allocations where settlement_type='<type>' and settlement_id like 'acceptance-<case>-%'),
+  'debit_fils',(select coalesce(sum(l.debit_fils),0) from azzora.journal_lines l join azzora.journals j on (j.company_id,j.id)=(l.company_id,l.journal_id) where j.source_type='<type>' and j.source_id like 'acceptance-<case>-%'),
+  'credit_fils',(select coalesce(sum(l.credit_fils),0) from azzora.journal_lines l join azzora.journals j on (j.company_id,j.id)=(l.company_id,l.journal_id) where j.source_type='<type>' and j.source_id like 'acceptance-<case>-%')
+)::text;
+```
+
+## Scenarios for each settlement type
+
+Run `node scripts/financial-candidate-acceptance.review.mjs <mode>` with the same environment and fresh `AZZORA_CASE` for each scenario. `prepare` displays outstanding in fils; verify the planned amount fits. Save sanitized output and canonical counts at each step. `check` is read-only. Never retry after an ambiguous failure until both `check` and the canonical query have been inspected.
+
+1. Normal: `prepare`, baseline SQL, `send`, `check`, SQL. Require one record, journal and allocation, balanced expected journal lines, correct payable/receivable reduction and one version increment.
+2. Same key: fresh `prepare`, baseline SQL, `parallel`, `check`, SQL, `mismatch`, `check`, SQL. Require two successful identical responses, one transaction, changed payload rejected, no extra write.
+3. Distinct keys: fresh `prepare`, baseline SQL, set `AZZORA_AMOUNT` before `prepare` so one amount fits but two exceed the same document's displayed outstanding; `distinct`, `check`, SQL. Require a clearly reported conflict, one transaction and no over-allocation. The harness stores both request identities before sending; if the second wins, use the canonical aggregate rather than the primary-only matching field.
+4. Pre-commit timeout: fresh `prepare`, baseline SQL. Coordinate a reviewed, synthetic-project-guarded SQL transaction which locks exactly the selected fictional company's row for 22 seconds and rolls back; start `delayed` (20-second delay) before applying the lock, then wait for both. Confirm failure stage/57014 from sanitized runtime metadata, lock release, `check` and SQL **before** `retry`. Require no transaction, journal, allocation, balance or version change. After `retry`, repeat `check` and SQL and require exactly one balanced settlement. This is one deliberate retry, not an automatic retry.
+5. Mid-transaction failure: run `node node_modules/vitest/vitest.mjs run src/staging/financial-fault.test.ts` at the exact final source SHA. It constructs real receipt and supplier-payment domain commands and injects a private trigger in isolated PGlite. Require record, journal and allocation rollback and identical canonical state. There is no hosted fault endpoint; report as isolated, not hosted.
+6. Lost response: fresh `prepare`, baseline SQL, `interrupt`. Run `check` and SQL before replay; only proceed if they show one committed settlement and its balanced journal/allocation. Then `retry`, `check`, SQL and require unchanged counts, totals and balances. Client termination alone is not evidence of rollback. If commit has not appeared, mark inconclusive and investigate rather than retry blindly.
+
+Record statuses separately for receipt and supplier-payment and list any unexecuted prerequisite. An induced lock timeout does not explain the old intermittent 503. Keep the old incident marked unknown absent direct evidence.

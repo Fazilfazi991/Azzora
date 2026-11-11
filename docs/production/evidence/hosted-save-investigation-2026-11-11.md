@@ -1,0 +1,19 @@
+# Hosted save investigation — 11 November 2026
+
+Environment: fictional staging only, protected Preview deployment `dpl_5yGGA6LFUauGbnFeYaAKHfZdwdtq`, application revision `93ab132b7d6d3a6e13773b71a6c276a7daa6f585`. No production data, financial posting or deployment changed. Local CLI elapsed times include process and transport overhead; they are not browser timings.
+
+## Version conflicts and replay
+
+- Previous hosted serial suite intentionally raced two writes with the same starting version and different keys: HTTP 200/409, exactly one version increment. Its same-key replay returned HTTP 200/200 with one version increment. The transaction raises `PT409` for a stale company version or an idempotency key reused for a different fingerprint/actor. Those known 409s are expected safety behavior; the evidence does not establish any relationship to the 57014 timeouts.
+- A new controlled fictional ledger creation returned 200 in 9.665s; identical payload, key and original version returned 200 in 9.239s. Exactly one ledger and one version increment were present afterward; financial metrics were unchanged. A new key with stale version returned 409 in 5.475s, request ID `5bb863e0-aa21-45ac-9022-6b3e454d1cf6`; no second ledger or version change occurred.
+- Two simultaneous same-key requests returned 200/200 in 29.413s and 29.438s, with exactly one ledger and one version increment. Two distinct-key writes at the same version returned 200/409 in 23.853s / 20.257s (409 request ID `9d537d23-fada-4d17-b53d-f720e2243026`), again with one new ledger and one version increment. Financial metrics were unchanged.
+
+## Interrupted request — failed
+
+An 8-second interruption of the local protected CLI was followed by a single retry with the exact same payload, key and version. The retry returned HTTP 503 after 19.720s. Runtime logs show the original request reached commit but its PostgreSQL statement returned `57014` and the server returned 503 after 23.310s (request ID `cbe78b3c-d514-4908-b5fb-63eedc343b10`). The same-key retry separately returned `57014` during read and 503 after 15.354s (request ID `a22cbe7a-d237-4a5c-83d6-fa8624b9c3b4`). Read-only SQL subsequently found zero records matching this test's unique `Fictional interrupted diag-` prefix. No additional retry was made. The local test did not persist its generated ID before the process stopped, so it cannot independently prove exact receipt/audit state; the transaction error and prefix count support, but do not fully replace, keyed reconciliation. This interrupted recovery test is **failed**, not a pass.
+
+## Diagnosis and next evidence
+
+The HTTP 503s are observed upstream PostgreSQL statement cancellations (`57014`), affecting both commit and subsequent read. The underlying cause is **not established**: lock contention, overloaded compute, pool wait and query execution have not been separated. One read-only `pg_stat_activity` sample during concurrent calls showed one active backend (2.32s), no wait event and zero blockers; other samples found no active client backends. None captured the failing statements, so they do not rule out intermittent contention. The previous journal-projection optimization remains manually applied to staging without a migration-history record. Do not deploy a speculative fix, raise timeouts, or treat later passing tests as resolving the failure.
+
+Next, capture safe, correlated database wait events and PostgreSQL logs **during a recurrence**, alongside function request IDs, stage duration, pool/compute metrics and version/receipt state. Use a controlled unique fixture that persists its key and ID in a private local file before sending, so a failed/aborted request can be reconciled without repeating an unconfirmed action. Re-run repeated saves, overlapping sessions, same-key replay and interrupted recovery only after the cause is established and a targeted fix is reviewed.

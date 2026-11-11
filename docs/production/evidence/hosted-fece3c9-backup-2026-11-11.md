@@ -1,0 +1,13 @@
+# Hosted fictional backup verification — 11 November 2026
+
+Source application revision: `fece3c930073bba59246560dc09c3ce7ccf1dfb8`. Dedicated protected staging Preview: `dpl_FLXyGxVsFYXAkK8jJUDzMhL5YL8V`, `https://azzora-shared-staging-ko1bqxug0-faziils-projects.vercel.app`. It built as a Preview, passed the dedicated fictional staging preflight, and its functions reported Singapore (`sin1`). A request without Vercel authentication returned HTTP 302 to protection. The existing Manager and stable Accounts aliases were not changed.
+
+Using fictional Company B and a protected transport, the Owner signed in, completed MFA, checked the session, downloaded an encrypted business archive and logged out; each returned HTTP 200. A separate fictional Manager's backup request returned 403. An Owner request with a different `companyId` query parameter returned an archive scoped to the Owner's actual company; the parameter did not override scope. This is an API test of that query and role boundary, not a comprehensive cross-tenant data scan or browser download test. No credentials or MFA material are included in this evidence.
+
+The **exact API-downloaded** AES-256-GCM v1 staging archive was decrypted with the separately retained fictional key and restored into isolated in-memory PGlite, without any cloud database. It contained 16 records, 5 journals and 1 private original at version 10; source and restored business SHA-256 both equalled `33024bf122eaf6a5ab393efda593851f9a231342933b7024e181e8f42b6ee9f0`. Trial Balance and Balance Sheet reconciled; the complete Trial Balance, Balance Sheet and P&L outputs matched the archived source. All amounts were fictional. The encrypted archive and private proof remain in an OS-user/SYSTEM-restricted local temporary directory and are not committed.
+
+## Important scope and gaps
+
+- This is the **v1 fictional staging business archive**. Its rehearsal substitutes a fixture actor, and does not restore original audit actors, Auth users, memberships, command receipts or infrastructure. It is not a real-company backup or DR proof.
+- The v2 Owner provenance RPC is a production-only candidate migration. It is **not installed in fictional staging**, and was not applied to the production project. This hosted check does not verify the v2 route, v2 audit capture, production RLS or production restoration.
+- Production backup scheduling, monitored failure alerts, retention, offsite storage, owner key custody, RPO/RTO, Auth and infrastructure recovery remain unverified. Real company data and paid AI were not used; production schema, production financial data and existing live deployments were not modified.

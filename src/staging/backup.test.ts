@@ -25,7 +25,7 @@ import { buildTrialBalance } from "../accounting/reports";
 import { createStagingHandler } from "./server";
 import type { createStagingAuth, StagingActor } from "./auth";
 import type { StagingRpc } from "./supabase";
-import { decryptBusinessBackup, verifyAuthoritativeStagingArchive } from "../backend/launch-backup";
+import { decryptBusinessBackup, encryptBusinessBackup, verifyAuthoritativeStagingArchive } from "../backend/launch-backup";
 import { freshRehearsalDatabase as freshAuthoritativeDatabase, rehearseEncryptedBusinessRestore, restoreIntoFreshRehearsal as restoreAuthoritative } from "../backend/launch-backup-rehearsal";
 
 const companyId = "11111111-1111-4111-8111-111111111111",
@@ -434,11 +434,16 @@ describe("fictional business backup integrity and isolated restore", () => {
     const altered = JSON.parse(Buffer.from(clear).toString());
     altered.schemaBundle.files[0].sql += '\n-- tampered';
     expect(() => verifyAuthoritativeStagingArchive(altered, companyId)).toThrow(/Untrusted staging migration/);
+    altered.schemaBundle.files[0].sha256 = createHash('sha256').update(altered.schemaBundle.files[0].sql).digest('hex');
+    expect(() => verifyAuthoritativeStagingArchive(altered, companyId)).toThrow(/Untrusted staging migration/);
     const legacy = JSON.parse(Buffer.from(clear).toString());
     legacy.format = 'azzora-authoritative-staging-backup-v2';
     delete legacy.schemaBundle;
     delete legacy.schemaScope;
     expect(verifyAuthoritativeStagingArchive(legacy, companyId).schemaBundle).toBeUndefined();
+    const legacyEnvelope = encryptBusinessBackup(Buffer.from(JSON.stringify(legacy)), key, { companyId, keyId: 'fictional-staging-owner-key-v1', capturedAt: new Date().toISOString() });
+    const legacyProof = await rehearseEncryptedBusinessRestore(legacyEnvelope, key, {companyId, keyId:'fictional-staging-owner-key-v1'});
+    expect(legacyProof).toMatchObject({schemaFromArchive:false, liveSchemaVerified:false, auditActorReferencesRestored:true, financialReportsMatch:true});
     const reordered = JSON.parse(Buffer.from(clear).toString());
     reordered.schemaBundle.files.reverse();
     expect(() => verifyAuthoritativeStagingArchive(reordered, companyId)).toThrow(/Untrusted staging migration/);

@@ -35,6 +35,8 @@ let aGrants: unknown[];
 let restrictedGrant: unknown;
 let aclBefore: unknown;
 let defBefore: string;
+const injectedBranch =
+  /\r?\n -- ISOLATED-COMPANY-B-GRANT-V1:[\s\S]*? if result is not null then return result; end if;\r?\n/;
 
 beforeAll(async () => {
   db = new PGlite();
@@ -95,13 +97,15 @@ beforeAll(async () => {
   aclBefore = proc.rows[0].acl;
   defBefore = proc.rows[0].definition;
   await db.exec(
-    await readFile(
-      new URL(
-        "../../tests/fixtures/company-b-allowlist.review.sql",
-        import.meta.url,
-      ),
-      "utf8",
-    ),
+    (
+      await readFile(
+        new URL(
+          "../../tests/fixtures/company-b-allowlist.review.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      )
+    ).replace(/\r?\n/g, "\r\n"),
   );
 }, 30000);
 afterAll(async () => {
@@ -113,9 +117,7 @@ it("preserves Company A grant behavior and ACL while allowing only the four expl
     "select proacl::text acl,pg_get_functiondef(oid) definition from pg_proc where oid='public.staging_auth_grant(uuid)'::regprocedure",
   );
   expect(after.rows[0].acl).toEqual(aclBefore);
-  const added = after.rows[0].definition.match(
-    /\n -- ISOLATED-COMPANY-B-GRANT-V1:[\s\S]*? if result is not null then return result; end if;\n/,
-  );
+  const added = after.rows[0].definition.match(injectedBranch);
   expect(added).not.toBeNull();
   expect(after.rows[0].definition.replace(added![0], "")).toBe(defBefore);
   expect(
@@ -144,6 +146,15 @@ it("preserves Company A grant behavior and ACL while allowing only the four expl
         )
       ).rows[0].r,
     ).toMatchObject({ companyId: b, role: roles[i].role });
+});
+
+it("removes only the inserted branch for LF and CRLF while preserving the original bytes", () => {
+  const original = "original\r\n  grant logic\n  remains\r\n";
+  for (const newline of ["\n", "\r\n"]) {
+    const added = `${newline} -- ISOLATED-COMPANY-B-GRANT-V1: fixture${newline} if result is not null then return result; end if;${newline}`;
+    const combined = `original${added}${original.slice("original".length)}`;
+    expect(combined.replace(injectedBranch, "")).toBe(original);
+  }
 });
 
 it("retains current privileged MFA, session and workspace checks for both companies", async () => {

@@ -8,13 +8,14 @@
   "files": [
     {
       "path": "supabase/migrations/20261104081228_canonical_backend_foundation.sql",
-      "sha256": "7ded030d64b437fa9bb065563d5b716b39aaaf7c746098d6a762be9ed00a3eac"
+      "sha256": "c83dd4bdf6e5159af1a49757e85e29199021ecdb6e2e5e3a717e6b28ad607770"
     },
     {
       "path": "supabase/production-migrations/20261111090000_runtime_identity.sql",
-      "sha256": "6c805185a8a5485500a45e06f358a17de1b0623aeb18f4e6b7abdd69d603ed55"
+      "sha256": "3d7651c88310b253c56e75692080825796e4b55bf7f3696a216214d278b87bde"
     }
   ],
   "excluded": "All synthetic-staging migrations; never run db push against an unreviewed production target.",
-  "realFinancialPostingEnabled": false
+  "realFinancialPostingEnabled": false,
+  "sourceHashEncoding": "UTF-8 with CRLF normalized to LF; business archives are never normalized"
 }

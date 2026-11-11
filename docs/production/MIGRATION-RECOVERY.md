@@ -4,7 +4,7 @@ Implemented source, not permission to import real records or activate financial 
 
 ## Production migration contract
 
-`supabase/production-migrations/manifest.json` is the reviewed sequence: existing `20261104081228_canonical_backend_foundation.sql` followed by `20261111090000_runtime_identity.sql`. File hashes are included and validated in isolated production-format restore. The full ordinary staging migration chain must **not** be run against production: it seeds a fictional-company identity and staging-only rules.
+`supabase/production-migrations/manifest.json` is the reviewed sequence: existing `20261104081228_canonical_backend_foundation.sql` followed by `20261111090000_runtime_identity.sql`. File hashes use explicit UTF-8/LF-normalized SQL source (portable across Git CRLF checkout) and are validated in isolated production-format restore. Business archives, issued snapshots and original file bytes are never normalized. The full ordinary staging migration chain must **not** be run against production: it seeds a fictional-company identity and staging-only rules.
 
 The production contract is pinned to the Owner-created project `zwjiztnsxenluqybxhhz`, Singapore `ap-southeast-1`; it seeds no company, membership, bucket, approval, transaction or balance. The explicit DBA environment registry requires separate company identity, exact Vercel project/origins, configuration evidence and private bucket. Its financial/real-document flags are immutable false in this candidate. Owner skipped business policy/opening-balance inputs, so no activation is inferred.
 

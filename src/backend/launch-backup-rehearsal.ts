@@ -49,7 +49,11 @@ export async function freshRehearsalDatabase(
         new URL("../../" + file.path, import.meta.url),
         "utf8",
       );
-      if (createHash("sha256").update(sql).digest("hex") !== file.sha256)
+      if (
+        createHash("sha256")
+          .update(sql.replaceAll("\r\n", "\n"))
+          .digest("hex") !== file.sha256
+      )
         throw Error("Production migration hash differs.");
       await db.exec(sql);
       migrations.push(file.path);

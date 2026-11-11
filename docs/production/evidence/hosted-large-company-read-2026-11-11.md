@@ -1,0 +1,9 @@
+# Larger fictional staging read profile — 11 November 2026
+
+Protected Preview `dpl_3YLDaMEwaeY8NoPtNS1LjJbTsufq`, revision `771725f9f1dd5020b78b921dc7f1998722446233`; fictional staging project `hkhomrrvxtcxnxvdlkoh`. No real-company data, production database, settings or deployments changed.
+
+The existing fictional Company A Manager identity was signed in without changing its password or factors. One protected Manager snapshot returned HTTP 200 in 4.734 seconds including CLI launch and transport; its JSON response was 1,172,725 bytes, at version 514. It contained 21 clients, 20 projects, 18 quotations, 24 invoices, 13 payments, 408 tasks and 3 documents. The corresponding Vercel telemetry recorded `staging_company_read` HTTP 200 in 333ms, request `dbst2-1794399956238-61d874cc91e6`. No payload, credential, personal information or account identity is recorded in this evidence.
+
+Read-only SQL in the authorized fictional staging project counted 1,078 canonical records, 86 journals and 42 snapshots, with `pg_column_size` of canonical projection 2,163,228 bytes. On a warm cache, `EXPLAIN (ANALYZE, BUFFERS)` of the `staging_canonical_data` call reported execution 72.971ms and 3,050 shared-buffer hits. An equivalent read-only integrity-guard query combining canonical projection with the record-preservation existence check used a hashed subplan and returned its result in approximately 98.55ms, with 2,910 shared-buffer hits. This is a quiet-time query shape, not a complete execution profile of the actual write transaction or evidence of worst-case load.
+
+These observations do not explain the historical 503 / SQLSTATE 57014 errors or establish that their root cause is fixed. An independently induced row lock can reproduce the same error class, but the original incident lacks captured blocking PID or wait events. See `hosted-company-lock-diagnostic-2026-11-11.md` and `hosted-free-plan-timeout-2026-11-11.md`.

@@ -4,6 +4,7 @@ import path from "node:path";
 import process from "node:process";
 import console from "node:console";
 import { Buffer } from "node:buffer";
+import { randomBytes } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 const [command, ...flags] = process.argv.slice(2),
@@ -17,10 +18,12 @@ if (
     "decrypt",
     "restore-rehearsal",
     "verify-production-backup",
+    "monitor-production-backup",
+    "watch-backup-monitor",
   ].includes(command)
 ) {
   console.error(
-    "Use prepare-import | verify-import | verify-originals | encrypt | decrypt | restore-rehearsal | verify-production-backup. Original verification requires --input, --manifest and --output; key operations require --key-file, --company and --key-id; backup verification also requires --max-age-seconds.",
+    "Use prepare-import | verify-import | verify-originals | encrypt | decrypt | restore-rehearsal | verify-production-backup | monitor-production-backup | watch-backup-monitor. Original verification requires --input, --manifest and --output; monitor commands require explicit status path and age limits.",
   );
   process.exit(1);
 }
@@ -37,29 +40,131 @@ const required = (name) => {
     if (!options[name]) throw Error("Missing " + name);
     return options[name];
   },
-  input = required("--input");
+  input = command === "watch-backup-monitor" ? "" : required("--input");
 await fs.mkdir("tmp/launch-tools", { recursive: true });
+// Scheduled verification and its independent watchdog may start together.
+// Never let concurrent invocations overwrite the same temporary module.
+const runtimeFile = path.resolve(
+  "tmp/launch-tools",
+  `runtime-${process.pid}-${randomBytes(12).toString("hex")}.mjs`,
+);
 await build({
   stdin: {
     contents:
-      'export {prepareImportReview,verifyImportReview} from "./src/backend/import-plan.ts"; export {verifyImportOriginals} from "./src/backend/import-originals.ts"; export {encryptBusinessBackup,decryptBusinessBackup} from "./src/backend/launch-backup.ts"; export {rehearseEncryptedBusinessRestore} from "./src/backend/launch-backup-rehearsal.ts"; export {checkProductionBackupHealth} from "./src/backend/backup-health.ts";',
+      'export {prepareImportReview,verifyImportReview} from "./src/backend/import-plan.ts"; export {verifyImportOriginals} from "./src/backend/import-originals.ts"; export {encryptBusinessBackup,decryptBusinessBackup} from "./src/backend/launch-backup.ts"; export {rehearseEncryptedBusinessRestore} from "./src/backend/launch-backup-rehearsal.ts"; export {checkProductionBackupHealth} from "./src/backend/backup-health.ts"; export {createBackupMonitorReceipt,checkBackupMonitorReceipt} from "./src/backend/backup-monitor.ts";',
     resolveDir: process.cwd(),
     loader: "ts",
   },
-  outfile: "tmp/launch-tools/runtime.mjs",
+  outfile: runtimeFile,
   bundle: true,
   platform: "node",
   format: "esm",
   packages: "external",
   logLevel: "silent",
 });
-const tool = await import(
-  pathToFileURL(path.resolve("tmp/launch-tools/runtime.mjs")).href
-);
+let tool;
+try {
+  tool = await import(pathToFileURL(runtimeFile).href);
+} finally {
+  await fs.unlink(runtimeFile);
+}
 const json = async (p) => JSON.parse(await fs.readFile(p, "utf8"));
 const write = async (p, data) => {
   await fs.writeFile(p, data, { flag: "wx", mode: 0o600 });
 };
+const positiveAge = (flag) => {
+  const value = required(flag);
+  if (!/^[1-9][0-9]*$/.test(value))
+    throw Error(flag + " must be an explicit positive integer.");
+  const n = Number(value);
+  if (!Number.isSafeInteger(n) || n > 31_536_000)
+    throw Error(flag + " exceeds the supported limit.");
+  return n;
+};
+const statusPath = () => {
+  const value = required("--status-file");
+  if (!path.isAbsolute(value) || !value.toLowerCase().endsWith(".json"))
+    throw Error(
+      "Use an absolute JSON status-file path in a private directory.",
+    );
+  return value;
+};
+async function isolatedStatusPath(value, protectedFiles) {
+  const parent = await fs.realpath(path.dirname(value));
+  const file = path.join(parent, path.basename(value));
+  const equivalent = (value) =>
+    process.platform === "win32"
+      ? path.normalize(value).toLowerCase()
+      : path.normalize(value);
+  let status;
+  try {
+    status = await fs.lstat(file);
+    if (!status.isFile() || status.isSymbolicLink())
+      throw Error(
+        "Backup monitor status must be a regular file in a private directory.",
+      );
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  for (const protectedFile of protectedFiles.filter(Boolean)) {
+    if (equivalent(file) === equivalent(path.resolve(protectedFile)))
+      throw Error("Backup monitor status cannot overwrite a key or archive.");
+    let actual;
+    try {
+      actual = await fs.realpath(protectedFile);
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        try {
+          const parent = await fs.realpath(
+            path.dirname(path.resolve(protectedFile)),
+          );
+          const projected = path.join(parent, path.basename(protectedFile));
+          if (equivalent(file) === equivalent(projected))
+            throw Error(
+              "Backup monitor status cannot overwrite a key or archive.",
+            );
+        } catch (parentError) {
+          if (parentError.code !== "ENOENT") throw parentError;
+        }
+        continue;
+      }
+      throw error;
+    }
+    if (equivalent(file) === equivalent(actual))
+      throw Error("Backup monitor status cannot overwrite a key or archive.");
+    if (status) {
+      const protectedStat = await fs.stat(actual);
+      if (
+        status.ino &&
+        protectedStat.ino &&
+        status.dev === protectedStat.dev &&
+        status.ino === protectedStat.ino
+      )
+        throw Error(
+          "Backup monitor status cannot share a key or archive file.",
+        );
+    }
+  }
+  return file;
+}
+async function writeMonitorStatus(file, receipt) {
+  const lock = file + ".lock",
+    temporary = file + "." + randomBytes(12).toString("hex") + ".tmp";
+  const handle = await fs.open(lock, "wx", 0o600);
+  try {
+    const out = await fs.open(temporary, "wx", 0o600);
+    try {
+      await out.writeFile(JSON.stringify(receipt) + "\n");
+      await out.sync();
+    } finally {
+      await out.close();
+    }
+    await fs.rename(temporary, file);
+  } finally {
+    await handle.close();
+    await fs.unlink(lock);
+  }
+}
 try {
   if (command === "prepare-import") {
     const review = tool.prepareImportReview(await json(input));
@@ -149,7 +254,8 @@ try {
     );
     if (result.status === "blocked") process.exitCode = 1;
   } else {
-    const keyFile = await fs.readFile(required("--key-file"));
+    const keyPath = required("--key-file");
+    const keyFile = await fs.readFile(keyPath);
     const key =
       keyFile.length === 32
         ? keyFile
@@ -186,19 +292,61 @@ try {
         }),
       );
     } else if (command === "verify-production-backup") {
-      const age = required("--max-age-seconds");
-      if (!/^[1-9][0-9]*$/.test(age))
-        throw Error("--max-age-seconds must be an explicit positive integer.");
+      const age = positiveAge("--max-age-seconds");
       const status = tool.checkProductionBackupHealth(
         await json(input),
         key,
         scope,
         {
           now: new Date(),
-          maxAgeSeconds: Number(age),
+          maxAgeSeconds: age,
         },
       );
       console.log(JSON.stringify(status));
+    } else if (command === "monitor-production-backup") {
+      const maxAgeSeconds = positiveAge("--max-age-seconds"),
+        file = await isolatedStatusPath(statusPath(), [input, keyPath]);
+      let status;
+      try {
+        status = tool.checkProductionBackupHealth(
+          await json(input),
+          key,
+          scope,
+          { now: new Date(), maxAgeSeconds },
+        );
+      } catch {
+        status = null;
+      }
+      const receipt = tool.createBackupMonitorReceipt(key, {
+        ...scope,
+        checkedAt: new Date().toISOString(),
+        maxBackupAgeSeconds: maxAgeSeconds,
+        result: status ? "pass" : "fail",
+        backupCapturedAt: status?.capturedAt || null,
+      });
+      await writeMonitorStatus(file, receipt);
+      console.log(
+        JSON.stringify({
+          healthy: !!status,
+          notificationDelivered: false,
+          cloudRecoveryVerified: false,
+        }),
+      );
+      if (!status) process.exitCode = 1;
+    } else if (command === "watch-backup-monitor") {
+      const maxBackupAgeSeconds = positiveAge("--max-age-seconds"),
+        maxMonitorAgeSeconds = positiveAge("--max-monitor-age-seconds"),
+        file = await isolatedStatusPath(statusPath(), [keyPath]);
+      const stat = await fs.lstat(file);
+      if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 4096)
+        throw Error("Backup monitor status file is invalid.");
+      const result = tool.checkBackupMonitorReceipt(await json(file), key, {
+        ...scope,
+        maxBackupAgeSeconds,
+        maxMonitorAgeSeconds,
+        now: new Date(),
+      });
+      console.log(JSON.stringify(result));
     } else {
       const report = await tool.rehearseEncryptedBusinessRestore(
         await json(input),

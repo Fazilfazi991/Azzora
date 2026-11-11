@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { randomBytes } from "node:crypto";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -164,7 +164,7 @@ it("exposes an offline status and nonzero failure exit for automation without di
   );
   const dir = mkdtempSync(join(tmpdir(), "azzora-backup-qa-"));
   const input = join(dir, "archive.json"),
-    keyFile = join(dir, "key.bin");
+    keyFile = join(dir, "key.json");
   writeFileSync(input, JSON.stringify(envelope));
   writeFileSync(keyFile, key, { mode: 0o600 });
   const args = [
@@ -198,4 +198,139 @@ it("exposes an offline status and nonzero failure exit for automation without di
   expect(invalid.status).toBe(1);
   expect(invalid.stderr).toContain("positive integer");
   expect(invalid.stderr).not.toContain(key.toString("base64"));
+  const statusFile = join(dir, "monitor.json");
+  const shared = [
+    "--key-file",
+    keyFile,
+    "--company",
+    companyId,
+    "--key-id",
+    scope.keyId,
+    "--status-file",
+    statusFile,
+    "--max-age-seconds",
+    "3600",
+  ];
+  const monitor = spawnSync(
+    process.execPath,
+    [
+      "scripts/launch-import-recovery.mjs",
+      "monitor-production-backup",
+      "--input",
+      input,
+      ...shared,
+    ],
+    { encoding: "utf8", timeout: 30000 },
+  );
+  expect(monitor.status).toBe(0);
+  expect(JSON.parse(monitor.stdout)).toMatchObject({
+    healthy: true,
+    notificationDelivered: false,
+  });
+  const watchArgs = [
+    "scripts/launch-import-recovery.mjs",
+    "watch-backup-monitor",
+    ...shared,
+    "--max-monitor-age-seconds",
+    "300",
+  ];
+  const watched = spawnSync(process.execPath, watchArgs, {
+    encoding: "utf8",
+    timeout: 30000,
+  });
+  expect(watched.status).toBe(0);
+  expect(JSON.parse(watched.stdout)).toMatchObject({
+    healthy: true,
+    cloudRecoveryVerified: false,
+  });
+  const missing = spawnSync(
+    process.execPath,
+    [
+      "scripts/launch-import-recovery.mjs",
+      "monitor-production-backup",
+      "--input",
+      join(dir, "missing.json"),
+      ...shared,
+    ],
+    { encoding: "utf8", timeout: 30000 },
+  );
+  expect(missing.status).toBe(1);
+  expect(JSON.parse(missing.stdout)).toMatchObject({ healthy: false });
+  const failedWatch = spawnSync(process.execPath, watchArgs, {
+    encoding: "utf8",
+    timeout: 30000,
+  });
+  expect(failedWatch.status).toBe(1);
+  expect(failedWatch.stderr).toContain("reported failure");
+  for (const protectedPath of [input, keyFile]) {
+    const before = readFileSync(protectedPath);
+    const attempt = spawnSync(
+      process.execPath,
+      [
+        "scripts/launch-import-recovery.mjs",
+        "monitor-production-backup",
+        "--input",
+        input,
+        "--key-file",
+        keyFile,
+        "--company",
+        companyId,
+        "--key-id",
+        scope.keyId,
+        "--status-file",
+        protectedPath,
+        "--max-age-seconds",
+        "3600",
+      ],
+      { encoding: "utf8", timeout: 30000 },
+    );
+    expect(attempt.status).toBe(1);
+    expect(readFileSync(protectedPath)).toEqual(before);
+  }
+  const missingArchive = join(dir, "not-created.json");
+  const missingCollision = spawnSync(
+    process.execPath,
+    [
+      "scripts/launch-import-recovery.mjs",
+      "monitor-production-backup",
+      "--input",
+      missingArchive,
+      "--key-file",
+      keyFile,
+      "--company",
+      companyId,
+      "--key-id",
+      scope.keyId,
+      "--status-file",
+      missingArchive,
+      "--max-age-seconds",
+      "3600",
+    ],
+    { encoding: "utf8", timeout: 30000 },
+  );
+  expect(missingCollision.status).toBe(1);
+  expect(existsSync(missingArchive)).toBe(false);
+  const restore = spawnSync(
+    process.execPath,
+    [
+      "scripts/launch-import-recovery.mjs",
+      "restore-rehearsal",
+      "--input",
+      input,
+      "--output",
+      join(dir, "restore.json"),
+      "--key-file",
+      keyFile,
+      "--company",
+      companyId,
+      "--key-id",
+      scope.keyId,
+    ],
+    { encoding: "utf8", timeout: 30000 },
+  );
+  expect(restore.status).toBe(0);
+  expect(JSON.parse(restore.stdout)).toMatchObject({
+    rehearsalPassed: true,
+    cloudDatabaseUsed: false,
+  });
 }, 60000);

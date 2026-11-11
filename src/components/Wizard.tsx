@@ -290,6 +290,7 @@ export function Wizard({
               <select
                 value={p.managerId}
                 disabled={selfAssignedManager}
+                aria-describedby={selfAssignedManager ? "project-manager-help" : undefined}
                 onChange={(e) => set("managerId", e.target.value)}
               >
                 {!p.managerId && <option value="">No eligible project manager</option>}
@@ -301,10 +302,10 @@ export function Wizard({
                     </option>
                   ))}
               </select>
-              {selfAssignedManager && (
-                <small>Project Managers create projects assigned to themselves.</small>
-              )}
             </Field>
+            {selfAssignedManager && (
+              <small id="project-manager-help">Project Managers create projects assigned to themselves.</small>
+            )}
             <Field label="Priority">
               <select
                 value={p.priority}

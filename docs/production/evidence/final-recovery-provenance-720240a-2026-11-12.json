@@ -1,0 +1,51 @@
+{
+  "format": "azzora-application-recovery-provenance-v2",
+  "sourceRevision": "720240abd8c5adbb66d32357cb1d779cada1fb06",
+  "sourceRevisionEmbeddedInEncryptedArchive": true,
+  "deploymentId": "dpl_2Tf7fBxtVai2X6Wtb9eF3TadS9Qf",
+  "hostedUrl": "https://azzora-shared-staging-9d1iido4y-faziils-projects.vercel.app",
+  "archive": {
+    "name": "fictional-final-720240a-0495b11b-df41-4645-a25f-6d0f3fb093fe.encrypted.json",
+    "sha256": "b037a7ce750804ab56051674b5ff8e77f84693dcdd4fed2e51c533ecfbc39fec",
+    "downloadedThrough": "authenticated Owner Settings Download Backup button",
+    "format": "azzora-encrypted-business-backup-v1",
+    "innerFormat": "azzora-authoritative-staging-backup-v3",
+    "reviewedMigrationFiles": 12
+  },
+  "matchingRecoveryPackage": {
+    "name": "azzora-application-recovery-720240a.zip",
+    "sha256": "7e63514b7e855ef9814764e721c46d35457c6d7def4a4bd0be97ce0d46e0dca1"
+  },
+  "recovery": {
+    "target": "azzora_recovery_release_720240a",
+    "mode": "isolated fictional local real PostgreSQL/Auth/Storage services",
+    "mappedRoles": [
+      "owner_admin",
+      "accountant"
+    ],
+    "businessRecords": 24,
+    "journals": 12,
+    "privateOriginals": 1,
+    "inactiveHistoricalMemberships": 4,
+    "originalProjectAssignments": 3,
+    "journalActorReferencesPreserved": 12,
+    "snapshotActorReferencesPreserved": 1,
+    "auditEventActorReferencesPreserved": 140,
+    "distinctAuditActors": 4,
+    "historicalIdentitiesPreserved": true,
+    "freshCredentialsAndMfa": true,
+    "originalCredentialsOrMfaRestored": false
+  },
+  "noSecretsIncluded": true,
+  "previousCheckpoint": "final-recovery-provenance-2026-11-12.json",
+  "recoveryGuideSupplement": {
+    "path": "docs/production/LOCAL-APPLICATION-RECOVERY.md",
+    "sha256": "56e44399f9c499546837c59a2fca8e15b669781c09932d476e06b8499a7c3640"
+  },
+  "hostedSourceVerification": {
+    "deployedFiles": 372,
+    "matchingFiles": 372,
+    "actualApiExecutionRegion": "sin1",
+    "unauthenticatedPreviewStatus": 302
+  }
+}

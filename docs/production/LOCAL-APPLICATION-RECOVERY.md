@@ -12,6 +12,11 @@ targets. It cannot apply these controls to hosted staging or production.
    matching source catalog. Apply **all** matching application migrations, in
    order, to a clean local Supabase environment with fresh Auth and private
    Storage services. Do not copy platform credentials or Auth secrets.
+   New hosted staging archives embed `sourceRevision`; compare its full Git SHA
+   with the matching recovery package. Each staging release sets Preview-only
+   `AZZORA_RELEASE_SHA` to its reviewed application commit before deployment;
+   the build rejects missing or malformed values. Older v2/v3 archives remain
+   readable and use their retained external release/package provenance.
 2. Verify the standard target `extensions.pgcrypto` prerequisite first:
    `select to_regprocedure('extensions.hmac(bytea,bytea,text)');` must return a
    function. On a fresh isolated database, its administrator must provision

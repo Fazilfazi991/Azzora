@@ -1,5 +1,7 @@
 # Final fictional staging financial acceptance — 12 November 2026
 
+The later release `720240abd8c5adbb66d32357cb1d779cada1fb06` changes only backup provenance/verification and its build guard. The financial, Auth, permission, command and database components below are unchanged, with independent source-continuity evidence in `docs/production/evidence/backup-only-source-continuity-2026-11-12.json`. These actual financial runs remain attributed to `b778dd75`; they were not repeated or relabeled as executions on the later host. The later release passed 1,286 regression tests and its new hosted backup/recovery acceptance.
+
 Tested application: `b778dd75dc34f4b2101f38a66560b55efcafb60f`.
 Protected Preview: `https://azzora-shared-staging-qbw0udtk4-faziils-projects.vercel.app`.
 Deployment: `dpl_2p7wUjkt9fzufXJHydp9emJ1BzYs`, `sin1`.

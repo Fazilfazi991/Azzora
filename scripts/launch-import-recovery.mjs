@@ -1,4 +1,4 @@
-// Offline migration/recovery workbench. No network, cloud apply, production import or financial-posting command exists.
+// Offline workbench plus an explicitly local-only operator verification command.
 import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
@@ -17,13 +17,17 @@ if (
     "encrypt",
     "decrypt",
     "restore-rehearsal",
+    "verify-local-recovery-operator",
+    "apply-local-recovery-mapping",
+    "confirm-local-recovery-mapping",
+    "recover-local-application",
     "verify-production-backup",
     "monitor-production-backup",
     "watch-backup-monitor",
   ].includes(command)
 ) {
   console.error(
-    "Use prepare-import | verify-import | verify-originals | encrypt | decrypt | restore-rehearsal | verify-production-backup | monitor-production-backup | watch-backup-monitor. Original verification requires --input, --manifest and --output; monitor commands require explicit status path and age limits.",
+    "Use prepare-import | verify-import | verify-originals | encrypt | decrypt | restore-rehearsal | verify-local-recovery-operator | apply-local-recovery-mapping | confirm-local-recovery-mapping | recover-local-application | verify-production-backup | monitor-production-backup | watch-backup-monitor. Connected recovery commands are isolated-fictional-loopback-only; see docs/production/LOCAL-APPLICATION-RECOVERY.md. Original verification requires --input, --manifest and --output; monitor commands require explicit status path and age limits.",
   );
   process.exit(1);
 }
@@ -41,6 +45,17 @@ const required = (name) => {
     return options[name];
   },
   input = command === "watch-backup-monitor" ? "" : required("--input");
+if(command==='verify-local-recovery-operator') {
+  const {verifyLocalRecoveryOperator,recoveryApprovalDigest}=await import('./recovery-local-operator.mjs');
+  const config={authUrl:required('--auth-url'),container:required('--container'),database:required('--database'),dbPort:required('--db-port'),targetId:required('--target-id')};
+  const tokenPath=required('--operator-token-file');
+  if(!path.isAbsolute(tokenPath) || (await fs.lstat(tokenPath)).isSymbolicLink())throw Error('Operator token file must be an absolute non-symlink path.');
+  const operator=await verifyLocalRecoveryOperator(config,(await fs.readFile(tokenPath,'utf8')).trim());
+  const mappings=JSON.parse(await fs.readFile(required('--mapping-file'),'utf8'));
+  const approval=await recoveryApprovalDigest(input,config,mappings,required('--company'),required('--nonce'),operator.operatorId,operator.binding);
+  console.log(JSON.stringify({operatorVerified:true,targetId:operator.targetId,archiveSha256:approval.payload.archiveSha256,mappingCount:approval.payload.mappings.length,approvalDigest:approval.digest,permissionsChanged:false}));
+  process.exit(0);
+}
 await fs.mkdir("tmp/launch-tools", { recursive: true });
 // Scheduled verification and its independent watchdog may start together.
 // Never let concurrent invocations overwrite the same temporary module.
@@ -51,7 +66,7 @@ const runtimeFile = path.resolve(
 await build({
   stdin: {
     contents:
-      'export {prepareImportReview,verifyImportReview} from "./src/backend/import-plan.ts"; export {verifyImportOriginals} from "./src/backend/import-originals.ts"; export {encryptBusinessBackup,decryptBusinessBackup} from "./src/backend/launch-backup.ts"; export {rehearseEncryptedBusinessRestore} from "./src/backend/launch-backup-rehearsal.ts"; export {checkProductionBackupHealth} from "./src/backend/backup-health.ts"; export {createBackupMonitorReceipt,checkBackupMonitorReceipt} from "./src/backend/backup-monitor.ts";',
+      'export {prepareImportReview,verifyImportReview} from "./src/backend/import-plan.ts"; export {verifyImportOriginals} from "./src/backend/import-originals.ts"; export {encryptBusinessBackup,decryptBusinessBackup,verifyAuthoritativeStagingArchive} from "./src/backend/launch-backup.ts"; export {rehearseEncryptedBusinessRestore} from "./src/backend/launch-backup-rehearsal.ts"; export {checkProductionBackupHealth} from "./src/backend/backup-health.ts"; export {createBackupMonitorReceipt,checkBackupMonitorReceipt} from "./src/backend/backup-monitor.ts";',
     resolveDir: process.cwd(),
     loader: "ts",
   },
@@ -264,7 +279,16 @@ try {
       companyId: required("--company"),
       keyId: required("--key-id"),
     };
-    if (command === "encrypt") {
+    if (command === "apply-local-recovery-mapping" || command === "confirm-local-recovery-mapping" || command === "recover-local-application") {
+      const {applyLocalRecoveryMappings,confirmExistingLocalMapping,recoverLocalApplication}=await import('./recovery-local-operator.mjs');
+      const config={authUrl:required('--auth-url'),container:required('--container'),database:required('--database'),dbPort:required('--db-port'),targetId:required('--target-id')};
+      const privateFile=async flag=>{const file=required(flag);if(!path.isAbsolute(file) || (await fs.lstat(file)).isSymbolicLink())throw Error(`${flag} must be an absolute non-symlink path.`);return fs.readFile(file);};
+      const token=(await privateFile('--operator-token-file')).toString('utf8').trim();
+      const sealKey=await privateFile('--seal-key-file');
+      const args={config,accessToken:token,archivePath:input,key,sealKey,companyId:scope.companyId,keyId:scope.keyId,nonce:required('--nonce'),mappings:await json(required('--mapping-file')),confirmedDigest:required('--approval-digest'),tool};
+      const result=command==='apply-local-recovery-mapping' ? await applyLocalRecoveryMappings(args) : command==='confirm-local-recovery-mapping' ? await confirmExistingLocalMapping(args) : await recoverLocalApplication({...args,confirmationNonce:required('--confirmation-nonce')});
+      console.log(JSON.stringify({...result,localOnly:true,applicationAccessVerified:false}));
+    } else if (command === "encrypt") {
       const encrypted = tool.encryptBusinessBackup(
         await fs.readFile(input),
         key,

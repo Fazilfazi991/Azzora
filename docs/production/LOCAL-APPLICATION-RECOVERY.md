@@ -12,7 +12,12 @@ targets. It cannot apply these controls to hosted staging or production.
    matching source catalog. Apply **all** matching application migrations, in
    order, to a clean local Supabase environment with fresh Auth and private
    Storage services. Do not copy platform credentials or Auth secrets.
-2. Apply `supabase/recovery-local/000_target_authority.sql` through `004...sql`
+2. Verify the standard target `extensions.pgcrypto` prerequisite first:
+   `select to_regprocedure('extensions.hmac(bytea,bytea,text)');` must return a
+   function. On a fresh isolated database, its administrator must provision
+   `pgcrypto` in the `extensions` schema if absent. Do not silently relocate an
+   existing extension. This prerequisite was exercised in the final recovery.
+   Apply `supabase/recovery-local/000_target_authority.sql` through `004...sql`
    in filename order. These are isolated recovery controls, not hosted migrations.
    The target administrator provisions a dedicated recovery operator through
    supported Auth administration, verifies fresh MFA, and independently records

@@ -1,5 +1,7 @@
 # Financial failure coverage matrix — 11 November 2026
 
+Final acceptance on 12 November supersedes the historical partial results below: all six scenarios passed for both settlement types on application `b778dd75dc34f4b2101f38a66560b55efcafb60f`. See [the final evidence](FINAL-FINANCIAL-CANDIDATE-2026-11-12.md) for the exact hosted/isolated boundaries and original-timeout limitation.
+
 Superseded for the final candidate by [final financial acceptance, 12 November](FINAL-FINANCIAL-CANDIDATE-2026-11-12.md): all six scenarios passed for each settlement type, with the isolated fault and simulated response-loss limits stated explicitly. The older matrix below is retained as historical evidence and must not be read as final-candidate status.
 
 Scope: fictional staging Preview application `771725f9f1dd5020b78b921dc7f1998722446233`, except the explicitly local isolated database fault test. PASS means the evidence meets the stated scenario for that side; PARTIAL identifies missing acceptance evidence. This is not evidence for a later candidate or production.

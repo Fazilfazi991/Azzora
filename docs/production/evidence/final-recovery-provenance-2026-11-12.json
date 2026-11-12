@@ -1,0 +1,40 @@
+{
+  "format": "azzora-application-recovery-external-provenance-v1",
+  "sourceRevision": "b778dd75dc34f4b2101f38a66560b55efcafb60f",
+  "deploymentId": "dpl_2p7wUjkt9fzufXJHydp9emJ1BzYs",
+  "hostedUrl": "https://azzora-shared-staging-qbw0udtk4-faziils-projects.vercel.app",
+  "archive": {
+    "name": "fictional-final-8bec-8f934c1b-7b77-4b03-aa80-54ac37ffe77c.encrypted.json",
+    "sha256": "07845b939267c679fa81acba0b895e59ab623830f96edd9c28ad113ced7fe7a9",
+    "downloadedThrough": "authenticated Owner Settings Download Backup button",
+    "format": "azzora-encrypted-business-backup-v1",
+    "innerFormat": "azzora-authoritative-staging-backup-v3"
+  },
+  "matchingRecoveryPackage": {
+    "name": "azzora-application-recovery-b778dd7.zip",
+    "sha256": "22ab79092c864272efc6a3ebcc3a7ed2c0492b4e56f4a87d950f391cb0bb4cac"
+  },
+  "sourceRevisionEmbedding": "Source revision is externally recorded here and in deployment/package provenance; it is not embedded in this v3 archive.",
+  "recovery": {
+    "target": "azzora_recovery_release_8bec",
+    "mode": "isolated fictional local",
+    "mappedRoles": [
+      "owner_admin",
+      "accountant"
+    ],
+    "historicalIdentitiesPreserved": true,
+    "freshCredentialsAndMfa": true,
+    "originalCredentialsOrMfaRestored": false
+  },
+  "noSecretsIncluded": true,
+  "recoveryGuideSupplement": {
+    "path": "docs/production/LOCAL-APPLICATION-RECOVERY.md",
+    "sha256": "d061da41253ed2ed36d81e2312648305e2d229efc0a88ccc40e4bed079f971fe",
+    "requiredConfiguration": "Verify extensions.pgcrypto before isolated controls; supported target administration provisioned it during the successful rehearsal."
+  },
+  "sourceFileVerification": {
+    "deployedFiles": 372,
+    "matchingFiles": 372,
+    "configurationMapping": "vercel.json is the reviewed vercel.staging.json with api/staging.ts pinned to sin1"
+  }
+}

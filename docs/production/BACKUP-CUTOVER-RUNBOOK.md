@@ -1,5 +1,67 @@
 # Backup, restore and cutover runbook
 
+## Frozen candidate and current cutover preparation — 12 November 2026
+
+Application `720240abd8c5adbb66d32357cb1d779cada1fb06` and evidence
+`60e73ea88f3663768d9bdacd4d1c9fef060450e0` are frozen. The matching recovery
+package and final downloaded archive are identified by
+`evidence/final-recovery-provenance-720240a-2026-11-12.json`. Preserve those
+artifacts and their hashes; documentation preparation does not change the tested
+application. The current owner decisions supersede the historical scheduling,
+Google Drive, upgrade and incomplete-recovery proposals below: **Supabase Free,
+manual encrypted local downloads only, no scheduler or Google Drive integration.**
+
+The verified hosted target is fictional staging only: Vercel project
+`prj_qmXTiKoqwMc2mgJ6QSkYDLrYEoch`, deployment
+`dpl_2Tf7fBxtVai2X6Wtb9eF3TadS9Qf`, Supabase `hkhomrrvxtcxnxvdlkoh`, with
+Manager at `/` and Accounts at `/accountant.html`. Its staging configuration pins
+`api/staging.ts` explicitly to `sin1`, uses the Preview environment and protection,
+and sets non-secret `AZZORA_RELEASE_SHA` to the frozen application SHA. Production
+must not reuse staging credentials or the temporary fictional identity mappings.
+
+The intended production database remains `zwjiztnsxenluqybxhhz`, Singapore
+`ap-southeast-1`, as pinned in `supabase/production-migrations/manifest.json` and
+the production build/runtime guards. The Manager and Accounts workspaces remain
+separate. Exact production Vercel project/origin assignments, the real company
+identity and named user/role mapping are not supplied by the financial approval
+sheet and remain awaiting owner confirmation. Existing Manager production and
+Accounts client-demo aliases must remain unchanged before cutover authorization.
+The existing production-candidate configuration deliberately targets a protected
+Preview with posting disabled; it is not authorization to promote or enable posting.
+
+Prepared execution gates, **not executed**:
+
+1. Obtain the existing accountant sheet's signed decisions, reconciled openings,
+   outstanding-document inventory, migration scope and effective cutover date;
+   then obtain separate explicit cutover authorization. Unknown balances are not zero.
+2. Reconfirm exact source, target project/company, separate application projects,
+   allowed origins, individual user mapping, MFA and production-only secret/key
+   references. Confirm effective function execution in Singapore.
+3. Verify every production-manifest file hash and migration ledger. Exclude all
+   fictional staging/recovery-control migrations and fixture data. Preserve
+   approved source/mapping/import hashes, original documents and historical actors.
+4. Stop competing writes at the agreed freeze point; capture current deployment,
+   alias and database state. Download and verify the Owner-only encrypted manual
+   backup, retain its matching recovery package and keep its key separately.
+5. Apply only the reviewed, authorized migration/import; reconcile opening
+   debits/credits, bank/cash/petty cash by account, AR/AP by original document,
+   journals, reports and original-file hashes. Do not infer company balances from
+   an empty database, and do not insert synthetic financial transactions.
+6. Release only the approved production-intended configuration; verify actual
+   users/permissions, shared Manager–Accounts records, approved financial flows,
+   reports and backup download. Enable real posting only for the approved scope.
+7. If acceptance fails, stop further writes and preserve evidence. An application
+   rollback does not undo committed financial transactions: reconcile first and
+   follow the existing authorized recovery/compensating-entry procedure, never a
+   blind database overwrite or non-idempotent retry.
+
+Evidence remains separated: hosted checks, isolated mid-transaction rollback,
+and simulated lost-response tests. The original intermittent 503 cause is
+**unknown**; retained diagnostics and verified transaction safeguards are not a
+claim that its cause was fixed. No new technical investigation is initiated here.
+
+## Historical preparation and evidence
+
 Status: **not operational; launch blocked**. This runbook prepares the work without authorizing real-company imports, postings, user invitations, cloud restoration or traffic changes. Production project `zwjiztnsxenluqybxhhz` is separate from fictional staging `hkhomrrvxtcxnxvdlkoh`. Confirm the exact project, region and account again before every operation; do not infer a target from the active CLI link.
 
 ## Manual business export candidate

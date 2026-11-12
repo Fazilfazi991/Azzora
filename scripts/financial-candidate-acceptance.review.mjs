@@ -14,6 +14,9 @@ const { AZZORA_PREVIEW_ORIGIN: origin, AZZORA_FIXTURE_CREDENTIALS: credentialsPa
 if (!origin || !/^https:\/\/azzora-shared-staging-[a-z0-9]+-faziils-projects\.vercel\.app$/.test(origin) ||
     !credentialsPath || !privateDir || !cli || !/^[a-z0-9-]{3,40}$/.test(testCase || '') ||
     !['receipt','supplier-payment'].includes(settlement)) throw Error('Missing or unsafe staging configuration');
+if (!/^(0|[1-9][0-9]*)\.[0-9]{2}$/.test(amount)) throw Error('Use a positive exact two-decimal AED amount');
+const amountFils = BigInt(amount.replace('.', ''));
+if (amountFils <= 0n) throw Error('Amount must be positive');
 const creds = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
 const pending = path.join(privateDir, `acceptance-${testCase}.private`);
 function totp(secret) {
@@ -67,7 +70,7 @@ if(mode==='prepare') {
   const snap=request('/accounts/snapshot?asOf=2026-11-11&from=2026-01-01&to=2026-11-11',null,verify.cookie);
   if(session.status!==200 || snap.status!==200)throw Error('Fictional session or snapshot failed');
   const isReceipt=settlement==='receipt', documents=isReceipt?snap.data.invoices:snap.data.bills;
-  const item=documents?.find(x=>BigInt(x.outstandingFils??'0')>=100n); if(!item)throw Error('No issued fictional open document');
+  const item=documents?.find(x=>BigInt(x.outstandingFils??'0')>=amountFils); if(!item)throw Error('No issued fictional document has adequate outstanding value');
   const id=`acceptance-${testCase}-${randomUUID()}`;
   const action={kind:settlement,id,documentId:item.id,date:'2026-11-11',amount,account:'bank',reference:`Fictional ${id}`};
   const values=isReceipt?snap.data.receipts:snap.data.supplierPayments;
@@ -79,7 +82,7 @@ if(mode==='prepare') {
   if(mode==='distinct') { const q={...p,id:`acceptance-${testCase}-${randomUUID()}`,key:randomUUID()}; q.action={...p.action,id:q.id,reference:`Fictional ${q.id}`};
     fs.writeFileSync(pending+'.second',JSON.stringify(q),{flag:'wx',mode:0o600}); console.log(JSON.stringify({results:await Promise.all([asynchronousSend(p),asynchronousSend(q)])})); }
   if(mode==='interrupt') console.log(JSON.stringify(await asynchronousSend(p,true)));
-  if(mode==='delayed') { await new Promise(r=>setTimeout(r,20000)); const x=request('/accounts/action',p.action,p.cookie,p.csrf,actionHeaders(p)); console.log(JSON.stringify({status:x.status,elapsed:x.elapsed})); }
+  if(mode==='delayed') { await new Promise(r=>setTimeout(r,5000)); const x=request('/accounts/action',p.action,p.cookie,p.csrf,actionHeaders(p)); console.log(JSON.stringify({status:x.status,elapsed:x.elapsed})); }
   if(mode==='send'||mode==='retry'||mode==='mismatch') { const action=mode==='mismatch'?{...p.action,amount:p.action.amount==='2.00'?'3.00':'2.00'}:p.action;
     const x=request('/accounts/action',action,p.cookie,p.csrf,actionHeaders(p)); console.log(JSON.stringify({status:x.status,elapsed:x.elapsed})); }
   if(mode==='check') { const x=request('/accounts/snapshot?asOf=2026-11-11&from=2026-01-01&to=2026-11-11',null,p.cookie);

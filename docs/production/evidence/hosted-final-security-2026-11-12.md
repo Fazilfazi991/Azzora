@@ -27,3 +27,28 @@ An initial Manager-390 logout attempt failed because the test unnecessarily open
 Screenshots are retained locally in ignored `azzora-launch-integration/tmp/final-candidate-browser/`. Accountant desktop Dashboard, mobile Balance Sheet, and Manager desktop/mobile Accounts were visually inspected: separate workspaces and fictional/real-posting-disabled labels are visible; the mobile Balance Sheet is readable and balanced; Manager mobile recent-invoice detail uses the labeled horizontal table area. These viewport tests are not physical-device Safari/Android certification.
 
 Sanitized raw results remain in ignored `tmp/final-candidate-security-results.json`, `tmp/final-candidate-browser/initial-results.json` and `tmp/final-candidate-browser/results.json`. The initial `iad1` deployment's result is retained separately and is not represented as the final deployment. No stable alias, production site, real financial record, MFA configuration or AI spending history was changed by this test package. Login/logout produced normal fictional audit/session activity.
+
+## Final allowed-command and referenced-record follow-up
+
+After the coordinator released the financial test window, the same final deployment was exercised with unique fictional fixture suffix `1c8f6b21`. No other writers ran during the sweep.
+
+| Actual command/path | Actor | Result |
+| --- | --- | --- |
+| Create expense ledger and cash account | Owner, Accountant | Four HTTP 200 results; catalog entries present, metrics unchanged |
+| Invoice draft then explicit `issue-invoice` | A Accountant | Both 200; issued amount/open receivable increased exactly one fils |
+| Purchase-bill draft then explicit `issue-bill` | B Accountant | Both 200; issued amount/open payable increased exactly one fils |
+| Submit project expense | A Site Engineer | 200; no financial metrics changed |
+| Self-approve that submission | A Site Engineer | 403 |
+| Independently approve that submission | A Project Manager | 200; no financial metrics changed |
+| Post the approved source-linked expense | A Accountant | 200; one-fils expense present and bank reduced by one fils |
+| Transfer bank to newly created cash account | A Accountant | 200; one transfer present, aggregate bank/cash and net profit unchanged |
+| Issue/pay actual foreign B bill | A Accountant | Both 400; both company versions/metrics unchanged |
+| Issue/receive against actual foreign A invoice | B Accountant | Both 400; both company versions/metrics unchanged |
+| Read own known private original | A and B Accountants | Both 200 |
+| Read that original through other company's authenticated endpoint | Opposite Accountant | Both 404; no original bytes returned |
+
+Every returned finance snapshot reconciled its open documents, balanced Trial Balance and Balance Sheet. Final observed company versions were A 542 and B 18. These snapshot assertions are distinct from the coordinator's later direct-database journal/count reconciliation.
+
+The first run stopped after 23 passing assertions because its synthetic B bill omitted the required `poReference`. The unchanged domain validator independently reproduced the precise message: `Demo purchase reference is required (up to 140 characters).` This was an invalid fixture, not a bypassed application rule. Before continuing, a fresh hosted snapshot proved B version remained 16 and the rejected bill ID was absent. Only the unexecuted remainder resumed with an explicit fictional purchase reference and a new idempotency key; the already successful catalog/invoice commands were not repeated. The continuation passed 29/29 assertions, including 13 repeated authentication checks for fresh sessions. Original failure/results and all pre-submission plans were retained; no blind financial retry occurred.
+
+Action IDs: A `QA-INV-1c8f6b21`, `QA-EXP-1c8f6b21`, `QA-TRANSFER-1c8f6b21`; B `QA-BILL-1c8f6b21`; A catalog `QA-LEDGER-{Owner|Accountant}-1c8f6b21` and `QA-CASH-{Owner|Accountant}-1c8f6b21`. Each financial fixture amount was one fils with zero VAT. No new receipt/payment allocation is expected for these four invoice/bill/expense/transfer fixtures. Private ignored plans/results are `tmp/initial-candidate-allowed-results.json`, `tmp/initial-candidate-allowed-pending.json`, `tmp/final-candidate-allowed-resume-results.json` and `tmp/final-candidate-allowed-resume-pending.json` in the integration worktree. All test sessions logged out. No real financial records, paid AI, production alias or application source changed.

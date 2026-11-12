@@ -1,0 +1,94 @@
+{
+  "before": "b778dd75dc34f4b2101f38a66560b55efcafb60f",
+  "after": "720240abd8c5adbb66d32357cb1d779cada1fb06",
+  "runtimeChanged": [
+    "scripts/check-staging-build.mjs",
+    "src/backend/launch-backup.ts",
+    "src/staging/server.ts"
+  ],
+  "serverOnlyAddition": "Owner encrypted-backup sourceRevision property",
+  "cryptoAndProductionBackupPrefixUnchanged": true,
+  "components": [
+    {
+      "path": "api",
+      "tree": "82ce9921fb554a9bb8eb903c6e47adc6a9f5d2a0",
+      "unchanged": true
+    },
+    {
+      "path": "supabase/migrations",
+      "tree": "310cbf968fea5703f52447646b49dcb25493ced2",
+      "unchanged": true
+    },
+    {
+      "path": "src/accounts-review",
+      "tree": "87fdc86b00404d0a3436a39a8da394e86d6521cc",
+      "unchanged": true
+    },
+    {
+      "path": "src/accounting",
+      "tree": "81571e4d3dce0a03b65b2d43ac49066d83198aee",
+      "unchanged": true
+    },
+    {
+      "path": "src/finance",
+      "tree": "d4ff3b7a0f292fd113810098798b40da62e634d2",
+      "unchanged": true
+    },
+    {
+      "path": "src/commercial",
+      "tree": "31695fa68f019c05027d3d81c942e59dd317acb9",
+      "unchanged": true
+    },
+    {
+      "path": "src/quotation",
+      "tree": "6f521763739b93731fb82f4ca9e2838d1cac47a5",
+      "unchanged": true
+    },
+    {
+      "path": "src/operations",
+      "tree": "8e34d56cbdb2102c28a89cd35405107779be043c",
+      "unchanged": true
+    },
+    {
+      "path": "src/workforce",
+      "tree": "854e7ab5ae4d6a99a2c61c01824a3eb431b203e9",
+      "unchanged": true
+    },
+    {
+      "path": "src/domain",
+      "tree": "01c656bec2e2ebcdf0c1427e976be97d1424b3e2",
+      "unchanged": true
+    },
+    {
+      "path": "src/staging/auth.ts",
+      "sha256": "274a5a821b6c717226674ff78a477f42862d8a19f49777db36d27f475b291902",
+      "unchanged": true
+    },
+    {
+      "path": "src/staging/domain.ts",
+      "sha256": "eaa1e388564ad6abc3b463d537f2f7ff358e3517de9f78736a2aa3437c354362",
+      "unchanged": true
+    },
+    {
+      "path": "src/staging/canonical.ts",
+      "sha256": "385117b91c6252b3c8f468e11ab9545443c619c3be92a789747c54e58ae21781",
+      "unchanged": true
+    },
+    {
+      "path": "src/staging/supabase.ts",
+      "sha256": "7821d1fc7a7c740268edea228d350df1b1733b536dfabe5bf8b0e53329c0bf02",
+      "unchanged": true
+    },
+    {
+      "path": "src/backend/permissions.ts",
+      "sha256": "970d2eef36472740b121b0a90f600d2dcf0fb222bf876a5d7c30e5096450d4cc",
+      "unchanged": true
+    }
+  ],
+  "evidenceRetained": [
+    "74 hosted session/workspace/restricted-command assertions",
+    "Owner/Accountant allowed catalog/invoice/bill/expense/transfer and referenced-record checks",
+    "six financial scenarios for receipt and supplier-payment commands"
+  ],
+  "limitation": "Retained runs executed on prior exact Preview; they are not relabeled as new-hostname executions. Final backup-specific checks and archive/recovery must run against new deployment."
+}

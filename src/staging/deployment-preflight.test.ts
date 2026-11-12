@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import { spawnSync } from "node:child_process";
 const configured = {
+  AZZORA_RELEASE_SHA: "a".repeat(40),
   VITE_AZZORA_STAGING: "1",
   AZZORA_STAGING_SUPABASE_URL: "https://hkhomrrvxtcxnxvdlkoh.supabase.co",
   AZZORA_AI_ENABLED: "false",
@@ -40,6 +41,10 @@ it("blocks production and publication without explicit approval", () => {
     { AZZORA_STAGING_DEPLOYMENT_APPROVED: "false" },
   ])
     expect(preflight(change).status).not.toBe(0);
+});
+it("requires an exact application revision for newly built backup downloads", () => {
+  for (const sourceRevision of [undefined, "", "abcdef0", "g".repeat(40), "a".repeat(41)])
+    expect(preflight({AZZORA_RELEASE_SHA: sourceRevision}).status).not.toBe(0);
 });
 it("blocks paid-provider secrets, AI activation and old shared-password login", () => {
   for (const change of [

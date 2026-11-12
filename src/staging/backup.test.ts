@@ -25,7 +25,7 @@ import { buildTrialBalance } from "../accounting/reports";
 import { createStagingHandler } from "./server";
 import type { createStagingAuth, StagingActor } from "./auth";
 import type { StagingRpc } from "./supabase";
-import { decryptBusinessBackup, encryptBusinessBackup, verifyAuthoritativeStagingArchive } from "../backend/launch-backup";
+import { createAuthoritativeStagingBackup, decryptBusinessBackup, encryptBusinessBackup, verifyAuthoritativeStagingArchive } from "../backend/launch-backup";
 import { freshRehearsalDatabase as freshAuthoritativeDatabase, rehearseEncryptedBusinessRestore, restoreIntoFreshRehearsal as restoreAuthoritative } from "../backend/launch-backup-rehearsal";
 
 const companyId = "11111111-1111-4111-8111-111111111111",
@@ -374,6 +374,15 @@ describe("fictional business backup integrity and isolated restore", () => {
       vi.unstubAllEnvs();
     }
   });
+  it("rejects malformed producer source revisions before reading any originals", async () => {
+    const read = vi.fn(async () => bytes);
+    for (const sourceRevision of ["", "1234567", "g".repeat(40), "a".repeat(41)])
+      await expect(createAuthoritativeStagingBackup({}, read, Buffer.alloc(32, 7), {
+        companyId, keyId: "fictional-staging-owner-key-v1",
+        capturedAt: "2026-11-12T00:00:00.000Z", sourceRevision,
+      }, actor)).rejects.toThrow(/source revision/);
+    expect(read).not.toHaveBeenCalled();
+  });
   it("downloads encrypted owner backup and restores the actual returned archive with verified original bytes", async () => {
     const source = fixture();
     const key = Buffer.alloc(32, 7);
@@ -420,7 +429,14 @@ describe("fictional business backup integrity and isolated restore", () => {
     });
     const request = () =>
       new Request("https://staging.test/api/staging/manager/backup/encrypted");
-    const response = await handler(request());
+    const sourceRevision = "1234567890abcdef1234567890abcdef12345678";
+    let response: Response;
+    vi.stubEnv("AZZORA_RELEASE_SHA", sourceRevision);
+    try {
+      response = await handler(request());
+    } finally {
+      vi.unstubAllEnvs();
+    }
     expect(response.status).toBe(200);
     const envelope = await response.json();
     expect(envelope.format).toBe("azzora-encrypted-business-backup-v1");
@@ -430,6 +446,15 @@ describe("fictional business backup integrity and isolated restore", () => {
       keyId: "fictional-staging-owner-key-v1",
     });
     const parsed = verifyAuthoritativeStagingArchive(JSON.parse(Buffer.from(clear).toString()), companyId);
+    expect(parsed.sourceRevision).toBe(sourceRevision);
+    expect(JSON.parse(Buffer.from(clear).toString()).sourceRevision).toBe(sourceRevision);
+    for (const invalid of [null, 123, "", "1234567", "g".repeat(40), "a".repeat(41)]) {
+      const malformed = {...JSON.parse(Buffer.from(clear).toString()), sourceRevision: invalid};
+      expect(() => verifyAuthoritativeStagingArchive(malformed, companyId)).toThrow();
+    }
+    const legacyV3 = JSON.parse(Buffer.from(clear).toString());
+    delete legacyV3.sourceRevision;
+    expect(verifyAuthoritativeStagingArchive(legacyV3, companyId).sourceRevision).toBeUndefined();
     expect(parsed.schemaBundle?.files).toHaveLength(12);
     const altered = JSON.parse(Buffer.from(clear).toString());
     altered.schemaBundle.files[0].sql += '\n-- tampered';
@@ -438,9 +463,11 @@ describe("fictional business backup integrity and isolated restore", () => {
     expect(() => verifyAuthoritativeStagingArchive(altered, companyId)).toThrow(/Untrusted staging migration/);
     const legacy = JSON.parse(Buffer.from(clear).toString());
     legacy.format = 'azzora-authoritative-staging-backup-v2';
+    delete legacy.sourceRevision;
     delete legacy.schemaBundle;
     delete legacy.schemaScope;
     expect(verifyAuthoritativeStagingArchive(legacy, companyId).schemaBundle).toBeUndefined();
+    expect(() => verifyAuthoritativeStagingArchive({...legacy, sourceRevision}, companyId)).toThrow(/legacy source revision/);
     const legacyEnvelope = encryptBusinessBackup(Buffer.from(JSON.stringify(legacy)), key, { companyId, keyId: 'fictional-staging-owner-key-v1', capturedAt: new Date().toISOString() });
     const legacyProof = await rehearseEncryptedBusinessRestore(legacyEnvelope, key, {companyId, keyId:'fictional-staging-owner-key-v1'});
     expect(legacyProof).toMatchObject({schemaFromArchive:false, liveSchemaVerified:false, auditActorReferencesRestored:true, financialReportsMatch:true});

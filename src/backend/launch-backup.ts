@@ -246,25 +246,30 @@ export async function createAuthoritativeStagingBackup(
   capture: unknown,
   readOriginal: ReadBackupOriginal,
   key: Uint8Array,
-  scope: { companyId: string; keyId: string; capturedAt: string },
+  scope: { companyId: string; keyId: string; capturedAt: string; sourceRevision?: string },
   actor: AuthorizedActor,
 ): Promise<EncryptedBusinessBackup> {
   authorize(actor, "access.manage", { companyId: scope.companyId });
   if (actor.assurance !== "aal2" || !actor.grant.roles.includes("owner"))
     throw Error("Current Owner MFA is required for staging backup.");
+  if (scope.sourceRevision !== undefined && !/^[a-f0-9]{40}$/.test(scope.sourceRevision))
+    throw Error("Staging backup source revision must be a full lowercase Git SHA.");
   const row = validateAuthoritativeCapture(capture, scope.companyId);
   const business = await createStagingBackup({ version: row.version, companyId: row.companyId, data: row.data }, readOriginal, scope.capturedAt);
-  const archive = { format: "azzora-authoritative-staging-backup-v3", companyId: row.companyId, business, provenance: row.provenance, schemaBundle:stagingSchemaBundle, schemaScope:'reviewed-source-baseline-live-schema-unverified' };
-  return encryptBusinessBackup(Buffer.from(JSON.stringify(archive)), key, scope);
+  const archive = { format: "azzora-authoritative-staging-backup-v3", companyId: row.companyId, business, provenance: row.provenance, schemaBundle:stagingSchemaBundle, schemaScope:'reviewed-source-baseline-live-schema-unverified', ...(scope.sourceRevision === undefined ? {} : {sourceRevision:scope.sourceRevision}) };
+  return encryptBusinessBackup(Buffer.from(JSON.stringify(archive)), key, {
+    companyId:scope.companyId, keyId:scope.keyId, capturedAt:scope.capturedAt,
+  });
 }
 
 export function verifyAuthoritativeStagingArchive(input: unknown, companyId: string) {
-  const outer = z.object({ format: z.enum(["azzora-authoritative-staging-backup-v2","azzora-authoritative-staging-backup-v3"]), companyId: z.uuid(), business: z.unknown(), provenance: z.unknown(), schemaBundle:z.unknown().optional(), schemaScope:z.literal('reviewed-source-baseline-live-schema-unverified').optional() }).strict().parse(input);
+  const outer = z.object({ format: z.enum(["azzora-authoritative-staging-backup-v2","azzora-authoritative-staging-backup-v3"]), companyId: z.uuid(), business: z.unknown(), provenance: z.unknown(), schemaBundle:z.unknown().optional(), schemaScope:z.literal('reviewed-source-baseline-live-schema-unverified').optional(), sourceRevision:z.string().regex(/^[a-f0-9]{40}$/).optional() }).strict().parse(input);
   if (outer.format === 'azzora-authoritative-staging-backup-v3' && !outer.schemaScope) throw Error('Schema scope is required.');
   const schemaBundle = outer.format === 'azzora-authoritative-staging-backup-v3' ? verifyStagingSchemaBundle(outer.schemaBundle) : undefined;
   if (outer.format === 'azzora-authoritative-staging-backup-v2' && (outer.schemaBundle !== undefined || outer.schemaScope !== undefined)) throw Error('Unexpected legacy schema bundle.');
+  if (outer.format === 'azzora-authoritative-staging-backup-v2' && outer.sourceRevision !== undefined) throw Error('Unexpected legacy source revision.');
   const business = verifyStagingBackup(outer.business);
   const checked = validateAuthoritativeCapture({ version: business.capturedCompanyVersion, companyId: outer.companyId, data: business.data, provenance: outer.provenance }, companyId);
   if (business.companyId !== checked.companyId) throw Error("Backup company mismatch.");
-  return { business, provenance: checked.provenance, schemaBundle };
+  return { business, provenance: checked.provenance, schemaBundle, sourceRevision:outer.sourceRevision };
 }

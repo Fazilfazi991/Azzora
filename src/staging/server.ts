@@ -397,6 +397,7 @@ export function createStagingHandler(
                     companyId: source.companyId,
                     keyId: "fictional-staging-owner-key-v1",
                     capturedAt: new Date().toISOString(),
+                    sourceRevision: process.env.AZZORA_RELEASE_SHA,
                   },
                   sharedActor(actor),
                 );

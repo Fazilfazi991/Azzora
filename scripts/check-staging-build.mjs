@@ -3,6 +3,8 @@ import process from "node:process";
 import console from "node:console";
 import "./generate-staging-schema-bundle.mjs";
 const env = process.env;
+if (!/^[a-f0-9]{40}$/.test(env.AZZORA_RELEASE_SHA || ""))
+  throw Error("The staging build requires its full lowercase application Git SHA.");
 if (env.VITE_AZZORA_STAGING !== "1" || env.AZZORA_ACCOUNTS_PREVIEW === "1")
   throw Error("Build both independent workspaces in shared staging mode.");
 if (

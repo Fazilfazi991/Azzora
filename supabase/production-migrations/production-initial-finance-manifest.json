@@ -1,0 +1,30 @@
+{
+  "format": "azzora-reviewed-initial-financial-authority-v1",
+  "automaticApply": false,
+  "requiresReviewedBaseline": [
+    "supabase/production-migrations/initial-setup-manifest.json",
+    "supabase/production-migrations/production-hostname-manifest.json",
+    "supabase/production-migrations/production-catalog-manifest.json"
+  ],
+  "approvedProject": "zwjiztnsxenluqybxhhz",
+  "approvedCompany": "fc525d78-bc83-4845-96f1-fb402bb07465",
+  "approvalId": "owner-live-20261115-v1",
+  "ownerInstructionSha256": "8546a8b91cc3bc56e5398ff44838a73933f72e376ce4be361148254bd66d0f63",
+  "effectiveFrom": "2026-11-15",
+  "timezone": "Asia/Dubai",
+  "postingUser": "accounts@azzora.ae",
+  "vatTreatment": "No VAT",
+  "vatRegistration": "unconfirmed",
+  "openingBalances": "unknown; saved drafts never post automatically; Accountant complete reconciliation and independent Owner confirmation required",
+  "expenseApproval": "unconfirmed; expense posting blocked",
+  "structuralControlsOnly": true,
+  "initialBalancesAssumed": false,
+  "realDocumentProcessingEnabled": false,
+  "files": [
+    {
+      "path": "supabase/production-migrations/20261113205315_production_initial_financial_authority.sql",
+      "sha256": "6a056037f7437d8a52c7e4e660905ca20364ca11976069d0acee7938cba31683"
+    }
+  ],
+  "sourceHashEncoding": "UTF-8 with CRLF normalized to LF"
+}

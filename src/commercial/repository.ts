@@ -284,7 +284,7 @@ function validateInvoice(db: Database, i: Invoice) {
     i.lines.some(
       (l) =>
         !l.description.trim() ||
-        !["Exclusive", "Inclusive", "Zero Rated", "Exempt"].includes(l.tax),
+        !["Exclusive", "Inclusive", "Zero Rated", "Exempt", "No VAT"].includes(l.tax),
     )
   )
     throw Error("Add invoice items with descriptions and valid tax treatment.");

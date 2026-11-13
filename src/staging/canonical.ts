@@ -246,6 +246,17 @@ export function serializeCanonical(state: SharedCompanyState): CanonicalData {
   for (const review of state.finance.documentEntries?.reviews || [])
     add("document", `review:${review.id}`, "review", review);
   delete financeMeta.documentEntries;
+  if (state.finance.openingReview?.posted)
+    add(
+      "document",
+      `opening:${state.finance.openingReview.posted.digest}`,
+      "opening",
+      {
+        setup: state.finance.openingSetup,
+        review: state.finance.openingReview,
+        status: "Posted",
+      },
+    );
   for (const submission of state.expenseSubmissions)
     add("expense", submission.id, "submission", submission);
   add(
@@ -352,6 +363,8 @@ export function serializeCanonical(state: SharedCompanyState): CanonicalData {
     }
     if (entry.source.kind === "cash_account")
       return { type: "cash_account", id: entry.source.id };
+    if (entry.source.kind === "OpeningBalance")
+      return { type: "document", id: entry.source.id };
     const candidates = allRecords.filter(
       (record) =>
         record.id === entry.source.id &&

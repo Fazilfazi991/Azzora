@@ -57,7 +57,11 @@ export function invoiceLineTotals(
   if (rate.n > 100n * rate.d) throw Error("VAT must be between 0 and 100%.");
   return i.lines.map((line, index) => {
     const value = values[index] - shares[index];
-    if (!["Inclusive", "Exclusive", "Zero Rated", "Exempt"].includes(line.tax))
+    if (
+      !["Inclusive", "Exclusive", "Zero Rated", "Exempt", "No VAT"].includes(
+        line.tax,
+      )
+    )
       throw Error("Choose a valid tax treatment.");
     const net =
       line.tax === "Inclusive"
@@ -137,7 +141,9 @@ export function invoiceCreditLines(i: Invoice) {
       if (
         ids.has(line.itemId) ||
         !i.lines.some((item) => item.id === line.itemId) ||
-        !["Inclusive", "Exclusive", "Exempt", "Zero Rated"].includes(line.tax)
+        !["Inclusive", "Exclusive", "Exempt", "Zero Rated", "No VAT"].includes(
+          line.tax,
+        )
       )
         return review();
       ids.add(line.itemId);
@@ -156,7 +162,8 @@ export function invoiceCreditLines(i: Invoice) {
         entered < 0n ||
         row.net + row.vat !== row.grand ||
         (line.tax === "Inclusive" ? row.grand : row.net) !== entered ||
-        (["Exempt", "Zero Rated"].includes(line.tax) && row.vat !== 0n)
+        (["Exempt", "Zero Rated", "No VAT"].includes(line.tax) &&
+          row.vat !== 0n)
       )
         return review();
       return row;

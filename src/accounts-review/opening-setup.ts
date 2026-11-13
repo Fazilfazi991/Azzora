@@ -61,6 +61,26 @@ export const openingSetupSchema = z
     });
   });
 export type OpeningSetupDraft = z.infer<typeof openingSetupSchema>;
+export interface OpeningReviewStamp {
+  by: string;
+  at: string;
+  digest: string;
+  revision: number;
+}
+export interface OpeningReviewState {
+  revision: number;
+  reconciliation?: OpeningReviewStamp & { complete: true };
+  ownerApproval?: OpeningReviewStamp;
+  posted?: OpeningReviewStamp & { journalId: string | null };
+}
+export interface OpeningWorkflowAction {
+  kind: "opening-reconcile" | "opening-approve" | "opening-post";
+  id: "opening-setup";
+  revision: number;
+  digest: string;
+  confirmed: true;
+  complete?: true;
+}
 export function inspectOpeningSetup(draft: OpeningSetupDraft) {
   let debit = 0n,
     credit = 0n;

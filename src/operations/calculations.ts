@@ -21,7 +21,7 @@ export const price = (items: InvoiceLine[], rate: string, discount = "0") => {
   if (
     items.some(
       (i) =>
-        !["Exclusive", "Inclusive", "Zero Rated", "Exempt"].includes(i.tax),
+        !["Exclusive", "Inclusive", "Zero Rated", "Exempt", "No VAT"].includes(i.tax),
     )
   )
     throw Error("Choose a valid tax treatment.");

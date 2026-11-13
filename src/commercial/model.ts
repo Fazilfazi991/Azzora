@@ -11,7 +11,7 @@ export interface CustomerContact {
   email: string;
   role: string;
 }
-export type TaxTreatment = "Exclusive" | "Inclusive" | "Zero Rated" | "Exempt";
+export type TaxTreatment = "Exclusive" | "Inclusive" | "Zero Rated" | "Exempt" | "No VAT";
 export interface InvoiceLine {
   id: string;
   description: string;

@@ -4,6 +4,11 @@ import {
   type StagingConfig,
 } from "../staging/supabase.js";
 import { isProductionPasswordOnly } from "./production-password-policy.js";
+import {
+  initialFinanceApprovalId,
+  parseInitialFinanceAuthority,
+  type InitialFinanceAuthority,
+} from "../accounting/initial-live.js";
 
 const fixtureCompany = "11111111-1111-4111-8111-111111111111";
 const reviewUser = "52f925bd-8744-48cc-8781-d20109387d14";
@@ -25,7 +30,8 @@ export interface ProductionRuntime extends StagingConfig {
   configurationApprovalId: string;
   encryptionKey: string;
   allowedOrigins: ReadonlySet<string>;
-  financialPostingEnabled: false;
+  financialPostingEnabled: boolean;
+  financialApprovalId?: string;
   realDocumentProcessingEnabled: false;
 }
 export function productionRuntime(
@@ -118,8 +124,16 @@ export function productionRuntime(
   }
   if (!allowedOrigins.size || allowedOrigins.size > 8)
     fail("approved_production_candidate_origins_required");
+  const financialPostingEnabled =
+    env.AZZORA_PRODUCTION_FINANCIAL_POSTING === "true";
   if (
-    env.AZZORA_PRODUCTION_FINANCIAL_POSTING !== "false" ||
+    !["false", "true"].includes(
+      env.AZZORA_PRODUCTION_FINANCIAL_POSTING || "",
+    ) ||
+    (financialPostingEnabled &&
+      (env.AZZORA_PRODUCTION_FINANCIAL_APPROVAL !== initialFinanceApprovalId ||
+        companyId !== "fc525d78-bc83-4845-96f1-fb402bb07465" ||
+        vercelProjectId !== "prj_2Kr1T82kCiU5eSk1SZFOcAPQlBfV")) ||
     env.AZZORA_PRODUCTION_REAL_DOCUMENT_PROCESSING !== "false" ||
     env.AZZORA_AI_ENABLED === "true" ||
     env.AZZORA_AI_GENERAL_DOCUMENTS ||
@@ -138,7 +152,10 @@ export function productionRuntime(
     configurationApprovalId,
     encryptionKey,
     allowedOrigins,
-    financialPostingEnabled: false,
+    financialPostingEnabled,
+    ...(financialPostingEnabled
+      ? { financialApprovalId: initialFinanceApprovalId }
+      : {}),
     realDocumentProcessingEnabled: false,
   };
 }
@@ -146,7 +163,7 @@ export function productionRuntime(
 export function assertProductionIdentity(
   value: unknown,
   runtime: ProductionRuntime,
-): void {
+): InitialFinanceAuthority | undefined {
   if (!value || typeof value !== "object")
     throw new StagingServiceError(503, "production_database_contract_required");
   const v = value as Record<string, unknown>;
@@ -159,7 +176,7 @@ export function assertProductionIdentity(
     v.region !== runtime.databaseRegion ||
     v.vercelProjectId !== runtime.vercelProjectId ||
     v.configurationApprovalId !== runtime.configurationApprovalId ||
-    v.financialPostingEnabled !== false ||
+    v.financialPostingEnabled !== runtime.financialPostingEnabled ||
     v.realDocumentProcessingEnabled !== false ||
     v.fictionalData !== false ||
     v.privateStorageBucket !== "azzora-private" ||
@@ -171,6 +188,18 @@ export function assertProductionIdentity(
     )
   )
     throw new StagingServiceError(503, "production_database_contract_required");
+  if (runtime.financialPostingEnabled) {
+    const authority = parseInitialFinanceAuthority(v.financialAuthority);
+    if (
+      authority.companyId !== runtime.companyId ||
+      authority.approvalId !== runtime.financialApprovalId
+    )
+      throw new StagingServiceError(
+        503,
+        "production_financial_approval_required",
+      );
+    return authority;
+  }
 }
 export function assertProductionActor(
   actor: {

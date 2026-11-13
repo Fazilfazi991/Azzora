@@ -151,7 +151,9 @@ function approvals(p: ProductionAccountingPolicy): PolicyApproval[] {
     })),
   );
 }
-function options(state: SharedCompanyState): ProductionCommandOptions {
+function options(
+  state: SharedCompanyState,
+): ProductionCommandOptions & { policy: ProductionAccountingPolicy } {
   const p = policy(state);
   return {
     policy: p,

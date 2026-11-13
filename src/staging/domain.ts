@@ -1,6 +1,15 @@
 import { isPasswordOnlyClientReview } from "../backend/client-review-policy.js";
 import { isProductionPasswordOnly } from "../backend/production-password-policy.js";
 import {
+  assertInitialCommand,
+  assertInitialFinanceActor,
+  initialCommandDate,
+  prepareInitialPostingDay,
+  type InitialFinanceAuthority,
+} from "../accounting/initial-live.js";
+import { applyInitialOpening } from "../accounting/initial-opening.js";
+import type { OpeningWorkflowAction } from "../accounts-review/opening-setup.js";
+import {
   assertProductionPostingAllowed,
   productionPolicyDigest,
   productionCompanySettingsDigest,
@@ -116,7 +125,8 @@ export interface SharedCommand {
 }
 /** Server-injected only. These receipts/configuration are never taken from a command payload. */
 export interface ProductionCommandOptions {
-  policy: ProductionAccountingPolicy;
+  policy?: ProductionAccountingPolicy;
+  initialLive?: InitialFinanceAuthority;
   context: Omit<
     ProductionPostingContext,
     | "actor"
@@ -135,7 +145,18 @@ function productionGate(
   amountFils?: string,
   operation: "post" | "approve-expense" = "post",
 ) {
-  if (!options)
+  if (options?.initialLive) {
+    if (!options.context.runtimeContractVerified)
+      throw new AccessDenied("The verified production contract is required.");
+    assertInitialFinanceActor(
+      options.initialLive,
+      actor,
+      options.context.now,
+      operation,
+    );
+    return;
+  }
+  if (!options?.policy)
     throw new ProductionPolicyError([
       {
         field: "approvals",
@@ -218,14 +239,25 @@ function finishCommand(
             sum + j.lines.reduce((s, l) => s + BigInt(l.debitFils), 0n),
           0n,
         );
-      const cutoff = options?.policy.cutover?.date;
+      const cutoff =
+        options?.initialLive?.effectiveFrom || options?.policy?.cutover?.date;
+      const approvedOpening =
+        !!options?.initialLive &&
+        command.kind === "accounts.action" &&
+        (command.payload as { action?: { kind?: string } }).action?.kind ===
+          "opening-post";
       if (
         !cutoff ||
-        after
-          .slice(before.length)
-          .some(
-            (j) => j.date < cutoff || j.date < options!.policy.effectiveFrom,
-          )
+        (!approvedOpening &&
+          after
+            .slice(before.length)
+            .some(
+              (j) =>
+                j.date < cutoff ||
+                j.date <
+                  (options!.initialLive?.effectiveFrom ||
+                    options!.policy!.effectiveFrom),
+            ))
       )
         throw new ProductionPolicyError([
           {
@@ -248,6 +280,10 @@ export interface SharedCommandScope {
   financial: boolean;
   capability?: BackendAction;
   catalogAction?: "create-ledger-account";
+  financialAction?: string;
+  openingOperation?: "opening-reconcile" | "opening-approve" | "opening-post";
+  openingDigest?: string;
+  openingRevision?: number;
 }
 const object = (value: unknown): Record<string, unknown> => {
   if (!value || typeof value !== "object" || Array.isArray(value))
@@ -433,6 +469,22 @@ export function sharedCommandScope(
       state.finance.bills.find((item) => item.id === id);
     return {
       workspace: "accountant",
+      ...(state.mode === "production"
+        ? { financialAction: String(action.kind) }
+        : {}),
+      ...(state.mode === "production" &&
+      ["opening-reconcile", "opening-approve", "opening-post"].includes(
+        String(action.kind),
+      )
+        ? {
+            openingDigest:
+              typeof action.digest === "string" ? action.digest : "",
+            openingRevision:
+              typeof action.revision === "number" ? action.revision : -1,
+            openingOperation: action.kind as
+              "opening-reconcile" | "opening-approve" | "opening-post",
+          }
+        : {}),
       ...(state.mode === "production" && action.kind === "create-ledger-account"
         ? { catalogAction: "create-ledger-account" as const }
         : {}),
@@ -451,6 +503,8 @@ export function sharedCommandScope(
             "create-cash-account",
             "create-ledger-account",
             "opening-setup-draft",
+            "opening-reconcile",
+            "opening-approve",
           ].includes(String(action.kind)) ||
             ([
               "invoice",
@@ -635,7 +689,10 @@ function syncFinanceInvoice(state: SharedCompanyState, item: ReviewDocument) {
     id: item.id,
     customerId: customer.id,
     projectId: item.projectId || "",
-    number: old?.number || item.id,
+    number:
+      state.mode === "production"
+        ? item.invoiceReference || old?.number || ""
+        : old?.number || item.id,
     date: item.date,
     due: item.due,
     description: item.description,
@@ -645,7 +702,11 @@ function syncFinanceInvoice(state: SharedCompanyState, item: ReviewDocument) {
           description: line.description,
           quantity: line.quantity,
           rate: line.rate,
-          tax: "Zero Rated" as const,
+          tax:
+            state.mode === "production" &&
+            state.manager.operations?.settings.tax === "No VAT"
+              ? ("No VAT" as const)
+              : ("Zero Rated" as const),
         }))
       : [
           {
@@ -653,7 +714,11 @@ function syncFinanceInvoice(state: SharedCompanyState, item: ReviewDocument) {
             description: item.description,
             quantity: "1",
             rate: amountString(BigInt(item.amountFils)),
-            tax: "Zero Rated",
+            tax:
+              state.mode === "production" &&
+              state.manager.operations?.settings.tax === "No VAT"
+                ? "No VAT"
+                : "Zero Rated",
           },
         ],
     discount: "0",
@@ -914,6 +979,15 @@ export function applySharedCommand(
       : undefined;
   requireWorkspace(actor, scope.workspace);
   if (previous.mode === "production" && scope.financial)
+    if (production?.initialLive)
+      assertInitialCommand(
+        production.initialLive,
+        previous,
+        actor,
+        command,
+        production.context.now,
+      );
+  if (previous.mode === "production" && scope.financial)
     productionGate(previous, actor, scope, production);
   if (previous.mode === "production" && command.kind === "accounts.action") {
     const action = object(object(command.payload).action);
@@ -975,6 +1049,15 @@ export function applySharedCommand(
       );
   }
   const next = structuredClone(previous);
+  if (
+    previous.mode === "production" &&
+    scope.financial &&
+    production?.initialLive &&
+    scope.openingOperation !== "opening-post"
+  ) {
+    const postingDate = initialCommandDate(previous, command);
+    if (postingDate) prepareInitialPostingDay(next, postingDate);
+  }
   refreshCommercialView(next);
   if (applyManagerCommand(next, command, actor)) {
     refreshCommercialView(next);
@@ -1501,13 +1584,35 @@ export function applySharedCommand(
       submission.approvedAt = new Date().toISOString();
       if (previous.mode === "production")
         submission.approvalPolicyDigest = productionPolicyDigest(
-          production!.policy,
+          production!.initialLive || production!.policy,
         );
       submission.approvalSnapshot = JSON.stringify({ ...submission });
       break;
     }
     case "accounts.action": {
       const action = object(p.action) as unknown as ReviewAction;
+      if (
+        ["opening-reconcile", "opening-approve", "opening-post"].includes(
+          action.kind,
+        )
+      ) {
+        if (
+          previous.mode !== "production" ||
+          !production?.initialLive ||
+          !production.context.runtimeContractVerified
+        )
+          throw new AccessDenied(
+            "Opening decisions require the verified production authority.",
+          );
+        applyInitialOpening(
+          next,
+          action as OpeningWorkflowAction,
+          actor,
+          production.initialLive,
+          production.context.now,
+        );
+        break;
+      }
       if (previous.mode === "production" && action.kind === "expense") {
         const submission = next.expenseSubmissions.find(
           (s) => s.id === action.id,
@@ -1515,7 +1620,9 @@ export function applySharedCommand(
         if (
           !submission ||
           submission.approvalPolicyDigest !==
-            productionPolicyDigest(production!.policy)
+            productionPolicyDigest(
+              production!.initialLive || production!.policy,
+            )
         )
           throw new ProductionPolicyError([
             {

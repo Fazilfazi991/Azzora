@@ -2,7 +2,12 @@ import {
   assertReviewReadyForPosting,
   saveManualDocumentDraft,
 } from "./documents/review.js";
-import { openingSetupSchema, type OpeningSetupDraft } from "./opening-setup.js";
+import {
+  openingSetupSchema,
+  type OpeningSetupDraft,
+  type OpeningReviewState,
+  type OpeningWorkflowAction,
+} from "./opening-setup.js";
 import {
   createLedgerAccount,
   type CreateLedgerAccount,
@@ -69,6 +74,7 @@ type PostingFields = Omit<EntryFields, "items"> & {
 };
 
 export interface ReviewDocument {
+  openingBalance?: true;
   id: string;
   party: string;
   date: string;
@@ -121,6 +127,7 @@ export interface ReviewAttachment {
 export interface ReviewState {
   /** Unapproved manual setup only; never included in journal balances. */
   openingSetup?: OpeningSetupDraft;
+  openingReview?: OpeningReviewState;
   /** Derived from the same canonical commercial records in shared staging;
    * never a second persisted credit/financial write path. */
   commercialAdjustments?: {
@@ -432,6 +439,7 @@ export function createReviewState(): ReviewState {
 }
 
 export type ReviewAction =
+  | OpeningWorkflowAction
   | CreateLedgerAccount
   | { kind: "opening-setup-draft"; id: string; draft: OpeningSetupDraft }
   | {
@@ -476,6 +484,7 @@ export type ReviewAction =
     }
   | {
       kind: "invoice" | "update-invoice-draft";
+      invoiceReference?: string;
       id: string;
       party: string;
       date: string;
@@ -592,11 +601,25 @@ export function applyReviewAction(
   if (recording) requireRecordingContext(recording);
   if (action.kind === "create-ledger-account")
     return createLedgerAccount(previous, action);
-  if (action.kind === "opening-setup-draft")
+  if (
+    ["opening-reconcile", "opening-approve", "opening-post"].includes(
+      action.kind,
+    )
+  )
+    throw Error(
+      "Opening review decisions require the authorized company server.",
+    );
+  if (action.kind === "opening-setup-draft") {
+    if (previous.openingReview?.posted)
+      throw Error(
+        "Posted starting figures are immutable. A separately approved correction is required.",
+      );
     return {
       ...structuredClone(previous),
       openingSetup: openingSetupSchema.parse(action.draft),
+      openingReview: { revision: (previous.openingReview?.revision || 0) + 1 },
     };
+  }
   const recordJournal = (
     state: ReviewState,
     id: string,
@@ -956,6 +979,7 @@ export function applyReviewAction(
       amountFils: amount.toString(),
       status: action.issue ? "Issued" : "Draft",
       invoiceType,
+      invoiceReference: action.invoiceReference?.trim() || undefined,
       projectId: action.projectId || undefined,
       revision: existing ? (existing.revision || 0) + 1 : 0,
       ...(calculated

@@ -51,6 +51,10 @@ export function reviewPdf(
     throw Error(
       "Production PDF requires an approved issued no-VAT Normal invoice from 15 November 2026.",
     );
+  if (liveInvoice && !liveInvoice.invoiceReference?.trim())
+    throw Error(
+      "Production PDF requires an explicit approved invoice reference.",
+    );
   const data = reviewSnapshot(
     state,
     selection?.asOf,
@@ -303,7 +307,13 @@ export function reviewPdf(
                 ? "Normal invoice"
                 : "Tax invoice - demo",
     );
-    row("Reference", invoice.invoiceReference || invoice.id, true);
+    row(
+      "Reference",
+      live
+        ? liveInvoice!.invoiceReference!
+        : invoice.invoiceReference || invoice.id,
+      true,
+    );
     row(
       "Document type",
       bill ? "Purchase bill" : (invoice.invoiceType ?? "Tax Invoice"),

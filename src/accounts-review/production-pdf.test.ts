@@ -65,6 +65,27 @@ function evidence(name: string, bytes: ArrayBuffer) {
 }
 
 describe("approved issued Normal invoice PDF context", () => {
+  it("prints the explicit approved reference and never the internal invoice ID", () => {
+    const { state, invoice } = fixture();
+    invoice.invoiceReference = "APPROVED-NORMAL-015";
+    const before = structuredClone(state),
+      bytes = reviewPdf(state, invoice.id, selection, context),
+      output = text(bytes);
+    expect(output).toContain("APPROVED-NORMAL-015");
+    expect(output).not.toContain(invoice.id);
+    expect(state).toEqual(before);
+    evidence("normal-explicit-reference-fictional-qa.pdf", bytes);
+  });
+  it.each([undefined, "", "   "])(
+    "refuses live PDF without an explicit invoice reference %j",
+    (reference) => {
+      const { state, invoice } = fixture();
+      invoice.invoiceReference = reference;
+      expect(() => reviewPdf(state, invoice.id, selection, context)).toThrow(
+        /explicit approved invoice reference/,
+      );
+    },
+  );
   it("prints stored subtotal, approved discount and total without recomputing or mutating them", () => {
     const { state, invoice } = fixture(1, "500");
     const before = structuredClone(state),

@@ -149,6 +149,35 @@ try {
   await expect(
     page.getByText("Opening balances — setup draft", { exact: true }),
   ).toBeVisible();
+  for (const [route, title] of [
+    ["ledger", "General ledger"],
+    ["pnl", "Profit & loss"],
+    ["balance", "Balance sheet"],
+    ["trial", "Trial balance"],
+    ["aging", "Receivable & payable aging"],
+    ["project-reports", "Project & department reports"],
+  ]) {
+    await page.goto(`http://127.0.0.1:5296/accountant.html#/${route}`);
+    await expect(
+      page.getByRole("heading", { name: title, exact: true, level: 1 }),
+    ).toBeVisible();
+    if (route === "ledger") {
+      await expect(
+        page.getByRole("heading", { name: "No ledger accounts configured" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("combobox", { name: "Account", exact: true }),
+      ).toBeDisabled();
+      await page.screenshot({
+        path: `${out}/empty-ledger-1440.png`,
+        fullPage: true,
+      });
+    }
+  }
+  checks.push(
+    "Fresh empty production state renders GL, P&L, Balance Sheet, Trial Balance, Aging and project reports without a blank app; GL identifies missing accounts without asserting opening balances.",
+  );
+  await page.goto("http://127.0.0.1:5296/accountant.html#/banking");
   await page.getByRole("button", { name: "+ Add opening line" }).click();
   await page
     .getByLabel("Account / customer / supplier")

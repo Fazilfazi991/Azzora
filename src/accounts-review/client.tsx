@@ -701,9 +701,13 @@ function Ledger({
           <label className="review-account-picker">
             Account{" "}
             <select
-              value={selected}
+              value={ledger?.account.id || ""}
+              disabled={data.accounts.length === 0}
               onChange={(event) => setSelected(event.target.value)}
             >
+              {data.accounts.length === 0 && (
+                <option value="">No accounts configured</option>
+              )}
               {data.accounts.map((item) => (
                 <option value={item.id} key={item.id}>
                   {item.code} · {item.name}
@@ -713,29 +717,48 @@ function Ledger({
           </label>
         </>
       )}
-      <Table
-        label={`General ledger: ${ledger.account.name}`}
-        heads={["Date", "Journal", "Description", "Debit", "Credit", "Running"]}
-      >
-        {ledger.lines.map((item, index) => (
-          <tr key={`${item.journalId}-${index}`}>
-            <td>{date(item.date)}</td>
-            <td>{item.journalId}</td>
-            <td>{item.memo}</td>
-            <td className="money">
-              {BigInt(item.debitFils) > 0n ? money(item.debitFils) : "—"}
-            </td>
-            <td className="money">
-              {BigInt(item.creditFils) > 0n ? money(item.creditFils) : "—"}
-            </td>
-            <td className="money">{money(item.runningBalanceFils)}</td>
-          </tr>
-        ))}
-      </Table>
-      <p className="review-reconcile">
-        Opening: {money(ledger.openingBalanceFils)} · Closing:{" "}
-        {money(ledger.closingBalanceFils)}
-      </p>
+      {!ledger ? (
+        <section className="panel review-card" role="status">
+          <h2>No ledger accounts configured</h2>
+          <p>
+            Set up the company accounts and ledgers before viewing account
+            entries. No opening balance has been supplied or approved.
+          </p>
+        </section>
+      ) : (
+        <>
+          <Table
+            label={`General ledger: ${ledger.account.name}`}
+            heads={[
+              "Date",
+              "Journal",
+              "Description",
+              "Debit",
+              "Credit",
+              "Running",
+            ]}
+          >
+            {ledger.lines.map((item, index) => (
+              <tr key={`${item.journalId}-${index}`}>
+                <td>{date(item.date)}</td>
+                <td>{item.journalId}</td>
+                <td>{item.memo}</td>
+                <td className="money">
+                  {BigInt(item.debitFils) > 0n ? money(item.debitFils) : "—"}
+                </td>
+                <td className="money">
+                  {BigInt(item.creditFils) > 0n ? money(item.creditFils) : "—"}
+                </td>
+                <td className="money">{money(item.runningBalanceFils)}</td>
+              </tr>
+            ))}
+          </Table>
+          <p className="review-reconcile">
+            Opening: {money(ledger.openingBalanceFils)} · Closing:{" "}
+            {money(ledger.closingBalanceFils)}
+          </p>
+        </>
+      )}
     </>
   );
 }

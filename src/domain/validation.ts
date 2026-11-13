@@ -649,7 +649,13 @@ export function validateSavedShape(value: unknown): asserts value is Database {
             ),
           ),
         })
-        .passthrough(),
+        .passthrough()
+        .superRefine((settings, context) => {
+          if (settings.tax !== "Unconfigured")
+            for (const key of ["vatPercentage", "retentionPercentage"] as const)
+              if (settings[key] === "")
+                context.addIssue({ code: "custom", path: [key], message: "A configured financial policy requires an explicit percentage." });
+        }),
       op.settings,
       "operations.settings",
     );

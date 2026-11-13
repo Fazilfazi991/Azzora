@@ -7,6 +7,7 @@ import {
   type SharedActor,
 } from "./domain";
 import { hydrateCanonical, serializeCanonical } from "./canonical";
+import { validateSavedShape } from "../domain/validation";
 import {
   inspectOpeningSetup,
   openingSetupSchema,
@@ -286,4 +287,11 @@ it("Owner can save an unconfigured company profile without inventing financial d
         owner,
       ),
     ).toThrow(/approval/);
+});
+it("blank policy fields are valid only for explicit unconfigured setup, not corrupted configured records", () => {
+  const state = fixture();
+  state.manager.operations!.settings.retentionPercentage = "";
+  expect(() => validateSavedShape(state.manager)).not.toThrow();
+  state.manager.operations!.settings.tax = "Exclusive";
+  expect(() => validateSavedShape(state.manager)).toThrow(/operations.settings.vatPercentage/);
 });

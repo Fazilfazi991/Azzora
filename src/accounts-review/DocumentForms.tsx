@@ -390,7 +390,9 @@ export function PurchaseBills({ data, act, editingId }: Props) {
             Review the original beside editable details, then save a draft.
             {(data as CompletionSnapshot).documentAi?.enabled
               ? " DeepSeek suggestions need your review before use."
-              : " Paid AI is unavailable; local PDF reading and prepared demo suggestions are labeled separately."}
+              : productionEnabled
+                ? " External AI is disabled; attach an original for manual draft review."
+                : " Paid AI is unavailable; local PDF reading and prepared demo suggestions are labeled separately."}
           </p>
           <strong>Choose a document →</strong>
         </a>

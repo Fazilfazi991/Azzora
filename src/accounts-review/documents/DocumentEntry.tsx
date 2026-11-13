@@ -22,6 +22,7 @@ import { blankManualReview, inspectFields, scopeFor } from "./review";
 import "./entry.css";
 import { cashAccountsFor, type CompletionSnapshot } from "../completion-ui";
 import { accountsUrl } from "../http";
+import { productionEnabled } from "../../staging/client";
 
 const PdfPreview = lazy(() => import("./PdfPreview"));
 type Snapshot = ReturnType<typeof reviewSnapshot> & CompletionSnapshot;
@@ -81,7 +82,8 @@ export function DocumentEntry({
   const [saveError, setSaveError] = useState("");
   const saveFeedback = useRef<HTMLDivElement>(null);
   const requiresConsent = Boolean(
-    data.documentAi?.generalDocuments || data.documentAi?.enabled,
+    !productionEnabled &&
+    (data.documentAi?.generalDocuments || data.documentAi?.enabled),
   );
   const [uploadStatus, setUploadStatus] = useState("");
   const [uploadName, setUploadName] = useState("");
@@ -526,17 +528,27 @@ export function DocumentEntry({
         <div>
           <span className="eyebrow">PURCHASES & EXPENSES</span>
           <h1>Read a bill</h1>
-          <p>Upload → auto-fill → review → save a draft.</p>
+          <p>
+            {productionEnabled
+              ? "Attach → enter details → review → save a draft."
+              : "Upload → auto-fill → review → save a draft."}
+          </p>
         </div>
         <a className="button" href="#/bills">
           ← Purchase bills
         </a>
       </div>
       <div className="prototype-note">
-        <strong>CLIENT REVIEW · FICTIONAL DATA</strong>
+        <strong>
+          {productionEnabled
+            ? "COMPANY SETUP · MANUAL REVIEW"
+            : "CLIENT REVIEW · FICTIONAL DATA"}
+        </strong>
         <span>
-          {data.documentAi?.message ||
-            "Paid AI is disabled. Text PDFs use local PDF.js extraction; photos and scanned PDFs need manual entry. Prepared sample suggestions are labeled separately."}
+          {productionEnabled
+            ? "External AI document processing is disabled. Attach the original for private manual review, edit the details and save a draft. Saving never creates a financial posting."
+            : data.documentAi?.message ||
+              "Paid AI is disabled. Text PDFs use local PDF.js extraction; photos and scanned PDFs need manual entry. Prepared sample suggestions are labeled separately."}
         </span>
       </div>
       <section
@@ -544,7 +556,7 @@ export function DocumentEntry({
         aria-label="Upload a document"
         aria-busy={Boolean(uploadStatus)}
       >
-        {requiresConsent && (
+        {!productionEnabled && requiresConsent && (
           <label className="entry-check entry-processing-consent">
             <input
               type="checkbox"
@@ -560,15 +572,23 @@ export function DocumentEntry({
         <label
           className={`button${(requiresConsent && !processingConsent) || busy ? " entry-upload-disabled" : ""}`}
         >
-          {uploadStatus ? "Processing document…" : "Upload & Auto-Fill"}
+          {uploadStatus
+            ? "Processing document…"
+            : productionEnabled
+              ? "Attach for manual review"
+              : "Upload & Auto-Fill"}
           <input
             aria-label="Upload document"
             type="file"
             accept="application/pdf,image/png,image/jpeg"
-            disabled={busy || (requiresConsent && !processingConsent)}
+            disabled={
+              busy ||
+              (!productionEnabled && requiresConsent && !processingConsent)
+            }
             onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file) void upload(file);
+              if (file)
+                void upload(file, productionEnabled ? "manual" : "auto");
               e.target.value = "";
             }}
           />
@@ -583,21 +603,27 @@ export function DocumentEntry({
         </button>
         <span id="entry-processing-note">
           PDF, PNG or JPEG · up to 2 MB.{" "}
-          {data.documentAi?.enabled
-            ? "Auto-Fill can process new fictional documents after consent, subject to server authorization and spending limits. Review every suggestion."
-            : "Live AI is unavailable. Selectable PDF text may be read locally; photos/scans need manual entry."}{" "}
-          Real company documents are not authorized. Manual entry opens a blank
-          form without a file or AI request.
+          {productionEnabled
+            ? "Private attachment and manual draft entry only. No AI request or prepared sample suggestions are used."
+            : data.documentAi?.enabled
+              ? "Auto-Fill can process new fictional documents after consent, subject to server authorization and spending limits. Review every suggestion."
+              : "Live AI is unavailable. Selectable PDF text may be read locally; photos/scans need manual entry."}{" "}
+          {!productionEnabled && "Real company documents are not authorized. "}
+          Manual entry opens a blank form without a file or AI request.
         </span>
-        <a href="/document-samples/07.png" download>
-          Download sample bill
-        </a>
-        <a href="/document-samples/12.pdf" download>
-          Scanned PDF sample
-        </a>
-        <a href="/document-samples/03.png" download>
-          Arabic / English sample
-        </a>
+        {!productionEnabled && (
+          <>
+            <a href="/document-samples/07.png" download>
+              Download sample bill
+            </a>
+            <a href="/document-samples/12.pdf" download>
+              Scanned PDF sample
+            </a>
+            <a href="/document-samples/03.png" download>
+              Arabic / English sample
+            </a>
+          </>
+        )}
       </section>
       {busy && uploadStatus && (
         <div
@@ -1053,8 +1079,8 @@ export function DocumentEntry({
                     setConfirmed(false);
                   }}
                 />
-                Remember this supplier’s classification and category in this
-                demo session
+                Remember this supplier’s classification and category in this{" "}
+                {productionEnabled ? "company workspace" : "demo session"}
               </label>
               <label className="entry-check">
                 <input
@@ -1194,10 +1220,9 @@ export function DocumentEntry({
                 </p>
               )}
               <p>
-                Saving a draft never posts. Creating a purchase bill or
-                recording an expense is a separate explicit action through the
-                existing demo journal workflow and currently requires a VAT-free
-                total. Save any edits before this action.
+                {productionEnabled
+                  ? "Saving a draft never posts. Issuing purchase bills and recording expenses remain disabled until approved company policy and financial cutover."
+                  : "Saving a draft never posts. Creating a purchase bill or recording an expense is a separate explicit action through the existing demo journal workflow and currently requires a VAT-free total. Save any edits before this action."}
               </p>
             </fieldset>
           </form>
@@ -1289,7 +1314,8 @@ function CorrectionHistory({ doc }: { doc: DocumentReview }) {
         </summary>
         <p>
           Original suggestions are unchanged. These are the accountant’s saved
-          reviews in this demo session.
+          reviews in this{" "}
+          {productionEnabled ? "company workspace" : "demo session"}.
         </p>
         {!doc.corrections.length && <p>No reviews saved yet.</p>}
         {doc.corrections.map((correction, index) => {

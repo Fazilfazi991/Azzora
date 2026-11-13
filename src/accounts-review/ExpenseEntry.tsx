@@ -3,7 +3,7 @@ import type { reviewSnapshot } from "./domain";
 import "./expense-entry.css";
 import { cashAccountsFor, type CompletionSnapshot } from "./completion-ui";
 import { accountsUrl } from "./http";
-import { stagingEnabled } from "../staging/client";
+import { stagingEnabled, productionEnabled } from "../staging/client";
 import type { StagingExpenseSubmission } from "../store";
 
 type Snapshot = ReturnType<typeof reviewSnapshot>;
@@ -227,7 +227,11 @@ export function ExpenseEntry({
       });
       if (saved) {
         form.reset();
-        setNotice("Paid expense recorded in the fictional demo ledger.");
+        setNotice(
+          productionEnabled
+            ? "Company expense saved."
+            : "Paid expense recorded in the fictional demo ledger.",
+        );
       } else
         setError(
           "Unable to confirm whether the expense was saved. Review the message above and check the ledger before submitting again.",
@@ -260,7 +264,9 @@ export function ExpenseEntry({
         })
       )
         setNotice(
-          "Approved expense recorded once in the shared fictional ledger.",
+          productionEnabled
+            ? "Approved company expense saved."
+            : "Approved expense recorded once in the shared fictional ledger.",
         );
     } catch (problem) {
       setError(
@@ -301,14 +307,18 @@ export function ExpenseEntry({
       </div>
       <div className="prototype-note" role="note">
         <strong>
-          {stagingEnabled
-            ? "SHARED STAGING · FICTIONAL DATA"
-            : "CLIENT REVIEW · FICTIONAL DATA"}
+          {productionEnabled
+            ? "COMPANY SETUP · POSTING DISABLED"
+            : stagingEnabled
+              ? "SHARED STAGING · FICTIONAL DATA"
+              : "CLIENT REVIEW · FICTIONAL DATA"}
         </strong>
         <span>
-          {stagingEnabled
-            ? "Approved project expenses are shared with Manager. Real financial posting remains disabled."
-            : "Actions update only this isolated demo ledger. No Manager CRM records or real money are changed."}
+          {productionEnabled
+            ? "Expense ledgers can be prepared. Expense posting remains disabled until approved financial policies and cutover."
+            : stagingEnabled
+              ? "Approved project expenses are shared with Manager. Real financial posting remains disabled."
+              : "Actions update only this isolated demo ledger. No Manager CRM records or real money are changed."}
         </span>
       </div>
       {approvedSubmissions.length > 0 && (
@@ -318,8 +328,9 @@ export function ExpenseEntry({
         >
           <h2>Approved project expenses</h2>
           <p>
-            Review the approved source and choose its payment account. Recording
-            is an explicit fictional transaction.
+            {productionEnabled
+              ? "Approved sources remain visible for review. Financial posting requires separately approved company policies and cutover."
+              : "Review the approved source and choose its payment account. Recording is an explicit fictional transaction."}
           </p>
           <div className="field-grid">
             <label>
@@ -650,8 +661,9 @@ export function ExpenseEntry({
           {busy ? "Saving…" : "Record paid expense"}
         </button>
         <p className="aside-note">
-          This records a payment in the fictional demo journal. Real approvals
-          and VAT treatment remain subject to owner policy.
+          {productionEnabled
+            ? "Paid expense posting is disabled pending approved company policy and financial cutover."
+            : "This records a payment in the fictional demo journal. Real approvals and VAT treatment remain subject to owner policy."}
         </p>
       </form>
       <div className="panel table-panel expense-records">

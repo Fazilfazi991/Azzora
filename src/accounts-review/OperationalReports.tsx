@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { displayMoney, type CompletionSnapshot } from "./completion-ui";
+import { productionEnabled } from "../staging/client";
 
 function ReportTable({
   heads,
@@ -51,12 +52,18 @@ export function OperationalReports({
             {trial
               ? `Balances as of ${data.asOf}.`
               : `Posted activity for ${data.period.from} – ${data.period.to}.`}{" "}
-            All figures derive from the demo journal.
+            {productionEnabled
+              ? "Only posted company journal entries are included; opening balances remain unapproved."
+              : "All figures derive from the demo journal."}
           </p>
         </div>
       </div>
       <div className="prototype-note" role="note">
-        <strong>CLIENT REVIEW · FICTIONAL DATA</strong>
+        <strong>
+          {productionEnabled
+            ? "COMPANY SETUP · POSTING DISABLED"
+            : "CLIENT REVIEW · FICTIONAL DATA"}
+        </strong>
         <span>
           Draft documents are excluded. VAT policy and real accounting use
           remain unapproved.

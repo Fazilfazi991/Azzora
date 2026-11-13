@@ -209,6 +209,29 @@ try {
   checks.push(
     "Production invoice entry starts with no synthetic customer and issuance disabled.",
   );
+  await page.goto("http://127.0.0.1:5296/accountant.html#/document-entry");
+  await expect(
+    page.getByText("Attach for manual review", { exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('a[href^="/document-samples/"]')).toHaveCount(0);
+  await expect(
+    page.getByText("Upload & Auto-Fill", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText(
+      "Private attachment and manual draft entry only. No AI request or prepared sample suggestions are used.",
+      { exact: false },
+    ),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Enter Manually", exact: true })
+    .click();
+  await expect(page.getByLabel("Supplier name", { exact: true })).toHaveValue(
+    "",
+  );
+  checks.push(
+    "Production document review offers manual attachment/entry only, hides fictional sample links and starts with no synthetic supplier suggestions.",
+  );
   const ownerContext = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
   });

@@ -472,6 +472,7 @@ function Invoices({
                   </a>
                   <button
                     className="button button-secondary"
+                    disabled={productionEnabled}
                     onClick={() => act({ kind: "issue-invoice", id: item.id })}
                   >
                     Issue{" "}
@@ -491,7 +492,9 @@ function Invoices({
               )}
               <small>
                 <a href={accountsUrl(`/pdf/${encodeURIComponent(item.id)}`)}>
-                  Download demo PDF
+                  {productionEnabled
+                    ? "Download draft PDF · not a legal invoice"
+                    : "Download demo PDF"}
                 </a>
               </small>
             </td>
@@ -506,7 +509,8 @@ function Invoices({
         )}
         <tr className="invoice-table-note">
           <td colSpan={8}>
-            Showing {rows.length} of {data.invoices.length} demo records · Draft
+            Showing {rows.length} of {data.invoices.length}{" "}
+            {productionEnabled ? "company records" : "demo records"} · Draft
             normal and proforma documents are excluded from posted revenue.
           </td>
         </tr>
@@ -761,7 +765,9 @@ function Statement({
             `/pdf/${balance ? "balance" : "pnl"}?${new URLSearchParams({ from: data.period.from, to: data.period.to, asOf: data.asOf }).toString()}`,
           )}
         >
-          Download demo PDF
+          {productionEnabled
+            ? "Download setup report PDF"
+            : "Download demo PDF"}
         </a>
       </Head>
       <Note />
@@ -770,7 +776,11 @@ function Statement({
         <section className="panel statement">
           <div className="statement-head">
             <div>
-              <span className="eyebrow">AZZORA · FICTIONAL REVIEW</span>
+              <span className="eyebrow">
+                {productionEnabled
+                  ? "AZZORA · COMPANY SETUP REPORT"
+                  : "AZZORA · FICTIONAL REVIEW"}
+              </span>
               <h2>{balance ? "Balance sheet" : "Profit & loss"}</h2>
             </div>
             <span className="badge badge-neutral">
@@ -824,12 +834,14 @@ function Statement({
           <span className="eyebrow">RECONCILIATION</span>
           <h3>From posted journals</h3>
           <p>
-            Every fictional invoice, bill, receipt, supplier payment and paid
-            expense updates the same journal used by this report.
+            {productionEnabled
+              ? "This report uses the authorized company's posted journal only. Unapproved opening drafts are excluded."
+              : "Every fictional invoice, bill, receipt, supplier payment and paid expense updates the same journal used by this report."}
           </p>
           <p>
-            VAT, cutover balances, period locks and real accounting policy
-            remain outside this client review.
+            {productionEnabled
+              ? "VAT, opening balances and cutover require Owner and Accountant approval before financial posting is enabled."
+              : "VAT, cutover balances, period locks and real accounting policy remain outside this client review."}
           </p>
           <a href={link("ledger")}>Inspect general ledger →</a>
         </aside>
@@ -1090,7 +1102,9 @@ function App() {
                   )
                 ? ""
                 : action.kind === "create-bill-from-review"
-                  ? "Purchase bill created once through the demo ledger."
+                  ? productionEnabled
+                    ? "Company purchase draft saved. Financial posting remains disabled."
+                    : "Purchase bill created once through the demo ledger."
                   : productionEnabled
                     ? "Company draft saved. Financial posting remains disabled."
                     : `${action.kind === "issue-invoice" ? "Issued" : "Recorded"} ${result.id} in the fictional review ledger.`,

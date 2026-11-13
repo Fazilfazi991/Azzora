@@ -1,5 +1,6 @@
 /** Local UI acceptance with an explicit fictional, in-memory API. Not hosted/Auth evidence. */
-/* global process, URL, document, innerWidth, console */
+/* global process, URL, document, innerWidth, console, structuredClone */
+import { Buffer } from "node:buffer";
 import { build, preview } from "vite";
 import { build as bundle } from "esbuild";
 import { pathToFileURL } from "node:url";
@@ -37,16 +38,17 @@ try {
     serializeCanonical,
     hydrateCanonical,
   } = await import(pathToFileURL(resolve(`${out}/fixture.mjs`)).href);
-  await build({
-    configFile: false,
-    plugins: [react()],
-    build: {
-      outDir: "tmp/production-setup-ui-build",
-      rollupOptions: {
-        input: { main: "index.html", accountant: "accountant.html" },
+  if (!process.env.REUSE_UI_BUILD)
+    await build({
+      configFile: false,
+      plugins: [react()],
+      build: {
+        outDir: "tmp/production-setup-ui-build",
+        rollupOptions: {
+          input: { main: "index.html", accountant: "accountant.html" },
+        },
       },
-    },
-  });
+    });
   staticServer = await preview({
     configFile: false,
     build: { outDir: "tmp/production-setup-ui-build" },
@@ -98,6 +100,24 @@ try {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
   });
+  let productionFinance;
+  let documentAi = { enabled: false };
+  const openingRequests = [];
+  let extractionReceived = 0;
+  let releaseExtraction;
+  const extractionGate = new Promise((resolve) => {
+    releaseExtraction = resolve;
+  });
+  const pixel = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aBaoAAAAASUVORK5CYII=",
+    "base64",
+  );
+  const currentSnapshot = (version = 1) => ({
+    ...reviewSnapshot(state.finance, "2026-11-13"),
+    version,
+    documentAi,
+    ...(productionFinance ? { productionFinance } : {}),
+  });
   await context.route("**/api/staging/**", async (route) => {
     const url = new URL(route.request().url());
     const reply = (body, status = 200) => route.fulfill({ status, json: body });
@@ -111,13 +131,105 @@ try {
         capabilities: ["finance.read", "finance.draft"],
       });
     if (url.pathname === "/api/staging/accounts/snapshot")
-      return reply({
-        ...reviewSnapshot(state.finance, "2026-11-13"),
-        version: 1,
-        documentAi: { enabled: false },
+      return reply(currentSnapshot());
+    if (url.pathname === "/api/staging/accounts/documents/extract") {
+      const body = route.request().postDataJSON();
+      expect(body.mode).toBe("auto");
+      expect(body.processing).toEqual({
+        dataClass: "business",
+        policyVersion: "ai-business-v1",
+        consent: true,
       });
+      extractionReceived++;
+      await extractionGate;
+      const fields = {
+        documentType: "invoice",
+        supplier: "Fictional UI merchant",
+        date: "2026-11-15",
+        dueDate: "",
+        reference: "UI-BILL-ONLY",
+        purchaseOrderReference: "",
+        currency: "AED",
+        items: [
+          {
+            description: "Fictional UI item",
+            quantity: "1",
+            unit: "EA",
+            unitRate: "10",
+            tax: "0",
+            total: "10",
+            productId: "",
+          },
+        ],
+        subtotal: "10",
+        tax: "0",
+        total: "10",
+        kind: "supplier-bill",
+        categoryId: "company-expenses",
+        projectName: "",
+        customerName: "",
+        projectId: "",
+        customerId: "",
+      };
+      state.finance.documentEntries.reviews.push({
+        id: "ui-extracted",
+        sha256: "a".repeat(64),
+        attachmentId: "ui-original",
+        createdAt: "2026-11-15T08:00:00.000Z",
+        fields,
+        extraction: {
+          fields: structuredClone(fields),
+          mode: "live",
+          provider: "local-ui-provider-response-fixture",
+          requestedMode: "auto",
+          uncertain: ["supplier", "kind"],
+          reviewOnly: true,
+          reviewPolicy: "draft-only",
+          inputTokens: null,
+          outputTokens: null,
+          costUsd: null,
+          latencyMs: 1,
+          retries: 0,
+        },
+        status: "Review",
+        revision: 0,
+        corrections: [],
+        warnings: [],
+      });
+      return reply({ id: "ui-extracted", snapshot: currentSnapshot(3) });
+    }
+    if (url.pathname === "/api/staging/accounts/attachment/ui-original")
+      return route.fulfill({ contentType: "image/png", body: pixel });
     if (url.pathname === "/api/staging/accounts/action") {
       const action = route.request().postDataJSON();
+      if (
+        ["opening-reconcile", "opening-approve", "opening-post"].includes(
+          action.kind,
+        )
+      ) {
+        expect(action).toMatchObject({
+          id: "opening-setup",
+          revision: productionFinance.openingRevision,
+          digest: productionFinance.openingDigest,
+          confirmed: true,
+        });
+        if (action.kind === "opening-reconcile")
+          expect(action.complete).toBe(true);
+        openingRequests.push(action);
+        productionFinance = {
+          ...productionFinance,
+          openingStatus:
+            action.kind === "opening-reconcile"
+              ? "reconciled"
+              : action.kind === "opening-approve"
+                ? "owner-approved"
+                : "posted",
+          mayReconcile: false,
+          mayApproveOpenings: action.kind === "opening-reconcile",
+          mayPostOpenings: action.kind === "opening-approve",
+        };
+        return reply({ id: action.id, snapshot: currentSnapshot(2) });
+      }
       if (action.kind === "create-ledger-account") {
         if (action.name === "Rejected local UI account")
           return reply(
@@ -137,10 +249,7 @@ try {
       );
       return reply({
         id: action.id,
-        snapshot: {
-          ...reviewSnapshot(state.finance, "2026-11-13"),
-          version: 2,
-        },
+        snapshot: currentSnapshot(2),
       });
     }
     return reply({ error: "Unexpected local fixture route" }, 404);
@@ -325,6 +434,191 @@ try {
   );
   checks.push(
     "Production document review offers manual attachment/entry only, hides fictional sample links and starts with no synthetic supplier suggestions.",
+  );
+  productionFinance = {
+    approved: true,
+    effectiveFrom: "2026-11-15",
+    businessDate: "2026-11-14",
+    postingActive: false,
+    canPost: false,
+    noVat: true,
+    taxRegistration: "unconfirmed",
+    taxInvoiceEnabled: false,
+    openingStatus: "draft",
+    openingRevision: 7,
+    openingDigest: "a".repeat(64),
+    mayReconcile: false,
+    mayApproveOpenings: false,
+    mayPostOpenings: false,
+    expensePostingEnabled: false,
+    expensePostingReason: "Independent expense approver confirmation required.",
+  };
+  await page.goto("http://127.0.0.1:5296/accountant.html#/new-invoice");
+  await page.reload();
+  await expect(page.locator('select[name="invoiceType"]')).toHaveValue(
+    "Normal Invoice",
+  );
+  await expect(
+    page.locator('select[name="invoiceType"]').locator("option"),
+  ).toHaveCount(2);
+  await expect(
+    page.getByRole("button", { name: "Issue document", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Save draft", exact: true }),
+  ).toBeEnabled();
+  productionFinance = {
+    ...productionFinance,
+    businessDate: "2026-11-15",
+    postingActive: true,
+    canPost: true,
+  };
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Issue document", exact: true }),
+  ).toBeEnabled();
+  checks.push(
+    "Server-approved No VAT defaults to Normal Invoice, excludes Tax Invoice, preserves drafts before the effective date and enables authorized issuance only when the server allows it.",
+  );
+  await page.goto("http://127.0.0.1:5296/accountant.html#/expenses");
+  await expect(
+    page.getByRole("button", { name: "Record paid expense", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText("Independent expense approver confirmation required.", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  checks.push(
+    "Ordinary posting activation does not enable expenses without approved expense authority.",
+  );
+  state.finance.openingSetup = {
+    date: "2026-11-15",
+    notes: "Explicit fictional UI transition fixture",
+    rows: [
+      {
+        id: "fixture-debit",
+        kind: "ledger",
+        accountOrParty: "Fictional UI debit account",
+        reference: "",
+        documentDate: "",
+        dueDate: "",
+        debit: "10",
+        credit: "",
+        notes: "",
+      },
+      {
+        id: "fixture-credit",
+        kind: "ledger",
+        accountOrParty: "Fictional UI credit account",
+        reference: "",
+        documentDate: "",
+        dueDate: "",
+        debit: "",
+        credit: "10",
+        notes: "",
+      },
+    ],
+  };
+  productionFinance = { ...productionFinance, mayReconcile: true };
+  await page.goto("http://127.0.0.1:5296/accountant.html#/banking");
+  await page.reload();
+  await page
+    .getByText("Opening balances — setup draft", { exact: true })
+    .click();
+  page.on("dialog", (dialog) => dialog.accept());
+  await page
+    .getByRole("button", { name: "Confirm reconciled openings", exact: true })
+    .click();
+  await page
+    .getByRole("button", {
+      name: "Owner: approve reconciled openings",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("button", {
+      name: "Post approved opening balances",
+      exact: true,
+    })
+    .click();
+  await expect(page.getByLabel("Debit (AED)").first()).toBeDisabled();
+  expect(openingRequests.map((action) => action.kind)).toEqual([
+    "opening-reconcile",
+    "opening-approve",
+    "opening-post",
+  ]);
+  expect(state.finance.accounting.journals).toHaveLength(0);
+  checks.push(
+    "Opening controls submit exact revision/digest and explicit completeness/confirmation, follow server role/status permissions and lock posted values. Transition responses are mocked UI contracts; domain financial posting is tested separately.",
+  );
+  documentAi = {
+    enabled: true,
+    provider: "deepseek",
+    status: "ready",
+    message: "Local UI response fixture, not paid inference.",
+    processing: {
+      dataClass: "business",
+      policyVersion: "ai-business-v1",
+      consentRequired: true,
+    },
+    reviewOnly: true,
+  };
+  await page.goto("http://127.0.0.1:5296/accountant.html#/document-entry");
+  await page.reload();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const upload = page.getByLabel("Upload document", { exact: true });
+  await expect(upload).toBeDisabled();
+  await page.getByLabel("I am authorized", { exact: false }).check();
+  await upload.setInputFiles({
+    name: "fictional-ui-bill.png",
+    mimeType: "image/png",
+    buffer: pixel,
+  });
+  await expect.poll(() => extractionReceived).toBe(1);
+  await expect(
+    page.getByText("Extracting document details…", { exact: false }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: `${out}/business-extraction-loading-1440.png`,
+    fullPage: true,
+  });
+  releaseExtraction();
+  await expect(page.getByLabel("Supplier name", { exact: true })).toHaveValue(
+    "Fictional UI merchant",
+  );
+  await page.getByLabel("Item 1 quantity", { exact: true }).fill("2");
+  await page.getByLabel("Item 1 unitRate", { exact: true }).fill("12");
+  await page.getByLabel("Item 1 total", { exact: true }).fill("23");
+  await page
+    .getByLabel(
+      "I checked all fields and any warnings against the original document",
+      { exact: true },
+    )
+    .check();
+  await page
+    .getByRole("button", { name: "Save Review Draft", exact: true })
+    .click();
+  await expect(
+    page.getByText("Draft saved. No bill, payment or journal was posted.", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  expect(state.finance.accounting.journals).toHaveLength(0);
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth + 1,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: `${out}/business-document-review-${width}.png`,
+      fullPage: true,
+    });
+  }
+  checks.push(
+    "Business AI UI requires exact server contract and upload consent, shows loading until response, populates editable fields and saves discrepancies as draft without journals. Provider response is an explicit unpaid local fixture.",
   );
   const ownerContext = await browser.newContext({
     viewport: { width: 1440, height: 1000 },

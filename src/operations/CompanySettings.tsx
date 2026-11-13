@@ -6,26 +6,38 @@ import { getOperations } from "./migration";
 import { saveSettings } from "./repository";
 import { ManualBackup } from "./ManualBackup";
 import { productionEnabled } from "../staging/client";
+import { productionFinanceNotice } from "../accounts-review/completion-ui";
 export function CompanySettings() {
   const { store, run, pending } = useStoreCommand(),
     { db } = store;
   const [s, setS] = useState(() => structuredClone(getOperations(db).settings)),
     [invoiceNext, setInvoiceNext] = useState(db.commercialNumbering.invoice);
   const [logoError, setLogoError] = useState("");
-  const setupPending = productionEnabled && s.tax === "Unconfigured";
+  const setupPending =
+    productionEnabled &&
+    (s.tax === "Unconfigured" || Boolean(store.productionFinance?.approved));
   return (
     <section className="panel">
       <ManualBackup store={store} />
       <h2>Company & Financial Settings</h2>
       <p className="muted">
         {productionEnabled
-          ? "Company setup. Financial policies, opening balances and cutover are not yet approved. Profile details can be saved without inventing missing tax or financial settings."
+          ? productionFinanceNotice(store.productionFinance)
           : store.mode === "staging"
             ? "Shared fictional company configuration. Tax, fiscal-year and financial policy changes remain blocked pending approval."
             : "Browser-local demo configuration."}{" "}
         Issued/approved records preserve historical company and monetary
         snapshots.
       </p>
+      {productionEnabled && store.productionFinance?.approved && (
+        <p role="status">
+          Owner-approved company setup: Azzora · No VAT charged · Accountant
+          posting from {store.productionFinance.effectiveFrom}. VAT registration
+          remains {store.productionFinance.taxRegistration}; legal Tax Invoices
+          are unavailable. Opening balances are{" "}
+          {store.productionFinance.openingStatus.replaceAll("-", " ")}.
+        </p>
+      )}
       {logoError && <p role="alert">{logoError}</p>}
       <form
         aria-busy={pending}
@@ -119,13 +131,13 @@ export function CompanySettings() {
         </details>
         <details>
           <summary>VAT, numbering and closure policy</summary>
-          {setupPending && (
+          {setupPending && !store.productionFinance?.approved && (
             <p role="status">
               Unconfigured — Owner/accountant confirmation required. These
               fields do not authorize tax documents or financial posting.
             </p>
           )}
-          {store.mode === "staging" && (
+          {store.mode === "staging" && !productionEnabled && (
             <p role="status">
               Real accounting policy remains unapproved. VAT/TRN, fiscal-year,
               retention and financial handover-policy changes are blocked
@@ -141,28 +153,35 @@ export function CompanySettings() {
                 required={!setupPending}
                 readOnly={setupPending}
                 inputMode="decimal"
-                value={s.vatPercentage}
+                value={store.productionFinance?.noVat ? "0" : s.vatPercentage}
                 onChange={(e) => setS({ ...s, vatPercentage: e.target.value })}
               />
             </Field>
             <Field label="Default tax treatment">
-              <select
-                disabled={setupPending}
-                value={s.tax}
-                onChange={(e) =>
-                  setS({ ...s, tax: e.target.value as typeof s.tax })
-                }
-              >
-                {[
-                  "Unconfigured",
-                  "Exclusive",
-                  "Inclusive",
-                  "Zero Rated",
-                  "Exempt",
-                ].map((t) => (
-                  <option key={t}>{t}</option>
-                ))}
-              </select>
+              {productionEnabled && store.productionFinance?.noVat ? (
+                <input
+                  value={`No VAT charged · registration ${store.productionFinance.taxRegistration}`}
+                  readOnly
+                />
+              ) : (
+                <select
+                  disabled={setupPending}
+                  value={s.tax}
+                  onChange={(e) =>
+                    setS({ ...s, tax: e.target.value as typeof s.tax })
+                  }
+                >
+                  {[
+                    "Unconfigured",
+                    "Exclusive",
+                    "Inclusive",
+                    "Zero Rated",
+                    "Exempt",
+                  ].map((t) => (
+                    <option key={t}>{t}</option>
+                  ))}
+                </select>
+              )}
             </Field>
             <Field label="Default payment terms days">
               <input

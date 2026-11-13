@@ -330,7 +330,10 @@ export function applyCommercialCommand(
             throw Error(
               "Numbering cannot move backwards or reuse issued references.",
             );
-        if (state.mode === "production" && op.settings.tax === "Unconfigured") {
+        if (
+          state.mode === "production" &&
+          (op.settings.tax === "Unconfigured" || op.settings.tax === "No VAT")
+        ) {
           // Company contact details can be prepared without filling invented tax,
           // payment terms, fiscal-year or numbering values into a pending setup.
           const beforePolicy = { ...op.settings, company: undefined };
@@ -467,6 +470,7 @@ export function syncFinanceBillCosts(state: SharedCompanyState) {
   for (const bill of state.finance.bills.filter(
     (v) =>
       v.status === "Issued" &&
+      !v.openingBalance &&
       !state.manager.operations!.bills.some((b) => b.id === v.id),
   )) {
     const paid =

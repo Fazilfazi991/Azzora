@@ -142,12 +142,12 @@ export function StagingLogin({
               <div className="staging-scope-note">
                 <strong>
                   {productionEnabled
-                    ? "COMPANY SETUP · POSTING DISABLED"
+                    ? "INDIVIDUAL COMPANY ACCESS"
                     : "FICTIONAL STAGING"}
                 </strong>
                 <span>
                   {productionEnabled
-                    ? "Individual company access. Financial posting and legal invoice issuance remain disabled until approved setup and cutover."
+                    ? "Sign in to your authorized workspace. Financial permissions and current company policies are enforced by the server."
                     : "Shared test records only. Real financial posting is disabled."}
                 </span>
               </div>

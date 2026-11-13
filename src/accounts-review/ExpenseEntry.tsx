@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import type { reviewSnapshot } from "./domain";
 import "./expense-entry.css";
-import { cashAccountsFor, type CompletionSnapshot } from "./completion-ui";
+import {
+  cashAccountsFor,
+  productionFinanceNotice,
+  type CompletionSnapshot,
+} from "./completion-ui";
 import { accountsUrl } from "./http";
 import { stagingEnabled, productionEnabled } from "../staging/client";
 import type { StagingExpenseSubmission } from "../store";
 
-type Snapshot = ReturnType<typeof reviewSnapshot>;
+type Snapshot = CompletionSnapshot;
 type ExpenseGroup =
   "Administrative Expense" | "Direct Expense" | "Indirect Expense";
 type ExpenseLedger = {
@@ -308,14 +311,16 @@ export function ExpenseEntry({
       <div className="prototype-note" role="note">
         <strong>
           {productionEnabled
-            ? "COMPANY SETUP · POSTING DISABLED"
+            ? data.productionFinance?.approved
+              ? "COMPANY ACCOUNTS · NO VAT"
+              : "COMPANY SETUP · POSTING DISABLED"
             : stagingEnabled
               ? "SHARED STAGING · FICTIONAL DATA"
               : "CLIENT REVIEW · FICTIONAL DATA"}
         </strong>
         <span>
           {productionEnabled
-            ? "Prepare an expense draft through manual document review, or set up an expense ledger here. Saving a review draft does not post. Paid expense posting remains disabled until approved."
+            ? productionFinanceNotice(data.productionFinance)
             : stagingEnabled
               ? "Approved project expenses are shared with Manager. Real financial posting remains disabled."
               : "Actions update only this isolated demo ledger. No Manager CRM records or real money are changed."}
@@ -378,7 +383,13 @@ export function ExpenseEntry({
               <button
                 className="button"
                 type="button"
-                disabled={busy || !(item.ledgerId || approvedLedger)}
+                disabled={
+                  busy ||
+                  !(item.ledgerId || approvedLedger) ||
+                  (productionEnabled &&
+                    (!data.productionFinance?.canPost ||
+                      data.productionFinance.expensePostingEnabled !== true))
+                }
                 onClick={() => void recordApproved(item)}
               >
                 Record approved expense
@@ -656,13 +667,22 @@ export function ExpenseEntry({
         <button
           className="button button-primary"
           type="submit"
-          disabled={busy || creatingLedger}
+          disabled={
+            busy ||
+            creatingLedger ||
+            (productionEnabled &&
+              (!data.productionFinance?.canPost ||
+                data.productionFinance.expensePostingEnabled !== true))
+          }
         >
           {busy ? "Saving…" : "Record paid expense"}
         </button>
         <p className="aside-note">
           {productionEnabled
-            ? "Paid expense posting is disabled pending approved company policy and financial cutover."
+            ? data.productionFinance?.expensePostingEnabled === true
+              ? productionFinanceNotice(data.productionFinance)
+              : data.productionFinance?.expensePostingReason ||
+                "Paid expense posting awaits a designated independent expense approver. Expense drafts and ledger setup remain available."
             : "This records a payment in the fictional demo journal. Real approvals and VAT treatment remain subject to owner policy."}
         </p>
       </form>

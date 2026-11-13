@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from "react";
-import type { ReviewDocument, reviewSnapshot } from "./domain";
+import type { ReviewDocument } from "./domain";
 import { LineItemsEditor } from "./LineItemsEditor";
 import {
   blankReviewLine,
@@ -8,11 +8,14 @@ import {
   type ReviewLineInput,
 } from "./item-lines";
 import { purchasePriceWarnings } from "./review-purchase-prices";
-import type { CompletionSnapshot } from "./completion-ui";
+import {
+  productionFinanceNotice,
+  type CompletionSnapshot,
+} from "./completion-ui";
 import { accountsUrl } from "./http";
 import { productionEnabled } from "../staging/client";
 
-type Snapshot = ReturnType<typeof reviewSnapshot>;
+type Snapshot = CompletionSnapshot;
 type Props = {
   data: Snapshot;
   act: (action: Record<string, unknown>) => Promise<boolean>;
@@ -81,23 +84,31 @@ function Field({
     </label>
   );
 }
-export function AccountsReviewNote() {
+export function AccountsReviewNote({ data }: { data?: Snapshot } = {}) {
   return (
     <div className="prototype-note" role="note">
       <strong>
         {productionEnabled
-          ? "COMPANY SETUP · POSTING DISABLED"
+          ? data?.productionFinance?.approved
+            ? "COMPANY ACCOUNTS · NO VAT"
+            : "COMPANY SETUP · POSTING DISABLED"
           : "CLIENT REVIEW · FICTIONAL DATA"}
       </strong>
       <span>
         {productionEnabled
-          ? "Company drafts are saved to the authorized shared workspace. Financial posting and legal invoice issuance are disabled pending approved setup."
+          ? productionFinanceNotice(data?.productionFinance)
           : "Actions update only this isolated demo ledger. No Manager CRM records or real money are changed."}
       </span>
     </div>
   );
 }
-function Totals({ items }: { items: ReviewLineInput[] }) {
+function Totals({
+  items,
+  data,
+}: {
+  items: ReviewLineInput[];
+  data?: Snapshot;
+}) {
   let amount = "";
   try {
     amount = calculateItemLines(items).subtotalFils;
@@ -108,7 +119,11 @@ function Totals({ items }: { items: ReviewLineInput[] }) {
     <div className="document-totals">
       <p>
         <span>VAT</span>
-        <span>Not applied · policy pending</span>
+        <span>
+          {productionEnabled && data?.productionFinance?.noVat
+            ? "No VAT charged"
+            : "Not applied · policy pending"}
+        </span>
       </p>
       <p>
         <strong>Grand total</strong>
@@ -118,7 +133,9 @@ function Totals({ items }: { items: ReviewLineInput[] }) {
       </p>
       <small>
         {productionEnabled
-          ? "VAT policy and legal invoice issuance are not yet approved. This document remains an unissued draft."
+          ? data?.productionFinance?.noVat
+            ? "Normal Invoice / Proforma only. VAT registration remains unconfirmed; this is not a legal Tax Invoice."
+            : "VAT policy and legal invoice issuance are not yet approved. This document remains an unissued draft."
           : "No approved VAT policy is configured for this fictional review. Tax Invoice and Proforma labels do not activate VAT."}
       </small>
     </div>
@@ -167,6 +184,17 @@ export function InvoiceEntry({ data, act, editingId }: Props) {
         (event.nativeEvent as SubmitEvent).submitter?.getAttribute(
           "data-issue",
         ) === "true";
+      const selectedType = new FormData(form).get("invoiceType");
+      if (
+        productionEnabled &&
+        issue &&
+        data.productionFinance?.taxInvoiceEnabled === false &&
+        selectedType !== "Normal Invoice" &&
+        selectedType !== "Proforma"
+      )
+        throw Error(
+          "No VAT is approved. Select Normal Invoice or Proforma; legal Tax Invoice issuance is unavailable.",
+        );
       if (
         await act({
           kind: existing ? "update-invoice-draft" : "invoice",
@@ -209,7 +237,7 @@ export function InvoiceEntry({ data, act, editingId }: Props) {
           ← Invoices
         </a>
       </div>
-      <AccountsReviewNote />
+      <AccountsReviewNote data={data} />
       {editingId && !existing ? (
         <p role="alert">Invoice was not found.</p>
       ) : (
@@ -226,9 +254,25 @@ export function InvoiceEntry({ data, act, editingId }: Props) {
               <Field
                 label="Document type"
                 name="invoiceType"
-                value={existing?.invoiceType || "Tax Invoice"}
+                value={
+                  existing?.invoiceType ||
+                  (productionEnabled && data.productionFinance?.noVat
+                    ? "Normal Invoice"
+                    : "Tax Invoice")
+                }
               >
-                <option>Tax Invoice</option>
+                {(!productionEnabled ||
+                  !data.productionFinance?.noVat ||
+                  existing?.invoiceType === "Tax Invoice") && (
+                  <option
+                    disabled={
+                      productionEnabled &&
+                      data.productionFinance?.taxInvoiceEnabled === false
+                    }
+                  >
+                    Tax Invoice
+                  </option>
+                )}
                 <option>Normal Invoice</option>
                 <option>Proforma</option>
               </Field>
@@ -269,7 +313,7 @@ export function InvoiceEntry({ data, act, editingId }: Props) {
               onChange={setItems}
               readOnly={locked}
             />
-            <Totals items={items} />
+            <Totals items={items} data={data} />
             {error && (
               <p className="review-error" role="alert">
                 {error}
@@ -283,7 +327,7 @@ export function InvoiceEntry({ data, act, editingId }: Props) {
                 className="button button-primary"
                 type="submit"
                 data-issue="true"
-                disabled={productionEnabled}
+                disabled={productionEnabled && !data.productionFinance?.canPost}
               >
                 Issue document
               </button>
@@ -291,7 +335,7 @@ export function InvoiceEntry({ data, act, editingId }: Props) {
           </fieldset>
           <p className="aside-note">
             {productionEnabled
-              ? "Drafts do not post. Issuance is disabled until company financial policies and cutover are approved."
+              ? productionFinanceNotice(data.productionFinance)
               : "Drafts do not post. Issuing a tax or normal invoice updates the fictional journal once. Proforma documents never create revenue or receivables."}
           </p>
         </form>
@@ -378,7 +422,7 @@ export function PurchaseBills({ data, act, editingId }: Props) {
           Upload & auto-fill
         </a>
       </div>
-      <AccountsReviewNote />
+      <AccountsReviewNote data={data} />
       <div className="review-two bill-entry-options">
         <a
           className="panel review-card bill-entry-option"
@@ -529,7 +573,7 @@ export function PurchaseBills({ data, act, editingId }: Props) {
               ))}
             </aside>
           )}
-          <Totals items={items} />
+          <Totals items={items} data={data} />
           <label className="document-upload-label">
             Bill image or PDF · up to 2 MB
             <input
@@ -556,7 +600,7 @@ export function PurchaseBills({ data, act, editingId }: Props) {
               className="button button-primary"
               type="submit"
               data-issue="true"
-              disabled={productionEnabled}
+              disabled={productionEnabled && !data.productionFinance?.canPost}
             >
               {existing ? "Issue bill" : "Record bill & upload"}
             </button>

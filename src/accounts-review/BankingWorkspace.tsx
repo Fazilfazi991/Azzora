@@ -2,6 +2,7 @@ import { useRef, useState, type FormEvent } from "react";
 import {
   cashAccountsFor,
   displayMoney,
+  productionFinanceNotice,
   type CompletionSnapshot,
 } from "./completion-ui";
 import { productionEnabled } from "../staging/client";
@@ -83,7 +84,18 @@ export function BankingWorkspace({
             onClick={() => setForm(form === "transfer" ? null : "transfer")}
             aria-expanded={form === "transfer"}
             aria-controls="cash-transfer-form"
-            disabled={busy}
+            disabled={
+              busy ||
+              (productionEnabled &&
+                (!data.productionFinance?.canPost ||
+                  data.productionFinance.transfersEnabled !== true))
+            }
+            title={
+              productionEnabled &&
+              data.productionFinance?.transfersEnabled !== true
+                ? "Internal transfers are outside the approved initial posting scope."
+                : undefined
+            }
           >
             Transfer between accounts
           </button>
@@ -92,17 +104,23 @@ export function BankingWorkspace({
       <div className="prototype-note" role="note">
         <strong>
           {productionEnabled
-            ? "COMPANY SETUP · POSTING DISABLED"
+            ? data.productionFinance?.approved
+              ? "COMPANY ACCOUNTS · NO VAT"
+              : "COMPANY SETUP · POSTING DISABLED"
             : "CLIENT REVIEW · FICTIONAL DATA"}
         </strong>
         <span>
           {productionEnabled
-            ? "Opening balances are not yet approved. Bank and cash figures show posted records only; they are not confirmation of the company's actual opening position."
+            ? productionFinanceNotice(data.productionFinance)
             : "Bank, cash and staff-held funds share the demo journal. No real money moves."}
         </span>
       </div>
       {productionEnabled && (
-        <OpeningSetup saved={data.openingSetup} act={act} />
+        <OpeningSetup
+          saved={data.openingSetup}
+          finance={data.productionFinance}
+          act={act}
+        />
       )}
       {form === "account" && (
         <form
@@ -151,7 +169,7 @@ export function BankingWorkspace({
           </div>
           <p>
             {productionEnabled
-              ? "This creates an empty account record, without asserting an opening balance. Prepare opening balances separately for review. Financial transfers remain disabled until approved cutover."
+              ? "This creates an empty account record, without asserting an opening balance. Prepare and reconcile opening balances separately. Transfers require their own approved authority."
               : "New accounts start at zero. Use an internal transfer to fund a staff or cash account."}
           </p>
           <div className="review-actions">

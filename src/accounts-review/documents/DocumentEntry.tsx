@@ -20,7 +20,11 @@ import { reviewFieldsEqual } from "./field-comparison";
 import { reviewFieldLabel, type ReviewFieldIssue } from "./review-errors";
 import { blankManualReview, inspectFields, scopeFor } from "./review";
 import "./entry.css";
-import { cashAccountsFor, type CompletionSnapshot } from "../completion-ui";
+import {
+  cashAccountsFor,
+  productionFinanceNotice,
+  type CompletionSnapshot,
+} from "../completion-ui";
 import { accountsUrl } from "../http";
 import { productionEnabled } from "../../staging/client";
 
@@ -31,6 +35,13 @@ export type FictionalProcessingConsent = {
   consent: true;
   policyVersion: "ai-fictional-v1";
 };
+export type DocumentProcessingConsent =
+  | FictionalProcessingConsent
+  | {
+      dataClass: "business";
+      consent: true;
+      policyVersion: "ai-business-v1";
+    };
 type EntryFields = Omit<ExistingEntryFields, "items"> & {
   department?: "" | "MEP" | "CIVIL" | "JOINERY";
   ledgerId?: string;
@@ -64,7 +75,7 @@ export function DocumentEntry({
   extract: (
     file: Upload,
     mode?: "auto" | "manual",
-    processing?: FictionalProcessingConsent,
+    processing?: DocumentProcessingConsent,
   ) => Promise<string>;
   act: (action: Record<string, unknown>) => Promise<boolean>;
   onPendingChange: (pending: boolean) => void;
@@ -81,9 +92,16 @@ export function DocumentEntry({
   const [saveIssues, setSaveIssues] = useState<ReviewFieldIssue[]>([]);
   const [saveError, setSaveError] = useState("");
   const saveFeedback = useRef<HTMLDivElement>(null);
+  const businessProcessing =
+    productionEnabled &&
+    data.documentAi?.enabled &&
+    data.documentAi.processing?.dataClass === "business" &&
+    data.documentAi.processing.policyVersion === "ai-business-v1";
+  const autoAvailable = !productionEnabled || Boolean(businessProcessing);
   const requiresConsent = Boolean(
-    !productionEnabled &&
-    (data.documentAi?.generalDocuments || data.documentAi?.enabled),
+    businessProcessing ||
+    (!productionEnabled &&
+      (data.documentAi?.generalDocuments || data.documentAi?.enabled)),
   );
   const [uploadStatus, setUploadStatus] = useState("");
   const [uploadName, setUploadName] = useState("");
@@ -180,7 +198,9 @@ export function DocumentEntry({
     if (pending && !window.confirm("Discard unsaved document edits?")) return;
     if (mode === "auto" && requiresConsent && !processingConsent) {
       setError(
-        "Confirm fictional test data and DeepSeek processing before using Auto-Fill, or choose Enter Manually.",
+        businessProcessing
+          ? "Authorize DeepSeek processing for this document before using Auto-Fill, or choose Enter Manually."
+          : "Confirm fictional test data and DeepSeek processing before using Auto-Fill, or choose Enter Manually.",
       );
       return;
     }
@@ -201,13 +221,19 @@ export function DocumentEntry({
       const id = await extract(
         original,
         mode,
-        mode === "auto" && requiresConsent
+        mode === "auto" && businessProcessing
           ? {
-              dataClass: "fictional",
+              dataClass: "business",
               consent: true,
-              policyVersion: "ai-fictional-v1",
+              policyVersion: "ai-business-v1",
             }
-          : undefined,
+          : mode === "auto" && requiresConsent
+            ? {
+                dataClass: "fictional",
+                consent: true,
+                policyVersion: "ai-fictional-v1",
+              }
+            : undefined,
       );
       setManualDoc(null);
       setSelected(id);
@@ -529,7 +555,7 @@ export function DocumentEntry({
           <span className="eyebrow">PURCHASES & EXPENSES</span>
           <h1>Read a bill</h1>
           <p>
-            {productionEnabled
+            {productionEnabled && !autoAvailable
               ? "Attach → enter details → review → save a draft."
               : "Upload → auto-fill → review → save a draft."}
           </p>
@@ -541,12 +567,15 @@ export function DocumentEntry({
       <div className="prototype-note">
         <strong>
           {productionEnabled
-            ? "COMPANY SETUP · MANUAL REVIEW"
+            ? autoAvailable
+              ? "AI DOCUMENT REVIEW · DRAFTS ONLY"
+              : "COMPANY DOCUMENT REVIEW · MANUAL ENTRY"
             : "CLIENT REVIEW · FICTIONAL DATA"}
         </strong>
         <span>
-          {productionEnabled
-            ? "External AI document processing is disabled. Attach the original for private manual review, edit the details and save a draft. Saving never creates a financial posting."
+          {productionEnabled && !autoAvailable
+            ? data.documentAi?.message ||
+              "External AI document processing is disabled. Attach the original for private manual review, edit the details and save a draft. Saving never creates a financial posting."
             : data.documentAi?.message ||
               "Paid AI is disabled. Text PDFs use local PDF.js extraction; photos and scanned PDFs need manual entry. Prepared sample suggestions are labeled separately."}
         </span>
@@ -556,7 +585,7 @@ export function DocumentEntry({
         aria-label="Upload a document"
         aria-busy={Boolean(uploadStatus)}
       >
-        {!productionEnabled && requiresConsent && (
+        {requiresConsent && (
           <label className="entry-check entry-processing-consent">
             <input
               type="checkbox"
@@ -565,8 +594,9 @@ export function DocumentEntry({
               onChange={(event) => setProcessingConsent(event.target.checked)}
               aria-describedby="entry-processing-note"
             />
-            This is fictional test data and I authorize DeepSeek processing for
-            this upload
+            {businessProcessing
+              ? "I am authorized to send this document to DeepSeek for extraction. I will review the details before saving a draft."
+              : "This is fictional test data and I authorize DeepSeek processing for this upload"}
           </label>
         )}
         <label
@@ -574,21 +604,17 @@ export function DocumentEntry({
         >
           {uploadStatus
             ? "Processing document…"
-            : productionEnabled
+            : productionEnabled && !autoAvailable
               ? "Attach for manual review"
               : "Upload & Auto-Fill"}
           <input
             aria-label="Upload document"
             type="file"
             accept="application/pdf,image/png,image/jpeg"
-            disabled={
-              busy ||
-              (!productionEnabled && requiresConsent && !processingConsent)
-            }
+            disabled={busy || (requiresConsent && !processingConsent)}
             onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file)
-                void upload(file, productionEnabled ? "manual" : "auto");
+              if (file) void upload(file, autoAvailable ? "auto" : "manual");
               e.target.value = "";
             }}
           />
@@ -604,7 +630,9 @@ export function DocumentEntry({
         <span id="entry-processing-note">
           PDF, PNG or JPEG · up to 2 MB.{" "}
           {productionEnabled
-            ? "Private attachment and manual draft entry only. No AI request or prepared sample suggestions are used."
+            ? autoAvailable
+              ? "DeepSeek reads this document after your authorization. Review uncertain fields and classification; saving a draft never posts."
+              : "Private attachment and manual draft entry only. No AI request or prepared sample suggestions are used."
             : data.documentAi?.enabled
               ? "Auto-Fill can process new fictional documents after consent, subject to server authorization and spending limits. Review every suggestion."
               : "Live AI is unavailable. Selectable PDF text may be read locally; photos/scans need manual entry."}{" "}
@@ -713,7 +741,9 @@ export function DocumentEntry({
                 {doc.extraction.reviewPolicy === "draft-only"
                   ? doc.extraction.mode === "manual"
                     ? "Manual entry · save drafts only."
-                    : "Fictional AI review · save drafts only."
+                    : productionEnabled
+                      ? "AI document review · save drafts only."
+                      : "Fictional AI review · save drafts only."
                   : "Owner-authorized quotation · review drafts only."}{" "}
                 This document cannot create a purchase bill, expense, payment or
                 journal posting.
@@ -1221,7 +1251,7 @@ export function DocumentEntry({
               )}
               <p>
                 {productionEnabled
-                  ? "Saving a draft never posts. Issuing purchase bills and recording expenses remain disabled until approved company policy and financial cutover."
+                  ? `Saving a draft never posts. ${productionFinanceNotice(data.productionFinance)} Any financial transaction requires a separate authorized action.`
                   : "Saving a draft never posts. Creating a purchase bill or recording an expense is a separate explicit action through the existing demo journal workflow and currently requires a VAT-free total. Save any edits before this action."}
               </p>
             </fieldset>

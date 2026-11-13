@@ -4,15 +4,17 @@ import {
   openingSetupSchema,
   type OpeningSetupDraft,
 } from "./opening-setup";
-import { displayMoney } from "./completion-ui";
+import { displayMoney, type ProductionFinanceView } from "./completion-ui";
 
 /** An incomplete setup draft, never an opening journal or posting approval. */
 export function OpeningSetup({
   saved,
   act,
+  finance,
 }: {
   saved?: OpeningSetupDraft;
   act: (action: Record<string, unknown>) => Promise<boolean>;
+  finance?: ProductionFinanceView;
 }) {
   const [draft, setDraft] = useState<OpeningSetupDraft>(() =>
     structuredClone(saved || { date: "", rows: [], notes: "" }),
@@ -22,6 +24,57 @@ export function OpeningSetup({
   const [open, setOpen] = useState(!saved);
   const parsed = openingSetupSchema.safeParse(draft);
   const review = parsed.success ? inspectOpeningSetup(parsed.data) : undefined;
+  const locked = finance?.openingStatus === "posted";
+  const savedParsed = openingSetupSchema.safeParse(saved);
+  const unsaved =
+    !parsed.success ||
+    !savedParsed.success ||
+    JSON.stringify(parsed.data) !== JSON.stringify(savedParsed.data);
+  async function transition(
+    kind: "opening-reconcile" | "opening-approve" | "opening-post",
+  ) {
+    if (busy || unsaved || !finance?.openingDigest) return;
+    const question =
+      kind === "opening-post"
+        ? "Post exactly these reconciled and Owner-approved opening balances once? This creates financial journal entries."
+        : kind === "opening-approve"
+          ? "Approve this exact reconciled opening trial balance and its outstanding documents?"
+          : "Confirm that all starting balances and outstanding documents are included and this trial balance reconciles?";
+    if (!window.confirm(question)) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      if (
+        await act({
+          kind,
+          id: "opening-setup",
+          revision: finance.openingRevision,
+          digest: finance.openingDigest,
+          confirmed: true,
+          ...(kind === "opening-reconcile" ? { complete: true } : {}),
+        })
+      )
+        setMessage(
+          kind === "opening-post"
+            ? "Approved opening balances posted once. Refresh or inspect the General Ledger to verify the recorded result."
+            : kind === "opening-approve"
+              ? "Reconciled opening balances approved. No financial posting has been made."
+              : "Opening trial balance marked reconciled. Owner approval is still required before posting.",
+        );
+      else
+        setMessage(
+          "This action was not confirmed. Your entries remain here. Refresh the saved review before another attempt.",
+        );
+    } catch (problem) {
+      setMessage(
+        problem instanceof Error
+          ? problem.message
+          : "Action not confirmed. Check the saved opening review before retrying.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
   const update = (id: string, key: string, value: string) => {
     setMessage("");
     setDraft((old) => ({
@@ -43,12 +96,20 @@ export function OpeningSetup({
         or supplier bill for review. Blank amounts mean not supplied; they do
         not mean zero.
       </p>
+      {finance?.approved && (
+        <p role="status">
+          Opening review: {finance.openingStatus.replaceAll("-", " ")}.{" "}
+          {locked
+            ? "These opening balances are posted and read only."
+            : "Opening amounts remain unposted until the reviewed workflow is complete."}
+        </p>
+      )}
       <form
         className="review-form"
         aria-busy={busy}
         onSubmit={async (event) => {
           event.preventDefault();
-          if (busy) return;
+          if (busy || locked) return;
           setMessage("");
           if (!parsed.success) {
             setMessage(
@@ -90,12 +151,12 @@ export function OpeningSetup({
           <input
             type="date"
             value={draft.date}
-            disabled={busy}
+            disabled={busy || locked}
             onChange={(e) => setDraft({ ...draft, date: e.target.value })}
           />
         </label>
         {draft.rows.map((row, index) => (
-          <fieldset key={row.id} disabled={busy}>
+          <fieldset key={row.id} disabled={busy || locked}>
             <legend>Opening line {index + 1}</legend>
             <div className="field-grid">
               <label>
@@ -194,7 +255,7 @@ export function OpeningSetup({
         <button
           type="button"
           className="button"
-          disabled={busy || draft.rows.length >= 1000}
+          disabled={busy || locked || draft.rows.length >= 1000}
           onClick={() =>
             setDraft({
               ...draft,
@@ -222,7 +283,7 @@ export function OpeningSetup({
           <textarea
             value={draft.notes}
             maxLength={4000}
-            disabled={busy}
+            disabled={busy || locked}
             onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
           />
         </label>
@@ -249,9 +310,56 @@ export function OpeningSetup({
           approve or post it.
         </p>
         {message && <p role="status">{message}</p>}
-        <button type="submit" className="button button-primary" disabled={busy}>
+        <button
+          type="submit"
+          className="button button-primary"
+          disabled={busy || locked}
+        >
           {busy ? "Saving setup draft…" : "Save opening setup draft"}
         </button>
+        {finance?.approved && !locked && (
+          <div className="review-actions">
+            {unsaved && (
+              <p>Save your current draft before reconciliation or approval.</p>
+            )}
+            {finance.mayReconcile && (
+              <button
+                type="button"
+                className="button"
+                disabled={
+                  busy ||
+                  unsaved ||
+                  !finance.openingDigest ||
+                  !review ||
+                  review.warnings.length > 0
+                }
+                onClick={() => void transition("opening-reconcile")}
+              >
+                Confirm reconciled openings
+              </button>
+            )}
+            {finance.mayApproveOpenings && (
+              <button
+                type="button"
+                className="button"
+                disabled={busy || unsaved || !finance.openingDigest}
+                onClick={() => void transition("opening-approve")}
+              >
+                Owner: approve reconciled openings
+              </button>
+            )}
+            {finance.mayPostOpenings && (
+              <button
+                type="button"
+                className="button button-primary"
+                disabled={busy || unsaved || !finance.openingDigest}
+                onClick={() => void transition("opening-post")}
+              >
+                Post approved opening balances
+              </button>
+            )}
+          </div>
+        )}
       </form>
     </details>
   );

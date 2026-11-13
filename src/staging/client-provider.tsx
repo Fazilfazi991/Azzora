@@ -21,8 +21,13 @@ import {
 } from "./client";
 import "./staging.css";
 import { OwnerRecoveryPanel } from "./client-recovery";
+import {
+  productionFinanceNotice,
+  type ProductionFinanceView,
+} from "../accounts-review/completion-ui";
 
 type ManagerSnapshot = {
+  productionFinance?: ProductionFinanceView;
   db: Database;
   version: number;
   expenseSubmissions?: StagingExpenseSubmission[];
@@ -463,6 +468,7 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
       />
     );
   const store: Store = {
+    productionFinance: snapshot.productionFinance,
     mode: "staging",
     db: snapshot.db,
     toast,
@@ -545,7 +551,19 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
               : "FICTIONAL SHARED STAGING"}
           </strong>
           <span>{session.email}</span>
-          <span>Real posting disabled</span>
+          <span
+            title={
+              productionEnabled
+                ? productionFinanceNotice(snapshot.productionFinance)
+                : undefined
+            }
+          >
+            {productionEnabled && snapshot.productionFinance?.approved
+              ? snapshot.productionFinance.postingActive
+                ? "No VAT · Accountant posting"
+                : `Posting from ${snapshot.productionFinance.effectiveFrom}`
+              : "Real posting disabled"}
+          </span>
         </div>
         <div>
           {session.role === "owner_admin" && (

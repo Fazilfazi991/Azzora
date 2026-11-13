@@ -1,5 +1,9 @@
 import type { ReactNode } from "react";
-import { displayMoney, type CompletionSnapshot } from "./completion-ui";
+import {
+  displayMoney,
+  productionFinanceNotice,
+  type CompletionSnapshot,
+} from "./completion-ui";
 import { productionEnabled } from "../staging/client";
 
 function ReportTable({
@@ -53,7 +57,9 @@ export function OperationalReports({
               ? `Balances as of ${data.asOf}.`
               : `Posted activity for ${data.period.from} – ${data.period.to}.`}{" "}
             {productionEnabled
-              ? "Only posted company journal entries are included; opening balances remain unapproved."
+              ? data.productionFinance?.openingStatus === "posted"
+                ? "Posted company journal entries and approved opening balances are included."
+                : "Only posted company journal entries are included; opening balances remain provisional."
               : "All figures derive from the demo journal."}
           </p>
         </div>
@@ -61,12 +67,15 @@ export function OperationalReports({
       <div className="prototype-note" role="note">
         <strong>
           {productionEnabled
-            ? "COMPANY SETUP · POSTING DISABLED"
+            ? data.productionFinance?.approved
+              ? "COMPANY ACCOUNTS · NO VAT"
+              : "COMPANY SETUP · POSTING DISABLED"
             : "CLIENT REVIEW · FICTIONAL DATA"}
         </strong>
         <span>
-          Draft documents are excluded. VAT policy and real accounting use
-          remain unapproved.
+          {productionEnabled
+            ? productionFinanceNotice(data.productionFinance)
+            : "Draft documents are excluded. VAT policy and real accounting use remain unapproved."}
         </span>
       </div>
       {filters}

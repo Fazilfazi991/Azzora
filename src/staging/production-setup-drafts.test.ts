@@ -293,5 +293,37 @@ it("blank policy fields are valid only for explicit unconfigured setup, not corr
   state.manager.operations!.settings.retentionPercentage = "";
   expect(() => validateSavedShape(state.manager)).not.toThrow();
   state.manager.operations!.settings.tax = "Exclusive";
-  expect(() => validateSavedShape(state.manager)).toThrow(/operations.settings.vatPercentage/);
+  expect(() => validateSavedShape(state.manager)).toThrow(
+    /operations.settings.vatPercentage/,
+  );
+});
+it("No VAT preserves unapproved unrelated setup fields while requiring explicit zero VAT, and permits an Owner profile edit", () => {
+  const state = fixture();
+  const settings = state.manager.operations!.settings;
+  settings.tax = "No VAT";
+  settings.vatPercentage = "0";
+  settings.retentionPercentage = "";
+  settings.fiscalYearStart = "";
+  settings.invoicePrefix = "";
+  Object.values(settings.numbering).forEach(
+    (sequence) => (sequence.prefix = ""),
+  );
+  expect(() => validateSavedShape(state.manager)).not.toThrow();
+  const owner = structuredClone(actor);
+  owner.grant.roles = ["owner"];
+  owner.grant.workspaces.push("manager");
+  owner.grant.capabilities.push("access.manage", "project.write");
+  const nextSettings = structuredClone(settings);
+  nextSettings.company.phone = "+971 50 000 0000";
+  const next = applySharedCommand(
+    state,
+    { kind: "settings.save", payload: { settings: nextSettings } },
+    owner,
+  );
+  expect(next.manager.operations!.settings).toEqual(nextSettings);
+  expect(next.finance.accounting.journals).toEqual([]);
+  settings.vatPercentage = "";
+  expect(() => validateSavedShape(state.manager)).toThrow(
+    /operations.settings.vatPercentage/,
+  );
 });

@@ -11,7 +11,7 @@ const postedInteger = text.regex(/^\d+$/);
 const invoiceAllocation = z
   .object({
     itemId: id,
-    tax: z.enum(["Exclusive", "Inclusive", "Zero Rated", "Exempt"]),
+    tax: z.enum(["Exclusive", "Inclusive", "Zero Rated", "Exempt", "No VAT"]),
     subtotal: postedInteger,
     discount: postedInteger,
     net: postedInteger,
@@ -118,7 +118,7 @@ const priceLine = entity({
   description: text,
   quantity: money,
   rate: money,
-  tax: z.enum(["Exclusive", "Inclusive", "Zero Rated", "Exempt"]),
+  tax: z.enum(["Exclusive", "Inclusive", "Zero Rated", "Exempt", "No VAT"]),
 });
 const company = z
   .object({ name: text, location: text, email: text, phone: text })
@@ -651,7 +651,9 @@ export function validateSavedShape(value: unknown): asserts value is Database {
         })
         .passthrough()
         .superRefine((settings, context) => {
-          if (settings.tax !== "Unconfigured")
+          if (settings.tax === "No VAT" && settings.vatPercentage !== "0")
+            context.addIssue({ code: "custom", path: ["vatPercentage"], message: "No VAT requires an explicit zero VAT percentage." });
+          if (settings.tax !== "Unconfigured" && settings.tax !== "No VAT")
             for (const key of ["vatPercentage", "retentionPercentage"] as const)
               if (settings[key] === "")
                 context.addIssue({ code: "custom", path: [key], message: "A configured financial policy requires an explicit percentage." });

@@ -7,7 +7,6 @@ import {
   type ReactNode,
 } from "react";
 import { createRoot } from "react-dom/client";
-import type { reviewSnapshot } from "./domain";
 import "../../docs/finance/portal-design/portal.css";
 import "./review.css";
 import { DocumentEntry } from "./documents/DocumentEntry";
@@ -18,7 +17,11 @@ import { LedgerSetup } from "./LedgerSetup";
 import { OperationalReports } from "./OperationalReports";
 import { SettlementOption, settlementReference } from "./settlement-reference";
 import { ReportDates } from "./ReportDates";
-import { cashAccountsFor, type CompletionSnapshot } from "./completion-ui";
+import {
+  cashAccountsFor,
+  productionFinanceNotice,
+  type CompletionSnapshot,
+} from "./completion-ui";
 import { accountsRequest as api, accountsUrl } from "./http";
 import {
   stagingEnabled,
@@ -28,7 +31,7 @@ import {
 } from "../staging/client";
 import { StagingLogin } from "../staging/client-login";
 
-type Snapshot = ReturnType<typeof reviewSnapshot>;
+type Snapshot = CompletionSnapshot;
 type Session = {
   email: string;
   role: string;
@@ -145,19 +148,21 @@ function Head({
     </div>
   );
 }
-function Note() {
+function Note({ data }: { data: Snapshot }) {
   return (
     <div className="prototype-note" role="note">
       <strong>
         {productionEnabled
-          ? "COMPANY SETUP · POSTING DISABLED"
+          ? data.productionFinance?.approved
+            ? "COMPANY ACCOUNTS · NO VAT"
+            : "COMPANY SETUP · POSTING DISABLED"
           : stagingEnabled
             ? "SHARED STAGING · FICTIONAL DATA"
             : "CLIENT REVIEW · DEMO LEDGER"}
       </strong>
       <span>
         {productionEnabled
-          ? "Company records persist in the authorized shared database. Opening balances, financial policies and cutover are pending approval. No real financial posting is enabled."
+          ? productionFinanceNotice(data.productionFinance)
           : stagingEnabled
             ? "These fictional records are shared with the staging Manager workspace. Real financial posting is disabled."
             : "Actions update only this isolated demo ledger. No Manager CRM records or real money are changed."}
@@ -258,11 +263,13 @@ function Dashboard({ data }: { data: Snapshot }) {
         title="Financial dashboard"
         sub={
           productionEnabled
-            ? "Posted activity and recorded balances. Opening balances remain unapproved until reconciled by the accountant."
+            ? data.productionFinance?.openingStatus === "posted"
+              ? "Posted activity and approved opening balances."
+              : "Posted activity and recorded balances. Reports remain provisional until opening balances are reconciled and posted."
             : "An accountant’s view of the fictional journal, open documents and cash positions."
         }
       />
-      <Note />
+      <Note data={data} />
       <div className="basis-strip">
         <div>
           <span className="eyebrow">Activity period</span>
@@ -385,7 +392,7 @@ function Invoices({
           + New invoice
         </a>
       </Head>
-      <Note />
+      <Note data={data} />
       <div className="invoice-summary" aria-label="Invoice summary">
         <span>
           <strong>{issued.length}</strong> issued invoices
@@ -473,7 +480,13 @@ function Invoices({
                   </a>
                   <button
                     className="button button-secondary"
-                    disabled={productionEnabled}
+                    disabled={
+                      productionEnabled &&
+                      (!data.productionFinance?.canPost ||
+                        ((item.invoiceType || "Tax Invoice") ===
+                          "Tax Invoice" &&
+                          !data.productionFinance?.taxInvoiceEnabled))
+                    }
                     onClick={() => act({ kind: "issue-invoice", id: item.id })}
                   >
                     Issue{" "}
@@ -494,7 +507,9 @@ function Invoices({
               <small>
                 <a href={accountsUrl(`/pdf/${encodeURIComponent(item.id)}`)}>
                   {productionEnabled
-                    ? "Download draft PDF · not a legal invoice"
+                    ? item.status === "Draft"
+                      ? "Download draft PDF · not a legal invoice"
+                      : "Download invoice PDF"
                     : "Download demo PDF"}
                 </a>
               </small>
@@ -554,7 +569,7 @@ function Settlement({
         title={supplier ? "Supplier payments" : "Customer receipts"}
         sub="Choose the exact document and amount. Its original due date remains unchanged after partial settlement."
       />
-      <Note />
+      <Note data={data} />
       <form className="panel review-form" onSubmit={submit}>
         <h2>
           {supplier ? "Record supplier payment" : "Record customer receipt"}
@@ -614,7 +629,11 @@ function Settlement({
             required={false}
           />
         </div>
-        <button className="button button-primary" type="submit">
+        <button
+          className="button button-primary"
+          type="submit"
+          disabled={productionEnabled && !data.productionFinance?.canPost}
+        >
           {supplier ? "Record payment" : "Record receipt"}
         </button>
       </form>
@@ -699,7 +718,7 @@ function Ledger({
             title="General ledger"
             sub={`Posted entries from ${date(data.period.from)} to ${date(data.period.to)} with running balances.`}
           />
-          <Note />
+          <Note data={data} />
           {productionEnabled && act && (
             <LedgerSetup accounts={data.accounts} act={act} />
           )}
@@ -799,7 +818,7 @@ function Statement({
             : "Download demo PDF"}
         </a>
       </Head>
-      <Note />
+      <Note data={data} />
       {filters}
       <div className="report-layout">
         <section className="panel statement">
@@ -869,7 +888,7 @@ function Statement({
           </p>
           <p>
             {productionEnabled
-              ? "VAT, opening balances and cutover require Owner and Accountant approval before financial posting is enabled."
+              ? productionFinanceNotice(data.productionFinance)
               : "VAT, cutover balances, period locks and real accounting policy remain outside this client review."}
           </p>
           <a href={link("ledger")}>Inspect general ledger →</a>
@@ -911,7 +930,7 @@ function Aging({ data, filters }: { data: Snapshot; filters?: ReactNode }) {
         title="Receivable & payable aging"
         sub={`As of ${date(data.asOf)}. Partial settlements retain each document’s original due date.`}
       />
-      <Note />
+      <Note data={data} />
       {filters}
       <h2 className="review-section-title">Customer receivables</h2>
       <Table
@@ -1135,7 +1154,9 @@ function App() {
                     ? "Company purchase draft saved. Financial posting remains disabled."
                     : "Purchase bill created once through the demo ledger."
                   : productionEnabled
-                    ? "Company draft saved. Financial posting remains disabled."
+                    ? snapshot.productionFinance?.canPost
+                      ? "Company record saved. Review the updated document and journal before another submission."
+                      : "Company draft saved. Financial posting is not available for this account or date."
                     : `${action.kind === "issue-invoice" ? "Issued" : "Recorded"} ${result.id} in the fictional review ledger.`,
       );
       return true;
@@ -1451,7 +1472,13 @@ function App() {
               {stagingEnabled ? session.email : "Demo Accountant"}
             </strong>
             <small>
-              {productionEnabled ? "Posting disabled" : "Fictional ledger"}
+              {productionEnabled
+                ? snapshot.productionFinance?.approved
+                  ? snapshot.productionFinance.postingActive
+                    ? "No VAT · Company accounts"
+                    : `Posting from ${snapshot.productionFinance.effectiveFrom}`
+                  : "Posting disabled"
+                : "Fictional ledger"}
             </small>
           </div>
           <button className="signout" type="button" onClick={logout}>
@@ -1478,7 +1505,9 @@ function App() {
           <div className="topbar-right">
             <span className="period-chip">
               {productionEnabled
-                ? "COMPANY SETUP"
+                ? snapshot.productionFinance?.approved
+                  ? "NO VAT"
+                  : "COMPANY SETUP"
                 : stagingEnabled
                   ? "FICTIONAL STAGING"
                   : "CLIENT REVIEW"}
@@ -1503,7 +1532,7 @@ function App() {
         </main>
         <footer className="site-footer">
           {productionEnabled
-            ? "AZZORA Accounts · Company setup · Financial posting and legal invoice issuance disabled pending approval"
+            ? `AZZORA Accounts · ${productionFinanceNotice(snapshot.productionFinance)}`
             : stagingEnabled
               ? "AZZORA Accounts · Shared fictional staging · Real financial posting disabled"
               : "AZZORA Accounts · Fictional demo ledger · No production posting or CRM record changes"}

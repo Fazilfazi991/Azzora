@@ -57,6 +57,7 @@ import { getOperations } from "./operations/migration";
 import { AccountantWorkspace } from "./accounting/AccountantWorkspace";
 import { legacyArApView } from "./accounting/legacy-ar-ap";
 import { productionEnabled } from "./staging/client";
+import { productionFinanceNotice } from "./accounts-review/completion-ui";
 const navigationGroups = [
   {
     key: "overview",
@@ -474,7 +475,7 @@ export default function App() {
           title="Settings"
           description={
             productionEnabled
-              ? "Company setup, configuration and programme weights. Financial posting remains disabled pending approval."
+              ? productionFinanceNotice(store.productionFinance)
               : store.mode === "staging"
                 ? "Shared fictional staging, company configuration and programme weights."
                 : "Demo persistence, programme weights and backend readiness."
@@ -909,7 +910,13 @@ export default function App() {
           <footer className="page-footer">
             AZZORA Project Control · {today()} ·{" "}
             {productionEnabled
-              ? "Company setup · Real posting disabled"
+              ? store.productionFinance?.approved
+                ? store.productionFinance.postingActive
+                  ? store.productionFinance.openingStatus === "posted"
+                    ? "No VAT · Accountant posting · Approved openings posted"
+                    : "No VAT · Accountant posting · Opening balances subject to reconciliation"
+                  : `No VAT · Posting from ${store.productionFinance.effectiveFrom}`
+                : "Company setup · Real posting disabled"
               : store.mode === "staging"
                 ? "Shared fictional staging · Real posting disabled"
                 : "Demo data, local to this browser"}
@@ -1142,7 +1149,7 @@ export default function App() {
               </p>
               <p>
                 {productionEnabled
-                  ? "Permissions are enforced by the server. These are shared company records; financial posting remains disabled pending approved policies and cutover."
+                  ? `Permissions are enforced by the server. ${productionFinanceNotice(store.productionFinance)}`
                   : "Permissions are enforced by the server. All company records in this environment are fictional; real posting is disabled."}
               </p>
             </>

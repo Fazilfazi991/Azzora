@@ -25,6 +25,8 @@ export interface StagingExpenseSubmission {
   departmentId?: string;
 }
 export interface Store {
+  /** Server-derived display status; command authorization remains on the backend. */
+  productionFinance?: import("./accounts-review/completion-ui").ProductionFinanceView;
   db: Database;
   mutate: (fn: (db: Database) => void, message?: string) => boolean;
   toast: string;

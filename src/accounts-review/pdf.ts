@@ -7,13 +7,50 @@ const money = (fils: string) => {
     a = n < 0n ? -n : n;
   return `${n < 0n ? "-" : ""}AED ${(a / 100n).toLocaleString("en-AE")}.${(a % 100n).toString().padStart(2, "0")}`;
 };
+export type ReviewPdfContext =
+  | "production-setup"
+  | {
+      mode: "production-live";
+      companyName: string;
+      openingBalancesPending: boolean;
+    };
 export function reviewPdf(
   state: ReviewState,
   name: string,
   selection?: ReviewReportSelection,
-  context?: "production-setup",
+  context?: ReviewPdfContext,
 ): ArrayBuffer {
   const doc = new jsPDF({ format: "a4", unit: "mm" });
+  const live =
+    typeof context === "object" && context.mode === "production-live"
+      ? context
+      : undefined;
+  const report = name === "pnl" || name === "balance";
+  const liveInvoice =
+    live && !report
+      ? state.invoices.find((item) => item.id === name)
+      : undefined;
+  if (
+    live &&
+    (!live.companyName.trim() ||
+      live.companyName.length > 120 ||
+      /[\r\n]/.test(live.companyName) ||
+      typeof live.openingBalancesPending !== "boolean")
+  )
+    throw Error("Trusted production PDF company context is required.");
+  if (
+    live &&
+    !report &&
+    (!liveInvoice ||
+      liveInvoice.status !== "Issued" ||
+      liveInvoice.invoiceType !== "Normal Invoice" ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(liveInvoice.date) ||
+      liveInvoice.date < "2026-11-15" ||
+      BigInt(liveInvoice.taxFils || "0") !== 0n)
+  )
+    throw Error(
+      "Production PDF requires an approved issued no-VAT Normal invoice from 15 November 2026.",
+    );
   const data = reviewSnapshot(
     state,
     selection?.asOf,
@@ -25,15 +62,21 @@ export function reviewPdf(
     pageTitle = title.replace(" (continued)", "");
     doc.setTextColor(120, 45, 25);
     doc.setFontSize(18);
-    doc.text("AZZORA Accounts", 18, 20);
+    doc.text(live ? live.companyName : "AZZORA Accounts", 18, 20);
     doc.setFontSize(10);
     doc.text(title, 18, 29);
     doc.setTextColor(70);
     doc.setFontSize(8);
     doc.text(
-      context === "production-setup"
-        ? "DRAFT / SETUP REVIEW ONLY - NOT A LEGAL TAX INVOICE"
-        : "FICTIONAL CLIENT REVIEW - NOT A TAX OR PRODUCTION ACCOUNTING DOCUMENT",
+      live
+        ? report
+          ? live.openingBalancesPending
+            ? "PROVISIONAL - OPENING BALANCES PENDING"
+            : "ACCOUNTING REPORT"
+          : "NORMAL INVOICE - NO VAT CHARGED - NOT A TAX INVOICE"
+        : context === "production-setup"
+          ? "DRAFT / SETUP REVIEW ONLY - NOT A LEGAL TAX INVOICE"
+          : "FICTIONAL CLIENT REVIEW - NOT A TAX OR PRODUCTION ACCOUNTING DOCUMENT",
       18,
       37,
     );
@@ -246,17 +289,19 @@ export function reviewPdf(
     const invoice = data.invoices.find((item) => item.id === name) || bill;
     if (!invoice) throw Error("Demo invoice or bill document was not found.");
     header(
-      context === "production-setup"
-        ? bill
-          ? "Purchase bill draft"
-          : `${invoice.invoiceType || "Invoice"} - draft`
-        : bill
-          ? "Purchase bill - demo"
-          : invoice.invoiceType === "Proforma"
-            ? "Proforma - not a tax invoice"
-            : invoice.invoiceType === "Normal Invoice"
-              ? "Normal invoice"
-              : "Tax invoice - demo",
+      live
+        ? "Normal invoice - not a tax invoice"
+        : context === "production-setup"
+          ? bill
+            ? "Purchase bill draft"
+            : `${invoice.invoiceType || "Invoice"} - draft`
+          : bill
+            ? "Purchase bill - demo"
+            : invoice.invoiceType === "Proforma"
+              ? "Proforma - not a tax invoice"
+              : invoice.invoiceType === "Normal Invoice"
+                ? "Normal invoice"
+                : "Tax invoice - demo",
     );
     row("Reference", invoice.invoiceReference || invoice.id, true);
     row(
@@ -288,21 +333,28 @@ export function reviewPdf(
       row("Subtotal", money(invoice.subtotalFils || invoice.amountFils));
       if (BigInt(invoice.discountFils || "0") > 0n)
         row("Approved discount", money(invoice.discountFils!));
-      row("VAT - policy pending", money(invoice.taxFils || "0"));
+      row(
+        live ? "VAT (not charged)" : "VAT - policy pending",
+        money(invoice.taxFils || "0"),
+      );
       row("Grand total", money(invoice.amountFils), true);
       row(
         "Tax policy",
-        context === "production-setup"
-          ? "Not approved - draft review only"
-          : "Not applied in this fictional review",
+        live
+          ? "No VAT charged. Not a tax invoice."
+          : context === "production-setup"
+            ? "Not approved - draft review only"
+            : "Not applied in this fictional review",
       );
     } else {
       row(invoice.description, money(invoice.amountFils));
       row(
         "VAT",
-        context === "production-setup"
-          ? "Not approved - draft review only"
-          : "Not calculated in this demo",
+        live
+          ? "No VAT charged. Not a tax invoice."
+          : context === "production-setup"
+            ? "Not approved - draft review only"
+            : "Not calculated in this demo",
       );
       row("Total", money(invoice.amountFils), true);
     }
@@ -318,9 +370,15 @@ export function reviewPdf(
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100);
     doc.text(
-      context === "production-setup"
-        ? "Posting disabled. Opening balances and accounting policies await approval."
-        : "Synthetic demonstration only. No real records or money movement.",
+      live
+        ? report
+          ? live.openingBalancesPending
+            ? "Provisional report - opening balances pending verification."
+            : "Accounting report - review with the underlying journal."
+          : "Normal invoice - no VAT charged. Not a tax invoice."
+        : context === "production-setup"
+          ? "Posting disabled. Opening balances and accounting policies await approval."
+          : "Synthetic demonstration only. No real records or money movement.",
       18,
       282,
     );

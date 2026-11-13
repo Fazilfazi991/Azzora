@@ -369,6 +369,7 @@ try {
   ).toBeVisible();
   expect(state.finance.accounting.journals).toHaveLength(0);
   expect(state.finance.invoices).toHaveLength(0);
+
   expect(state.finance.openingSetup.rows[1].debit).toBe("");
   checks.push(
     "Actual opening form saves incomplete/unbalanced draft through domain and canonical round-trip; blank retained; no journals or invoices.",
@@ -467,6 +468,13 @@ try {
   await expect(
     page.getByRole("button", { name: "Save draft", exact: true }),
   ).toBeEnabled();
+  const invoiceReference = page.locator('input[name="invoiceReference"]');
+  await expect(invoiceReference).toHaveValue("");
+  expect(await invoiceReference.evaluate((input) => input.required)).toBe(
+    false,
+  );
+  await invoiceReference.fill("UI-ACCOUNTANT-001");
+  await expect(invoiceReference).toHaveValue("UI-ACCOUNTANT-001");
   productionFinance = {
     ...productionFinance,
     businessDate: "2026-11-15",
@@ -477,6 +485,58 @@ try {
   await expect(
     page.getByRole("button", { name: "Issue document", exact: true }),
   ).toBeEnabled();
+  await page
+    .getByLabel("Customer", { exact: true })
+    .fill("Fictional UI customer");
+  await page
+    .getByLabel("Item 1 description", { exact: true })
+    .fill("Fictional UI service");
+  await page.getByLabel("Item 1 rate", { exact: true }).fill("10");
+  await page
+    .getByRole("button", { name: "Issue document", exact: true })
+    .click();
+  await expect(
+    page
+      .getByRole("alert")
+      .filter({ hasText: "Enter the Accountant-approved invoice number" }),
+  ).toBeVisible();
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth + 1,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: `${out}/explicit-invoice-number-${width}.png`,
+      fullPage: true,
+    });
+  }
+  expect(state.finance.invoices).toHaveLength(0);
+  state.finance.invoices.push({
+    id: "UI-DRAFT-REFERENCE",
+    party: "Fictional UI customer",
+    date: "2026-11-15",
+    due: "2026-11-15",
+    description: "Fictional UI service",
+    amountFils: "1000",
+    status: "Draft",
+    invoiceType: "Normal Invoice",
+  });
+  await page.goto("http://127.0.0.1:5296/accountant.html#/invoices");
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Issue draft", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText(
+      "Edit draft and enter the Accountant-approved invoice number before issuing.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Edit draft", exact: true }).click();
+  await expect(page.locator('input[name="invoiceReference"]')).toHaveValue("");
+  state.finance.invoices = [];
   checks.push(
     "Server-approved No VAT defaults to Normal Invoice, excludes Tax Invoice, preserves drafts before the effective date and enables authorized issuance only when the server allows it.",
   );

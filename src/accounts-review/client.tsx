@@ -483,6 +483,8 @@ function Invoices({
                     disabled={
                       productionEnabled &&
                       (!data.productionFinance?.canPost ||
+                        (item.invoiceType === "Normal Invoice" &&
+                          !item.invoiceReference?.trim()) ||
                         ((item.invoiceType || "Tax Invoice") ===
                           "Tax Invoice" &&
                           !data.productionFinance?.taxInvoiceEnabled))
@@ -492,6 +494,14 @@ function Invoices({
                     Issue{" "}
                     {item.invoiceType === "Proforma" ? "proforma" : "draft"}
                   </button>
+                  {productionEnabled &&
+                    item.invoiceType === "Normal Invoice" &&
+                    !item.invoiceReference?.trim() && (
+                      <small>
+                        Edit draft and enter the Accountant-approved invoice
+                        number before issuing.
+                      </small>
+                    )}
                 </>
               ) : (
                 <span

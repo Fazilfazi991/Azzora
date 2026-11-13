@@ -188,6 +188,15 @@ export function InvoiceEntry({ data, act, editingId }: Props) {
       if (
         productionEnabled &&
         issue &&
+        selectedType === "Normal Invoice" &&
+        !String(new FormData(form).get("invoiceReference") || "").trim()
+      )
+        throw Error(
+          "Enter the Accountant-approved invoice number before issuing this Normal Invoice. Drafts may leave it blank.",
+        );
+      if (
+        productionEnabled &&
+        issue &&
         data.productionFinance?.taxInvoiceEnabled === false &&
         selectedType !== "Normal Invoice" &&
         selectedType !== "Proforma"
@@ -276,6 +285,20 @@ export function InvoiceEntry({ data, act, editingId }: Props) {
                 <option>Normal Invoice</option>
                 <option>Proforma</option>
               </Field>
+              <label>
+                Invoice number (optional for drafts)
+                <input
+                  name="invoiceReference"
+                  defaultValue={existing?.invoiceReference || ""}
+                  maxLength={120}
+                  aria-describedby="invoice-reference-help"
+                />
+                <small id="invoice-reference-help">
+                  {productionEnabled
+                    ? "Enter your approved business number. Required to issue a Normal Invoice; no number is generated automatically."
+                    : "Optional business reference. Existing demo numbering is preserved."}
+                </small>
+              </label>
               <label>
                 Customer
                 <input

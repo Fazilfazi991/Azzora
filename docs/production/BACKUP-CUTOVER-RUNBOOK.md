@@ -1,6 +1,42 @@
 # Backup, restore and cutover runbook
 
-## Current production setup release — 13 November 2026
+## Immediate client setup handover — 14 November 2026 (India)
+
+Latest application: `58b0a2253597858c0a60457d537ae9c4c4b3c219`, deployment
+`dpl_CoQ9pPtap7QkV3NKaZupCNZLo2aK`, serving `https://azzoracrm.vercel.app`
+and `/accountant.html`. All 267 uploaded source hashes match. The seventh
+reviewed migration, `20261113182509_production_catalog_setup.sql`, is paired
+with `production-catalog-manifest.json`; it adds a finite account-creation guard
+without changing grants, memberships, RLS, posting flags, balances or periods.
+Actual post-migration verification: 3 business records, 0 journals, 2 memberships,
+posting disabled. No client customer, supplier, project or financial amount has
+been invented for acceptance.
+
+The existing General Ledger now exposes structural Chart of Accounts setup.
+Expenses links to the existing manual review/draft path, and its production paid
+expense form no longer contains a fictional prefilled amount. Four affected
+API/SQL tests, ten local UI checks, TypeScript, scoped ESLint and production
+build passed. Desktop/mobile screenshots were inspected. These focused checks
+are distinct from the earlier 1,324-test baseline at `e89d6bc`.
+
+Actual Owner authentication on the new build passed. The Owner downloaded a
+fresh encrypted v2 backup, SHA-256
+`6a5eb3836c32731d67181d129c2161adbadb9da0a17cc0e6bc2f3074a8305397`:
+version 4, 3 records, 0 journals, 2 memberships, 0 originals and 12 audit events.
+Decryption and integrity passed; this fresh archive has not been restored.
+The earlier 49-check recovery result below remains tied to its original archive.
+Accountant authentication was verified on the preceding build; final new-build
+Accountant visual acceptance awaits the human sign-in. Live party/project and
+invoice/bill/expense draft save checks require the actual client names and
+amounts requested from the owner; they have not been executed with invented data.
+
+Setup and non-posting drafts do not depend on completing the old full approval
+sheet. The current `ACCOUNTANT-APPROVAL-SHEET.md` requests only three essential
+financial confirmations: legal/VAT/invoice treatment, action-specific authority,
+and start date with applicable reconciled openings. Missing balances are not
+zero. Real posting and external real-document AI remain disabled.
+
+## Previous production setup checkpoint — 13 November 2026
 
 This section supersedes historical preparation below. **Company setup is authorized;
 financial cutover is not.** Stay on Supabase Free, retain manual encrypted local

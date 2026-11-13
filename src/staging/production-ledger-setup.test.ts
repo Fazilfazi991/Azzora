@@ -196,6 +196,45 @@ const account = (code = "1200", name = "Receivables") => ({
   type: "Asset",
   postable: true,
 });
+it("rejects real-document AI at the production API before any provider call when evidence or budget is missing", async () => {
+  const f = await fixture();
+  const request = vi.spyOn(globalThis, "fetch");
+  try {
+    f.user(accountant);
+    const before = await f.snapshot();
+    const response = await f.handler(
+      new Request(
+        "https://azzoracrm.vercel.app/api/staging/accounts/documents/extract",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Azzora-Expected-Version": String(before.version),
+            "X-Azzora-Idempotency-Key": "business-ai-disabled-qa",
+          },
+          body: JSON.stringify({
+            file: { name: "fictional.png", mime: "image/png", data: "aA==" },
+            mode: "auto",
+            processing: {
+              dataClass: "business",
+              consent: true,
+              policyVersion: "ai-business-v1",
+            },
+          }),
+        },
+      ),
+    );
+    expect(response.status).toBe(423);
+    expect((await response.json()).code).toBe(
+      "production_document_processing_disabled",
+    );
+    expect(request).not.toHaveBeenCalled();
+    expect(await f.snapshot()).toEqual(before);
+  } finally {
+    request.mockRestore();
+    await f.db.close();
+  }
+}, 60000);
 it("Owner and Accountant create every explicit account type through the real API and SQL commit boundary, without balances or journals", async () => {
   const f = await fixture();
   try {

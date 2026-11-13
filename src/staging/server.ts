@@ -44,9 +44,13 @@ import { prepareImportReview } from "../backend/import-plan.js";
 import { extractDocument } from "../accounts-review/documents/service.js";
 import { BlobReviewStore } from "../accounts-review/hosted-store.js";
 import { DocumentExtractionError } from "../accounts-review/documents/extraction-status.js";
-import { createDocumentAuthorization } from "../accounts-review/documents/admission.js";
+import {
+  createDocumentAuthorization,
+  createProductionDocumentAuthorization,
+} from "../accounts-review/documents/admission.js";
 import {
   configuredDocumentRuntime,
+  configuredProductionDocumentRuntime,
   documentAvailability,
 } from "../accounts-review/documents/runtime.js";
 import { extractionInputSchema } from "../accounts-review/documents/runtime.js";
@@ -729,6 +733,13 @@ export function createStagingHandler(
           },
         });
       }
+      const productionDocumentRuntime =
+        production && workspace === "accountant"
+          ? await configuredProductionDocumentRuntime(
+              new BlobReviewStore(),
+              production.companyId,
+            )
+          : undefined;
       const snapshot = () =>
         workspace === "manager"
           ? {
@@ -770,25 +781,20 @@ export function createStagingHandler(
                 state,
                 sharedActor(actor),
               ),
-              documentAi: production
-                ? {
-                    enabled: false,
-                    provider: "deepseek",
-                    status: "disabled",
-                    message:
-                      "External AI processing requires approved real-document data-processing and retention controls. Manual entry remains available.",
-                  }
-                : process.env.AZZORA_AI_GENERAL_DOCUMENTS === "fictional-v1"
-                  ? documentAvailability(
-                      configuredDocumentRuntime(new BlobReviewStore()),
-                    )
-                  : {
-                      enabled: false,
-                      provider: "deepseek",
-                      status: "disabled",
-                      message:
-                        "Paid AI is disabled in shared staging. Local PDF reading, labelled prepared demo suggestions and manual review remain available.",
-                    },
+              documentAi:
+                production && productionDocumentRuntime
+                  ? documentAvailability(productionDocumentRuntime)
+                  : process.env.AZZORA_AI_GENERAL_DOCUMENTS === "fictional-v1"
+                    ? documentAvailability(
+                        configuredDocumentRuntime(new BlobReviewStore()),
+                      )
+                    : {
+                        enabled: false,
+                        provider: "deepseek",
+                        status: "disabled",
+                        message:
+                          "Paid AI is disabled in shared staging. Local PDF reading, labelled prepared demo suggestions and manual review remain available.",
+                      },
             };
       if (
         path ===
@@ -932,12 +938,16 @@ export function createStagingHandler(
         await commit(undefined, {});
       } else if (isUpload) {
         const parsed = extractionInputSchema.parse(input);
-        if (production && parsed.mode !== "manual")
+        if (
+          production &&
+          parsed.mode !== "manual" &&
+          !productionDocumentRuntime?.status().ready
+        )
           return json(
             423,
             {
               error:
-                "Real documents cannot be sent to an AI provider until data-processing and operating-budget approval is recorded. Manual entry remains available.",
+                "AI document reading is unavailable until the approved processing and spending controls are verified. Manual entry remains available.",
               code: "production_document_processing_disabled",
             },
             requestId,
@@ -946,12 +956,28 @@ export function createStagingHandler(
           !production &&
           process.env.AZZORA_AI_GENERAL_DOCUMENTS === "fictional-v1";
         const authorization =
-          general && parsed.mode !== "manual"
-            ? createDocumentAuthorization(actor, parsed.processing)
-            : undefined;
+          parsed.mode === "manual"
+            ? undefined
+            : production
+              ? createProductionDocumentAuthorization(
+                  actor,
+                  parsed.processing,
+                  production.companyId,
+                )
+              : general
+                ? createDocumentAuthorization(actor, parsed.processing)
+                : undefined;
         const extractor = authorization
-          ? configuredDocumentRuntime(new BlobReviewStore(), authorization)
-              .extractor
+          ? production
+            ? (
+                await configuredProductionDocumentRuntime(
+                  new BlobReviewStore(),
+                  production.companyId,
+                  authorization,
+                )
+              ).extractor
+            : configuredDocumentRuntime(new BlobReviewStore(), authorization)
+                .extractor
           : parsed.mode === "manual"
             ? disabledExtractor
             : undefined;
@@ -980,7 +1006,7 @@ export function createStagingHandler(
               userId: authorization.userId,
               companyId: authorization.companyId,
               policyVersion: authorization.policyVersion,
-              dataClass: "fictional",
+              dataClass: authorization.dataClass,
               confirmedAt: new Date().toISOString(),
             };
         }

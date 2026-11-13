@@ -3,6 +3,10 @@ import {
   saveManualDocumentDraft,
 } from "./documents/review.js";
 import { openingSetupSchema, type OpeningSetupDraft } from "./opening-setup.js";
+import {
+  createLedgerAccount,
+  type CreateLedgerAccount,
+} from "./ledger-accounts.js";
 import { postJournal } from "../accounting/core.js";
 import {
   cashAccountSnapshot,
@@ -428,6 +432,7 @@ export function createReviewState(): ReviewState {
 }
 
 export type ReviewAction =
+  | CreateLedgerAccount
   | { kind: "opening-setup-draft"; id: string; draft: OpeningSetupDraft }
   | {
       kind: "create-expense-from-review";
@@ -585,6 +590,8 @@ export function applyReviewAction(
   recording?: ReviewRecordingContext,
 ): ReviewState {
   if (recording) requireRecordingContext(recording);
+  if (action.kind === "create-ledger-account")
+    return createLedgerAccount(previous, action);
   if (action.kind === "opening-setup-draft")
     return {
       ...structuredClone(previous),

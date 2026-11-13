@@ -1,0 +1,21 @@
+{
+  "format": "azzora-reviewed-production-catalog-v1",
+  "automaticApply": false,
+  "requiresReviewedBaseline": [
+    "supabase/production-migrations/initial-setup-manifest.json",
+    "supabase/production-migrations/production-hostname-manifest.json"
+  ],
+  "approvedProject": "zwjiztnsxenluqybxhhz",
+  "approvedCompany": "fc525d78-bc83-4845-96f1-fb402bb07465",
+  "files": [
+    {
+      "path": "supabase/production-migrations/20261113182509_production_catalog_setup.sql",
+      "sha256": "fd46a57cc9e86acacdb2d397d915fc562f333dfdb61aa115f25dbf3fc60ca234"
+    }
+  ],
+  "scope": "Existing nonposting Chart of Accounts setup: one structural account, explicit code/name/type/postable; no balances or periods.",
+  "permissionChanges": false,
+  "realFinancialPostingEnabled": false,
+  "realDocumentProcessingEnabled": false,
+  "sourceHashEncoding": "UTF-8 with CRLF normalized to LF"
+}

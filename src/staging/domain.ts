@@ -247,6 +247,7 @@ export interface SharedCommandScope {
   submittedBy?: string;
   financial: boolean;
   capability?: BackendAction;
+  catalogAction?: "create-ledger-account";
 }
 const object = (value: unknown): Record<string, unknown> => {
   if (!value || typeof value !== "object" || Array.isArray(value))
@@ -432,6 +433,9 @@ export function sharedCommandScope(
       state.finance.bills.find((item) => item.id === id);
     return {
       workspace: "accountant",
+      ...(state.mode === "production" && action.kind === "create-ledger-account"
+        ? { catalogAction: "create-ledger-account" as const }
+        : {}),
       projectId:
         doc?.projectId ||
         (typeof action.projectId === "string" ? action.projectId : undefined),
@@ -445,6 +449,7 @@ export function sharedCommandScope(
           ([
             "create-expense-ledger",
             "create-cash-account",
+            "create-ledger-account",
             "opening-setup-draft",
           ].includes(String(action.kind)) ||
             ([
@@ -1534,6 +1539,7 @@ export function applySharedCommand(
           "expense",
           "transfer",
           "create-expense-ledger",
+          "create-ledger-account",
           "opening-setup-draft",
           "create-cash-account",
           "document-draft",

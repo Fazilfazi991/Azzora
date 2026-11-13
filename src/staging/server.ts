@@ -114,6 +114,7 @@ export function stagingAction(
     "supplier-payment": "PAY",
     expense: "EXP",
     "create-expense-ledger": "LEDGER",
+    "create-ledger-account": "GL",
     "create-cash-account": "CASH",
     transfer: "TRANSFER",
     "create-expense-from-review": "EXP",

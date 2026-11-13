@@ -1,0 +1,29 @@
+{
+  "format": "azzora-reviewed-production-hostname-v1",
+  "automaticApply": false,
+  "requiresReviewedBaseline": "supabase/production-migrations/initial-setup-manifest.json",
+  "approvedProject": "zwjiztnsxenluqybxhhz",
+  "approvedCompany": "fc525d78-bc83-4845-96f1-fb402bb07465",
+  "vercelProject": "prj_2Kr1T82kCiU5eSk1SZFOcAPQlBfV",
+  "region": "ap-southeast-1",
+  "configurationApproval": "owner-production-hostname-20261113",
+  "allowedOrigins": [
+    "https://azzora-accounts-live.vercel.app",
+    "https://azzoracrm.vercel.app"
+  ],
+  "ownerInstruction": "one more thing is we have to change the vercel url to azzoracrm.vercel,app",
+  "ownerInstructionSha256": "a8bbba63af466d1e973803352f038b3144b1f305688d54a13855a6b900de7562",
+  "files": [
+    {
+      "path": "supabase/production-migrations/20261113174923_production_crm_hostname.sql",
+      "sha256": "a1e7049eb0e53278c7f49bcfc8d8ca3a04f4ee45c4d1c262cbd8e5ec6a9fa438"
+    }
+  ],
+  "runtimeEnvironment": {
+    "AZZORA_PRODUCTION_ENVIRONMENT_APPROVAL": "owner-production-hostname-20261113",
+    "AZZORA_PRODUCTION_ALLOWED_ORIGINS": "https://azzora-accounts-live.vercel.app,https://azzoracrm.vercel.app"
+  },
+  "realFinancialPostingEnabled": false,
+  "realDocumentProcessingEnabled": false,
+  "sourceHashEncoding": "UTF-8 with CRLF normalized to LF"
+}

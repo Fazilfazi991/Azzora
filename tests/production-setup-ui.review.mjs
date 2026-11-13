@@ -315,6 +315,24 @@ try {
     ownerPage.getByText("AZZORA COMPANY WORKSPACE", { exact: true }),
   ).toBeVisible();
   expect(initialized).toBe(true);
+  await expect(ownerPage.locator(".page-footer")).toContainText(
+    "Company setup · Real posting disabled",
+  );
+  await expect(
+    ownerPage.getByText("Owner-assisted account recovery", { exact: true }),
+  ).toHaveCount(0);
+  await ownerPage.screenshot({
+    path: `${out}/manager-company-390.png`,
+    fullPage: true,
+  });
+  await ownerPage.setViewportSize({ width: 1440, height: 1000 });
+  await ownerPage.screenshot({
+    path: `${out}/manager-company-1440.png`,
+    fullPage: true,
+  });
+  checks.push(
+    "Production Manager footer uses company setup labels and omits the unsupported staging recovery panel.",
+  );
   checks.push(
     "Owner initial setup screen renders desktop/mobile; explicit action sends CSRF and idempotency identity and opens shared Manager workspace.",
   );

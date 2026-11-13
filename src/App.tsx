@@ -56,6 +56,7 @@ import { CompanySettings } from "./operations/CompanySettings";
 import { getOperations } from "./operations/migration";
 import { AccountantWorkspace } from "./accounting/AccountantWorkspace";
 import { legacyArApView } from "./accounting/legacy-ar-ap";
+import { productionEnabled } from "./staging/client";
 const navigationGroups = [
   {
     key: "overview",
@@ -472,21 +473,27 @@ export default function App() {
         <Header
           title="Settings"
           description={
-            store.mode === "staging"
-              ? "Shared fictional staging, company configuration and programme weights."
-              : "Demo persistence, programme weights and backend readiness."
+            productionEnabled
+              ? "Company setup, configuration and programme weights. Financial posting remains disabled pending approval."
+              : store.mode === "staging"
+                ? "Shared fictional staging, company configuration and programme weights."
+                : "Demo persistence, programme weights and backend readiness."
           }
         />
         <section className="panel">
           <h2>
-            {store.mode === "staging"
-              ? "Shared fictional staging"
-              : "Browser Demo"}
+            {productionEnabled
+              ? "Company workspace"
+              : store.mode === "staging"
+                ? "Shared fictional staging"
+                : "Browser Demo"}
           </h2>
           <p>
-            {store.mode === "staging"
-              ? "Individual sign-in and server permissions protect shared fictional records. Real financial posting and paid AI are disabled. Browser-local demo records remain separate."
-              : "Changes are saved to localStorage on this device. No authentication, server authorization, multi-user sync or backup is configured."}
+            {productionEnabled
+              ? "Individual sign-in and server permissions protect shared company records. Financial posting and external AI are disabled pending approval."
+              : store.mode === "staging"
+                ? "Individual sign-in and server permissions protect shared fictional records. Real financial posting and paid AI are disabled. Browser-local demo records remain separate."
+                : "Changes are saved to localStorage on this device. No authentication, server authorization, multi-user sync or backup is configured."}
           </p>
           <div className="actions">
             <button onClick={exportOriginal}>Export original saved data</button>
@@ -512,9 +519,11 @@ export default function App() {
             sans-serif fallbacks are used.
           </p>
           <p>
-            {store.mode === "staging"
-              ? `Signed in as ${store.actor?.email}. Roles are enforced on the server; shared records cannot be reset from this workspace.`
-              : "Current demo user: Sarah Mansoor · Project Manager. Role labels are demo behavior only."}
+            {productionEnabled
+              ? `Signed in as ${store.actor?.email}. Roles are enforced on the server; shared company records cannot be reset from this workspace.`
+              : store.mode === "staging"
+                ? `Signed in as ${store.actor?.email}. Roles are enforced on the server; shared records cannot be reset from this workspace.`
+                : "Current demo user: Sarah Mansoor · Project Manager. Role labels are demo behavior only."}
           </p>
         </section>
         <CompanySettings />
@@ -796,9 +805,11 @@ export default function App() {
         <footer>
           <small>Dubai HQ Studio</small>
           <span>
-            {store.mode === "staging"
-              ? "GST +4 · Shared fictional staging"
-              : "GST +4 · Browser demo"}
+            {productionEnabled
+              ? "GST +4 · Shared company workspace"
+              : store.mode === "staging"
+                ? "GST +4 · Shared fictional staging"
+                : "GST +4 · Browser demo"}
           </span>
           <a href="/assets/azzora-logo.png" target="_blank" rel="noreferrer">
             View supplied logo
@@ -897,9 +908,11 @@ export default function App() {
           {content}
           <footer className="page-footer">
             AZZORA Project Control · {today()} ·{" "}
-            {store.mode === "staging"
-              ? "Shared fictional staging · Real posting disabled"
-              : "Demo data, local to this browser"}
+            {productionEnabled
+              ? "Company setup · Real posting disabled"
+              : store.mode === "staging"
+                ? "Shared fictional staging · Real posting disabled"
+                : "Demo data, local to this browser"}
           </footer>
         </main>
       </div>
@@ -1124,11 +1137,13 @@ export default function App() {
               <p>{store.actor?.email}</p>
               <p>
                 {store.actor?.role.replaceAll("_", " ")} · Individual
-                authenticated staging account.
+                authenticated{" "}
+                {productionEnabled ? "company account" : "staging account"}.
               </p>
               <p>
-                Permissions are enforced by the server. All company records in
-                this environment are fictional; real posting is disabled.
+                {productionEnabled
+                  ? "Permissions are enforced by the server. These are shared company records; financial posting remains disabled pending approved policies and cutover."
+                  : "Permissions are enforced by the server. All company records in this environment are fictional; real posting is disabled."}
               </p>
             </>
           ) : (

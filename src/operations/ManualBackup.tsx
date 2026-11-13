@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Store } from "../store";
 import { backupFailureMessage } from "./manual-backup-message";
+import { productionEnabled } from "../staging/client";
 
 export function ManualBackup({ store }: { store: Store }) {
   const [backupBusy, setBackupBusy] = useState(false);
@@ -19,7 +20,11 @@ export function ManualBackup({ store }: { store: Store }) {
         const result = (await response.json().catch(() => ({}))) as {
           code?: string;
         };
-        throw Error(backupFailureMessage(result.code));
+        throw Error(
+          productionEnabled && result.code === "backup_recent_mfa_required"
+            ? "Sign out and sign in again with your password, then retry."
+            : backupFailureMessage(result.code),
+        );
       }
       const envelope = (await response.json()) as {
         format?: string;
@@ -62,8 +67,9 @@ export function ManualBackup({ store }: { store: Store }) {
         <section className="panel" aria-labelledby="backup-heading">
           <h2 id="backup-heading">Backup &amp; Restore</h2>
           <p>
-            Download an encrypted business archive. A recent authenticator
-            sign-in is required.
+            Download an encrypted business archive. A recent{" "}
+            {productionEnabled ? "password" : "authenticator"} sign-in is
+            required.
           </p>
           <p className="muted">
             The archive does not include database schema, migration history or

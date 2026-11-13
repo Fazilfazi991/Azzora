@@ -141,7 +141,9 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
           setError(
             problem instanceof Error
               ? problem.message
-              : "Staging service unavailable.",
+              : productionEnabled
+                ? "Company service unavailable."
+                : "Staging service unavailable.",
           );
       })
       .finally(() => {
@@ -163,7 +165,9 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
     if (!attempt) {
       if (attempts.current.size >= 100)
         throw Error(
-          "Resolve the unconfirmed staging requests before submitting more changes.",
+          productionEnabled
+            ? "Resolve the unconfirmed company requests before submitting more changes."
+            : "Resolve the unconfirmed staging requests before submitting more changes.",
         );
       attempt = { key: crypto.randomUUID(), version };
       attempts.current.set(identityKey, attempt);
@@ -237,7 +241,9 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
   function command(
     kind: string,
     payload: unknown,
-    message = "Changes saved to shared staging",
+    message = productionEnabled
+      ? "Changes saved to the shared company workspace"
+      : "Changes saved to shared staging",
   ) {
     const identity = sessionRef.current;
     const key = identity?.userId + ":" + JSON.stringify({ kind, payload });
@@ -252,7 +258,9 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
         if (failure.current) throw Error(failure.current);
         if (identity !== sessionRef.current)
           throw Error(
-            "Your staging identity changed. Sign in before retrying.",
+            productionEnabled
+              ? "Your company identity changed. Sign in before retrying."
+              : "Your staging identity changed. Sign in before retrying.",
           );
         const next = await send({ kind, payload });
         if (identity !== sessionRef.current)
@@ -468,7 +476,9 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
     mutate(fn, message = "") {
       if (activeCommands.current) {
         setError(
-          "Wait for the shared staging change to finish before editing this draft.",
+          productionEnabled
+            ? "Wait for the shared company change to finish before editing this draft."
+            : "Wait for the shared staging change to finish before editing this draft.",
         );
         return false;
       }
@@ -485,20 +495,29 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
         const intent = quotationIntent(previous, next);
         if (!intent)
           throw Error(
-            "This action requires its authorized staging command and cannot save to browser storage.",
+            productionEnabled
+              ? "This action requires its authorized company command and cannot save to browser storage."
+              : "This action requires its authorized staging command and cannot save to browser storage.",
           );
         if (intent.kind !== "quotation.save") {
           void command(intent.kind, intent.payload, message);
           return true;
         }
         enqueue(intent, next);
-        if (message) setToast("Quotation draft queued for shared staging");
+        if (message)
+          setToast(
+            productionEnabled
+              ? "Quotation draft queued for the shared company workspace"
+              : "Quotation draft queued for shared staging",
+          );
         return true;
       } catch (problem) {
         setError(
           problem instanceof Error
             ? problem.message
-            : "This staging action is unavailable.",
+            : productionEnabled
+              ? "This company action is unavailable."
+              : "This staging action is unavailable.",
         );
         return false;
       }
@@ -508,7 +527,11 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
       if (!failure.current) setError("");
     },
     reset() {
-      setError("Shared staging records cannot be reset from this workspace.");
+      setError(
+        productionEnabled
+          ? "Shared company records cannot be reset from this workspace."
+          : "Shared staging records cannot be reset from this workspace.",
+      );
     },
     exportOriginal: exportUnsaved,
   };
@@ -550,7 +573,10 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
           data-error={!!error}
           role={error ? "alert" : "status"}
         >
-          {error || "Saving to shared staging…"}
+          {error ||
+            (productionEnabled
+              ? "Saving to shared company records…"
+              : "Saving to shared staging…")}
           {failure.current && (
             <>
               <button type="button" onClick={exportUnsaved}>
@@ -563,7 +589,7 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
           )}
         </div>
       )}
-      {session.role === "owner_admin" && (
+      {!productionEnabled && session.role === "owner_admin" && (
         <OwnerRecoveryPanel session={session} />
       )}
       {children}

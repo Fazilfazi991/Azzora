@@ -1,4 +1,5 @@
 import { isPasswordOnlyClientReview } from "../backend/client-review-policy.js";
+import { isProductionPasswordOnly } from "../backend/production-password-policy.js";
 import {
   assertProductionPostingAllowed,
   productionPolicyDigest,
@@ -276,6 +277,7 @@ function requireWorkspace(actor: SharedActor, workspace: Workspace) {
   if (
     role(actor, ["owner", "admin", "accountant"]) &&
     actor.assurance !== "aal2" &&
+    !isProductionPasswordOnly(actor) &&
     !(
       actor.grant.roles.length === 1 &&
       isPasswordOnlyClientReview({
@@ -433,10 +435,26 @@ export function sharedCommandScope(
       projectId:
         doc?.projectId ||
         (typeof action.projectId === "string" ? action.projectId : undefined),
-      // Draft permission is exclusively document review; catalog writes need full finance authority.
-      financial: !["document-draft", "document-manual"].includes(
-        String(action.kind),
-      ),
+      // The staging review-only grant must never become catalog authority.
+      // Production uses individually verified Owner/Accountant memberships:
+      // explicitly unissued drafts and empty master records are setup, not posting.
+      financial:
+        !["document-draft", "document-manual"].includes(String(action.kind)) &&
+        !(
+          state.mode === "production" &&
+          ([
+            "create-expense-ledger",
+            "create-cash-account",
+            "opening-setup-draft",
+          ].includes(String(action.kind)) ||
+            ([
+              "invoice",
+              "update-invoice-draft",
+              "bill",
+              "update-bill-draft",
+            ].includes(String(action.kind)) &&
+              action.issue === false))
+        ),
     };
   }
   const suppliedEntity =
@@ -751,7 +769,10 @@ function applyAccounts(
           bank: "",
           category: "",
           terms: "",
-          notes: "Explicit fictional staging bill supplier",
+          notes:
+            state.mode === "production"
+              ? "Created from an unissued purchase draft; supplier details require review."
+              : "Explicit fictional staging bill supplier",
           status: "Active",
           createdAt: new Date().toISOString(),
         },
@@ -1513,6 +1534,7 @@ export function applySharedCommand(
           "expense",
           "transfer",
           "create-expense-ledger",
+          "opening-setup-draft",
           "create-cash-account",
           "document-draft",
           "document-manual",

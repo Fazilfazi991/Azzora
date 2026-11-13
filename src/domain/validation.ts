@@ -624,12 +624,12 @@ export function validateSavedShape(value: unknown): asserts value is Database {
         .object({
           company,
           currency: z.literal("AED"),
-          vatPercentage: money,
+          vatPercentage: money.or(z.literal("")),
           tax: text,
           fiscalYearStart: text,
           paymentDays: number,
           blockOperationalForFinance: z.boolean(),
-          retentionPercentage: money,
+          retentionPercentage: money.or(z.literal("")),
           numbering: z.object(
             Object.fromEntries(
               [

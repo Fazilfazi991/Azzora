@@ -31,8 +31,16 @@ import {
 } from "../workforce/document-approvals.js";
 import { uid, today } from "../domain/logic.js";
 import { record } from "../domain/repository.js";
-import { cents, amountString, invoiceTotals } from "../commercial/calculations.js";
-import { blankInvoice, saveInvoice, validDate } from "../commercial/repository.js";
+import {
+  cents,
+  amountString,
+  invoiceTotals,
+} from "../commercial/calculations.js";
+import {
+  blankInvoice,
+  saveInvoice,
+  validDate,
+} from "../commercial/repository.js";
 import { creditAllocation, remainingCreditLines } from "./credit-allocation.js";
 import {
   variationTotals,
@@ -344,7 +352,13 @@ export function createRfq(
         quantity: m.quantity,
         unit: m.unit,
         rate: "0",
-        tax: op.settings.tax,
+        tax: (() => {
+          if (op.settings.tax === "Unconfigured")
+            throw Error(
+              "Configure and review the company tax treatment before preparing priced procurement documents.",
+            );
+          return op.settings.tax;
+        })(),
       };
     }),
     deliveryDate,

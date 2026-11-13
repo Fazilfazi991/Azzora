@@ -124,8 +124,14 @@ export function DataTable({
       role="region"
       aria-label={headers.join(", ") + " table"}
     >
-      {invoiceLayout && <p className="invoice-scroll-hint">Scroll sideways to see all invoice details.</p>}
-      <table className={`commercial-table${invoiceLayout ? " commercial-invoice-table" : ""}`}>
+      {invoiceLayout && (
+        <p className="invoice-scroll-hint">
+          Scroll sideways to see all invoice details.
+        </p>
+      )}
+      <table
+        className={`commercial-table${invoiceLayout ? " commercial-invoice-table" : ""}`}
+      >
         <thead>
           <tr>
             {headers.map((h) => (
@@ -312,7 +318,10 @@ export function InvoiceForm({
     if (!invoice && db.operations) {
       const settings = db.operations.settings;
       result.vatPercentage = settings.vatPercentage;
-      result.lines.forEach((l) => (l.tax = settings.tax));
+      if (settings.tax !== "Unconfigured") {
+        const configuredTax = settings.tax;
+        result.lines.forEach((l) => (l.tax = configuredTax));
+      }
       result.due = addDays(today(), settings.paymentDays);
       result.terms = settings.company.invoiceTerms;
     }

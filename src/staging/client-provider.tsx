@@ -14,6 +14,7 @@ import {
 import { StagingLogin } from "./client-login";
 import {
   StagingRequestError,
+  productionEnabled,
   stagingJson,
   stagingRequest,
   type StagingSession,
@@ -73,6 +74,9 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
   const [snapshot, setSnapshot] = useState<ManagerSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [needsSetup, setNeedsSetup] = useState(false);
+  const [settingUp, setSettingUp] = useState(false);
+  const setupKey = useRef<string | null>(null);
   const [toast, setToast] = useState("");
   const [pending, setPending] = useState(0);
   const sessionRef = useRef<StagingSession | null>(null);
@@ -91,7 +95,20 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
   const load = useCallback(async () => {
     const identity = sessionRef.current;
     const before = current.current;
-    const next = await stagingRequest<ManagerSnapshot>("/manager/snapshot");
+    let next: ManagerSnapshot;
+    try {
+      next = await stagingRequest<ManagerSnapshot>("/manager/snapshot");
+      setNeedsSetup(false);
+    } catch (problem) {
+      if (
+        problem instanceof StagingRequestError &&
+        problem.code === "production_company_setup_required"
+      ) {
+        setNeedsSetup(true);
+        return;
+      }
+      throw problem;
+    }
     if (
       identity === sessionRef.current &&
       before === current.current &&
@@ -366,6 +383,69 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
         Opening your Manager workspace…
       </main>
     );
+  if (session && needsSetup && !snapshot)
+    return (
+      <main className="staging-login">
+        <section className="staging-login-side">
+          <div className="staging-login-card">
+            <h1>Set up your AZZORA workspace</h1>
+            <p>
+              This creates an empty, persistent company workspace. No sample
+              records, balances, tax approval or financial postings will be
+              created.
+            </p>
+            <p>
+              Company policies, opening balances and cutover remain pending
+              Owner and Accountant approval.
+            </p>
+            {session.role === "owner_admin" ? (
+              <button
+                className="primary"
+                disabled={settingUp}
+                onClick={async () => {
+                  if (settingUp) return;
+                  setSettingUp(true);
+                  setError("");
+                  setupKey.current ||= crypto.randomUUID();
+                  try {
+                    await stagingRequest(
+                      "/manager/setup",
+                      stagingJson(
+                        { idempotencyKey: setupKey.current },
+                        session.csrf,
+                      ),
+                    );
+                    await load();
+                  } catch (problem) {
+                    setError(
+                      problem instanceof Error
+                        ? problem.message
+                        : "Workspace setup was not confirmed. Refresh before retrying.",
+                    );
+                  } finally {
+                    setSettingUp(false);
+                  }
+                }}
+              >
+                {settingUp
+                  ? "Preparing workspace…"
+                  : "Create empty company workspace"}
+              </button>
+            ) : (
+              <p>The Owner must initialize the company workspace first.</p>
+            )}
+            {error && (
+              <p role="alert" className="staging-error">
+                {error}
+              </p>
+            )}
+            <button type="button" onClick={() => void logout()}>
+              Log out
+            </button>
+          </div>
+        </section>
+      </main>
+    );
   if (!session || !snapshot)
     return (
       <StagingLogin
@@ -436,14 +516,20 @@ export function StagingManagerProvider({ children }: { children: ReactNode }) {
     <StoreContext.Provider value={store}>
       <div className="staging-session-bar">
         <div>
-          <strong>FICTIONAL SHARED STAGING</strong>
+          <strong>
+            {productionEnabled
+              ? "AZZORA COMPANY WORKSPACE"
+              : "FICTIONAL SHARED STAGING"}
+          </strong>
           <span>{session.email}</span>
           <span>Real posting disabled</span>
         </div>
         <div>
           {session.role === "owner_admin" && (
             <a className="button" href="/api/staging/manager/backup" download>
-              Download staging backup
+              {productionEnabled
+                ? "Download encrypted backup"
+                : "Download staging backup"}
             </a>
           )}
           <button

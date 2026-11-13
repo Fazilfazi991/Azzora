@@ -2,6 +2,7 @@ import {
   assertReviewReadyForPosting,
   saveManualDocumentDraft,
 } from "./documents/review.js";
+import { openingSetupSchema, type OpeningSetupDraft } from "./opening-setup.js";
 import { postJournal } from "../accounting/core.js";
 import {
   cashAccountSnapshot,
@@ -114,6 +115,8 @@ export interface ReviewAttachment {
   size: number;
 }
 export interface ReviewState {
+  /** Unapproved manual setup only; never included in journal balances. */
+  openingSetup?: OpeningSetupDraft;
   /** Derived from the same canonical commercial records in shared staging;
    * never a second persisted credit/financial write path. */
   commercialAdjustments?: {
@@ -425,6 +428,7 @@ export function createReviewState(): ReviewState {
 }
 
 export type ReviewAction =
+  | { kind: "opening-setup-draft"; id: string; draft: OpeningSetupDraft }
   | {
       kind: "create-expense-from-review";
       id: string;
@@ -581,6 +585,11 @@ export function applyReviewAction(
   recording?: ReviewRecordingContext,
 ): ReviewState {
   if (recording) requireRecordingContext(recording);
+  if (action.kind === "opening-setup-draft")
+    return {
+      ...structuredClone(previous),
+      openingSetup: openingSetupSchema.parse(action.draft),
+    };
   const recordJournal = (
     state: ReviewState,
     id: string,
@@ -1331,6 +1340,7 @@ export function reviewSnapshot(
     throw Error("Demo statements and open documents do not reconcile.");
   return {
     cashAccounts,
+    openingSetup: state.openingSetup,
     transfers: (state.transfers || []).filter((item) => item.date <= asOf),
     departments,
     ...dimensionalReports,

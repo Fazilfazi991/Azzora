@@ -21,6 +21,7 @@ import { cashAccountsFor, type CompletionSnapshot } from "./completion-ui";
 import { accountsRequest as api, accountsUrl } from "./http";
 import {
   stagingEnabled,
+  productionEnabled,
   StagingRequestError,
   type StagingSession,
 } from "../staging/client";
@@ -147,14 +148,18 @@ function Note() {
   return (
     <div className="prototype-note" role="note">
       <strong>
-        {stagingEnabled
-          ? "SHARED STAGING · FICTIONAL DATA"
-          : "CLIENT REVIEW · DEMO LEDGER"}
+        {productionEnabled
+          ? "COMPANY SETUP · POSTING DISABLED"
+          : stagingEnabled
+            ? "SHARED STAGING · FICTIONAL DATA"
+            : "CLIENT REVIEW · DEMO LEDGER"}
       </strong>
       <span>
-        {stagingEnabled
-          ? "These fictional records are shared with the staging Manager workspace. Real financial posting is disabled."
-          : "Actions update only this isolated demo ledger. No Manager CRM records or real money are changed."}
+        {productionEnabled
+          ? "Company records persist in the authorized shared database. Opening balances, financial policies and cutover are pending approval. No real financial posting is enabled."
+          : stagingEnabled
+            ? "These fictional records are shared with the staging Manager workspace. Real financial posting is disabled."
+            : "Actions update only this isolated demo ledger. No Manager CRM records or real money are changed."}
       </span>
     </div>
   );
@@ -250,7 +255,11 @@ function Dashboard({ data }: { data: Snapshot }) {
       <Head
         eyebrow="FINANCIAL OVERVIEW"
         title="Financial dashboard"
-        sub="An accountant’s view of the fictional journal, open documents and cash positions."
+        sub={
+          productionEnabled
+            ? "Posted activity and recorded balances. Opening balances remain unapproved until reconciled by the accountant."
+            : "An accountant’s view of the fictional journal, open documents and cash positions."
+        }
       />
       <Note />
       <div className="basis-strip">
@@ -1069,7 +1078,9 @@ function App() {
       retryAction.current = null;
       setMessage(
         action.kind === "create-cash-account"
-          ? "Account created at zero balance. No financial posting."
+          ? productionEnabled
+            ? "Empty account record created. Opening balance is not yet supplied. No financial posting."
+            : "Account created at zero balance. No financial posting."
           : action.kind === "transfer"
             ? "Internal transfer recorded once. No expense or revenue created."
             : action.kind === "create-expense-ledger"
@@ -1080,7 +1091,9 @@ function App() {
                 ? ""
                 : action.kind === "create-bill-from-review"
                   ? "Purchase bill created once through the demo ledger."
-                  : `${action.kind === "issue-invoice" ? "Issued" : "Recorded"} ${result.id} in the fictional review ledger.`,
+                  : productionEnabled
+                    ? "Company draft saved. Financial posting remains disabled."
+                    : `${action.kind === "issue-invoice" ? "Issued" : "Recorded"} ${result.id} in the fictional review ledger.`,
       );
       return true;
     } catch (problem) {
@@ -1109,7 +1122,12 @@ function App() {
           const epoch = ++sessionEpoch.current;
           const next = await api("/snapshot");
           if (epoch !== sessionEpoch.current) return;
-          setSession({ ...value, mode: "synthetic-staging" });
+          setSession({
+            ...value,
+            mode: productionEnabled
+              ? "production-candidate"
+              : "synthetic-staging",
+          });
           setSnapshot(next);
           setError("");
           location.hash = link("dashboard");
@@ -1354,7 +1372,11 @@ function App() {
           <div>
             <strong>Accountant portal</strong>
             <small>
-              {stagingEnabled ? "Shared fictional staging" : "Client review"}
+              {productionEnabled
+                ? "Company workspace"
+                : stagingEnabled
+                  ? "Shared fictional staging"
+                  : "Client review"}
             </small>
           </div>
         </div>
@@ -1385,7 +1407,9 @@ function App() {
             <strong>
               {stagingEnabled ? session.email : "Demo Accountant"}
             </strong>
-            <small>Fictional ledger</small>
+            <small>
+              {productionEnabled ? "Posting disabled" : "Fictional ledger"}
+            </small>
           </div>
           <button className="signout" type="button" onClick={logout}>
             Log out
@@ -1410,7 +1434,11 @@ function App() {
           </div>
           <div className="topbar-right">
             <span className="period-chip">
-              {stagingEnabled ? "FICTIONAL STAGING" : "CLIENT REVIEW"}
+              {productionEnabled
+                ? "COMPANY SETUP"
+                : stagingEnabled
+                  ? "FICTIONAL STAGING"
+                  : "CLIENT REVIEW"}
             </span>
             <span className="top-avatar" aria-hidden="true">
               FA
@@ -1431,9 +1459,11 @@ function App() {
           {content[current]}
         </main>
         <footer className="site-footer">
-          {stagingEnabled
-            ? "AZZORA Accounts · Shared fictional staging · Real financial posting disabled"
-            : "AZZORA Accounts · Fictional demo ledger · No production posting or CRM record changes"}
+          {productionEnabled
+            ? "AZZORA Accounts · Company setup · Financial posting and legal invoice issuance disabled pending approval"
+            : stagingEnabled
+              ? "AZZORA Accounts · Shared fictional staging · Real financial posting disabled"
+              : "AZZORA Accounts · Fictional demo ledger · No production posting or CRM record changes"}
         </footer>
       </div>
     </div>

@@ -1,12 +1,18 @@
 import { useEffect, useState, type FormEvent } from "react";
 import {
   stagingJson,
+  productionEnabled,
   stagingRequest,
   type StagingAuthStep,
   type StagingSession,
 } from "./client";
 import "./staging.css";
 import { StagingRecoveryForm } from "./client-recovery";
+import {
+  consumeProductionSetupLink,
+  clearProductionSetupLink,
+  ProductionCredentialSetup,
+} from "./client-credential-setup";
 
 export function StagingLogin({
   workspace,
@@ -21,6 +27,7 @@ export function StagingLogin({
   const [error, setError] = useState(initialError);
   const [busy, setBusy] = useState(false);
   const [recovering, setRecovering] = useState(false);
+  const [setupToken, setSetupToken] = useState(consumeProductionSetupLink);
   useEffect(() => {
     if (initialError) setError(initialError);
   }, [initialError]);
@@ -66,6 +73,16 @@ export function StagingLogin({
     : qr?.startsWith("data:image/")
       ? qr
       : undefined;
+  if (productionEnabled && setupToken)
+    return (
+      <ProductionCredentialSetup
+        tokenHash={setupToken}
+        onComplete={() => {
+          clearProductionSetupLink();
+          setSetupToken("");
+        }}
+      />
+    );
   return (
     <main className="staging-login">
       <section
@@ -123,9 +140,15 @@ export function StagingLogin({
                   : "Use your individual account."}
               </p>
               <div className="staging-scope-note">
-                <strong>FICTIONAL STAGING</strong>
+                <strong>
+                  {productionEnabled
+                    ? "COMPANY SETUP · POSTING DISABLED"
+                    : "FICTIONAL STAGING"}
+                </strong>
                 <span>
-                  Shared test records only. Real financial posting is disabled.
+                  {productionEnabled
+                    ? "Individual company access. Financial posting and legal invoice issuance remain disabled until approved setup and cutover."
+                    : "Shared test records only. Real financial posting is disabled."}
                 </span>
               </div>
               {step?.status === "mfa-enroll" && (
@@ -220,7 +243,7 @@ export function StagingLogin({
                   {error}
                 </p>
               )}
-              {!accountant && (
+              {!accountant && !productionEnabled && (
                 <button
                   type="button"
                   className="staging-text-button"
@@ -235,7 +258,9 @@ export function StagingLogin({
                 </button>
               )}
               <p className="staging-login-foot">
-                Client review · Fictional data only.
+                {productionEnabled
+                  ? "AZZORA · Authorized company setup"
+                  : "Client review · Fictional data only."}
               </p>
             </>
           )}

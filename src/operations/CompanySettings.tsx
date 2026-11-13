@@ -5,20 +5,24 @@ import { Attachments } from "../components/uploads";
 import { getOperations } from "./migration";
 import { saveSettings } from "./repository";
 import { ManualBackup } from "./ManualBackup";
+import { productionEnabled } from "../staging/client";
 export function CompanySettings() {
   const { store, run, pending } = useStoreCommand(),
     { db } = store;
   const [s, setS] = useState(() => structuredClone(getOperations(db).settings)),
     [invoiceNext, setInvoiceNext] = useState(db.commercialNumbering.invoice);
   const [logoError, setLogoError] = useState("");
+  const setupPending = productionEnabled && s.tax === "Unconfigured";
   return (
     <section className="panel">
       <ManualBackup store={store} />
       <h2>Company & Financial Settings</h2>
       <p className="muted">
-        {store.mode === "staging"
-          ? "Shared fictional company configuration. Tax, fiscal-year and financial policy changes remain blocked pending approval."
-          : "Browser-local demo configuration."}{" "}
+        {productionEnabled
+          ? "Company setup. Financial policies, opening balances and cutover are not yet approved. Profile details can be saved without inventing missing tax or financial settings."
+          : store.mode === "staging"
+            ? "Shared fictional company configuration. Tax, fiscal-year and financial policy changes remain blocked pending approval."
+            : "Browser-local demo configuration."}{" "}
         Issued/approved records preserve historical company and monetary
         snapshots.
       </p>
@@ -70,7 +74,13 @@ export function CompanySettings() {
               </Field>
             ))}
           </div>
-          <Field label="Company bank details (demo only)">
+          <Field
+            label={
+              productionEnabled
+                ? "Company bank details"
+                : "Company bank details (demo only)"
+            }
+          >
             <textarea
               value={s.company.bank}
               onChange={(e) =>
@@ -109,6 +119,12 @@ export function CompanySettings() {
         </details>
         <details>
           <summary>VAT, numbering and closure policy</summary>
+          {setupPending && (
+            <p role="status">
+              Unconfigured — Owner/accountant confirmation required. These
+              fields do not authorize tax documents or financial posting.
+            </p>
+          )}
           {store.mode === "staging" && (
             <p role="status">
               Real accounting policy remains unapproved. VAT/TRN, fiscal-year,
@@ -122,7 +138,8 @@ export function CompanySettings() {
             </Field>
             <Field label="Default VAT percentage">
               <input
-                required
+                required={!setupPending}
+                readOnly={setupPending}
                 inputMode="decimal"
                 value={s.vatPercentage}
                 onChange={(e) => setS({ ...s, vatPercentage: e.target.value })}
@@ -130,12 +147,19 @@ export function CompanySettings() {
             </Field>
             <Field label="Default tax treatment">
               <select
+                disabled={setupPending}
                 value={s.tax}
                 onChange={(e) =>
                   setS({ ...s, tax: e.target.value as typeof s.tax })
                 }
               >
-                {["Exclusive", "Inclusive", "Zero Rated", "Exempt"].map((t) => (
+                {[
+                  "Unconfigured",
+                  "Exclusive",
+                  "Inclusive",
+                  "Zero Rated",
+                  "Exempt",
+                ].map((t) => (
                   <option key={t}>{t}</option>
                 ))}
               </select>
@@ -143,6 +167,7 @@ export function CompanySettings() {
             <Field label="Default payment terms days">
               <input
                 type="number"
+                readOnly={setupPending}
                 min="0"
                 required
                 value={s.paymentDays}
@@ -153,8 +178,9 @@ export function CompanySettings() {
             </Field>
             <Field label="Financial year start (MM-DD)">
               <input
-                required
+                required={!setupPending}
                 value={s.fiscalYearStart}
+                readOnly={setupPending}
                 onChange={(e) =>
                   setS({ ...s, fiscalYearStart: e.target.value })
                 }
@@ -163,6 +189,7 @@ export function CompanySettings() {
             <Field label="Retention allowance percentage">
               <input
                 inputMode="decimal"
+                readOnly={setupPending}
                 value={s.retentionPercentage}
                 onChange={(e) =>
                   setS({ ...s, retentionPercentage: e.target.value })
@@ -171,7 +198,8 @@ export function CompanySettings() {
             </Field>
             <Field label="Invoice prefix">
               <input
-                required
+                required={!setupPending}
+                readOnly={setupPending}
                 value={s.invoicePrefix}
                 onChange={(e) => setS({ ...s, invoicePrefix: e.target.value })}
               />
@@ -187,7 +215,8 @@ export function CompanySettings() {
             {(["variation", "po", "credit"] as const).flatMap((key) => [
               <Field label={`${key} number prefix`} key={key + "prefix"}>
                 <input
-                  required
+                  required={!setupPending}
+                  readOnly={setupPending}
                   value={s.numbering[key].prefix}
                   onChange={(e) =>
                     setS({

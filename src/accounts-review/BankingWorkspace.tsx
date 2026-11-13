@@ -4,6 +4,8 @@ import {
   displayMoney,
   type CompletionSnapshot,
 } from "./completion-ui";
+import { productionEnabled } from "../staging/client";
+import { OpeningSetup } from "./OpeningSetup";
 
 /** One posting route, through the portal's existing authenticated action API. */
 export function BankingWorkspace({
@@ -88,12 +90,20 @@ export function BankingWorkspace({
         </div>
       </div>
       <div className="prototype-note" role="note">
-        <strong>CLIENT REVIEW · FICTIONAL DATA</strong>
+        <strong>
+          {productionEnabled
+            ? "COMPANY SETUP · POSTING DISABLED"
+            : "CLIENT REVIEW · FICTIONAL DATA"}
+        </strong>
         <span>
-          Bank, cash and staff-held funds share the demo journal. No real money
-          moves.
+          {productionEnabled
+            ? "Opening balances are not yet approved. Bank and cash figures show posted records only; they are not confirmation of the company's actual opening position."
+            : "Bank, cash and staff-held funds share the demo journal. No real money moves."}
         </span>
       </div>
+      {productionEnabled && (
+        <OpeningSetup saved={data.openingSetup} act={act} />
+      )}
       {form === "account" && (
         <form
           id="cash-account-form"
@@ -140,8 +150,9 @@ export function BankingWorkspace({
             )}
           </div>
           <p>
-            New accounts start at zero. Use an internal transfer to fund a staff
-            or cash account.
+            {productionEnabled
+              ? "This creates an empty account record, without asserting an opening balance. Prepare opening balances separately for review. Financial transfers remain disabled until approved cutover."
+              : "New accounts start at zero. Use an internal transfer to fund a staff or cash account."}
           </p>
           <div className="review-actions">
             <button

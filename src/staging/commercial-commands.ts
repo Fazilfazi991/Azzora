@@ -28,6 +28,7 @@ import {
 import { reviewSnapshot } from "../accounts-review/domain.js";
 import type { ReviewRecordingContext } from "../accounts-review/domain.js";
 import { today } from "../domain/logic.js";
+import { validateSavedShape } from "../domain/validation.js";
 
 export class StagingPolicyError extends Error {
   readonly status = 423;
@@ -329,7 +330,37 @@ export function applyCommercialCommand(
             throw Error(
               "Numbering cannot move backwards or reuse issued references.",
             );
-        operations.saveSettings(db, next, personId);
+        if (state.mode === "production" && op.settings.tax === "Unconfigured") {
+          // Company contact details can be prepared without filling invented tax,
+          // payment terms, fiscal-year or numbering values into a pending setup.
+          const beforePolicy = { ...op.settings, company: undefined };
+          const afterPolicy = { ...next, company: undefined };
+          if (JSON.stringify(beforePolicy) !== JSON.stringify(afterPolicy))
+            throw new StagingPolicyError(
+              "financial_policy_pending",
+              "Only company profile details can be saved before the separate financial-policy approval.",
+            );
+          if (
+            !next.company.name.trim() ||
+            (next.company.email &&
+              !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next.company.email))
+          )
+            throw Error(
+              "Enter a company name and a valid company email when provided.",
+            );
+          validateSavedShape({ ...db, operations: { ...op, settings: next } });
+          operations.audit(
+            db,
+            "",
+            "Settings",
+            "company",
+            "Company setup profile saved",
+            next.company.name,
+            personId,
+            JSON.stringify(op.settings),
+          );
+          op.settings.company = structuredClone(next.company);
+        } else operations.saveSettings(db, next, personId);
       }
       if (p.invoiceNext !== undefined) {
         if (

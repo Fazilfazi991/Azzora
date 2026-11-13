@@ -1,6 +1,10 @@
 export const stagingEnabled =
   (import.meta as ImportMeta & { env?: Record<string, string> }).env
     ?.VITE_AZZORA_STAGING === "1";
+/** Public build identity only; authentication/authorization always remain server-side. */
+export const productionEnabled =
+  (import.meta as ImportMeta & { env?: Record<string, string> }).env
+    ?.VITE_AZZORA_PRODUCTION === "1";
 
 export type StagingSession = {
   email: string;
@@ -49,6 +53,8 @@ export async function stagingRequest<T>(
     throw new StagingRequestError(
       result?.error || "The staging request could not be completed.",
       response.status,
+      Array.isArray(result?.issues) ? result.issues : [],
+      typeof result?.code === "string" ? result.code : undefined,
     );
   return result as T;
 }

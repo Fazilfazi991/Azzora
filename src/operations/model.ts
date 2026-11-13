@@ -265,7 +265,7 @@ export interface OperationalSettings {
   invoicePrefix: string;
   currency: "AED";
   vatPercentage: string;
-  tax: TaxTreatment;
+  tax: TaxTreatment | "Unconfigured";
   fiscalYearStart: string;
   paymentDays: number;
   blockOperationalForFinance: boolean;

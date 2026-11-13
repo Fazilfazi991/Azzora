@@ -10,6 +10,7 @@ import {
 import { purchasePriceWarnings } from "./review-purchase-prices";
 import type { CompletionSnapshot } from "./completion-ui";
 import { accountsUrl } from "./http";
+import { productionEnabled } from "../staging/client";
 
 type Snapshot = ReturnType<typeof reviewSnapshot>;
 type Props = {
@@ -38,10 +39,12 @@ const documentItems = (
       : [
           {
             ...blankReviewLine(),
-            description: invoice
-              ? "Additional design service"
-              : "Additional project materials",
-            rate: invoice ? "1000.00" : "250.00",
+            description: productionEnabled
+              ? ""
+              : invoice
+                ? "Additional design service"
+                : "Additional project materials",
+            rate: productionEnabled ? "" : invoice ? "1000.00" : "250.00",
           },
         ];
 
@@ -81,10 +84,15 @@ function Field({
 export function AccountsReviewNote() {
   return (
     <div className="prototype-note" role="note">
-      <strong>CLIENT REVIEW · FICTIONAL DATA</strong>
+      <strong>
+        {productionEnabled
+          ? "COMPANY SETUP · POSTING DISABLED"
+          : "CLIENT REVIEW · FICTIONAL DATA"}
+      </strong>
       <span>
-        Actions update only this isolated demo ledger. No Manager CRM records or
-        real money are changed.
+        {productionEnabled
+          ? "Company drafts are saved to the authorized shared workspace. Financial posting and legal invoice issuance are disabled pending approved setup."
+          : "Actions update only this isolated demo ledger. No Manager CRM records or real money are changed."}
       </span>
     </div>
   );
@@ -109,8 +117,9 @@ function Totals({ items }: { items: ReviewLineInput[] }) {
         </output>
       </p>
       <small>
-        No approved VAT policy is configured for this fictional review. Tax
-        Invoice and Proforma labels do not activate VAT.
+        {productionEnabled
+          ? "VAT policy and legal invoice issuance are not yet approved. This document remains an unissued draft."
+          : "No approved VAT policy is configured for this fictional review. Tax Invoice and Proforma labels do not activate VAT."}
       </small>
     </div>
   );
@@ -227,7 +236,10 @@ export function InvoiceEntry({ data, act, editingId }: Props) {
                 Customer
                 <input
                   name="party"
-                  defaultValue={existing?.party || "Sample Client A"}
+                  defaultValue={
+                    existing?.party ||
+                    (productionEnabled ? "" : "Sample Client A")
+                  }
                   list="invoice-customers"
                   required
                   maxLength={140}
@@ -271,15 +283,16 @@ export function InvoiceEntry({ data, act, editingId }: Props) {
                 className="button button-primary"
                 type="submit"
                 data-issue="true"
+                disabled={productionEnabled}
               >
                 Issue document
               </button>
             </div>
           </fieldset>
           <p className="aside-note">
-            Drafts do not post. Issuing a tax or normal invoice updates the
-            fictional journal once. Proforma documents never create revenue or
-            receivables.
+            {productionEnabled
+              ? "Drafts do not post. Issuance is disabled until company financial policies and cutover are approved."
+              : "Drafts do not post. Issuing a tax or normal invoice updates the fictional journal once. Proforma documents never create revenue or receivables."}
           </p>
         </form>
       )}
@@ -291,7 +304,7 @@ export function PurchaseBills({ data, act, editingId }: Props) {
   const existing = data.bills.find((item) => item.id === editingId);
   const [items, setItems] = useState(() => documentItems(existing, false));
   const [supplier, setSupplier] = useState(
-    existing?.party || "Sample Supplier B",
+    existing?.party || (productionEnabled ? "" : "Sample Supplier B"),
   );
   const [billDate, setBillDate] = useState(existing?.date || data.asOf);
   const priceChanges = purchasePriceWarnings(
@@ -435,7 +448,9 @@ export function PurchaseBills({ data, act, editingId }: Props) {
             <Field
               label="Demo PO reference"
               name="poReference"
-              value={existing?.poReference || "DEMO-PO-33"}
+              value={
+                existing?.poReference || (productionEnabled ? "" : "DEMO-PO-33")
+              }
             />
             <Field
               label="Supplier invoice number"
@@ -539,6 +554,7 @@ export function PurchaseBills({ data, act, editingId }: Props) {
               className="button button-primary"
               type="submit"
               data-issue="true"
+              disabled={productionEnabled}
             >
               {existing ? "Issue bill" : "Record bill & upload"}
             </button>

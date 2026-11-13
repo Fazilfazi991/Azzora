@@ -292,7 +292,7 @@ export function ExpenseEntry({
         </div>
         <div className="page-actions">
           <a className="button" href="#/document-entry">
-            Upload & Auto-Fill
+            {productionEnabled ? "Prepare expense draft" : "Upload & Auto-Fill"}
           </a>
           <button
             className="button"
@@ -301,7 +301,7 @@ export function ExpenseEntry({
               document.getElementById("expense-manual-form")?.scrollIntoView()
             }
           >
-            Enter Manually
+            {productionEnabled ? "Paid expense form" : "Enter Manually"}
           </button>
         </div>
       </div>
@@ -315,7 +315,7 @@ export function ExpenseEntry({
         </strong>
         <span>
           {productionEnabled
-            ? "Expense ledgers can be prepared. Expense posting remains disabled until approved financial policies and cutover."
+            ? "Prepare an expense draft through manual document review, or set up an expense ledger here. Saving a review draft does not post. Paid expense posting remains disabled until approved."
             : stagingEnabled
               ? "Approved project expenses are shared with Manager. Real financial posting remains disabled."
               : "Actions update only this isolated demo ledger. No Manager CRM records or real money are changed."}
@@ -543,7 +543,7 @@ export function ExpenseEntry({
             <input
               name="amount"
               type="number"
-              defaultValue="75.00"
+              defaultValue={productionEnabled ? "" : "75.00"}
               min="0.01"
               step="0.01"
               required

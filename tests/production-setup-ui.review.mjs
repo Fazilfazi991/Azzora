@@ -1,4 +1,5 @@
 /** Local UI acceptance with an explicit fictional, in-memory API. Not hosted/Auth evidence. */
+/* global process, URL, document, innerWidth, console */
 import { build, preview } from "vite";
 import { build as bundle } from "esbuild";
 import { pathToFileURL } from "node:url";
@@ -117,6 +118,14 @@ try {
       });
     if (url.pathname === "/api/staging/accounts/action") {
       const action = route.request().postDataJSON();
+      if (action.kind === "create-ledger-account") {
+        if (action.name === "Rejected local UI account")
+          return reply(
+            { error: "Local fixture rejected this account name." },
+            422,
+          );
+        action.id = "local-ui-chart-account";
+      }
       state = hydrateCanonical(
         serializeCanonical(
           applySharedCommand(
@@ -176,6 +185,62 @@ try {
   }
   checks.push(
     "Fresh empty production state renders GL, P&L, Balance Sheet, Trial Balance, Aging and project reports without a blank app; GL identifies missing accounts without asserting opening balances.",
+  );
+  await page.goto("http://127.0.0.1:5296/accountant.html#/ledger");
+  await page.getByText("+ Add account", { exact: true }).click();
+  await page.getByLabel("Account code", { exact: true }).fill("UI-4000");
+  await page
+    .getByLabel("Account name", { exact: true })
+    .fill("Rejected local UI account");
+  await page.getByLabel("Account type", { exact: true }).selectOption("Income");
+  await page.getByRole("button", { name: "Save account", exact: true }).click();
+  await expect(page.getByLabel("Account name", { exact: true })).toHaveValue(
+    "Rejected local UI account",
+  );
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Account not saved" }),
+  ).toBeVisible();
+  await page
+    .getByLabel("Account name", { exact: true })
+    .fill("Fictional local income account");
+  await page.getByRole("button", { name: "Save account", exact: true }).click();
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: "Account saved. No opening balance" }),
+  ).toBeVisible();
+  expect(state.finance.accounting.accounts).toHaveLength(1);
+  expect(state.finance.accounting.journals).toHaveLength(0);
+  expect(state.finance.accounting.periods).toHaveLength(0);
+  await page.reload();
+  await expect(
+    page.getByRole("table", { name: "Configured chart accounts" }),
+  ).toContainText("Fictional local income account");
+  await page.getByText("+ Add account", { exact: true }).click();
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth + 1,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: `${out}/chart-setup-${width}.png`,
+      fullPage: true,
+    });
+  }
+  checks.push(
+    "Chart form retains values after a rejected save, saves through the domain/canonical round-trip without journals or periods, reopens after refresh, and fits desktop/mobile.",
+  );
+  await page.goto("http://127.0.0.1:5296/accountant.html#/expenses");
+  await expect(
+    page.getByRole("link", { name: "Prepare expense draft", exact: true }),
+  ).toHaveAttribute("href", "#/document-entry");
+  await expect(
+    page.getByLabel("Amount · AED (VAT excluded)", { exact: true }),
+  ).toHaveValue("");
+  checks.push(
+    "Production expense page provides the existing document-draft path and does not prefill a fictional paid amount.",
   );
   await page.goto("http://127.0.0.1:5296/accountant.html#/banking");
   await page.getByRole("button", { name: "+ Add opening line" }).click();

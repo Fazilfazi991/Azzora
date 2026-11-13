@@ -1,23 +1,28 @@
 # AZZORA Accounts — owner and accountant approval sheet
 
-**Status: awaiting decisions.** All fields are intentionally blank. Real postings, real-data import and legal tax invoices remain disabled until the approved rules are implemented, reconciled and separately authorized for cutover.
+**Status: financial activation pending. Setup and non-posting drafts may be used now.**
+This short sheet supersedes the earlier full-sheet prerequisite, following the
+Owner's immediate client-launch instruction. Do not require unrelated policies
+or every opening balance before a client can prepare company records and drafts.
 
-| Decision | Owner / accountant response |
+| Essential confirmation | Owner / accountant response |
 | --- | --- |
-| Legal entity, VAT registration status and TRN; treatment and rates | ______________________________ |
-| Tax Invoice, Normal Invoice and Proforma numbering and permitted use | ______________________________ |
-| Who may issue and post invoices; limits and independent approval | ______________________________ |
-| Who may approve, post and reverse expenses; limits and separation | ______________________________ |
-| Customer advances: receipt, liability, allocation and refund treatment | ______________________________ |
-| Revenue recognition and any milestone or deferred-revenue rules | ______________________________ |
-| Direct and indirect project-cost allocation | ______________________________ |
-| Opening bank, cash and petty-cash balances, reconciled by account | ______________________________ |
-| Opening customer receivables, reconciled by invoice | ______________________________ |
-| Opening supplier payables, reconciled by bill | ______________________________ |
-| Cutover date and approved source/mapping and reconciliation references | ______________________________ |
+| 1. Company legal name and accountant-approved VAT/invoice treatment, including registration/TRN, applicable rates and document numbering/use | Owner/accountant confirmation required. |
+| 2. Authorized actions for Owner `info@azzora.ae` and Accountant `accounts@azzora.ae`: invoice issuance, customer receipts, supplier payments and expense posting; applicable approval limits | Owner/accountant confirmation required. Login access alone does not approve posting authority. |
+| 3. Accounting start date and reconciled opening balances/outstanding documents for the workflows and accounts being activated | Owner/accountant confirmation required. Missing figures are not zero. Unreconciled openings remain drafts and may be prepared over time. |
+
+Enable only explicitly approved workflows after the applicable validation and
+reconciliation checks and release authorization. Other financial actions remain
+disabled. Do not invent revenue, advance, project-cost or tax treatment: resolve
+only the accounting rules actually needed for the requested financial workflow.
+There is no historical import authorization; the client will prepare records and
+balances manually as already directed.
 
 Owner: ____________________  Date: __________
 
 Independent accountant: ____________________  Date: __________
 
-The technical evidence, backup arrangements and import package must be reviewed separately. Completing this sheet alone does not enable production posting or authorize live traffic changes. See `ACCOUNTING-DECISIONS.md` and `BACKUP-CUTOVER-RUNBOOK.md`.
+Completing this sheet does not itself activate posting. Preserve transaction
+validation, immutable audit history, tenant isolation and idempotency protections.
+Take and verify the Owner-only manual encrypted backup before the approved
+financial cutover. See `BACKUP-CUTOVER-RUNBOOK.md` for execution and recovery.

@@ -14,6 +14,7 @@ import { DocumentEntry } from "./documents/DocumentEntry";
 import { InvoiceEntry, PurchaseBills } from "./DocumentForms";
 import { ExpenseEntry } from "./ExpenseEntry";
 import { BankingWorkspace } from "./BankingWorkspace";
+import { LedgerSetup } from "./LedgerSetup";
 import { OperationalReports } from "./OperationalReports";
 import { SettlementOption, settlementReference } from "./settlement-reference";
 import { ReportDates } from "./ReportDates";
@@ -678,11 +679,13 @@ function Ledger({
   account,
   compact = false,
   filters,
+  act,
 }: {
   data: Snapshot;
   account?: string;
   compact?: boolean;
   filters?: ReactNode;
+  act?: (action: Record<string, unknown>) => Promise<boolean>;
 }) {
   const [selected, setSelected] = useState(account || "bank");
   const ledger =
@@ -697,6 +700,9 @@ function Ledger({
             sub={`Posted entries from ${date(data.period.from)} to ${date(data.period.to)} with running balances.`}
           />
           <Note />
+          {productionEnabled && act && (
+            <LedgerSetup accounts={data.accounts} act={act} />
+          )}
           {filters}
           <label className="review-account-picker">
             Account{" "}
@@ -1373,7 +1379,7 @@ function App() {
       </>
     ),
     banking: <BankingWorkspace data={snapshot} act={act} />,
-    ledger: <Ledger data={snapshot} filters={reportDates} />,
+    ledger: <Ledger data={snapshot} filters={reportDates} act={act} />,
     pnl: <Statement data={snapshot} balance={false} filters={reportDates} />,
     balance: <Statement data={snapshot} balance filters={reportDates} />,
     trial: <OperationalReports data={snapshot} trial filters={reportDates} />,

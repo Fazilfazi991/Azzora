@@ -7,6 +7,7 @@ import { StagingPolicyError } from "./commercial-commands.js";
 import { createStagingBackup, type ReadBackupOriginal } from "./backup.js";
 import { createAuthoritativeStagingBackup } from "../backend/launch-backup.js";
 import { isDistinctBackupKey } from "../backend/backup-key-policy.js";
+import { isProductionPasswordOnly } from "../backend/production-password-policy.js";
 import { createStagingAuth, type StagingActor } from "./auth.js";
 import {
   rpc as defaultRpc,
@@ -153,6 +154,26 @@ export function createStagingHandler(
 ) {
   const rpc = options.rpc ?? defaultRpc;
   const production = options.production;
+  const approvedAuthentication = (actor: StagingActor) =>
+    actor.assurance === "aal2" ||
+    Boolean(production && isProductionPasswordOnly(actor));
+  const requireRecentBackupAuthentication = (actor: StagingActor) => {
+    const passwordOnly = Boolean(production && isProductionPasswordOnly(actor));
+    const verifiedAt = passwordOnly
+      ? actor.passwordVerifiedAt
+      : actor.mfaVerifiedAt;
+    if (
+      !verifiedAt ||
+      verifiedAt > Date.now() ||
+      Date.now() - verifiedAt > 15 * 60_000
+    )
+      throw new StagingServiceError(
+        403,
+        passwordOnly
+          ? "backup_recent_sign_in_required"
+          : "backup_recent_mfa_required",
+      );
+  };
   if (production && (!options.rpc || !options.auth || !options.storage))
     throw Error(
       "Production handlers require explicitly isolated RPC, authentication and storage adapters.",
@@ -206,14 +227,14 @@ export function createStagingHandler(
       ) {
         if (
           actor.role !== "owner_admin" ||
-          actor.assurance !== "aal2" ||
+          !approvedAuthentication(actor) ||
           !actor.capabilities.includes("access.manage")
         )
           return json(
             403,
             {
               error:
-                "The company Owner must sign in with MFA to initialize this workspace.",
+                "The authorized company Owner must sign in to initialize this workspace.",
             },
             requestId,
           );
@@ -295,20 +316,21 @@ export function createStagingHandler(
         );
         // The reviewed SQL checks actor-bound receipts before the version and
         // bootstrap guards, so an uncertain response can be safely resolved.
-        await rpc("staging_company_commit", {
-          p_session_hash: actor.sessionHash,
-          p_expected_version: 0,
-          p_idempotency_key: key,
-          p_fingerprint: fingerprint({
-            kind: "production.initialize",
-            companyId: actor.companyId,
-            settings,
-          }),
-          p_command: "production.initialize",
-          p_scope: { workspace: "manager", financial: false },
-          p_data: initial,
-          p_bootstrap: true,
-        });
+        if (loaded.version === 0)
+          await rpc("staging_company_commit", {
+            p_session_hash: actor.sessionHash,
+            p_expected_version: 0,
+            p_idempotency_key: key,
+            p_fingerprint: fingerprint({
+              kind: "production.initialize",
+              companyId: actor.companyId,
+              settings,
+            }),
+            p_command: "production.initialize",
+            p_scope: { workspace: "manager", financial: false },
+            p_data: initial,
+            p_bootstrap: true,
+          });
         const members = await rpc<Person[]>("staging_company_people", {
           p_session_hash: actor.sessionHash,
         });
@@ -347,7 +369,7 @@ export function createStagingHandler(
           if (
             actor.userId !== initializingUserId ||
             actor.role !== "owner_admin" ||
-            actor.assurance !== "aal2" ||
+            !approvedAuthentication(actor) ||
             !actor.capabilities.includes("access.manage")
           )
             return json(
@@ -399,14 +421,14 @@ export function createStagingHandler(
       if (path === "/manager/import/preview" && request.method === "POST") {
         if (
           actor.role !== "owner_admin" ||
-          actor.assurance !== "aal2" ||
+          !approvedAuthentication(actor) ||
           !actor.capabilities.includes("access.manage")
         )
           return json(
             403,
             {
               error:
-                "Current Owner access with MFA is required for import review.",
+                "Current authorized Owner access is required for import review.",
             },
             requestId,
           );
@@ -529,24 +551,44 @@ export function createStagingHandler(
       )
         throw new StagingServiceError(503, "workspace_environment_mismatch");
       if (
+        production &&
+        path === "/manager/snapshot" &&
+        actor.role === "owner_admin" &&
+        state.manager.operations?.settings.tax === "Unconfigured"
+      ) {
+        const members = await rpc<Person[]>("staging_company_people", {
+          p_session_hash: actor.sessionHash,
+        });
+        if (
+          members.some(
+            (member) =>
+              !state.manager.people.some((person) => person.id === member.id),
+          )
+        )
+          return json(
+            409,
+            {
+              code: "production_company_setup_required",
+              error:
+                "Company setup was interrupted. Continue setup to restore the approved user profiles; existing records are preserved.",
+            },
+            requestId,
+          );
+      }
+      if (
         (path === "/manager/backup" || path === "/manager/backup/encrypted") &&
         request.method === "GET"
       ) {
         if (
           actor.role !== "owner_admin" ||
-          actor.assurance !== "aal2" ||
+          !approvedAuthentication(actor) ||
           !actor.capabilities.includes("access.manage")
         )
           throw Object.assign(new Error("Owner backup access required"), {
             status: 403,
           });
-        if (
-          (production || path === "/manager/backup/encrypted") &&
-          (!actor.mfaVerifiedAt ||
-            actor.mfaVerifiedAt > Date.now() ||
-            Date.now() - actor.mfaVerifiedAt > 15 * 60_000)
-        )
-          throw new StagingServiceError(403, "backup_recent_mfa_required");
+        if (production || path === "/manager/backup/encrypted")
+          requireRecentBackupAuthentication(actor);
         if (production && !options.productionBackup)
           throw new StagingServiceError(
             503,
@@ -611,17 +653,12 @@ export function createStagingHandler(
             current.companyId !== actor.companyId ||
             current.sessionHash !== actor.sessionHash ||
             current.role !== "owner_admin" ||
-            current.assurance !== "aal2" ||
+            !approvedAuthentication(current) ||
             !current.capabilities.includes("access.manage")
           )
             throw new StagingServiceError(403, "backup_access_revoked");
           if (production) assertProductionActor(current, production);
-          if (
-            !current.mfaVerifiedAt ||
-            current.mfaVerifiedAt > Date.now() ||
-            Date.now() - current.mfaVerifiedAt > 15 * 60_000
-          )
-            throw new StagingServiceError(403, "backup_recent_mfa_required");
+          requireRecentBackupAuthentication(current);
         }
         if (
           production &&
@@ -762,33 +799,42 @@ export function createStagingHandler(
         workspace === "accountant" &&
         request.method === "GET" &&
         path.startsWith("/accounts/pdf/")
-      )
-        return production
-          ? json(
-              423,
-              {
-                error:
-                  "Production financial PDFs require the approved accounting and legal-document policy.",
-                code: "production_document_policy_required",
-              },
-              requestId,
-            )
-          : new Response(
-              reviewPdf(
-                state.finance,
-                decodeURIComponent(path.slice(14)),
-                reportSelection(url),
-              ),
-              {
-                headers: {
-                  "Content-Type": "application/pdf",
-                  "X-Content-Type-Options": "nosniff",
-                  "Cache-Control": "no-store, private",
-                  "Content-Disposition":
-                    "attachment; filename=AZZORA-fictional-staging.pdf",
-                },
-              },
-            );
+      ) {
+        const name = decodeURIComponent(path.slice(14));
+        const document =
+          state.finance.invoices.find((value) => value.id === name) ||
+          state.finance.bills.find((value) => value.id === name);
+        if (
+          production &&
+          !["pnl", "balance"].includes(name) &&
+          document?.status !== "Draft"
+        )
+          return json(
+            423,
+            {
+              error:
+                "Only setup reports and clearly marked draft PDFs are available before financial and legal-document approval.",
+              code: "production_document_policy_required",
+            },
+            requestId,
+          );
+        return new Response(
+          reviewPdf(
+            state.finance,
+            name,
+            reportSelection(url),
+            production ? "production-setup" : undefined,
+          ),
+          {
+            headers: {
+              "Content-Type": "application/pdf",
+              "X-Content-Type-Options": "nosniff",
+              "Cache-Control": "no-store, private",
+              "Content-Disposition": `attachment; filename=AZZORA-${production ? "setup-review" : "fictional-staging"}.pdf`,
+            },
+          },
+        );
+      }
       if (
         workspace === "accountant" &&
         request.method === "GET" &&
@@ -1045,6 +1091,7 @@ export function createStagingHandler(
         error instanceof StagingServiceError &&
         [
           "backup_recent_mfa_required",
+          "backup_recent_sign_in_required",
           "staging_owner_backup_key_required",
           "production_owner_backup_key_required",
           "production_backup_adapter_required",
@@ -1056,7 +1103,9 @@ export function createStagingHandler(
             error:
               error.code === "backup_recent_mfa_required"
                 ? "A recent authenticator sign-in is required."
-                : "Encrypted backup is not configured. No file was downloaded.",
+                : error.code === "backup_recent_sign_in_required"
+                  ? "Sign out and sign in again before downloading an encrypted backup."
+                  : "Encrypted backup is not configured. No file was downloaded.",
             code: error.code,
             requestId,
           },

@@ -1,4 +1,5 @@
 import { isPasswordOnlyClientReview } from "./client-review-policy.js";
+import { isProductionPasswordOnly } from "./production-password-policy.js";
 /** Server-resolved grants. Never construct these from browser role flags or user_metadata. */
 export type BusinessRole =
   "owner" | "admin" | "project_manager" | "accountant" | "site_staff";
@@ -62,6 +63,7 @@ export function authorize(
   if (
     privileged &&
     actor.assurance !== "aal2" &&
+    !isProductionPasswordOnly(actor) &&
     !(
       grant.roles.length === 1 &&
       ["finance.read", "finance.draft"].includes(action) &&
@@ -88,7 +90,7 @@ export function authorize(
   if (
     action === "access.manage" &&
     (!grant.roles.some((role) => role === "owner" || role === "admin") ||
-      actor.assurance !== "aal2")
+      (actor.assurance !== "aal2" && !isProductionPasswordOnly(actor)))
   )
     throw new AccessDenied("administration_denied");
   if (

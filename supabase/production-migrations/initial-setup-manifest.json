@@ -1,0 +1,29 @@
+{
+  "format": "azzora-reviewed-production-setup-v1",
+  "automaticApply": false,
+  "fixtureSeeding": false,
+  "approvedProject": "zwjiztnsxenluqybxhhz",
+  "approvedCompany": "fc525d78-bc83-4845-96f1-fb402bb07465",
+  "region": "ap-southeast-1",
+  "vercelProject": "prj_2Kr1T82kCiU5eSk1SZFOcAPQlBfV",
+  "configurationApproval": "owner-production-setup-20261113",
+  "allowedOrigins": ["https://azzora-accounts-live.vercel.app"],
+  "requiresReviewedBaseline": "supabase/production-migrations/manifest.json",
+  "ownerInstructionSha256": "a0919772722bec19888c22e40d484b675c9e386a1bba52625d7537fc35849741",
+  "authenticationDecision": "Owner explicitly requested no MFA in the current conversation on 2026-11-13. Password-only is restricted to the two approved production identities; actual AAL1 is retained.",
+  "files": [
+    {
+      "path": "supabase/production-migrations/20261113161658_production_initial_company_configuration.sql",
+      "sha256": "caf7aaa924d80a9896d80488c3d71248f2c5d0c85cd9da8d1289168860a79884"
+    },
+    {
+      "path": "supabase/production-migrations/20261113161711_production_initial_password_policy.sql",
+      "sha256": "1a1937f883cef410c118a9f70e2df5306ffcd6410a88584e01ea547415fc9116"
+    }
+  ],
+  "realFinancialPostingEnabled": false,
+  "realDocumentProcessingEnabled": false,
+  "openingBalancesApproved": false,
+  "cutoverApproved": false,
+  "sourceHashEncoding": "UTF-8 with CRLF normalized to LF; business archives are never normalized"
+}

@@ -156,7 +156,20 @@ it("resolves an interrupted bootstrap response using the same receipt and comple
   expect((await f.handle(f.request())).status).toBe(503);
   expect(f.version()).toBe(1);
   expect(f.state()!.manager.people).toEqual([]);
-  expect((await f.handle(f.request())).status).toBe(200);
+  const snapshot = await f.handle(
+    new Request("https://setup.example.test/api/staging/manager/snapshot"),
+  );
+  expect(snapshot.status).toBe(409);
+  expect((await snapshot.json()).code).toBe(
+    "production_company_setup_required",
+  );
+  expect(
+    (
+      await f.handle(
+        f.request({ idempotencyKey: "fresh-page-retry-setup-key" }),
+      )
+    ).status,
+  ).toBe(200);
   expect(f.version()).toBe(3);
   expect(f.state()!.manager.people).toHaveLength(2);
   expect(f.state()!.finance.accounting.journals).toEqual([]);
@@ -201,7 +214,7 @@ it("never overwrites an initialized company with a different setup key", async (
         f.request({ idempotencyKey: "different-setup-action-key" }),
       )
     ).status,
-  ).toBe(409);
+  ).toBe(200);
   expect(f.state()).toEqual(before);
   expect(f.version()).toBe(3);
 });

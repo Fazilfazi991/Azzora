@@ -17,7 +17,10 @@ import { StagingServiceError, type StagingRpc } from "../staging/supabase.js";
 import { createEmptyProductionCompany } from "../finance/production-policy.js";
 import { emptyOperations } from "../operations/migration.js";
 import { blankFields } from "../accounts-review/documents/model.js";
-import { ReviewRecordingError } from "../accounts-review/domain.js";
+import {
+  ReviewRecordingError,
+  applyReviewAction,
+} from "../accounts-review/domain.js";
 import {
   createProtectedProductionBackup,
   decryptBusinessBackup,
@@ -210,13 +213,28 @@ it("cannot construct a production handler that would accidentally use default st
 });
 
 function productionAuthFixture(
-  options: { review?: boolean; foreign?: boolean } = {},
+  options: {
+    review?: boolean;
+    foreign?: boolean;
+    passwordOnly?: boolean;
+    missingPasswordPolicy?: boolean;
+  } = {},
 ) {
-  const runtime = productionRuntime(productionEnv()),
+  const runtime = productionRuntime({
+      ...productionEnv(),
+      ...(options.passwordOnly
+        ? {
+            AZZORA_PRODUCTION_COMPANY_ID:
+              "fc525d78-bc83-4845-96f1-fb402bb07465",
+          }
+        : {}),
+    }),
     at = 1800000000000,
     uid = options.review
       ? "52f925bd-8744-48cc-8781-d20109387d14"
-      : "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      : options.passwordOnly
+        ? "86d914dd-1f39-4860-87d0-b671dd39eb00"
+        : "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     sid = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
   const jwt = (aal: string) =>
     `e30.${Buffer.from(JSON.stringify({ sub: uid, session_id: sid, iss: runtime.url + "/auth/v1", aud: "authenticated", role: "authenticated", is_anonymous: false, exp: at / 1000 + 3600, iat: at / 1000, aal })).toString("base64url")}.c2ln`;
@@ -227,14 +245,17 @@ function productionAuthFixture(
   });
   const actor: StagingActor = {
     userId: uid,
-    email: "owner@example.test",
+    email: options.passwordOnly ? "info@azzora.ae" : "owner@example.test",
+    ...(options.passwordOnly && !options.missingPasswordPolicy
+      ? { authenticationPolicy: "production-password-only" }
+      : {}),
     companyId: options.foreign
       ? "33333333-3333-4333-8333-333333333333"
       : runtime.companyId,
     role: "owner_admin",
     workspace: "manager",
     sessionHash: "",
-    assurance: "aal2",
+    assurance: options.passwordOnly ? "aal1" : "aal2",
     mfaVerifiedAt: Date.now(),
     providerSessionId: sid,
     projectIds: [],
@@ -378,6 +399,59 @@ it("uses individual production identity, privileged MFA and a separate host-only
       )
     ).status,
   ).toBe(401);
+});
+it("uses honest AAL1 only for the explicitly approved production password policy, with normal session revocation", async () => {
+  const f = productionAuthFixture({ passwordOnly: true });
+  const login = await f.auth.handle(
+    f.request("login", {
+      email: "info@azzora.ae",
+      password: "fictional-private-password",
+      workspace: "manager",
+    }),
+    "/auth/login",
+  );
+  expect(login.status).toBe(200);
+  expect(await login.json()).toEqual({ status: "authenticated" });
+  const cookie = login.headers.get("set-cookie")!.split(";")[0];
+  const session = await f.auth.handle(
+    f.request("session", undefined, cookie),
+    "/auth/session",
+  );
+  expect(session.status).toBe(200);
+  const data = await session.json();
+  expect(data.assurance).toBe("aal1");
+  expect(
+    f.calls.mock.calls.some(([name]) => name === "staging_auth_pending_put"),
+  ).toBe(false);
+  expect(
+    (
+      await f.auth.handle(
+        f.request("logout", {}, cookie, data.csrf),
+        "/auth/logout",
+      )
+    ).status,
+  ).toBe(200);
+  expect(
+    (
+      await f.auth.handle(
+        f.request("session", undefined, cookie),
+        "/auth/session",
+      )
+    ).status,
+  ).toBe(401);
+  const noPolicy = productionAuthFixture({
+    passwordOnly: true,
+    missingPasswordPolicy: true,
+  });
+  const stillMfa = await noPolicy.auth.handle(
+    noPolicy.request("login", {
+      email: "info@azzora.ae",
+      password: "fictional-private-password",
+      workspace: "manager",
+    }),
+    "/auth/login",
+  );
+  expect((await stillMfa.json()).status).toBe("mfa-challenge");
 });
 it("never gives the restricted review identity or another company a production pending/session grant", async () => {
   for (const option of [{ review: true }, { foreign: true }]) {
@@ -553,8 +627,8 @@ it("blocks real financial actions, external extraction and legal PDFs even for t
     "bill",
     "receipt",
     "expense",
-    "create-cash-account",
-    "create-expense-ledger",
+    "issue-invoice",
+    "issue-bill",
     "transfer",
   ]) {
     const response = await f.handle(
@@ -573,11 +647,50 @@ it("blocks real financial actions, external extraction and legal PDFs even for t
     }),
   );
   expect(extraction.status).toBe(423);
-  expect((await f.handle(f.request("/accounts/pdf/pnl"))).status).toBe(423);
+  const report = await f.handle(f.request("/accounts/pdf/pnl"));
+  expect(report.status).toBe(200);
+  const reportText = new TextDecoder().decode(await report.arrayBuffer());
+  expect(reportText).toContain(
+    "Posting disabled. Opening balances and accounting policies await approval.",
+  );
+  expect(reportText).not.toContain("FICTIONAL CLIENT REVIEW");
+  expect(
+    (await f.handle(f.request("/accounts/pdf/receipt:unapproved"))).status,
+  ).toBe(423);
   expect(
     f.calls.mock.calls.filter(([name]) => name === "staging_company_commit"),
   ).toHaveLength(0);
   expect(f.storage.store).not.toHaveBeenCalled();
+});
+it("exports only clearly watermarked production draft documents, while issued legal invoices remain blocked", async () => {
+  const f = productionServerFixture();
+  const state = hydrateCanonical(f.getData());
+  state.finance = applyReviewAction(state.finance, {
+    kind: "invoice",
+    id: "DRAFT-PDF",
+    party: "Isolated test customer",
+    date: "2026-11-13",
+    due: "2026-11-13",
+    description: "Draft review",
+    amount: "10",
+    invoiceType: "Tax Invoice",
+    issue: false,
+  });
+  Object.assign(f.getData(), serializeCanonical(state));
+  const pdf = await f.handle(f.request("/accounts/pdf/DRAFT-PDF"));
+  expect(pdf.status).toBe(200);
+  const text = new TextDecoder().decode(await pdf.arrayBuffer());
+  expect(text).toContain("DRAFT / SETUP REVIEW ONLY - NOT A LEGAL TAX INVOICE");
+  expect(text).not.toContain("FICTIONAL CLIENT REVIEW");
+  expect(f.getData().journals).toEqual([]);
+  state.finance.invoices[0].status = "Issued";
+  Object.assign(f.getData(), serializeCanonical(state));
+  expect((await f.handle(f.request("/accounts/pdf/DRAFT-PDF"))).status).toBe(
+    423,
+  );
+  expect(
+    f.calls.mock.calls.filter(([name]) => name === "staging_company_commit"),
+  ).toHaveLength(0);
 });
 it("returns a precise409 for a trusted recording-clock conflict rather than disguising it as a generic validation failure", async () => {
   const rpc = vi.fn();
@@ -699,26 +812,50 @@ it("rejects noncanonical or reused owner backup key bytes", () => {
   ).toEqual(Buffer.alloc(32, 8));
 });
 it("does not release an encrypted backup when Owner access is revoked during capture", async () => {
-  const key = Buffer.alloc(32, 7), c = productionEnv().AZZORA_PRODUCTION_COMPANY_ID;
+  const key = Buffer.alloc(32, 7),
+    c = productionEnv().AZZORA_PRODUCTION_COMPANY_ID;
   const f = productionServerFixture(1, false, async (source, read, actor) => {
-    const backup = await createProtectedProductionBackup(source, read, key, { companyId: c, keyId: "fixture-owner-key-v1", capturedAt: "2026-11-11T00:00:00.000Z" }, actor);
+    const backup = await createProtectedProductionBackup(
+      source,
+      read,
+      key,
+      {
+        companyId: c,
+        keyId: "fixture-owner-key-v1",
+        capturedAt: "2026-11-11T00:00:00.000Z",
+      },
+      actor,
+    );
     f.actor.role = "project_manager";
     return backup;
   });
   const response = await f.handle(f.request("/manager/backup"));
   expect(response.status).toBe(403);
-  expect((await response.text())).not.toContain("ciphertext");
+  expect(await response.text()).not.toContain("ciphertext");
 });
 it("does not release an encrypted backup if MFA freshness expires during capture", async () => {
-  const key = Buffer.alloc(32, 7), c = productionEnv().AZZORA_PRODUCTION_COMPANY_ID;
+  const key = Buffer.alloc(32, 7),
+    c = productionEnv().AZZORA_PRODUCTION_COMPANY_ID;
   const f = productionServerFixture(1, false, async (source, read, actor) => {
-    const backup = await createProtectedProductionBackup(source, read, key, { companyId: c, keyId: "fixture-owner-key-v1", capturedAt: "2026-11-11T00:00:00.000Z" }, actor);
+    const backup = await createProtectedProductionBackup(
+      source,
+      read,
+      key,
+      {
+        companyId: c,
+        keyId: "fixture-owner-key-v1",
+        capturedAt: "2026-11-11T00:00:00.000Z",
+      },
+      actor,
+    );
     f.actor.mfaVerifiedAt = Date.now() - 16 * 60_000;
     return backup;
   });
   const response = await f.handle(f.request("/manager/backup"));
   expect(response.status).toBe(403);
-  expect(await response.json()).toMatchObject({ code: "backup_recent_mfa_required" });
+  expect(await response.json()).toMatchObject({
+    code: "backup_recent_mfa_required",
+  });
 });
 it("offers Owner-only synthetic import review without initializing or publishing any company records or echoing source rows", async () => {
   const f = productionServerFixture(0),

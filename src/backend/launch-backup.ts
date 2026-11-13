@@ -17,6 +17,7 @@ import {
 } from "../staging/backup.js";
 import type { CanonicalData } from "../staging/canonical.js";
 import { authorize, type AuthorizedActor } from "./permissions.js";
+import { isProductionPasswordOnly } from "./production-password-policy.js";
 import { stagingSchemaBundle } from "./staging-schema-bundle.generated.js";
 // Retain each reviewed historical bundle in this catalog when migrations evolve.
 // An unknown version fails closed instead of executing archive-supplied SQL.
@@ -164,7 +165,7 @@ export async function createProtectedProductionBackup(
 ): Promise<EncryptedBusinessBackup> {
   if (
     !actor.grant.roles.some((role) => role === "owner" || role === "admin") ||
-    actor.assurance !== "aal2" ||
+    (actor.assurance !== "aal2" && !isProductionPasswordOnly(actor)) ||
     source.companyId !== scope.companyId
   )
     throw Error(
@@ -224,7 +225,7 @@ export async function createAuthoritativeProductionBackup(
   actor: AuthorizedActor,
 ): Promise<EncryptedBusinessBackup> {
   authorize(actor, "access.manage", { companyId: scope.companyId });
-  if (actor.assurance !== "aal2" || !actor.grant.roles.includes("owner"))
+  if ((actor.assurance !== "aal2" && !isProductionPasswordOnly(actor)) || !actor.grant.roles.includes("owner"))
     throw Error("Current Owner MFA is required for authoritative backup.");
   const row = validateAuthoritativeCapture(capture, scope.companyId);
   const business = await createProductionBusinessBackup({ version: row.version, companyId: row.companyId, data: row.data }, readOriginal, scope.capturedAt);

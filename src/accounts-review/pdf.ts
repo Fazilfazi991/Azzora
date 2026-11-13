@@ -11,6 +11,7 @@ export function reviewPdf(
   state: ReviewState,
   name: string,
   selection?: ReviewReportSelection,
+  context?: "production-setup",
 ): ArrayBuffer {
   const doc = new jsPDF({ format: "a4", unit: "mm" });
   const data = reviewSnapshot(
@@ -30,7 +31,9 @@ export function reviewPdf(
     doc.setTextColor(70);
     doc.setFontSize(8);
     doc.text(
-      "FICTIONAL CLIENT REVIEW - NOT A TAX OR PRODUCTION ACCOUNTING DOCUMENT",
+      context === "production-setup"
+        ? "DRAFT / SETUP REVIEW ONLY - NOT A LEGAL TAX INVOICE"
+        : "FICTIONAL CLIENT REVIEW - NOT A TAX OR PRODUCTION ACCOUNTING DOCUMENT",
       18,
       37,
     );
@@ -243,13 +246,17 @@ export function reviewPdf(
     const invoice = data.invoices.find((item) => item.id === name) || bill;
     if (!invoice) throw Error("Demo invoice or bill document was not found.");
     header(
-      bill
-        ? "Purchase bill - demo"
-        : invoice.invoiceType === "Proforma"
-          ? "Proforma - not a tax invoice"
-          : invoice.invoiceType === "Normal Invoice"
-            ? "Normal invoice"
-            : "Tax invoice - demo",
+      context === "production-setup"
+        ? bill
+          ? "Purchase bill draft"
+          : `${invoice.invoiceType || "Invoice"} - draft`
+        : bill
+          ? "Purchase bill - demo"
+          : invoice.invoiceType === "Proforma"
+            ? "Proforma - not a tax invoice"
+            : invoice.invoiceType === "Normal Invoice"
+              ? "Normal invoice"
+              : "Tax invoice - demo",
     );
     row("Reference", invoice.invoiceReference || invoice.id, true);
     row(
@@ -279,13 +286,24 @@ export function reviewPdf(
     if (invoice.items) {
       itemTable(invoice.items);
       row("Subtotal", money(invoice.subtotalFils || invoice.amountFils));
-      if(BigInt(invoice.discountFils||"0")>0n)row("Approved discount",money(invoice.discountFils!));
+      if (BigInt(invoice.discountFils || "0") > 0n)
+        row("Approved discount", money(invoice.discountFils!));
       row("VAT - policy pending", money(invoice.taxFils || "0"));
       row("Grand total", money(invoice.amountFils), true);
-      row("Tax policy", "Not applied in this fictional review");
+      row(
+        "Tax policy",
+        context === "production-setup"
+          ? "Not approved - draft review only"
+          : "Not applied in this fictional review",
+      );
     } else {
       row(invoice.description, money(invoice.amountFils));
-      row("VAT", "Not calculated in this demo");
+      row(
+        "VAT",
+        context === "production-setup"
+          ? "Not approved - draft review only"
+          : "Not calculated in this demo",
+      );
       row("Total", money(invoice.amountFils), true);
     }
     if (invoice.status === "Draft")
@@ -300,7 +318,9 @@ export function reviewPdf(
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100);
     doc.text(
-      "Synthetic demonstration only. No real records or money movement.",
+      context === "production-setup"
+        ? "Posting disabled. Opening balances and accounting policies await approval."
+        : "Synthetic demonstration only. No real records or money movement.",
       18,
       282,
     );

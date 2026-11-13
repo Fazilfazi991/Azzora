@@ -1,0 +1,268 @@
+{
+  "archiveSha256": "8591939a4e44bb80e259b37b4c3a70b4da50d256887622eac8d88885913196b9",
+  "applicationRevision": "b473ef53b9faa6e4d49b0671de7b3ea7b3ce7b73",
+  "isolated": true,
+  "cloudWrites": false,
+  "actualDownloadedArchive": true,
+  "database": "azzora_recovery_production_supported_20261113",
+  "authOrigin": "http://127.0.0.1:46051",
+  "storageOrigin": "http://127.0.0.1:46052",
+  "checks": [
+    {
+      "name": "actual downloaded archive SHA matches",
+      "pass": true
+    },
+    {
+      "name": "downloaded archive integrity and company verified",
+      "pass": true
+    },
+    {
+      "name": "reviewed migration hash 20261104081228_canonical_backend_foundation.sql",
+      "pass": true
+    },
+    {
+      "name": "reviewed migration hash 20261111090000_runtime_identity.sql",
+      "pass": true
+    },
+    {
+      "name": "reviewed migration hash 20261111122552_production_owner_backup_provenance.sql",
+      "pass": true
+    },
+    {
+      "name": "reviewed migration hash 20261113161658_production_initial_company_configuration.sql",
+      "pass": true
+    },
+    {
+      "name": "reviewed migration hash 20261113161711_production_initial_password_policy.sql",
+      "pass": true
+    },
+    {
+      "name": "existing database remains loopback only",
+      "pass": true
+    },
+    {
+      "name": "two supported Admin-created original identities have fresh credentials",
+      "pass": true
+    },
+    {
+      "name": "all five reviewed migrations applied",
+      "pass": true
+    },
+    {
+      "name": "actual archive private originals restored inventory",
+      "pass": true
+    },
+    {
+      "name": "archived memberships and role permissions exactly verified",
+      "pass": true
+    },
+    {
+      "name": "canonical restored records exactly match actual archive",
+      "pass": true
+    },
+    {
+      "name": "all original audit identities and event instants preserved",
+      "pass": true
+    },
+    {
+      "name": "trial balance exactly reconciles",
+      "pass": true
+    },
+    {
+      "name": "balance sheet exactly reconciles",
+      "pass": true
+    },
+    {
+      "name": "profit and loss exactly reconciles",
+      "pass": true
+    },
+    {
+      "name": "recreated Owner real local Auth and BFF login",
+      "pass": true
+    },
+    {
+      "name": "Owner recovered Manager workspace access",
+      "pass": true
+    },
+    {
+      "name": "recovered operational identities visible",
+      "pass": true
+    },
+    {
+      "name": "recreated Accountant real local Auth and BFF login",
+      "pass": true
+    },
+    {
+      "name": "Accountant recovered Accounts workspace access",
+      "pass": true
+    },
+    {
+      "name": "Accountant denied Manager workspace",
+      "pass": true
+    },
+    {
+      "name": "Accountant denied Owner backup",
+      "pass": true
+    },
+    {
+      "name": "anonymous request denied",
+      "pass": true
+    },
+    {
+      "name": "unapproved financial mutation does not succeed",
+      "pass": true
+    },
+    {
+      "name": "journals remain exactly the actual archive inventory",
+      "pass": true
+    },
+    {
+      "name": "foreign private attachment is unavailable",
+      "pass": true
+    },
+    {
+      "name": "anon provider private-schema boundary denied",
+      "pass": true
+    },
+    {
+      "name": "authenticated provider private-schema boundary denied",
+      "pass": true
+    },
+    {
+      "name": "other-company genuine Auth user denied this company BFF",
+      "pass": true
+    },
+    {
+      "name": "recovered Accountant logout",
+      "pass": true
+    },
+    {
+      "name": "logged-out recovered session denied",
+      "pass": true
+    },
+    {
+      "name": "all Auth and application operations used local services",
+      "pass": true
+    },
+    {
+      "name": "actual local Storage API confirms restored private bucket",
+      "pass": true
+    }
+  ],
+  "completeRecoveryVerified": true,
+  "source": {
+    "version": 3,
+    "records": 3,
+    "journals": 0,
+    "originals": 0,
+    "memberships": 2,
+    "auditEvents": 4
+  },
+  "authIdentityMethod": "supported local GoTrue Admin createUser with exact original UUIDs; fresh independently generated passwords",
+  "originalSecretsRestored": false,
+  "mfaRequired": false,
+  "authenticationAssurance": "actual aal1, matching approved two-user production policy",
+  "transport": "unchanged production BFF with guarded local Auth and service-role PostgreSQL transport adapters; no cloud calls",
+  "privateOriginalScope": "0 originals in actual downloaded archive; no attachment bytes invented or substituted",
+  "originalAuditAttributionVerified": true,
+  "financialReportsReconciled": true,
+  "localAuthRequests": 18,
+  "localSqlRequests": 59,
+  "finishedAt": "2026-11-13T17:43:15.214Z",
+  "followup": {
+    "checks": [
+      {
+        "name": "Owner recovered Accountant-workspace login",
+        "pass": true
+      },
+      {
+        "name": "Owner genuine approved AAL1 session",
+        "pass": true
+      },
+      {
+        "name": "Owner fully formed financial submission policy-locked423",
+        "pass": true
+      },
+      {
+        "name": "Owner exact production posting-block reason",
+        "pass": true
+      },
+      {
+        "name": "Owner recovered readonly report PDF",
+        "pass": true
+      },
+      {
+        "name": "Owner recovered workspace logout",
+        "pass": true
+      },
+      {
+        "name": "Accountant recovered Accountant-workspace login",
+        "pass": true
+      },
+      {
+        "name": "Accountant genuine approved AAL1 session",
+        "pass": true
+      },
+      {
+        "name": "Accountant fully formed financial submission policy-locked423",
+        "pass": true
+      },
+      {
+        "name": "Accountant exact production posting-block reason",
+        "pass": true
+      },
+      {
+        "name": "Accountant recovered readonly report PDF",
+        "pass": true
+      },
+      {
+        "name": "Accountant recovered workspace logout",
+        "pass": true
+      },
+      {
+        "name": "valid denied financial commands leave canonical records and balances unchanged",
+        "pass": true
+      },
+      {
+        "name": "original historical audit references still intact",
+        "pass": true
+      }
+    ],
+    "authRequests": 16,
+    "sqlRequests": 52,
+    "cloudCalls": 0,
+    "finishedAt": "2026-11-13T17:46:02.303Z"
+  },
+  "storageBaseline": {
+    "targetOnly": true,
+    "browserPrivilegesChanged": false,
+    "serviceRoleUsageAndProviderTableGrants": true,
+    "actualPrivateBucketApiStatus": 200,
+    "public": false,
+    "restoredOriginalCount": 0,
+    "filesNotInvented": true
+  },
+  "counts": {
+    "passed": 49,
+    "failed": 0
+  },
+  "downloadedApplicationRevision": "e89d6bc50f4769312c3dac81d2c0fc51e27cb55d",
+  "hostedCandidateAtRecoveryRevision": "b473ef53b9faa6e4d49b0671de7b3ea7b3ce7b73",
+  "hostedCandidateAtRecoveryDeployment": "dpl_HF3uAsoNiR69SvwpGb1NBSAx3zbX",
+  "actualArchiveScope": "Practical isolated recovery of the exact Owner-downloaded version-3 snapshot: 3 records, 2 memberships, 4 original audit events, 0 journals, 0 originals. These empty inventories do not approve zero opening balances.",
+  "recoveryProcedure": "Reviewed five SQL files, supported local GoTrue Admin recreation with original UUIDs and fresh passwords, existing parameterized business restore helper adapted only to verify precreated Auth identities instead of inserting Auth stubs, transactional audit sequence restart, original provenance preserved, unchanged production BFF against guarded local Auth/service-role PostgreSQL adapters.",
+  "supportedLocalBootstrapPrerequisites": [
+    "Database initializer uses existing local Supabase admin credentials; application RPC calls use service_role.",
+    "Auth helper functions belong to supabase_auth_admin; Storage schema belongs to its configured service connection role.",
+    "Storage service_role has standard schema/table/sequence access in this isolated target; browser grants and application RLS are unchanged."
+  ],
+  "limitations": [
+    "No passwords, original sessions or MFA secrets were imported. The owner-approved password-only policy was verified honestly at AAL1.",
+    "0 originals means no attachment bytes or file-hash restoration were exercised; the actual restored private bucket API returned200 with public=false.",
+    "0 journals means no nonzero financial-history restore was exercised in this particular downloaded snapshot; statements exactly match that snapshot.",
+    "This execution used real local GoTrue/Postgres/Storage plus unchanged BFF APIs. It is not a hosted disaster cutover or restoration of all Supabase platform settings.",
+    "Private-schema ACL denials are not relabeled as execution of provider row-level policies.",
+    "Real financial posting remains disabled and accountant policy/opening-balance/cutover approval remains separate."
+  ],
+  "previousRecoveryEvidence": "Earlier fictional staging recovery remains separately attributed; it is not substituted for this actual production download."
+}

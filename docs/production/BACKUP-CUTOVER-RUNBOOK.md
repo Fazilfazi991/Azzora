@@ -1,6 +1,121 @@
 # Backup, restore and cutover runbook
 
-## Frozen candidate and current cutover preparation — 12 November 2026
+## Current production setup release — 13 November 2026
+
+This section supersedes historical preparation below. **Company setup is authorized;
+financial cutover is not.** Stay on Supabase Free, retain manual encrypted local
+downloads, keep Manager and Accountant workspaces separate, and install no backup
+scheduler or Google Drive integration. No historical financial import is required:
+the client will enter customers, suppliers, opening balances and outstanding
+documents manually. Missing opening figures are not zero balances.
+
+The dedicated production setup project is Vercel `azzora-accounts-live`,
+`prj_2Kr1T82kCiU5eSk1SZFOcAPQlBfV`. The final setup application is
+`5f562ea3855167e297d5731634aa83927f606af1`, READY deployment
+`dpl_2hNnNG1p3U47cDSFu37JfsAiohML`, immutable hostname
+`azzora-accounts-live-dmix49t52-faziils-projects.vercel.app`. All **263/263**
+uploaded source-file SHA-1 values match the reviewed production package; the full
+source and tests remain preserved separately. The exact deployment now owns
+`https://azzoracrm.vercel.app` (Manager `/`, Accountant `/accountant.html`), with
+the original `https://azzora-accounts-live.vercel.app` retained. The new hostname
+serves the individual login with HTTP 200 and no Vercel authentication gate;
+unauthenticated private API requests return 401. API execution is verified in
+`sin1`. **Authenticated human acceptance on the new hostname remains pending**;
+do not equate its reachable login page with a completed individual sign-in.
+It uses only production Supabase `zwjiztnsxenluqybxhhz`,
+Singapore `ap-southeast-1`, company `fc525d78-bc83-4845-96f1-fb402bb07465`.
+The empty General Ledger render defect was corrected in the final application.
+Local fresh-empty-company acceptance covered GL, P&L, Balance Sheet, Trial
+Balance, aging and project reports (eight focused UI checks, no page errors).
+The actual hosted Accountant GL correction passed on the retained original
+hostname using its persisted session; logout also passed. No financial logic or
+Auth change was made for that render fix. Preserve earlier setup deployment
+`dpl_HF3uAsoNiR69SvwpGb1NBSAx3zbX` / application
+`b473ef53b9faa6e4d49b0671de7b3ea7b3ce7b73` as historical release/rollback
+evidence, not the final source. Existing Manager production
+`dpl_F9kD9Vu4ioWTCJrQwD2ev5J6mYmp`, Accounts client demo
+`dpl_6KcWcAZE5fud4sruG2HUGML3bcd1`, and GitHub main
+`fd7754dfe0022f9b64bf875313bd9679cb0144eb` remain unchanged.
+
+Exactly two initial production identities are approved:
+
+| Account | Supabase Auth user ID | Current access evidence |
+| --- | --- | --- |
+| Owner `info@azzora.ae` | `86d914dd-1f39-4860-87d0-b671dd39eb00` | Actual password sign-in, empty-workspace initialization, refresh and logout verified on the original production setup hostname. New-hostname authenticated acceptance pending. |
+| Accountant `accounts@azzora.ae` | `c9a75ea9-2ab9-4ca3-a1f0-33d7f5c554a3` | Actual individual password login without MFA verified on the original production setup hostname. Opening setup notes saved with blank date and no balance rows, retained after refresh; setup PDF download and 390 px navigation passed. Hosted GL correction and logout passed. New-hostname authenticated acceptance pending. |
+
+The owner subsequently approved email/password-only access for these exact two
+identities. Their actual assurance remains **AAL1**, not MFA. No password or
+authentication secret belongs in source, chat, backup or this runbook. Manual
+Owner backup requires fresh password sign-in within 15 minutes. Do not use the
+fictional staging password-only exception as a production grant or invite other
+users without approved membership and access scope.
+
+Preserve all five reviewed SQL files together: the three-file baseline in
+`supabase/production-migrations/manifest.json` and the two company/password-policy
+files in `supabase/production-migrations/initial-setup-manifest.json`. Retain their
+recorded hashes, applied migration/configuration evidence, matching application
+source and production-only environment/key references. Never run fictional
+staging fixtures or local recovery-control migrations against production.
+The separately reviewed and applied sixth migration is
+`supabase/production-migrations/20261113174923_production_crm_hostname.sql`, with
+its exact scope/hash recorded in
+`supabase/production-migrations/production-hostname-manifest.json`. It authorizes
+the new CRM hostname while retaining the original hostname. Its configuration
+approval is `owner-production-hostname-20261113` and both exact HTTPS origins are
+authorized. It changes no
+memberships, posting/AI flags or financial records. Keep this later configuration
+change distinct from the five-migration backup restore point below.
+
+The actual Owner encrypted business archive was downloaded and hashed:
+`8591939a4e44bb80e259b37b4c3a70b4da50d256887622eac8d88885913196b9`.
+The capture contains **3 business records, 0 journals, 4 audit events, 2 memberships
+and 0 originals**. This is the observed initial setup snapshot, not evidence that
+the company has zero financial balances. The business-v2 archive must be paired
+with its matching source/schema/migration package and separately held recovery
+key. The archive's embedded application revision is
+`e89d6bc50f4769312c3dac81d2c0fc51e27cb55d`; the hosted candidate at recovery was
+`b473ef53b9faa6e4d49b0671de7b3ea7b3ce7b73`, with the retained UI-only source
+continuity evidence. Preserve these precise attributions rather than relabeling
+the older archive as a final-deployment capture. It contains no passwords,
+sessions or MFA secrets. The **actual downloaded
+archive plus matching five reviewed migrations/source** passed **49/49 isolated
+application-recovery checks**, recorded in
+`evidence/owner-downloaded-production-recovery-2026-11-13.json`: exact business,
+journal and audit attribution; memberships; supported local Auth user recreation
+with original UUIDs and fresh credentials; actual approved AAL1 login; Owner and
+Accountant workspace restrictions; provider access denials; and exact Trial
+Balance, Balance Sheet and P&L reconciliation. The isolated original-file
+inventory is empty because the downloaded archive contains zero originals; no
+attachment bytes or financial transactions were invented. This proves the
+application recovery workflow for that captured inventory, not a hosted cloud
+clone, restoration of original credentials, or recovery of files/financial
+transactions absent from the archive. Downloading alone does not prove recovery.
+
+The coordinator's final read-only production check confirms **3 business records,
+0 journals, 2 memberships, 2 Auth users and 1 hostname-approval event**. The saved
+opening setup notes update existing metadata rather than adding a financial
+record. Real posting and real AI flags remain false. These current counts are
+distinct from the earlier archive capture and do not approve zero company balances.
+
+Real financial posting, legal invoice issuance and external AI processing remain
+disabled. Manual setup/opening drafts do not create journals or approve balances.
+Before financial cutover, obtain Owner/accountant decisions for VAT/TRN, legal
+invoice rules, posting and expense authority, advances, revenue, project costs,
+the complete reconciled opening trial balance and outstanding documents, and the
+effective cutover date. Then obtain explicit cutover authorization, capture and
+verify the required manual backup, apply only approved records/rules, reconcile,
+and verify actual individual access and shared records without inserting
+synthetic transactions into the real ledger. Stop further writes on failed
+acceptance; an application rollback does not undo committed financial records.
+Do not blindly restore a database over newer transactions.
+
+Retain the distinction between hosted checks, isolated mid-transaction rollback
+tests and simulated lost-response tests. The original intermittent 503 cause
+remains **unknown**; verified transaction safeguards do not establish its cause
+or claim that it was fixed.
+
+## Previously frozen candidate and cutover preparation — 12 November 2026
 
 Application `720240abd8c5adbb66d32357cb1d779cada1fb06` and evidence
 `60e73ea88f3663768d9bdacd4d1c9fef060450e0` are frozen. The matching recovery

@@ -3,6 +3,7 @@ import {
   StagingServiceError,
   type StagingConfig,
 } from "../staging/supabase.js";
+import { isProductionPasswordOnly } from "./production-password-policy.js";
 
 const fixtureCompany = "11111111-1111-4111-8111-111111111111";
 const reviewUser = "52f925bd-8744-48cc-8781-d20109387d14";
@@ -184,7 +185,7 @@ export function assertProductionActor(
     actor.companyId !== runtime.companyId ||
     actor.userId === reviewUser ||
     actor.email?.toLowerCase().endsWith("@staging.azzora.test") ||
-    actor.authenticationPolicy
+    (actor.authenticationPolicy && !isProductionPasswordOnly(actor))
   )
     throw new StagingServiceError(403, "production_identity_not_authorized");
   if (

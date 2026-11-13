@@ -22,6 +22,7 @@ const configured = {
   VERCEL_ENV: "production",
   VERCEL_PROJECT_ID: "prj_SeparateSetupRelease",
   VITE_AZZORA_STAGING: "1",
+  VITE_AZZORA_PRODUCTION: "1",
 };
 function build(changes: Record<string, string | undefined> = {}) {
   return spawnSync(process.execPath, ["scripts/check-production-build.mjs"], {
@@ -39,9 +40,9 @@ it("allows an explicitly authorized separate production setup deployment while r
   expect(result.stdout + result.stderr).not.toContain(
     configured.AZZORA_PRODUCTION_SERVICE_KEY,
   );
-  expect(
-    productionRuntime({ ...configured, VERCEL_ENV: "preview" }).mode,
-  ).toBe("production-candidate");
+  expect(productionRuntime({ ...configured, VERCEL_ENV: "preview" }).mode).toBe(
+    "production-candidate",
+  );
 });
 
 it("requires explicit production setup release authorization in both runtime and build", () => {
@@ -84,4 +85,9 @@ it("pins the production API function to Singapore independently of project defau
     readFileSync("vercel.production-candidate.json", "utf8"),
   );
   expect(config.functions["api/production.ts"].regions).toEqual(["sin1"]);
+});
+
+it("requires the production frontend marker instead of presenting the staging experience", () => {
+  expect(build({ VITE_AZZORA_PRODUCTION: undefined }).status).not.toBe(0);
+  expect(build({ VITE_AZZORA_PRODUCTION: "0" }).status).not.toBe(0);
 });

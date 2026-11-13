@@ -1,4 +1,5 @@
 import { isPasswordOnlyClientReview } from "../backend/client-review-policy.js";
+import { isProductionPasswordOnly } from "../backend/production-password-policy.js";
 import {
   createCipheriv,
   createDecipheriv,
@@ -28,6 +29,8 @@ export interface StagingActor {
   assurance: "aal1" | "aal2";
   /** Taken only from the currently verified provider access token. */
   mfaVerifiedAt?: number;
+  /** Server-resolved production password sign-in time; never presented as MFA. */
+  passwordVerifiedAt?: number;
   providerSessionId: string;
   projectIds: string[];
   capabilities: string[];
@@ -293,6 +296,7 @@ export function createStagingAuth(
       assertProductionActor(grant, production);
       if (
         ["owner_admin", "accountant"].includes(grant.role) &&
+        !isProductionPasswordOnly(grant) &&
         identity.assurance !== "aal2"
       )
         throw new AuthError(403, "Multi-factor verification is required.");
@@ -369,6 +373,7 @@ export function createStagingAuth(
       assertProductionActor(actor, production);
       if (
         ["owner_admin", "accountant"].includes(actor.role) &&
+        !isProductionPasswordOnly(actor) &&
         actor.assurance !== "aal2"
       )
         throw new AuthError(403, "Multi-factor verification is required.");
@@ -469,6 +474,7 @@ export function createStagingAuth(
             );
           if (
             !["owner_admin", "accountant"].includes(grant.role) ||
+            (production && isProductionPasswordOnly(grant)) ||
             (!production &&
               isPasswordOnlyClientReview({
                 ...grant,

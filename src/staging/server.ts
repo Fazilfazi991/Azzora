@@ -37,6 +37,11 @@ import {
 } from "../accounts-review/reporting.js";
 import { reviewPdf } from "../accounts-review/pdf.js";
 import { ProductionPolicyError } from "../accounting/production-policy.js";
+import {
+  InitialFinanceError,
+  type InitialFinanceAuthority,
+} from "../accounting/initial-live.js";
+import { initialFinanceView } from "../accounting/initial-opening.js";
 import { createEmptyProductionCompany } from "../finance/production-policy.js";
 import type { OperationalSettings } from "../operations/model.js";
 import { ReviewRecordingError } from "../accounts-review/domain.js";
@@ -142,6 +147,7 @@ export function createStagingHandler(
     rpc?: StagingRpc;
     auth?: ReturnType<typeof createStagingAuth>;
     production?: ProductionRuntime;
+    initialFinance?: InitialFinanceAuthority;
     storage?: {
       store: typeof storePrivateAttachment;
       read: typeof readPrivateAttachment;
@@ -733,6 +739,15 @@ export function createStagingHandler(
           },
         });
       }
+      const financeNow = new Date().toISOString();
+      const financeView = () => options.initialFinance
+        ? initialFinanceView(
+            state,
+            sharedActor(actor),
+            options.initialFinance,
+            financeNow,
+          )
+        : undefined;
       const productionDocumentRuntime =
         production && workspace === "accountant"
           ? await configuredProductionDocumentRuntime(
@@ -745,6 +760,7 @@ export function createStagingHandler(
           ? {
               db: sharedManagerView(state, sharedActor(actor)),
               version: loaded.version,
+              ...(options.initialFinance ? { productionFinance: financeView() } : {}),
               accountantBills:
                 actor.role === "site_staff"
                   ? []
@@ -777,6 +793,7 @@ export function createStagingHandler(
           : {
               ...selectedSnapshot(state.finance, reportSelection(url)),
               version: loaded.version,
+              ...(options.initialFinance ? { productionFinance: financeView() } : {}),
               expenseSubmissions: sharedExpenseSubmissions(
                 state,
                 sharedActor(actor),
@@ -811,10 +828,20 @@ export function createStagingHandler(
         const document =
           state.finance.invoices.find((value) => value.id === name) ||
           state.finance.bills.find((value) => value.id === name);
+        const isLiveInvoice = Boolean(
+          financeView()?.postingActive &&
+          state.finance.invoices.some(
+            (value) =>
+              value.id === name &&
+              value.status === "Issued" &&
+              value.invoiceType === "Normal Invoice",
+          ),
+        );
         if (
           production &&
           !["pnl", "balance"].includes(name) &&
-          document?.status !== "Draft"
+          document?.status !== "Draft" &&
+          !isLiveInvoice
         )
           return json(
             423,
@@ -830,14 +857,24 @@ export function createStagingHandler(
             state.finance,
             name,
             reportSelection(url),
-            production ? "production-setup" : undefined,
+            production
+              ? options.initialFinance &&
+                (isLiveInvoice || ["pnl", "balance"].includes(name))
+                ? {
+                    mode: "production-live",
+                    companyName: options.initialFinance.companyName,
+                    openingBalancesPending:
+                      financeView()?.openingStatus !== "posted",
+                  }
+                : "production-setup"
+              : undefined,
           ),
           {
             headers: {
               "Content-Type": "application/pdf",
               "X-Content-Type-Options": "nosniff",
               "Cache-Control": "no-store, private",
-              "Content-Disposition": `attachment; filename=AZZORA-${production ? "setup-review" : "fictional-staging"}.pdf`,
+              "Content-Disposition": `attachment; filename=AZZORA-${production ? (isLiveInvoice ? "invoice" : financeView() && ["pnl", "balance"].includes(name) ? "accounts-report" : "setup-review") : "fictional-staging"}.pdf`,
             },
           },
         );
@@ -1028,7 +1065,7 @@ export function createStagingHandler(
       } else {
         stage = "validate";
         const scope = sharedCommandScope(state, command);
-        if (production && scope.financial)
+        if (production && scope.financial && !options.initialFinance)
           return json(
             423,
             {
@@ -1038,7 +1075,21 @@ export function createStagingHandler(
             },
             requestId,
           );
-        const next = applySharedCommand(state, command, sharedActor(actor));
+        const next = applySharedCommand(
+          state,
+          command,
+          sharedActor(actor),
+          options.initialFinance
+            ? {
+                initialLive: options.initialFinance,
+                context: {
+                  now: financeNow,
+                  runtimeContractVerified: true,
+                  approvals: [],
+                },
+              }
+            : undefined,
+        );
         if (workspace === "manager") {
           stage = "private-file";
           await prepareManagerFiles(
@@ -1155,6 +1206,12 @@ export function createStagingHandler(
               "X-Azzora-Request-ID": requestId,
             },
           },
+        );
+      if (error instanceof InitialFinanceError)
+        return json(
+          error.status,
+          { error: error.message, code: error.code, requestId },
+          requestId,
         );
       if (error instanceof ProductionPolicyError)
         return json(

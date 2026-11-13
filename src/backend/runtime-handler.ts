@@ -48,7 +48,7 @@ export function createProductionCandidate(
       const identity = await rpc("azzora_runtime_identity", {
         p_company_id: runtime.companyId,
       });
-      assertProductionIdentity(identity, runtime);
+      const initialFinance = assertProductionIdentity(identity, runtime);
       const auth = createStagingAuth({
         rpc,
         fetch: options.fetch,
@@ -63,6 +63,7 @@ export function createProductionCandidate(
         auth,
         storage,
         production: runtime,
+        initialFinance,
         productionBackup: async (_source, read, actor) => {
           const { key, keyId } = resolveProductionBackupKey(
             options.env || process.env,

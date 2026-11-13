@@ -1,4 +1,5 @@
 import { isPasswordOnlyClientReview } from "../../backend/client-review-policy.js";
+import { isProductionPasswordOnly } from "../../backend/production-password-policy.js";
 // Server-only admission. The BFF supplies a freshly verified actor, never request role claims.
 import { z } from "zod";
 import { attachment, type ReviewState } from "../domain.js";
@@ -8,13 +9,25 @@ import { DocumentExtractionError } from "./extraction-status.js";
 
 export const FICTIONAL_AI_COMPANY_ID = "11111111-1111-4111-8111-111111111111";
 export const FICTIONAL_AI_POLICY_VERSION = "ai-fictional-v1";
-export const documentProcessingSchema = z
+export const fictionalDocumentProcessingSchema = z
   .object({
     dataClass: z.literal("fictional"),
     consent: z.literal(true),
     policyVersion: z.literal(FICTIONAL_AI_POLICY_VERSION),
   })
   .strict();
+export const BUSINESS_AI_POLICY_VERSION = "ai-business-v1";
+export const businessDocumentProcessingSchema = z
+  .object({
+    dataClass: z.literal("business"),
+    consent: z.literal(true),
+    policyVersion: z.literal(BUSINESS_AI_POLICY_VERSION),
+  })
+  .strict();
+export const documentProcessingSchema = z.union([
+  fictionalDocumentProcessingSchema,
+  businessDocumentProcessingSchema,
+]);
 
 export type DocumentAdmissionActor = Pick<
   StagingActor,
@@ -28,9 +41,10 @@ export type DocumentAdmissionActor = Pick<
 >;
 export interface DocumentAuthorization {
   readonly userId: string;
-  readonly companyId: typeof FICTIONAL_AI_COMPANY_ID;
-  readonly dataClass: "fictional";
-  readonly policyVersion: typeof FICTIONAL_AI_POLICY_VERSION;
+  readonly companyId: string;
+  readonly dataClass: "fictional" | "business";
+  readonly policyVersion:
+    typeof FICTIONAL_AI_POLICY_VERSION | typeof BUSINESS_AI_POLICY_VERSION;
   readonly reviewOnly: true;
   authorize(file: Upload): void;
 }
@@ -76,7 +90,7 @@ export function createDocumentAuthorization(
     (actor.assurance !== "aal2" && !isPasswordOnlyClientReview(actor)) ||
     !Array.isArray(actor.capabilities) ||
     !actor.capabilities.includes("finance.draft") ||
-    !documentProcessingSchema.safeParse(processing).success
+    !fictionalDocumentProcessingSchema.safeParse(processing).success
   ) {
     throw new DocumentExtractionError("not-authorized");
   }
@@ -85,6 +99,40 @@ export function createDocumentAuthorization(
     companyId: FICTIONAL_AI_COMPANY_ID,
     dataClass: "fictional",
     policyVersion: FICTIONAL_AI_POLICY_VERSION,
+    reviewOnly: true,
+    authorize: validateFile,
+  });
+  minted.add(authorization);
+  return authorization;
+}
+
+/** The company argument is server configuration, never a request-supplied scope.
+ * This grant proves only current actor/consent; runtime policy and spending
+ * approval are independently required before any external request. */
+export function createProductionDocumentAuthorization(
+  actor: DocumentAdmissionActor,
+  processing: unknown,
+  approvedCompanyId: string,
+): DocumentAuthorization {
+  if (
+    !actor ||
+    !z.uuid().safeParse(approvedCompanyId).success ||
+    approvedCompanyId === FICTIONAL_AI_COMPANY_ID ||
+    actor.companyId !== approvedCompanyId ||
+    !z.uuid().safeParse(actor.userId).success ||
+    actor.workspace !== "accountant" ||
+    !["owner_admin", "accountant"].includes(actor.role) ||
+    (actor.assurance !== "aal2" && !isProductionPasswordOnly(actor)) ||
+    !Array.isArray(actor.capabilities) ||
+    !actor.capabilities.includes("finance.draft") ||
+    !businessDocumentProcessingSchema.safeParse(processing).success
+  )
+    throw new DocumentExtractionError("not-authorized");
+  const authorization: DocumentAuthorization = Object.freeze({
+    userId: actor.userId,
+    companyId: actor.companyId,
+    dataClass: "business",
+    policyVersion: BUSINESS_AI_POLICY_VERSION,
     reviewOnly: true,
     authorize: validateFile,
   });

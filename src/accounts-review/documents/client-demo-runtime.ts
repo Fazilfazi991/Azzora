@@ -29,6 +29,7 @@ import type { Extraction } from "./model.js";
 import digests from "./client-demo-digests.js";
 import { assertDocumentAuthorization } from "./admission.js";
 import { DocumentExtractionError } from "./extraction-status.js";
+import { businessAiApprovalSchema } from "./production-policy.js";
 function failureFor(stage: string) {
   return stage === "prepare"
     ? ("preparation-failed" as const)
@@ -200,14 +201,20 @@ function validateShared(value: AppBudget) {
 
 export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
   const { env, store } = options;
-  const general = env.AZZORA_AI_GENERAL_DOCUMENTS === "fictional-v1";
+  const business = env.AZZORA_AI_GENERAL_DOCUMENTS === "business-v1";
+  const general =
+    business || env.AZZORA_AI_GENERAL_DOCUMENTS === "fictional-v1";
+  const businessApproval = businessAiApprovalSchema.safeParse(
+    options.businessApproval,
+  );
+  const generalPrefix = business ? "business-v1" : "general-v1";
   const cachePath = (digest: string) =>
     general
-      ? `ai-evaluation/general-v1/${options.authorization?.companyId}/extractions/${digest}.json`
+      ? `ai-evaluation/${generalPrefix}/${options.authorization?.companyId}/extractions/${digest}.json`
       : clientDemoCachePath(digest);
   const rawPath = (digest: string) =>
     general
-      ? `ai-evaluation/general-v1/${options.authorization?.companyId}/raw/${digest}.json`
+      ? `ai-evaluation/${generalPrefix}/${options.authorization?.companyId}/raw/${digest}.json`
       : clientDemoRawCachePath(digest);
   const authorizedDigest =
     !general &&
@@ -235,6 +242,10 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
       reason = "provider-unconfigured";
     else if (!env.DEEPSEEK_API_KEY?.trim()) reason = "key-missing";
     else if (env.DEEPSEEK_MODEL !== "deepseek-flash") reason = "model-invalid";
+    else if (business && !businessApproval.success)
+      reason = "approval-required";
+    else if (business && env.AZZORA_AI_NEW_REQUESTS_ENABLED !== "true")
+      reason = "approval-required";
     return {
       provider: "deepseek",
       model: "deepseek-flash",
@@ -242,11 +253,12 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
       ready: reason === "ready",
       reason,
       maximumEvaluationUsd: 5,
-      syntheticOnly: !authorizedDigest,
+      syntheticOnly: !business && !authorizedDigest,
       authorizedDocumentReview: Boolean(authorizedDigest),
       authorizationMode: "owner-application-cap",
       newRequestsEnabled: env.AZZORA_AI_NEW_REQUESTS_ENABLED !== "false",
       generalDocuments: general,
+      ...(business ? { businessDocuments: true } : {}),
     };
   };
   const budgetExposureMicroUsd = async () => {
@@ -275,14 +287,27 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
         if (!status().ready)
           throw new DocumentExtractionError("configuration-required");
         const digest = digestOf(file);
-        if (general) assertDocumentAuthorization(options.authorization, file);
-        else if (!allowed.has(digest))
+        if (general) {
+          assertDocumentAuthorization(options.authorization, file);
+          if (
+            business
+              ? !businessApproval.success ||
+                options.authorization?.dataClass !== "business" ||
+                options.authorization.companyId !==
+                  businessApproval.data.companyId
+              : options.authorization?.dataClass !== "fictional"
+          )
+            throw new DocumentExtractionError("not-authorized");
+        } else if (!allowed.has(digest))
           throw new DocumentExtractionError("not-authorized");
         const id = `deepseek:${digest}`;
-        // The cache uses the same injected PRIVATE Blob store as the allowance.
-        // Never replace it with a public URL or a session-local spending ledger.
+        // Legacy fictional projects share this budget-store credential. Business
+        // document contents MUST NOT be read/written there, even company-prefixed.
+        // The authenticated production BFF persists its own review separately.
         stage = "cache";
-        const cached = await store.read<unknown>(cachePath(digest));
+        const cached = business
+          ? null
+          : await store.read<unknown>(cachePath(digest));
         const initial = await store.read<AppBudget>(DEEPSEEK_BUDGET_PATH);
         if (general && !initial)
           throw new DocumentExtractionError("budget-blocked");
@@ -315,7 +340,9 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
             digest,
           );
         }
-        const rawCached = await store.read<unknown>(rawPath(digest));
+        const rawCached = business
+          ? null
+          : await store.read<unknown>(rawPath(digest));
         if (rawCached) {
           const raw = rawCacheSchema.parse(rawCached.value);
           if (raw.digest !== digest || !priorRecord)
@@ -466,7 +493,7 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
             /* Keep the complete reservation when usage is uncertain. */
           }
           let cacheFailure: unknown;
-          if (response.status === 200 && rawText !== undefined) {
+          if (!business && response.status === 200 && rawText !== undefined) {
             stage = "cache";
             try {
               if (rawText.includes(key))
@@ -541,7 +568,7 @@ export function createClientDemoRuntime(options: DeepSeekRuntimeOptions) {
           extraction,
         });
         stage = "cache";
-        await store.write(cachePath(digest), value);
+        if (!business) await store.write(cachePath(digest), value);
         return restrictReview(extraction, digest);
       } catch (error) {
         // Allowlisted operational metadata only. Never log provider bodies,

@@ -82,6 +82,7 @@ export interface DeepSeekEnvironment {
   DEEPSEEK_API_KEY?: string;
 }
 export interface DeepSeekRuntimeStatus {
+  businessDocuments?: boolean;
   authorizedDocumentReview?: boolean;
   generalDocuments?: boolean;
   newRequestsEnabled?: boolean;
@@ -107,6 +108,7 @@ interface SharedBudget {
   budget: BudgetState;
 }
 export interface DeepSeekRuntimeOptions {
+  businessApproval?: unknown;
   env: DeepSeekEnvironment;
   authorization?: DocumentAuthorization;
   store: ReviewStore;

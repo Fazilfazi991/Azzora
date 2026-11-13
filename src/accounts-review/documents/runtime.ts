@@ -7,6 +7,7 @@ import {
   type DocumentAuthorization,
 } from "./admission.js";
 import { disabledExtractor } from "./providers.js";
+import { createProductionDocumentRuntime } from "./production-runtime.js";
 
 export type DocumentRuntime = ReturnType<typeof createDeepSeekRuntime>;
 export const extractionInputSchema = z
@@ -52,26 +53,74 @@ export function documentAvailability(runtime: DocumentRuntime) {
     enabled: value.ready,
     generalDocuments: value.generalDocuments === true,
     provider: "deepseek" as const,
+    ...(value.businessDocuments
+      ? {
+          processing: {
+            dataClass: "business" as const,
+            policyVersion: "ai-business-v1" as const,
+            consentRequired: true as const,
+          },
+          reviewOnly: true as const,
+        }
+      : {}),
     authorizationMode: value.authorizationMode,
     status: value.ready
       ? ("ready" as const)
-      : value.reason === "disabled"
-        ? ("disabled" as const)
-        : ("configuration-required" as const),
+      : value.businessDocuments
+        ? ("configuration-required" as const)
+        : value.reason === "disabled"
+          ? ("disabled" as const)
+          : ("configuration-required" as const),
     message: value.ready
-      ? value.generalDocuments
-        ? "DeepSeek reads new supported fictional documents after individual sign-in and per-upload consent. Review every suggestion before saving a draft. Shared USD 5 application cap; real company document processing is not approved."
-        : value.newRequestsEnabled === false
-          ? "New paid AI requests are on hold pending verification. Approved cached real results remain available. Unauthorized documents are never sent to the provider. Manual review remains available."
-          : value.authorizedDocumentReview
-            ? "AI accepts the approved fictional samples and the one specifically owner-authorized quotation photo. That photo is restricted to review drafts with no financial posting. The shared USD 5 application cap remains active; provider-account controls are unverified. Review all extracted values."
-            : value.authorizationMode === "owner-application-cap"
-              ? "Real DeepSeek extraction is available for approved fictional samples under the owner-approved shared USD 5 application cap. This is not a verified provider-account spending cap. Cached real results avoid another paid request. Review every field before saving a draft."
-              : "DeepSeek extraction is available only for approved fictional evaluation documents within the shared USD 5 allowance. Review every field before saving a draft."
-      : value.reason === "disabled"
-        ? "Live AI extraction is disabled. Selectable PDF text and clearly labelled prepared demo suggestions are available; images can be entered manually."
-        : "Live AI extraction is unavailable until credential and billing controls are verified. Manual entry and local PDF reading remain available.",
+      ? value.businessDocuments
+        ? "DeepSeek document reading is available after per-upload consent. Check every field and save a review draft; AI never posts financial transactions. The shared USD 5 application allowance is not a verified provider-account spending cap."
+        : value.generalDocuments
+          ? "DeepSeek reads new supported fictional documents after individual sign-in and per-upload consent. Review every suggestion before saving a draft. Shared USD 5 application cap; real company document processing is not approved."
+          : value.newRequestsEnabled === false
+            ? "New paid AI requests are on hold pending verification. Approved cached real results remain available. Unauthorized documents are never sent to the provider. Manual review remains available."
+            : value.authorizedDocumentReview
+              ? "AI accepts the approved fictional samples and the one specifically owner-authorized quotation photo. That photo is restricted to review drafts with no financial posting. The shared USD 5 application cap remains active; provider-account controls are unverified. Review all extracted values."
+              : value.authorizationMode === "owner-application-cap"
+                ? "Real DeepSeek extraction is available for approved fictional samples under the owner-approved shared USD 5 application cap. This is not a verified provider-account spending cap. Cached real results avoid another paid request. Review every field before saving a draft."
+                : "DeepSeek extraction is available only for approved fictional evaluation documents within the shared USD 5 allowance. Review every field before saving a draft."
+      : value.businessDocuments
+        ? "Business-document AI is unavailable until approved processing and no-training evidence, server credentials, and the existing shared spending ledger are verified. Manual entry remains available."
+        : value.reason === "disabled"
+          ? "Live AI extraction is disabled. Selectable PDF text and clearly labelled prepared demo suggestions are available; images can be entered manually."
+          : "Live AI extraction is unavailable until credential and billing controls are verified. Manual entry and local PDF reading remain available.",
   };
+}
+/** Server-only production configuration. References must point to real reviewed
+ * evidence; the presence of a key never substitutes for processing approval. */
+export async function configuredProductionDocumentRuntime(
+  store: ReviewStore,
+  expectedCompanyId: string,
+  authorization?: DocumentAuthorization,
+) {
+  let businessApproval: unknown;
+  try {
+    businessApproval = JSON.parse(
+      process.env.AZZORA_AI_BUSINESS_APPROVAL_JSON || "null",
+    );
+  } catch {
+    /* Invalid approval remains unavailable. */
+  }
+  return createProductionDocumentRuntime({
+    expectedCompanyId,
+    authorization,
+    businessApproval,
+    store,
+    env: {
+      AZZORA_AI_GENERAL_DOCUMENTS: "business-v1",
+      AZZORA_AI_ENABLED: process.env.AZZORA_AI_ENABLED,
+      AZZORA_AI_CLIENT_DEMO_APP_CAP: process.env.AZZORA_AI_CLIENT_DEMO_APP_CAP,
+      AZZORA_AI_NEW_REQUESTS_ENABLED:
+        process.env.AZZORA_AI_NEW_REQUESTS_ENABLED,
+      AZZORA_AI_PROVIDER: process.env.AZZORA_AI_PROVIDER,
+      DEEPSEEK_MODEL: process.env.DEEPSEEK_MODEL,
+      DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
+    },
+  });
 }
 export const extractorFor = (
   runtime: DocumentRuntime,

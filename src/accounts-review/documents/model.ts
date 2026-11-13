@@ -142,7 +142,7 @@ export interface DocumentReview {
     userId: string;
     companyId: string;
     policyVersion: string;
-    dataClass: "fictional";
+    dataClass: "fictional" | "business";
     confirmedAt: string;
   };
   id: string;

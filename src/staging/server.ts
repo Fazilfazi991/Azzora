@@ -36,6 +36,8 @@ import {
 } from "../accounts-review/reporting.js";
 import { reviewPdf } from "../accounts-review/pdf.js";
 import { ProductionPolicyError } from "../accounting/production-policy.js";
+import { createEmptyProductionCompany } from "../finance/production-policy.js";
+import type { OperationalSettings } from "../operations/model.js";
 import { ReviewRecordingError } from "../accounts-review/domain.js";
 import { prepareImportReview } from "../backend/import-plan.js";
 import { extractDocument } from "../accounts-review/documents/service.js";
@@ -197,6 +199,203 @@ export function createStagingHandler(
         });
       stage = "read";
       let loaded = await read();
+      if (
+        production &&
+        path === "/manager/setup" &&
+        request.method === "POST"
+      ) {
+        if (
+          actor.role !== "owner_admin" ||
+          actor.assurance !== "aal2" ||
+          !actor.capabilities.includes("access.manage")
+        )
+          return json(
+            403,
+            {
+              error:
+                "The company Owner must sign in with MFA to initialize this workspace.",
+            },
+            requestId,
+          );
+        if (
+          !request.headers
+            .get("Content-Type")
+            ?.toLowerCase()
+            .startsWith("application/json")
+        )
+          return json(415, { error: "JSON is required." }, requestId);
+        const raw = await request.text();
+        if (Buffer.byteLength(raw) > 1024)
+          return json(413, { error: "Setup request is too large." }, requestId);
+        let key: string;
+        try {
+          const input = JSON.parse(raw);
+          if (
+            !input ||
+            Array.isArray(input) ||
+            typeof input !== "object" ||
+            Object.keys(input).some((name) => name !== "idempotencyKey") ||
+            typeof input.idempotencyKey !== "string" ||
+            !/^[A-Za-z0-9_-]{16,128}$/.test(input.idempotencyKey)
+          )
+            throw Error();
+          key = input.idempotencyKey;
+        } catch {
+          return json(
+            422,
+            {
+              error:
+                "Provide a unique setup action key. Settings, balances and records cannot be imported through setup.",
+            },
+            requestId,
+          );
+        }
+        // This is an explicitly unconfigured workspace, not approval of tax,
+        // numbering, opening balances or the company's legal identity.
+        const settings: OperationalSettings = {
+          company: {
+            name: "AZZORA",
+            tradingName: "",
+            location: "",
+            phone: "",
+            email: "",
+            website: "",
+            trn: "",
+            logo: "/assets/azzora-logo.png",
+            bank: "",
+            invoiceTerms: "",
+          },
+          invoicePrefix: "",
+          currency: "AED",
+          vatPercentage: "",
+          tax: "Unconfigured" as OperationalSettings["tax"],
+          fiscalYearStart: "",
+          paymentDays: 0,
+          blockOperationalForFinance: true,
+          retentionPercentage: "",
+          numbering: Object.fromEntries(
+            [
+              "variation",
+              "po",
+              "credit",
+              "supplier",
+              "material",
+              "request",
+              "rfq",
+              "quote",
+              "delivery",
+              "bill",
+              "supplierPayment",
+              "refund",
+            ].map((name) => [name, { prefix: "", next: 1 }]),
+          ) as OperationalSettings["numbering"],
+        };
+        const initial = serializeCanonical(
+          createEmptyProductionCompany({ settings }),
+        );
+        // The reviewed SQL checks actor-bound receipts before the version and
+        // bootstrap guards, so an uncertain response can be safely resolved.
+        await rpc("staging_company_commit", {
+          p_session_hash: actor.sessionHash,
+          p_expected_version: 0,
+          p_idempotency_key: key,
+          p_fingerprint: fingerprint({
+            kind: "production.initialize",
+            companyId: actor.companyId,
+            settings,
+          }),
+          p_command: "production.initialize",
+          p_scope: { workspace: "manager", financial: false },
+          p_data: initial,
+          p_bootstrap: true,
+        });
+        const members = await rpc<Person[]>("staging_company_people", {
+          p_session_hash: actor.sessionHash,
+        });
+        const currentOwner = members.find(
+          (person) => person.id === actor.userId,
+        );
+        if (
+          !currentOwner ||
+          currentOwner.status !== "Active" ||
+          currentOwner.email !== actor.email
+        )
+          throw new StagingServiceError(
+            503,
+            "production_owner_profile_required",
+          );
+        const initializingUserId = actor.userId;
+        const people = [
+          currentOwner,
+          ...members.filter((person) => person.id !== actor.userId),
+        ].map((person) => ({
+          ...person,
+          role:
+            person.name === "Accountant"
+              ? "Accountant"
+              : person.id === actor.userId
+                ? "Owner"
+                : person.role,
+          department:
+            person.name === "Accountant" ? "Accounts" : "Administration",
+        }));
+        // Memberships are provisioned independently. Browser fields cannot
+        // manufacture either an Auth identity or its operational profile.
+        for (const person of people) {
+          actor = await auth.requireActor(request, "manager");
+          assertProductionActor(actor, production);
+          if (
+            actor.userId !== initializingUserId ||
+            actor.role !== "owner_admin" ||
+            actor.assurance !== "aal2" ||
+            !actor.capabilities.includes("access.manage")
+          )
+            return json(
+              403,
+              {
+                error:
+                  "Owner authorization changed. Sign in again before continuing setup.",
+              },
+              requestId,
+            );
+          loaded = await read();
+          const state = hydrateCanonical(loaded.data);
+          if (state.manager.people.some((value) => value.id === person.id))
+            continue;
+          // The first actor profile is derived from the current verified
+          // membership, solely to let the normal employee command attribute
+          // its first audit event. It is persisted by that command's atomic
+          // SQL commit, never as a browser-supplied identity or new membership.
+          if (person.id === actor.userId) state.manager.people.push(person);
+          const command: SharedCommand = {
+            kind: "employee.save",
+            payload: { employee: person },
+          };
+          const next = applySharedCommand(state, command, sharedActor(actor));
+          await rpc("staging_company_commit", {
+            p_session_hash: actor.sessionHash,
+            p_expected_version: loaded.version,
+            p_idempotency_key: `setup-person-${fingerprint({ key, id: person.id }).slice(0, 48)}`,
+            p_fingerprint: fingerprint({ kind: command.kind, person }),
+            p_command: command.kind,
+            p_scope: sharedCommandScope(state, command),
+            p_data: serializeCanonical(next),
+            p_bootstrap: false,
+          });
+        }
+        loaded = await read();
+        return json(
+          200,
+          {
+            initialized: true,
+            version: loaded.version,
+            financialPostingEnabled: false,
+            openingBalancesApproved: false,
+            financialPoliciesApproved: false,
+          },
+          requestId,
+        );
+      }
       if (path === "/manager/import/preview" && request.method === "POST") {
         if (
           actor.role !== "owner_admin" ||
@@ -387,7 +586,9 @@ export function createStagingHandler(
             )
           : stagingEncrypted
             ? await (async () => {
-                const capture = await rpc("staging_owner_backup", { p_session_hash: actor.sessionHash });
+                const capture = await rpc("staging_owner_backup", {
+                  p_session_hash: actor.sessionHash,
+                });
                 return createAuthoritativeStagingBackup(
                   capture,
                   readOriginal,
@@ -405,10 +606,21 @@ export function createStagingHandler(
             : await createStagingBackup(source, readOriginal);
         if (production || stagingEncrypted) {
           const current = await auth.requireActor(request, "manager");
-          if (current.userId !== actor.userId || current.companyId !== actor.companyId || current.sessionHash !== actor.sessionHash || current.role !== "owner_admin" || current.assurance !== "aal2" || !current.capabilities.includes("access.manage"))
+          if (
+            current.userId !== actor.userId ||
+            current.companyId !== actor.companyId ||
+            current.sessionHash !== actor.sessionHash ||
+            current.role !== "owner_admin" ||
+            current.assurance !== "aal2" ||
+            !current.capabilities.includes("access.manage")
+          )
             throw new StagingServiceError(403, "backup_access_revoked");
           if (production) assertProductionActor(current, production);
-          if (!current.mfaVerifiedAt || current.mfaVerifiedAt > Date.now() || Date.now() - current.mfaVerifiedAt > 15 * 60_000)
+          if (
+            !current.mfaVerifiedAt ||
+            current.mfaVerifiedAt > Date.now() ||
+            Date.now() - current.mfaVerifiedAt > 15 * 60_000
+          )
             throw new StagingServiceError(403, "backup_recent_mfa_required");
         }
         if (

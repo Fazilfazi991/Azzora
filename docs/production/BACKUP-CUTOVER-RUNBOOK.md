@@ -20,8 +20,11 @@ source and tests remain preserved separately. The exact deployment now owns
 the original `https://azzora-accounts-live.vercel.app` retained. The new hostname
 serves the individual login with HTTP 200 and no Vercel authentication gate;
 unauthenticated private API requests return 401. API execution is verified in
-`sin1`. **Authenticated human acceptance on the new hostname remains pending**;
-do not equate its reachable login page with a completed individual sign-in.
+`sin1`. **Accountant individual password sign-in on the new hostname passed**,
+including session refresh, the corrected empty General Ledger, and visibility of
+the previously saved opening setup notes. The authenticated dashboard was
+visually checked at 390 px with no horizontal overflow. Owner sign-in on the new
+hostname has not been repeated; the original-host Owner evidence remains separate.
 It uses only production Supabase `zwjiztnsxenluqybxhhz`,
 Singapore `ap-southeast-1`, company `fc525d78-bc83-4845-96f1-fb402bb07465`.
 The empty General Ledger render defect was corrected in the final application.
@@ -42,7 +45,7 @@ Exactly two initial production identities are approved:
 | Account | Supabase Auth user ID | Current access evidence |
 | --- | --- | --- |
 | Owner `info@azzora.ae` | `86d914dd-1f39-4860-87d0-b671dd39eb00` | Actual password sign-in, empty-workspace initialization, refresh and logout verified on the original production setup hostname. New-hostname authenticated acceptance pending. |
-| Accountant `accounts@azzora.ae` | `c9a75ea9-2ab9-4ca3-a1f0-33d7f5c554a3` | Actual individual password login without MFA verified on the original production setup hostname. Opening setup notes saved with blank date and no balance rows, retained after refresh; setup PDF download and 390 px navigation passed. Hosted GL correction and logout passed. New-hostname authenticated acceptance pending. |
+| Accountant `accounts@azzora.ae` | `c9a75ea9-2ab9-4ca3-a1f0-33d7f5c554a3` | Actual individual password login without MFA verified on both hostnames. On azzoracrm.vercel.app, session refresh, corrected empty GL, prior opening setup notes and authenticated 390 px layout passed. Original-host draft save, setup PDF download, mobile navigation and logout evidence remain separate. No financial posting was performed. |
 
 The owner subsequently approved email/password-only access for these exact two
 identities. Their actual assurance remains **AAL1**, not MFA. No password or

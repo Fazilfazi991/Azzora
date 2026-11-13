@@ -16,10 +16,19 @@ if (
   );
 if (
   e.AZZORA_DEPLOYMENT_MODE !== "production-candidate" ||
-  e.VERCEL_ENV !== "preview" ||
+  !(
+    e.VERCEL_ENV === "preview" ||
+    (e.VERCEL_ENV === "production" &&
+      e.AZZORA_PRODUCTION_SETUP_RELEASE_APPROVED === "true")
+  ) ||
   !/^prj_[A-Za-z0-9]+$/.test(e.AZZORA_PRODUCTION_VERCEL_PROJECT_ID || "") ||
   e.VERCEL_PROJECT_ID !== e.AZZORA_PRODUCTION_VERCEL_PROJECT_ID ||
-  e.VERCEL_PROJECT_ID === "prj_inNGMsufKkeDUTS1Sn5whmwIVWuw" ||
+  [
+    "prj_inNGMsufKkeDUTS1Sn5whmwIVWuw",
+    "prj_IvRzemrf0OSGWVBrp6Jm9M9TyAfX",
+    "prj_qmXTiKoqwMc2mgJ6QSkYDLrYEoch",
+    "prj_yN2NfsBK7vppbc8xb5BpmZat0Ddy",
+  ].includes(e.VERCEL_PROJECT_ID) ||
   ref !== "zwjiztnsxenluqybxhhz" ||
   ref === "hkhomrrvxtcxnxvdlkoh" ||
   e.AZZORA_PRODUCTION_SUPABASE_URL !== `https://${ref}.supabase.co` ||

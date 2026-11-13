@@ -6,7 +6,12 @@ import {
 
 const fixtureCompany = "11111111-1111-4111-8111-111111111111";
 const reviewUser = "52f925bd-8744-48cc-8781-d20109387d14";
-const existingAccountsProject = "prj_inNGMsufKkeDUTS1Sn5whmwIVWuw";
+const existingDeploymentProjects = new Set([
+  "prj_inNGMsufKkeDUTS1Sn5whmwIVWuw", // Accounts client review
+  "prj_IvRzemrf0OSGWVBrp6Jm9M9TyAfX", // Manager production
+  "prj_qmXTiKoqwMc2mgJ6QSkYDLrYEoch", // Fictional shared staging
+  "prj_yN2NfsBK7vppbc8xb5BpmZat0Ddy", // Timeline preview
+]);
 /** Owner-created free Singapore project; never inferred from an organization label. */
 export const productionProjectRef = "zwjiztnsxenluqybxhhz";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -59,10 +64,14 @@ export function productionRuntime(
   const vercelProjectId = env.AZZORA_PRODUCTION_VERCEL_PROJECT_ID || "";
   if (
     !/^prj_[A-Za-z0-9]+$/.test(vercelProjectId) ||
-    vercelProjectId === existingAccountsProject ||
+    existingDeploymentProjects.has(vercelProjectId) ||
     ((env.VERCEL === "1" || env.VERCEL_ENV) &&
       (env.VERCEL_PROJECT_ID !== vercelProjectId ||
-        env.VERCEL_ENV !== "preview"))
+        !(
+          env.VERCEL_ENV === "preview" ||
+          (env.VERCEL_ENV === "production" &&
+            env.AZZORA_PRODUCTION_SETUP_RELEASE_APPROVED === "true")
+        )))
   )
     fail("production_candidate_project_required");
   const publishableKey = env.AZZORA_PRODUCTION_PUBLISHABLE_KEY || "";

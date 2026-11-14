@@ -11,6 +11,10 @@
   },
   "rewrites": [
     {
+      "source": "/api/staging/:route*",
+      "destination": "/api/staging?route=:route*"
+    },
+    {
       "source": "/api/accounts-review/:route*",
       "destination": "/api/accounts-review?route=:route*"
     },

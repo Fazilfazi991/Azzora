@@ -295,6 +295,22 @@ describe("production document processing — mocked only", () => {
       expect(store.writes).toEqual([]);
     },
   );
+  it("permits an explicit owner policy exception without mislabelling it as no-training evidence", async () => {
+    const store = new Store();
+    await seed(store);
+    const runtime = await setup(store, vi.fn(async () => response()), {
+      businessApproval: {
+        version: 2,
+        companyId: company,
+        ownerApprovalReference: "owner-live-20261114-deepseek-policy-exception",
+        processingPolicyReference: "deepseek-public-policy-reviewed-20261114",
+        providerPolicyExceptionReference:
+          "owner-live-20261114-deepseek-policy-exception",
+        sharedBudgetVerificationReference: "existing-shared-usd5-ledger",
+      },
+    });
+    expect(runtime.status().ready).toBe(true);
+  });
   it.each(["absent", "malformed", "inaccessible"])(
     "never starts a new ledger when existing history is %s",
     async (failure) => {

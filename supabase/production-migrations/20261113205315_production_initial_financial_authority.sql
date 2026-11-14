@@ -1,5 +1,6 @@
 -- Owner-approved finite operating release; not a historical import or approval
--- of unknown opening balances. No training/AI policy or infrastructure changes.
+-- of unknown opening balances. The owner also explicitly accepted DeepSeek's
+-- documented processing-policy uncertainty for review-only business uploads.
 begin;
 lock table azzora.production_environment in access exclusive mode;
 lock table azzora.companies in share row exclusive mode;
@@ -15,9 +16,9 @@ begin
  then raise exception 'Approved active Accountant required';end if;
  if not exists(select 1 from pg_trigger where tgrelid='azzora.production_environment'::regclass and tgname='production_configuration_immutable' and tgenabled='O') then raise exception 'Protected production configuration required';end if;
  if exists(select 1 from azzora.audit_events where company_id=e.company_id and request_id='owner-live-20261115-v1') then raise exception 'Financial authority already recorded; do not replay this migration';end if;
- authority:=jsonb_build_object('version',1,'approvalId','owner-live-20261115-v1','companyId',e.company_id,'companyName','Azzora','noVat',true,'taxRegistration','unconfirmed','taxInvoiceEnabled',false,'effectiveFrom','2026-11-15','timezone','Asia/Dubai','postingUserId','c9a75ea9-2ab9-4ca3-a1f0-33d7f5c554a3','expenseApproverId',null,'approvedBy',e.approved_by,'approvedAt',to_char(statement_timestamp() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),'instructionSha256','8546a8b91cc3bc56e5398ff44838a73933f72e376ce4be361148254bd66d0f63');
+ authority:=jsonb_build_object('version',1,'approvalId','owner-live-20261115-v1','companyId',e.company_id,'companyName','Azzora','noVat',true,'taxRegistration','unconfirmed','taxInvoiceEnabled',false,'effectiveFrom','2026-11-15','timezone','Asia/Dubai','postingUserId','c9a75ea9-2ab9-4ca3-a1f0-33d7f5c554a3','expenseApproverId','c9a75ea9-2ab9-4ca3-a1f0-33d7f5c554a3','expenseApprovalMode','accountant-auto-approved','approvedBy',e.approved_by,'approvedAt',to_char(statement_timestamp() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),'instructionSha256','8546a8b91cc3bc56e5398ff44838a73933f72e376ce4be361148254bd66d0f63');
  insert into azzora.audit_events(company_id,actor_id,action,entity_type,entity_id,request_id,metadata)
- values(e.company_id,e.approved_by,'production.initial-finance.approve','production_environment',e.company_id::text,'owner-live-20261115-v1',jsonb_build_object('authority',authority,'openingBalancesApproved',false,'openingFiguresAssumed',false,'expenseAuthorityConfirmed',false));
+ values(e.company_id,e.approved_by,'production.initial-finance.approve','production_environment',e.company_id::text,'owner-live-20261115-v1',jsonb_build_object('authority',authority,'openingBalancesApproved',false,'openingFiguresAssumed',false,'expenseAuthorityConfirmed',true,'expenseApprovalMode','accountant-auto-approved','realDocumentProcessingException','owner-live-20261114-deepseek-policy-exception'));
  -- Existing engine control mappings, never fictional bank/equity balances.
  insert into azzora.accounts(company_id,id,code,name,type,postable,active) values
  (e.company_id,'receivables','1100','Accounts receivable','Asset',true,true),
@@ -32,7 +33,7 @@ begin
  where company_id=e.company_id and entity_type='workspace_metadata' and id='__production_metadata';
  if not found then raise exception 'Initialized production workspace required';end if;
  update azzora.companies set name='Azzora',version=version+1 where id=e.company_id;
- update azzora.memberships set capabilities=array_append(capabilities,'finance.post') where company_id=e.company_id and user_id='c9a75ea9-2ab9-4ca3-a1f0-33d7f5c554a3' and not('finance.post'=any(capabilities));
+ update azzora.memberships set capabilities=array_append(array_append(capabilities,'finance.post'),'expense.approve') where company_id=e.company_id and user_id='c9a75ea9-2ab9-4ca3-a1f0-33d7f5c554a3' and not('finance.post'=any(capabilities));
 end $$;
 create function azzora.initial_finance_now() returns timestamptz language sql stable set search_path='' as $$select statement_timestamp()$$;
 revoke all on function azzora.initial_finance_now() from public,anon,authenticated,service_role,azzora_api;
@@ -139,6 +140,9 @@ begin
  d:=pg_get_functiondef('public.azzora_runtime_identity(uuid)'::regprocedure);marker:='''financialPostingEnabled'',false';
  if position(marker in d)=0 then raise exception 'Production runtime financial proof changed';end if;
  d:=replace(d,marker,'''financialPostingEnabled'',e.real_financial_posting_enabled,''financialAuthority'',azzora.initial_finance_authority()');execute d;
+ d:=pg_get_functiondef('public.azzora_runtime_identity(uuid)'::regprocedure);marker:='''realDocumentProcessingEnabled'',false';
+ if position(marker in d)=0 then raise exception 'Production runtime document proof changed';end if;
+ d:=replace(d,marker,'''realDocumentProcessingEnabled'',true');execute d;
  d:=pg_get_functiondef('public.azzora_production_company_commit(text,bigint,text,text,text,jsonb,jsonb,boolean)'::regprocedure);
  marker:='then raise exception ''Approved accounting policy and cutover required'' using errcode=''PT423'';end if;';
  if position(marker in d)=0 then raise exception 'Production posting guard changed';end if;

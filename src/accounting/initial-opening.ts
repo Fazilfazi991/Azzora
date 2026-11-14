@@ -344,7 +344,11 @@ export function initialFinanceView(
     noVat: true,
     taxRegistration: "unconfirmed" as const,
     taxInvoiceEnabled: false,
-    expensePostingEnabled: false,
+    expensePostingEnabled:
+      postingActive &&
+      actor.userId === initialAccountantId &&
+      actor.grant.capabilities.includes("finance.post") &&
+      actor.grant.capabilities.includes("expense.approve"),
     transfersEnabled: false,
     openingStatus: review?.posted
       ? "posted"

@@ -24,7 +24,11 @@ export const initialLiveSchema = z
     effectiveFrom: z.literal("2026-11-15"),
     timezone: z.literal("Asia/Dubai"),
     postingUserId: z.literal(initialAccountantId),
-    expenseApproverId: z.null(),
+    // Owner explicitly approved automatic expense approval for the initial
+    // operating scope. This is deliberately narrow: only the same approved
+    // Accountant, company and effective-date gate may use it.
+    expenseApproverId: z.literal(initialAccountantId),
+    expenseApprovalMode: z.literal("accountant-auto-approved"),
     approvedBy: z.literal(initialOwnerId),
     approvedAt: z.iso.datetime({ offset: true }),
     instructionSha256: z.string().regex(/^[a-f0-9]{64}$/),
@@ -118,32 +122,27 @@ export function assertInitialFinanceActor(
   operation: "post" | "approve-expense" = "post",
 ) {
   parseInitialFinanceAuthority(authority);
-  const ownerApproval = operation === "approve-expense";
-  if (ownerApproval)
-    throw new InitialFinanceError(
-      "expense_approval_authority_pending",
-      "An independent expense approver has not been confirmed. Draft expenses remain available; unrelated approved transactions are not blocked.",
-    );
+  const expenseApproval = operation === "approve-expense";
   if (
     !actor.grant.active ||
     actor.grant.userId !== actor.userId ||
     actor.companyId !== authority.companyId ||
     actor.grant.companyId !== authority.companyId ||
     actor.userId !==
-      (ownerApproval ? authority.expenseApproverId : authority.postingUserId) ||
-    !actor.grant.roles.includes(ownerApproval ? "owner" : "accountant") ||
+      (expenseApproval ? authority.expenseApproverId : authority.postingUserId) ||
+    !actor.grant.roles.includes("accountant") ||
     !actor.grant.capabilities.includes(
-      ownerApproval ? "expense.approve" : "finance.post",
+      expenseApproval ? "expense.approve" : "finance.post",
     ) ||
     !actor.grant.workspaces.includes(
-      ownerApproval ? "manager" : "accountant",
+      "accountant",
     ) ||
     (actor.assurance !== "aal2" && !isProductionPasswordOnly(actor))
   )
     throw new InitialFinanceError(
       "initial_posting_authority_denied",
-      ownerApproval
-        ? "Only the independently authorized Owner can approve this expense."
+      expenseApproval
+        ? "Only the approved Accountant may automatically approve an expense."
         : "Only the approved Accountant can post financial transactions.",
     );
   if (new Date(authority.approvedAt).getTime() > new Date(now).getTime())
@@ -151,7 +150,7 @@ export function assertInitialFinanceActor(
       "initial_finance_approval_invalid",
       "The approval timestamp is not valid for the trusted server clock.",
     );
-  if (!ownerApproval && dubaiBusinessDate(now) < authority.effectiveFrom)
+  if (dubaiBusinessDate(now) < authority.effectiveFrom)
     throw new InitialFinanceError(
       "accounting_start_not_reached",
       "Financial posting starts on 15 November 2026 in Dubai. Drafts remain available.",

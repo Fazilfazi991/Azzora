@@ -129,7 +129,7 @@ async function fixture() {
       "https://azzora-accounts-live.vercel.app,https://azzoracrm.vercel.app",
     AZZORA_PRODUCTION_FINANCIAL_POSTING: "true",
     AZZORA_PRODUCTION_FINANCIAL_APPROVAL: "owner-live-20261115-v1",
-    AZZORA_PRODUCTION_REAL_DOCUMENT_PROCESSING: "false",
+    AZZORA_PRODUCTION_REAL_DOCUMENT_PROCESSING: "true",
   });
   let user = owner;
   let lastError = "";

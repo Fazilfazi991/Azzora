@@ -682,7 +682,7 @@ export function ExpenseEntry({
             ? data.productionFinance?.expensePostingEnabled === true
               ? productionFinanceNotice(data.productionFinance)
               : data.productionFinance?.expensePostingReason ||
-                "Paid expense posting awaits a designated independent expense approver. Expense drafts and ledger setup remain available."
+                "Paid expense posting is not active for this Accountant. Expense drafts and ledger setup remain available."
             : "This records a payment in the fictional demo journal. Real approvals and VAT treatment remain subject to owner policy."}
         </p>
       </form>

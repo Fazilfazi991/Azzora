@@ -1036,7 +1036,15 @@ export function applySharedCommand(
     if (command.kind === "expense.submit") {
       if (!role(actor, ["owner", "admin", "project_manager", "site_staff"]))
         throw new AccessDenied("Expense submission access denied.");
-    } else if (!role(actor, ["owner", "admin", "project_manager"]))
+    } else if (
+      !(
+        previous.mode === "production" &&
+        production?.initialLive?.expenseApprovalMode ===
+          "accountant-auto-approved" &&
+        actor.userId === production.initialLive.expenseApproverId
+      ) &&
+      !role(actor, ["owner", "admin", "project_manager"])
+    )
       throw new AccessDenied("Manager write access denied.");
     if (scope.projectId) requireProject(previous, actor, scope.projectId);
     if (
@@ -1573,7 +1581,15 @@ export function applySharedCommand(
           parseFils(submission.amount).toString(),
           "approve-expense",
         );
-      if (submission.submittedBy === actor.userId)
+      if (
+        submission.submittedBy === actor.userId &&
+        !(
+          previous.mode === "production" &&
+          production?.initialLive?.expenseApprovalMode ===
+            "accountant-auto-approved" &&
+          actor.userId === production.initialLive.expenseApproverId
+        )
+      )
         throw new AccessDenied(
           "Only an independent approver may decide a pending expense.",
         );

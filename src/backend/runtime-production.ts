@@ -32,7 +32,7 @@ export interface ProductionRuntime extends StagingConfig {
   allowedOrigins: ReadonlySet<string>;
   financialPostingEnabled: boolean;
   financialApprovalId?: string;
-  realDocumentProcessingEnabled: false;
+  realDocumentProcessingEnabled: boolean;
 }
 export function productionRuntime(
   env: Record<string, string | undefined> = process.env,
@@ -134,10 +134,9 @@ export function productionRuntime(
       (env.AZZORA_PRODUCTION_FINANCIAL_APPROVAL !== initialFinanceApprovalId ||
         companyId !== "fc525d78-bc83-4845-96f1-fb402bb07465" ||
         vercelProjectId !== "prj_2Kr1T82kCiU5eSk1SZFOcAPQlBfV")) ||
-    env.AZZORA_PRODUCTION_REAL_DOCUMENT_PROCESSING !== "false" ||
-    env.AZZORA_AI_ENABLED === "true" ||
-    env.AZZORA_AI_GENERAL_DOCUMENTS ||
-    env.AZZORA_AI_CLIENT_DEMO_APP_CAP
+    !["false", "true"].includes(
+      env.AZZORA_PRODUCTION_REAL_DOCUMENT_PROCESSING || "",
+    )
   )
     fail("production_activation_requires_separate_release");
   return {
@@ -156,7 +155,8 @@ export function productionRuntime(
     ...(financialPostingEnabled
       ? { financialApprovalId: initialFinanceApprovalId }
       : {}),
-    realDocumentProcessingEnabled: false,
+    realDocumentProcessingEnabled:
+      env.AZZORA_PRODUCTION_REAL_DOCUMENT_PROCESSING === "true",
   };
 }
 /** Proof comes from the approved database, never HTTP input or editable identity metadata. */
@@ -177,7 +177,7 @@ export function assertProductionIdentity(
     v.vercelProjectId !== runtime.vercelProjectId ||
     v.configurationApprovalId !== runtime.configurationApprovalId ||
     v.financialPostingEnabled !== runtime.financialPostingEnabled ||
-    v.realDocumentProcessingEnabled !== false ||
+    v.realDocumentProcessingEnabled !== runtime.realDocumentProcessingEnabled ||
     v.fictionalData !== false ||
     v.privateStorageBucket !== "azzora-private" ||
     v.backendCommandsInstalled !== true ||

@@ -15,15 +15,16 @@
   "postingUser": "accounts@azzora.ae",
   "vatTreatment": "No VAT",
   "vatRegistration": "unconfirmed",
-  "openingBalances": "unknown; saved drafts never post automatically; Accountant complete reconciliation and independent Owner confirmation required",
-  "expenseApproval": "unconfirmed; expense posting blocked",
+  "openingBalances": "unknown; saved drafts never post automatically; Accountant reconciliation and Owner confirmation required",
+  "expenseApproval": "owner-approved Accountant auto-approval for the initial scope",
   "structuralControlsOnly": true,
   "initialBalancesAssumed": false,
-  "realDocumentProcessingEnabled": false,
+  "realDocumentProcessingEnabled": true,
+  "realDocumentProcessingPolicy": "owner exception recorded: DeepSeek processing/retention terms are not independently verified; every upload remains review-only and consented",
   "files": [
     {
       "path": "supabase/production-migrations/20261113205315_production_initial_financial_authority.sql",
-      "sha256": "6a056037f7437d8a52c7e4e660905ca20364ca11976069d0acee7938cba31683"
+      "sha256": "805ae49a067f24295c48be0d61ac6cb11a48cf308706bc01b922d2abde3a83e4"
     }
   ],
   "sourceHashEncoding": "UTF-8 with CRLF normalized to LF"
